@@ -26,12 +26,15 @@
     #pragma warning(disable : 4100) // Ignore unreferenced formal parameter
     #pragma warning(disable : 4127) // Ignore conditional expression is constant
     #pragma warning(disable : 4244) // Ignore implicit conversion
+    #pragma warning(disable : 4267) // Ignore implicit conversion
     #pragma warning(disable : 4702) // Ignore unreachable code
     #pragma warning(disable : 5054) // Ignore operator between enums of different types
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
 #include <openMVG/exif/sensor_width_database/ParseDatabase.hpp>
+#include <openMVG/features/regions.hpp>
+#include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
 #include <openMVG/image/image_io.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
 #include <openMVG/sfm/sfm_data_utils.hpp>
@@ -48,10 +51,18 @@ namespace AIHoloImager
 {
     class StructureFromMotion::Impl
     {
+    private:
+        struct FeatureRegions
+        {
+            std::unique_ptr<features::Regions> regions_type;
+            std::vector<std::unique_ptr<features::Regions>> feature_regions;
+        };
+
     public:
         void Process(const std::filesystem::path& input_path)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
+            FeatureRegions regions = this->FeatureExtraction(sfm_data);
         }
 
     private:
@@ -168,6 +179,41 @@ namespace AIHoloImager
             GroupSharedIntrinsics(sfm_data);
 
             return sfm_data;
+        }
+
+        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data) const
+        {
+            // Reference from openMVG/src/software/SfM/openMVG_main_ComputeFeatures.cpp
+
+            features::SIFT_Anatomy_Image_describer image_describer;
+
+            FeatureRegions feature_regions;
+            feature_regions.regions_type = image_describer.Allocate();
+            feature_regions.feature_regions.resize(sfm_data.views.size());
+
+            const std::filesystem::path image_dir = sfm_data.s_root_path;
+
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
+            for (int i = 0; i < static_cast<int>(sfm_data.views.size()); ++i)
+            {
+                Views::const_iterator iter = sfm_data.views.begin();
+                std::advance(iter, i);
+
+                const View& view = *(iter->second);
+                const auto view_file = image_dir / view.s_Img_path;
+
+                Image<unsigned char> image_gray;
+                if (!ReadImage(view_file.string().c_str(), &image_gray))
+                {
+                    continue;
+                }
+
+                feature_regions.feature_regions[i] = image_describer.Describe(image_gray);
+            }
+
+            return feature_regions;
         }
     };
 
