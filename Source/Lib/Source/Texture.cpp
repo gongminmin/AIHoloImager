@@ -77,6 +77,11 @@ namespace AIHoloImager
     }
     Texture& Texture::operator=(Texture&& rhs) noexcept = default;
 
+    bool Texture::Valid() const noexcept
+    {
+        return static_cast<bool>(impl_);
+    }
+
     uint32_t Texture::Width() const noexcept
     {
         return impl_->Width();
@@ -116,6 +121,11 @@ namespace AIHoloImager
 
     void SaveTexture(const Texture& tex, const std::filesystem::path& path)
     {
+        if (!tex.Valid())
+        {
+            return;
+        }
+
         const auto output_ext = path.extension();
 
         stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(), tex.Data(),

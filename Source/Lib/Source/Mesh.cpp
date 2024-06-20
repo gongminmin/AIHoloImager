@@ -3,16 +3,10 @@
 
 #include "AIHoloImager/Mesh.hpp"
 
-#include <fstream>
-#include <iostream>
-#include <set>
-#include <tuple>
-
 #include <assimp/Exporter.hpp>
 #include <assimp/GltfMaterial.h>
 #include <assimp/Importer.hpp>
 #include <assimp/material.h>
-#include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
 using namespace DirectX;
@@ -103,6 +97,11 @@ namespace AIHoloImager
         return *this;
     }
     Mesh& Mesh::operator=(Mesh&& rhs) noexcept = default;
+
+    bool Mesh::Valid() const noexcept
+    {
+        return static_cast<bool>(impl_);
+    }
 
     std::span<const Mesh::VertexFormat> Mesh::Vertices() const noexcept
     {
@@ -200,6 +199,11 @@ namespace AIHoloImager
 
     void SaveMesh(const Mesh& mesh, const std::filesystem::path& path)
     {
+        if (!mesh.Valid())
+        {
+            return;
+        }
+
         const auto ext = path.extension();
         const bool is_gltf = (ext == ".gltf") || (ext == ".glb");
 
@@ -236,19 +240,22 @@ namespace AIHoloImager
             ai_mtl.AddProperty(&ai_alpha_mode, AI_MATKEY_GLTF_ALPHAMODE);
         }
 
-        const std::filesystem::path albedo_tex_path = path.stem().string() + "_0.png";
-        SaveTexture(mesh.AlbedoTexture(), path.parent_path() / albedo_tex_path);
-
+        if (mesh.AlbedoTexture().Valid())
         {
-            aiString name;
-            name.Set(albedo_tex_path.string());
-            if (is_gltf)
+            const std::filesystem::path albedo_tex_path = path.stem().string() + "_0.png";
+            SaveTexture(mesh.AlbedoTexture(), path.parent_path() / albedo_tex_path);
+
             {
-                ai_mtl.AddProperty(&name, _AI_MATKEY_TEXTURE_BASE, aiTextureType_BASE_COLOR);
-            }
-            else
-            {
-                ai_mtl.AddProperty(&name, AI_MATKEY_TEXTURE_DIFFUSE(0));
+                aiString name;
+                name.Set(albedo_tex_path.string());
+                if (is_gltf)
+                {
+                    ai_mtl.AddProperty(&name, _AI_MATKEY_TEXTURE_BASE, aiTextureType_BASE_COLOR);
+                }
+                else
+                {
+                    ai_mtl.AddProperty(&name, AI_MATKEY_TEXTURE_DIFFUSE(0));
+                }
             }
         }
 

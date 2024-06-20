@@ -1,0 +1,122 @@
+From aeb5ec8aae7e62dbbf050ac63748fab7bfb1b716 Mon Sep 17 00:00:00 2001
+From: Minmin Gong <gongminmin@msn.com>
+Date: Mon, 17 Jun 2024 20:30:33 -0700
+Subject: [PATCH 1/3] [Build] Use PROJECT_SOURCE_DIR to replace
+ CMAKE_SOURCE_DIR
+
+---
+ src/CMakeLists.txt                              | 6 +++---
+ src/openMVG/exif/CMakeLists.txt                 | 2 +-
+ src/openMVG/features/CMakeLists.txt             | 2 +-
+ src/openMVG/numeric/CMakeLists.txt              | 2 +-
+ src/openMVG/system/CMakeLists.txt               | 2 +-
+ src/openMVG_Samples/exif_Parsing/CMakeLists.txt | 2 +-
+ src/testing/CMakeLists.txt                      | 2 +-
+ 7 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 6879c4c6..7f4b8f3c 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -18,7 +18,7 @@ endif()
+ include(GNUInstallDirs)
+ 
+ # guard against in-source builds
+-if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
++if (${PROJECT_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+   message(FATAL_ERROR "In-source builds not allowed.")
+ endif()
+ 
+@@ -239,7 +239,7 @@ MACRO(UNIT_TEST NAMESPACE NAME EXTRA_LIBS)
+     set_property(TARGET ${NAMESPACE}_test_${NAME} PROPERTY FOLDER OpenMVG/test)
+     target_include_directories(${NAMESPACE}_test_${NAME}
+                                PRIVATE
+-                               ${CMAKE_SOURCE_DIR}/third_party)
++                               ${PROJECT_SOURCE_DIR}/third_party)
+     target_link_libraries(${NAMESPACE}_test_${NAME}
+                           ${EXTRA_LIBS} # Extra libs MUST be first.
+                           CppUnitLite)
+@@ -614,7 +614,7 @@ endforeach()
+ # Create a OpenMVGConfig.cmake file. <name>Config.cmake files are searched by
+ # find_package() automatically. We configure that file so that we can put any
+ # information we want in it, e.g. version numbers, include directories, etc.
+-configure_file("${CMAKE_SOURCE_DIR}/cmakeFindModules/OpenMVGConfig.cmake.in"
++configure_file("${PROJECT_SOURCE_DIR}/cmakeFindModules/OpenMVGConfig.cmake.in"
+                "${CMAKE_CURRENT_BINARY_DIR}/OpenMVGConfig.cmake" @ONLY)
+ 
+ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/OpenMVGConfig.cmake"
+diff --git a/src/openMVG/exif/CMakeLists.txt b/src/openMVG/exif/CMakeLists.txt
+index da2fc748..6be82b25 100644
+--- a/src/openMVG/exif/CMakeLists.txt
++++ b/src/openMVG/exif/CMakeLists.txt
+@@ -2,7 +2,7 @@
+ add_library(openMVG_exif exif_IO_EasyExif.cpp)
+ target_compile_features(openMVG_exif INTERFACE ${CXX11_FEATURES})
+ target_link_libraries(openMVG_exif LINK_PRIVATE openMVG_easyexif)
+-target_include_directories(openMVG_exif PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/include/easyexif)
++target_include_directories(openMVG_exif PRIVATE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/third_party/include/easyexif)
+ set_target_properties(openMVG_exif PROPERTIES SOVERSION ${OPENMVG_VERSION_MAJOR} VERSION "${OPENMVG_VERSION_MAJOR}.${OPENMVG_VERSION_MINOR}")
+ set_property(TARGET openMVG_exif PROPERTY FOLDER OpenMVG/OpenMVG)
+ install(TARGETS openMVG_exif DESTINATION ${CMAKE_INSTALL_LIBDIR} EXPORT openMVG-targets)
+diff --git a/src/openMVG/features/CMakeLists.txt b/src/openMVG/features/CMakeLists.txt
+index 7100ab08..838b3cd4 100644
+--- a/src/openMVG/features/CMakeLists.txt
++++ b/src/openMVG/features/CMakeLists.txt
+@@ -25,7 +25,7 @@ endif()
+ target_include_directories(openMVG_features
+   PUBLIC
+     $<BUILD_INTERFACE:${EIGEN_INCLUDE_DIRS}>
+-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
++    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+     $<INSTALL_INTERFACE:include>
+     $<INSTALL_INTERFACE:include/openMVG>
+ )
+diff --git a/src/openMVG/numeric/CMakeLists.txt b/src/openMVG/numeric/CMakeLists.txt
+index 1407bdd5..ccfe4f0b 100644
+--- a/src/openMVG/numeric/CMakeLists.txt
++++ b/src/openMVG/numeric/CMakeLists.txt
+@@ -23,7 +23,7 @@ endif()
+ target_include_directories(openMVG_numeric
+   PUBLIC
+     $<BUILD_INTERFACE:${EIGEN_INCLUDE_DIRS}>
+-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
++    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+     $<INSTALL_INTERFACE:include>
+ )
+ if (DEFINED OpenMVG_USE_INTERNAL_EIGEN)
+diff --git a/src/openMVG/system/CMakeLists.txt b/src/openMVG/system/CMakeLists.txt
+index 5ed532b6..21d6fa8c 100644
+--- a/src/openMVG/system/CMakeLists.txt
++++ b/src/openMVG/system/CMakeLists.txt
+@@ -2,7 +2,7 @@
+ add_library(openMVG_system
+   timer.hpp
+   timer.cpp)
+-target_include_directories(openMVG_system PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>)
++target_include_directories(openMVG_system PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
+ target_compile_features(openMVG_system INTERFACE ${CXX11_FEATURES})
+ set_target_properties(openMVG_system PROPERTIES SOVERSION ${OPENMVG_VERSION_MAJOR} VERSION "${OPENMVG_VERSION_MAJOR}.${OPENMVG_VERSION_MINOR}")
+ set_property(TARGET openMVG_system PROPERTY FOLDER OpenMVG/OpenMVG)
+diff --git a/src/openMVG_Samples/exif_Parsing/CMakeLists.txt b/src/openMVG_Samples/exif_Parsing/CMakeLists.txt
+index 0614767a..fc176844 100644
+--- a/src/openMVG_Samples/exif_Parsing/CMakeLists.txt
++++ b/src/openMVG_Samples/exif_Parsing/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ 
+ add_executable(openMVG_main_exif_Parsing exifParsing.cpp)
+-target_include_directories(openMVG_main_exif_Parsing PRIVATE ${CMAKE_SOURCE_DIR})
++target_include_directories(openMVG_main_exif_Parsing PRIVATE ${PROJECT_SOURCE_DIR})
+ target_link_libraries(openMVG_main_exif_Parsing PRIVATE openMVG_exif)
+ set_property(TARGET openMVG_main_exif_Parsing PROPERTY FOLDER OpenMVG/Samples)
+diff --git a/src/testing/CMakeLists.txt b/src/testing/CMakeLists.txt
+index b4fe7aeb..28900c27 100644
+--- a/src/testing/CMakeLists.txt
++++ b/src/testing/CMakeLists.txt
+@@ -1,3 +1,3 @@
+ add_library(openMVG_testing INTERFACE)
+-target_include_directories(openMVG_testing INTERFACE ${CMAKE_SOURCE_DIR};${EIGEN_INCLUDE_DIRS})
++target_include_directories(openMVG_testing INTERFACE ${PROJECT_SOURCE_DIR};${EIGEN_INCLUDE_DIRS})
+ target_link_libraries(openMVG_testing INTERFACE openMVG_numeric)
+-- 
+2.43.0.windows.1
+

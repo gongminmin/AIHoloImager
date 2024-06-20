@@ -21,6 +21,8 @@ namespace AIHoloImager
         Texture& operator=(const Texture& rhs);
         Texture& operator=(Texture&& rhs) noexcept;
 
+        bool Valid() const noexcept;
+
         uint32_t Width() const noexcept;
         uint32_t Height() const noexcept;
         uint32_t NumChannels() const noexcept;

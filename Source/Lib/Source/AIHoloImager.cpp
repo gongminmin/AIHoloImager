@@ -3,15 +3,21 @@
 
 #include "AIHoloImager/AIHoloImager.hpp"
 
+#include "SfM/StructureFromMotion.hpp"
+
 namespace AIHoloImager
 {
     class AIHoloImager::Impl
     {
     public:
-        Mesh Generate([[maybe_unused]] std::span<const Texture> images)
+        Mesh Generate(const std::filesystem::path& input_path)
         {
+            sfm_.Process(input_path);
             return Mesh();
         }
+
+    private:
+        StructureFromMotion sfm_;
     };
 
     AIHoloImager::AIHoloImager() : impl_(std::make_unique<Impl>())
@@ -22,8 +28,8 @@ namespace AIHoloImager
 
     AIHoloImager& AIHoloImager::operator=(AIHoloImager&& rhs) noexcept = default;
 
-    Mesh AIHoloImager::Generate(std::span<const Texture> images)
+    Mesh AIHoloImager::Generate(const std::filesystem::path& input_path)
     {
-        return impl_->Generate(std::move(images));
+        return impl_->Generate(input_path);
     }
 } // namespace AIHoloImager

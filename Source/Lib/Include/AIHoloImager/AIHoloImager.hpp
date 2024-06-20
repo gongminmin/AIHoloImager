@@ -20,7 +20,7 @@ namespace AIHoloImager
         AIHoloImager& operator=(const AIHoloImager& rhs) = delete;
         AIHoloImager& operator=(AIHoloImager&& rhs) noexcept;
 
-        Mesh Generate(std::span<const Texture> images);
+        Mesh Generate(const std::filesystem::path& input_path);
 
     private:
         class Impl;

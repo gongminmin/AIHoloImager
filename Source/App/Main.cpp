@@ -12,7 +12,6 @@
 #include <cxxopts.hpp>
 
 #include "AIHoloImager/AIHoloImager.hpp"
-#include "AIHoloImager/Texture.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -67,26 +66,10 @@ int main(int argc, char* argv[])
 
     std::filesystem::create_directories(output_path.parent_path());
 
-    std::vector<std::filesystem::path> input_image_paths;
-    for (const auto& dir_entry : std::filesystem::directory_iterator{input_path})
-    {
-        if (dir_entry.is_regular_file())
-        {
-            input_image_paths.push_back(dir_entry.path());
-        }
-    }
-    std::sort(input_image_paths.begin(), input_image_paths.end());
-
-    std::vector<AIHoloImager::Texture> input_images;
-    for (const auto& image_path : input_image_paths)
-    {
-        input_images.push_back(AIHoloImager::LoadTexture(image_path));
-    }
-
     auto start = std::chrono::high_resolution_clock::now();
 
     AIHoloImager::AIHoloImager imager;
-    AIHoloImager::Mesh mesh = imager.Generate(input_images);
+    AIHoloImager::Mesh mesh = imager.Generate(input_path);
 
     auto elapse = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start);
 

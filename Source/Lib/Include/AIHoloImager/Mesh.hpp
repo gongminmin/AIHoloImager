@@ -31,6 +31,8 @@ namespace AIHoloImager
         Mesh& operator=(const Mesh& rhs);
         Mesh& operator=(Mesh&& rhs) noexcept;
 
+        bool Valid() const noexcept;
+
         std::span<const VertexFormat> Vertices() const noexcept;
         void Vertices(std::span<const VertexFormat> verts);
         void ResizeVertices(uint32_t num);

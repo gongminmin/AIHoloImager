@@ -1,4 +1,5 @@
 assimp/assimp/
 cxxopts/cxxopts/
+openMVG/openMVG/
 stb/stb/
 zlib/zlib/
