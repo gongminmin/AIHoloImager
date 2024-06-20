@@ -1,0 +1,39 @@
+variables:
+  configuration: Release
+
+stages:
+- stage: CodeFormatting
+  jobs:
+  - job: CodeFormatting
+    pool:
+      vmImage: Ubuntu-22.04
+
+    steps:
+    - script: |
+        find . -iname "*.hpp" -o -iname "*.cpp" | xargs clang-format -i
+        git diff --exit-code $(Build.SourceVersion)
+      failOnStderr: true
+      displayName: 'Check code formatting'
+
+- stage: Build
+  condition: succeeded('CodeFormatting')
+  jobs:
+  - job: Build
+
+    strategy:
+      matrix:
+        Windows_vc143:
+          vmImage: windows-2022
+          generator: 'Visual Studio 17 2022'
+
+    pool:
+      vmImage: $(vmImage)
+
+    steps:
+      - checkout: self
+        fetchDepth: 1
+
+      - bash: |
+          cmake -B Build -G "$(generator)" .
+          cmake --build Build -j --config $(configuration)
+        displayName: 'Build'
