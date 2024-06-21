@@ -12,7 +12,7 @@ namespace AIHoloImager
     public:
         Mesh Generate(const std::filesystem::path& input_path)
         {
-            sfm_.Process(input_path);
+            sfm_.Process(input_path, true);
             return Mesh();
         }
 

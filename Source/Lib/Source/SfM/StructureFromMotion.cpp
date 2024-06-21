@@ -23,12 +23,14 @@
 
 #ifdef _MSC_VER
     #pragma warning(push)
+    #pragma warning(disable : 4018) // Ignore signed/unsigned compare mismatch
     #pragma warning(disable : 4100) // Ignore unreferenced formal parameter
     #pragma warning(disable : 4127) // Ignore conditional expression is constant
     #pragma warning(disable : 4244) // Ignore implicit conversion
     #pragma warning(disable : 4267) // Ignore implicit conversion
     #pragma warning(disable : 4702) // Ignore unreachable code
     #pragma warning(disable : 5054) // Ignore operator between enums of different types
+    #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
@@ -37,6 +39,9 @@
 #include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
 #include <openMVG/image/image_io.hpp>
 #include <openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp>
+#include <openMVG/matching_image_collection/E_ACRobust.hpp>
+#include <openMVG/matching_image_collection/F_ACRobust.hpp>
+#include <openMVG/matching_image_collection/GeometricFilter.hpp>
 #include <openMVG/matching_image_collection/Pair_Builder.hpp>
 #include <openMVG/sfm/pipelines/sfm_regions_provider.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
@@ -50,6 +55,7 @@ using namespace openMVG::cameras;
 using namespace openMVG::sfm;
 using namespace openMVG::image;
 using namespace openMVG::matching;
+using namespace openMVG::matching_image_collection;
 
 namespace AIHoloImager
 {
@@ -63,11 +69,12 @@ namespace AIHoloImager
         };
 
     public:
-        void Process(const std::filesystem::path& input_path)
+        void Process(const std::filesystem::path& input_path, bool sequential)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
             FeatureRegions regions = this->FeatureExtraction(sfm_data);
             const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
+            const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
         }
 
     private:
@@ -232,7 +239,7 @@ namespace AIHoloImager
             const float dist_ratio = 0.8f;
 
             assert(regions.regions_type->IsScalar());
-            matching_image_collection::Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
+            Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
 
             const Pair_Set pairs = exhaustivePairs(sfm_data.GetViews().size());
             std::cout << "Matching on # pairs: " << pairs.size() << '\n';
@@ -242,6 +249,51 @@ namespace AIHoloImager
             std::cout << "# putative pairs: " << map_putative_matches.size() << '\n';
 
             return map_putative_matches;
+        }
+
+        PairWiseMatches GeometricFilter(
+            const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, FeatureRegions& regions, bool sequential) const
+        {
+            const bool guided_matching = false;
+            const uint32_t max_iteration = 2048;
+
+            auto regions_provider = std::make_shared<Regions_Provider>();
+            regions_provider->load(sfm_data, regions.feature_regions.data(), *regions.regions_type);
+
+            ImageCollectionGeometricFilter filter(&sfm_data, regions_provider);
+
+            const double dist_ratio = 0.6;
+
+            PairWiseMatches map_geometric_matches;
+            if (sequential)
+            {
+                filter.Robust_model_estimation(
+                    GeometricFilter_FMatrix_AC(4.0, max_iteration), map_putative_matches, guided_matching, dist_ratio);
+                map_geometric_matches = filter.Get_geometric_matches();
+            }
+            else
+            {
+                filter.Robust_model_estimation(
+                    GeometricFilter_EMatrix_AC(4.0, max_iteration), map_putative_matches, guided_matching, dist_ratio);
+                map_geometric_matches = filter.Get_geometric_matches();
+
+                for (auto iter = map_geometric_matches.begin(); iter != map_geometric_matches.end();)
+                {
+                    const size_t putative_photometric_count = map_putative_matches.find(iter->first)->second.size();
+                    const size_t putative_geometric_count = iter->second.size();
+                    const float ratio = putative_geometric_count / static_cast<float>(putative_photometric_count);
+                    if ((putative_geometric_count < 50) || (ratio < 0.3f))
+                    {
+                        iter = map_geometric_matches.erase(iter);
+                    }
+                    else
+                    {
+                        ++iter;
+                    }
+                }
+            }
+
+            return map_geometric_matches;
         }
     };
 
@@ -254,8 +306,8 @@ namespace AIHoloImager
     StructureFromMotion::StructureFromMotion(StructureFromMotion&& other) noexcept = default;
     StructureFromMotion& StructureFromMotion::operator=(StructureFromMotion&& other) noexcept = default;
 
-    void StructureFromMotion::Process(const std::filesystem::path& image_dir)
+    void StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential)
     {
-        return impl_->Process(image_dir);
+        return impl_->Process(image_dir, sequential);
     }
 } // namespace AIHoloImager
