@@ -1,6 +1,7 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#include <filesystem>
 #include <memory>
 #include <span>
 
@@ -12,7 +13,7 @@ namespace AIHoloImager
     class AIHoloImager
     {
     public:
-        AIHoloImager();
+        explicit AIHoloImager(const std::filesystem::path& tmp_dir);
         AIHoloImager(const AIHoloImager& rhs) = delete;
         AIHoloImager(AIHoloImager&& rhs) noexcept;
         ~AIHoloImager() noexcept;

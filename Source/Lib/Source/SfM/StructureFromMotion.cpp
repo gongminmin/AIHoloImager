@@ -28,6 +28,7 @@
     #pragma warning(disable : 4127) // Ignore conditional expression is constant
     #pragma warning(disable : 4244) // Ignore implicit conversion
     #pragma warning(disable : 4267) // Ignore implicit conversion
+    #pragma warning(disable : 4305) // Ignore transcation from double to float
     #pragma warning(disable : 4702) // Ignore unreachable code
     #pragma warning(disable : 5054) // Ignore operator between enums of different types
     #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
@@ -43,8 +44,15 @@
 #include <openMVG/matching_image_collection/F_ACRobust.hpp>
 #include <openMVG/matching_image_collection/GeometricFilter.hpp>
 #include <openMVG/matching_image_collection/Pair_Builder.hpp>
+#include <openMVG/sfm/pipelines/global/GlobalSfM_rotation_averaging.hpp>
+#include <openMVG/sfm/pipelines/global/GlobalSfM_translation_averaging.hpp>
+#include <openMVG/sfm/pipelines/global/sfm_global_engine_relative_motions.hpp>
+#include <openMVG/sfm/pipelines/sequential/sequential_SfM.hpp>
+#include <openMVG/sfm/pipelines/sfm_features_provider.hpp>
+#include <openMVG/sfm/pipelines/sfm_matches_provider.hpp>
 #include <openMVG/sfm/pipelines/sfm_regions_provider.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
+#include <openMVG/sfm/sfm_data_io.hpp>
 #include <openMVG/sfm/sfm_data_utils.hpp>
 #ifdef _MSC_VER
     #pragma warning(pop)
@@ -69,12 +77,18 @@ namespace AIHoloImager
         };
 
     public:
-        void Process(const std::filesystem::path& input_path, bool sequential)
+        void Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
             FeatureRegions regions = this->FeatureExtraction(sfm_data);
             const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
             const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
+
+            const auto sfm_tmp_dir = tmp_dir / "Sfm";
+            std::filesystem::create_directories(sfm_tmp_dir);
+
+            const SfM_Data processed_sfm_data =
+                this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
         }
 
     private:
@@ -195,7 +209,7 @@ namespace AIHoloImager
 
         FeatureRegions FeatureExtraction(const SfM_Data& sfm_data) const
         {
-            // Reference from openMVG/src/software/SfM/openMVG_main_ComputeFeatures.cpp
+            // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
             features::SIFT_Anatomy_Image_describer image_describer;
 
@@ -230,7 +244,7 @@ namespace AIHoloImager
 
         PairWiseMatches PairMatching(const SfM_Data& sfm_data, FeatureRegions& regions) const
         {
-            // Reference from openMVG/src/software/SfM/openMVG_main_ComputeMatches.cpp
+            // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
             // Load the corresponding view regions
             auto regions_provider = std::make_shared<Regions_Provider>();
@@ -254,6 +268,8 @@ namespace AIHoloImager
         PairWiseMatches GeometricFilter(
             const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, FeatureRegions& regions, bool sequential) const
         {
+            // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
+
             const bool guided_matching = false;
             const uint32_t max_iteration = 2048;
 
@@ -295,6 +311,59 @@ namespace AIHoloImager
 
             return map_geometric_matches;
         }
+
+        SfM_Data PointCloudReconstruction(SfM_Data& sfm_data, const PairWiseMatches& map_geometric_matches, FeatureRegions& regions,
+            bool sequential, const std::filesystem::path& tmp_dir) const
+        {
+            // Reference from openMVG/src/software/SfM/main_SfM.cpp
+
+            Features_Provider feats_provider;
+            feats_provider.load(sfm_data, regions.feature_regions.data());
+
+            Matches_Provider matches_provider;
+            matches_provider.load(sfm_data, map_geometric_matches);
+
+            std::unique_ptr<ReconstructionEngine> sfm_engine;
+            if (sequential)
+            {
+                auto engine = std::make_unique<SequentialSfMReconstructionEngine>(sfm_data, tmp_dir.string());
+
+                engine->SetFeaturesProvider(&feats_provider);
+                engine->SetMatchesProvider(&matches_provider);
+
+                engine->SetUnknownCameraType(EINTRINSIC::PINHOLE_CAMERA_RADIAL3);
+                engine->SetTriangulationMethod(ETriangulationMethod::DEFAULT);
+                engine->SetResectionMethod(resection::SolverType::DEFAULT);
+
+                sfm_engine = std::move(engine);
+            }
+            else
+            {
+                auto engine = std::make_unique<GlobalSfMReconstructionEngine_RelativeMotions>(sfm_data, tmp_dir.string());
+
+                engine->SetFeaturesProvider(&feats_provider);
+                engine->SetMatchesProvider(&matches_provider);
+
+                engine->SetRotationAveragingMethod(ERotationAveragingMethod::ROTATION_AVERAGING_L2);
+                engine->SetTranslationAveragingMethod(ETranslationAveragingMethod::TRANSLATION_AVERAGING_SOFTL1);
+
+                sfm_engine = std::move(engine);
+            }
+
+            sfm_engine->Set_Intrinsics_Refinement_Type(Intrinsic_Parameter_Type::ADJUST_ALL);
+            sfm_engine->Set_Extrinsics_Refinement_Type(Extrinsic_Parameter_Type::ADJUST_ALL);
+            sfm_engine->Set_Use_Motion_Prior(false);
+
+            if (!sfm_engine->Process())
+            {
+                throw std::runtime_error("Fail to process SfM.");
+            }
+
+            const SfM_Data processed_sfm_data = sfm_engine->Get_SfM_Data();
+            Save(processed_sfm_data, (tmp_dir / "PointCloud_CameraPoses.ply").string(), ESfM_Data::ALL);
+
+            return processed_sfm_data;
+        }
     };
 
     StructureFromMotion::StructureFromMotion() : impl_(std::make_unique<Impl>())
@@ -306,8 +375,8 @@ namespace AIHoloImager
     StructureFromMotion::StructureFromMotion(StructureFromMotion&& other) noexcept = default;
     StructureFromMotion& StructureFromMotion::operator=(StructureFromMotion&& other) noexcept = default;
 
-    void StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential)
+    void StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(image_dir, sequential);
+        return impl_->Process(image_dir, sequential, tmp_dir);
     }
 } // namespace AIHoloImager

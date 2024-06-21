@@ -66,9 +66,12 @@ int main(int argc, char* argv[])
 
     std::filesystem::create_directories(output_path.parent_path());
 
+    const auto tmp_dir = output_path.parent_path() / "Tmp";
+    std::filesystem::create_directories(tmp_dir);
+
     auto start = std::chrono::high_resolution_clock::now();
 
-    AIHoloImager::AIHoloImager imager;
+    AIHoloImager::AIHoloImager imager(tmp_dir);
     AIHoloImager::Mesh mesh = imager.Generate(input_path);
 
     auto elapse = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start);
