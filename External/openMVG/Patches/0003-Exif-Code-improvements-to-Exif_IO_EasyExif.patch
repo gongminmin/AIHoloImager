@@ -1,7 +1,7 @@
 From 47e4bd36fc59334d4a831f9f50644915f8a26a92 Mon Sep 17 00:00:00 2001
 From: Minmin Gong <gongminmin@msn.com>
 Date: Mon, 17 Jun 2024 22:58:51 -0700
-Subject: [PATCH 3/3] [Exif] Code improvements to Exif_IO_EasyExif
+Subject: [PATCH 3/4] [Exif] Code improvements to Exif_IO_EasyExif
 
 * Add a destructor to Exif_IO_EasyExif so it can be used as a stack-based object.
 * Move bHaveExifInfo_ into EXIFInfoImpl.

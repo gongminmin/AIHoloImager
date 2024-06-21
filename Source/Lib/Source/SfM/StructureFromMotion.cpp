@@ -36,6 +36,9 @@
 #include <openMVG/features/regions.hpp>
 #include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
 #include <openMVG/image/image_io.hpp>
+#include <openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp>
+#include <openMVG/matching_image_collection/Pair_Builder.hpp>
+#include <openMVG/sfm/pipelines/sfm_regions_provider.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
 #include <openMVG/sfm/sfm_data_utils.hpp>
 #ifdef _MSC_VER
@@ -46,6 +49,7 @@ using namespace openMVG;
 using namespace openMVG::cameras;
 using namespace openMVG::sfm;
 using namespace openMVG::image;
+using namespace openMVG::matching;
 
 namespace AIHoloImager
 {
@@ -63,6 +67,7 @@ namespace AIHoloImager
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
             FeatureRegions regions = this->FeatureExtraction(sfm_data);
+            const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
         }
 
     private:
@@ -214,6 +219,29 @@ namespace AIHoloImager
             }
 
             return feature_regions;
+        }
+
+        PairWiseMatches PairMatching(const SfM_Data& sfm_data, FeatureRegions& regions) const
+        {
+            // Reference from openMVG/src/software/SfM/openMVG_main_ComputeMatches.cpp
+
+            // Load the corresponding view regions
+            auto regions_provider = std::make_shared<Regions_Provider>();
+            regions_provider->load(sfm_data, regions.feature_regions.data(), *regions.regions_type);
+
+            const float dist_ratio = 0.8f;
+
+            assert(regions.regions_type->IsScalar());
+            matching_image_collection::Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
+
+            const Pair_Set pairs = exhaustivePairs(sfm_data.GetViews().size());
+            std::cout << "Matching on # pairs: " << pairs.size() << '\n';
+
+            PairWiseMatches map_putative_matches;
+            matcher.Match(regions_provider, pairs, map_putative_matches);
+            std::cout << "# putative pairs: " << map_putative_matches.size() << '\n';
+
+            return map_putative_matches;
         }
     };
 

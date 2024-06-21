@@ -1,0 +1,189 @@
+From b87abb767e8701376b0c250c6b52d4a6eefbcc37 Mon Sep 17 00:00:00 2001
+From: Minmin Gong <gongminmin@msn.com>
+Date: Thu, 20 Jun 2024 21:51:23 -0700
+Subject: [PATCH 4/4] Enable to load from memory data in Matches_Provider,
+ Features_Provider, and Regions_Provider
+
+---
+ src/openMVG/features/binary_regions.hpp       |  8 +++++
+ src/openMVG/features/regions.hpp              |  1 +
+ src/openMVG/features/scalar_regions.hpp       | 10 ++++++-
+ .../sfm/pipelines/sfm_features_provider.hpp   | 28 +++++++++++++++++
+ .../sfm/pipelines/sfm_matches_provider.hpp    | 24 ++++++++++++++-
+ .../sfm/pipelines/sfm_regions_provider.hpp    | 30 +++++++++++++++++++
+ 6 files changed, 99 insertions(+), 2 deletions(-)
+
+diff --git a/src/openMVG/features/binary_regions.hpp b/src/openMVG/features/binary_regions.hpp
+index f4fe8a9f..4740a2c4 100644
+--- a/src/openMVG/features/binary_regions.hpp
++++ b/src/openMVG/features/binary_regions.hpp
+@@ -105,6 +105,14 @@ public:
+     return new Binary_Regions;
+   }
+ 
++  Regions * Clone() const override
++  {
++    auto * ret = new Binary_Regions;
++    ret->vec_feats_ = vec_feats_;
++    ret->vec_descs_ = vec_descs_;
++    return ret;
++  }
++
+   // Return the squared Hamming distance between two descriptors
+   double SquaredDescriptorDistance(size_t i, const Regions * regions, size_t j) const override
+   {
+diff --git a/src/openMVG/features/regions.hpp b/src/openMVG/features/regions.hpp
+index 364ad73d..58e81992 100644
+--- a/src/openMVG/features/regions.hpp
++++ b/src/openMVG/features/regions.hpp
+@@ -80,6 +80,7 @@ public:
+   virtual bool SortAndSelectByRegionScale(int keep_count = -1) = 0;
+ 
+   virtual Regions * EmptyClone() const = 0;
++  virtual Regions * Clone() const = 0;
+ 
+ };
+ 
+diff --git a/src/openMVG/features/scalar_regions.hpp b/src/openMVG/features/scalar_regions.hpp
+index 3bf50c6d..1071cf1c 100644
+--- a/src/openMVG/features/scalar_regions.hpp
++++ b/src/openMVG/features/scalar_regions.hpp
+@@ -100,7 +100,15 @@ public:
+ 
+   Regions * EmptyClone() const override
+   {
+-    return new Scalar_Regions();
++    return new Scalar_Regions;
++  }
++
++  Regions * Clone() const override
++  {
++    auto * ret = new Scalar_Regions;
++    ret->vec_feats_ = vec_feats_;
++    ret->vec_descs_ = vec_descs_;
++    return ret;
+   }
+ 
+   // Return the L2 distance between two descriptors
+diff --git a/src/openMVG/sfm/pipelines/sfm_features_provider.hpp b/src/openMVG/sfm/pipelines/sfm_features_provider.hpp
+index 695a1e73..c3acba73 100644
+--- a/src/openMVG/sfm/pipelines/sfm_features_provider.hpp
++++ b/src/openMVG/sfm/pipelines/sfm_features_provider.hpp
+@@ -78,6 +78,34 @@ struct Features_Provider
+     return bContinue;
+   }
+ 
++  virtual void load(
++    const SfM_Data & sfm_data,
++    const std::unique_ptr<features::Regions>* feature_regions)
++  {
++    // Read for each view the corresponding features and store them as PointFeatures
++#ifdef OPENMVG_USE_OPENMP
++    #pragma omp parallel
++#endif
++    for (Views::const_iterator iter = sfm_data.GetViews().begin();
++      iter != sfm_data.GetViews().end(); ++iter)
++    {
++#ifdef OPENMVG_USE_OPENMP
++    #pragma omp single nowait
++#endif
++      {
++        const features::Regions& regions = *feature_regions[std::distance(sfm_data.GetViews().begin(), iter)];
++
++#ifdef OPENMVG_USE_OPENMP
++      #pragma omp critical
++#endif
++        {
++          // save loaded Features as PointFeature
++          feats_per_view[iter->second->id_view] = regions.GetRegionsPositions();
++        }
++      }
++    }
++  }
++
+   /// Return the PointFeatures belonging to the View, if the view does not exist
+   ///  it returns an empty PointFeature array.
+   const features::PointFeatures & getFeatures(const IndexT & id_view) const
+diff --git a/src/openMVG/sfm/pipelines/sfm_matches_provider.hpp b/src/openMVG/sfm/pipelines/sfm_matches_provider.hpp
+index a17aba50..32fb737b 100644
+--- a/src/openMVG/sfm/pipelines/sfm_matches_provider.hpp
++++ b/src/openMVG/sfm/pipelines/sfm_matches_provider.hpp
+@@ -54,11 +54,33 @@ struct Matches_Provider
+           matches_saved.insert(*iter);
+         }
+       }
+-      pairWise_matches_.swap(matches_saved);
++      pairWise_matches_ = std::move(matches_saved);
+     }
+     return true;
+   }
+ 
++  // Load matches from the provided matches file
++  virtual void load(const SfM_Data & sfm_data, const matching::PairWiseMatches & matches)
++  {
++    pairWise_matches_ = matches;
++    // Filter to keep only the one defined in SfM_Data
++    {
++      const Views & views = sfm_data.GetViews();
++      matching::PairWiseMatches matches_saved;
++      for (matching::PairWiseMatches::const_iterator iter = pairWise_matches_.begin();
++        iter != pairWise_matches_.end();
++        ++iter)
++      {
++        if (views.find(iter->first.first) != views.end() &&
++          views.find(iter->first.second) != views.end())
++        {
++          matches_saved.insert(*iter);
++        }
++      }
++      pairWise_matches_ = std::move(matches_saved);
++    }
++  }
++
+   /// Return the pairs used by the visibility graph defined by the pairwiser matches
+   virtual Pair_Set getPairs() const
+   {
+diff --git a/src/openMVG/sfm/pipelines/sfm_regions_provider.hpp b/src/openMVG/sfm/pipelines/sfm_regions_provider.hpp
+index c8b1f168..0822ca10 100644
+--- a/src/openMVG/sfm/pipelines/sfm_regions_provider.hpp
++++ b/src/openMVG/sfm/pipelines/sfm_regions_provider.hpp
+@@ -137,6 +137,36 @@ public:
+     return bContinue;
+   }
+ 
++  virtual void load(
++    const SfM_Data & sfm_data,
++    const std::unique_ptr<features::Regions>* feature_regions,
++    const features::Regions& region_type)
++  {
++    region_type_.reset(region_type.EmptyClone());
++
++    // Read for each view the corresponding regions and store them
++#ifdef OPENMVG_USE_OPENMP
++    #pragma omp parallel
++#endif
++    for (Views::const_iterator iter = sfm_data.GetViews().begin();
++      iter != sfm_data.GetViews().end(); ++iter)
++    {
++#ifdef OPENMVG_USE_OPENMP
++    #pragma omp single nowait
++#endif
++      {
++        std::unique_ptr<features::Regions> regions_ptr(feature_regions[std::distance(sfm_data.GetViews().begin(), iter)]->Clone());
++
++#ifdef OPENMVG_USE_OPENMP
++        #pragma omp critical
++#endif
++        {
++          cache_[iter->second->id_view] = std::move(regions_ptr);
++        }
++      }
++    }
++  }
++
+ protected:
+   /// Regions per ViewId of the considered SfM_Data container
+   mutable Hash_Map<IndexT, std::shared_ptr<features::Regions>> cache_;
+-- 
+2.43.0.windows.1
+

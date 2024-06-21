@@ -1,6 +1,6 @@
 UpdateExternalLib("openMVG" "https://github.com/openMVG/openMVG.git" "6d6b1dd70bded094ba06024e481dd5a5c662dc83" "" "" need_patch)
 if(need_patch)
-    foreach(patch "0001-Build-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE" "0002-Exif-Sensor-DB-Add-Samsung-Galaxy-S23-main-camera" "0003-Exif-Code-improvements-to-Exif_IO_EasyExif")
+    foreach(patch "0001-Build-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE" "0002-Exif-Sensor-DB-Add-Samsung-Galaxy-S23-main-camera" "0003-Exif-Code-improvements-to-Exif_IO_EasyExif" "0004-Enable-to-load-from-memory-data-in-Matches_Provider-")
         ApplyPatch("openMVG" "${CMAKE_CURRENT_SOURCE_DIR}/Patches/${patch}.patch")
     endforeach()
 endif()

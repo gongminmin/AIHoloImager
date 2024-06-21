@@ -1,7 +1,7 @@
 From 60c7a8451aeb35b2eb0747b491bc5d6ba62003c3 Mon Sep 17 00:00:00 2001
 From: Minmin Gong <gongminmin@msn.com>
 Date: Mon, 17 Jun 2024 23:27:03 -0700
-Subject: [PATCH 2/3] [Exif][Sensor DB] Add Samsung Galaxy S23+ main camera
+Subject: [PATCH 2/4] [Exif][Sensor DB] Add Samsung Galaxy S23+ main camera
 
 ---
  .../exif/sensor_width_database/sensor_width_camera_database.txt  | 1 +

@@ -51,7 +51,7 @@ function(UpdateExternalLib name url rev)
     if(EXISTS "${external_lib_folder}/.git")
         set(need_clone FALSE)
 
-        set(cached_rev_file_name "${CMAKE_CURRENT_BINARY_DIR}/MTO_${name}_REV")
+        set(cached_rev_file_name "${CMAKE_CURRENT_BINARY_DIR}/AIHI_${name}_REV")
         if(EXISTS "${cached_rev_file_name}")
             file(STRINGS "${cached_rev_file_name}" cached_rev)
         else()

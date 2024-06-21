@@ -47,6 +47,7 @@ target_link_libraries(AIHoloImagerLib
     PRIVATE
         assimp
         openMVG_exif
+        openMVG_matching_image_collection
         openMVG_sfm
         stb
 )
