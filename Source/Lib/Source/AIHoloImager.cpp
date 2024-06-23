@@ -3,6 +3,7 @@
 
 #include "AIHoloImager/AIHoloImager.hpp"
 
+#include "MeshRecon//MeshReconstruction.hpp"
 #include "SfM/StructureFromMotion.hpp"
 
 namespace AIHoloImager
@@ -16,7 +17,8 @@ namespace AIHoloImager
 
         Mesh Generate(const std::filesystem::path& input_path)
         {
-            sfm_.Process(input_path, true, tmp_dir_);
+            const auto sfm_result = sfm_.Process(input_path, true, tmp_dir_);
+            mesh_recon_.Process(sfm_result, tmp_dir_);
             return Mesh();
         }
 
@@ -24,6 +26,7 @@ namespace AIHoloImager
         std::filesystem::path tmp_dir_;
 
         StructureFromMotion sfm_;
+        MeshReconstruction mesh_recon_;
     };
 
     AIHoloImager::AIHoloImager(const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(tmp_dir))

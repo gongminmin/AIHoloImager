@@ -127,8 +127,15 @@ namespace AIHoloImager
         }
 
         const auto output_ext = path.extension();
-
-        stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(), tex.Data(),
-            static_cast<int>(tex.Width() * tex.NumChannels()));
+        if (output_ext == ".jpg")
+        {
+            stbi_write_jpg(
+                path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(), tex.Data(), 90);
+        }
+        else
+        {
+            stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(),
+                tex.Data(), static_cast<int>(tex.Width() * tex.NumChannels()));
+        }
     }
 } // namespace AIHoloImager

@@ -23,6 +23,15 @@ set(sfm_header_files
 source_group("Source Files\\SfM" FILES ${sfm_source_files})
 source_group("Header Files\\SfM" FILES ${sfm_header_files})
 
+set(mesh_recon_source_files
+    Source/MeshRecon/MeshReconstruction.cpp
+)
+set(mesh_recon_header_files
+    Source/MeshRecon/MeshReconstruction.hpp
+)
+source_group("Source Files\\MeshRecon" FILES ${mesh_recon_source_files})
+source_group("Header Files\\MeshRecon" FILES ${mesh_recon_header_files})
+
 add_library(AIHoloImagerLib STATIC
     Include/AIHoloImager/AIHoloImager.hpp
     Include/AIHoloImager/Mesh.hpp
@@ -30,9 +39,11 @@ add_library(AIHoloImagerLib STATIC
     Source/AIHoloImager.cpp
     Source/Mesh.cpp
     Source/Texture.cpp
+    ${camera_database_src}
     ${sfm_source_files}
     ${sfm_header_files}
-    ${camera_database_src}
+    ${mesh_recon_source_files}
+    ${mesh_recon_header_files}
 )
 
 target_include_directories(AIHoloImagerLib
@@ -41,6 +52,7 @@ target_include_directories(AIHoloImagerLib
 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
+        ${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/software/SfM/export
 )
 
 target_link_libraries(AIHoloImagerLib

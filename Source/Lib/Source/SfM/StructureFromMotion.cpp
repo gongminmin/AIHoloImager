@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <format>
+#include <map>
 #include <stdexcept>
 
 #ifdef _WIN32
@@ -34,6 +35,7 @@
     #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
+#include <openMVG/cameras/Camera_undistort_image.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
 #include <openMVG/exif/sensor_width_database/ParseDatabase.hpp>
 #include <openMVG/features/regions.hpp>
@@ -77,7 +79,7 @@ namespace AIHoloImager
         };
 
     public:
-        void Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
+        Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
             FeatureRegions regions = this->FeatureExtraction(sfm_data);
@@ -89,6 +91,7 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
+            return ExportResult(processed_sfm_data);
         }
 
     private:
@@ -123,7 +126,7 @@ namespace AIHoloImager
             Views& views = sfm_data.views;
             Intrinsics& intrinsics = sfm_data.intrinsics;
 
-            openMVG::exif::Exif_IO_EasyExif exif_reader;
+            exif::Exif_IO_EasyExif exif_reader;
             for (auto iter = input_image_paths.begin(); iter != input_image_paths.end(); ++iter)
             {
                 const std::filesystem::path image_file_path = image_dir / *iter;
@@ -184,8 +187,8 @@ namespace AIHoloImager
                 }
 
                 {
-                    const openMVG::IndexT id = static_cast<openMVG::IndexT>(views.size());
-                    auto view = std::make_shared<View>(iter->string(), id, id, id, width, height);
+                    const IndexT id = static_cast<IndexT>(views.size());
+                    auto view = std::make_shared<openMVG::sfm::View>(iter->string(), id, id, id, width, height);
 
                     if (intrinsic)
                     {
@@ -227,7 +230,7 @@ namespace AIHoloImager
                 Views::const_iterator iter = sfm_data.views.begin();
                 std::advance(iter, i);
 
-                const View& view = *(iter->second);
+                const auto& view = *(iter->second);
                 const auto view_file = image_dir / view.s_Img_path;
 
                 Image<unsigned char> image_gray;
@@ -364,6 +367,103 @@ namespace AIHoloImager
 
             return processed_sfm_data;
         }
+
+        Result ExportResult(const SfM_Data& sfm_data)
+        {
+            // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
+
+            Result ret;
+
+            ret.intrinsics.reserve(sfm_data.intrinsics.size());
+            std::map<IndexT, uint32_t> intrinsic_id_mapping;
+            for (const auto& mvg_intrinsic : sfm_data.intrinsics)
+            {
+                if (intrinsic_id_mapping.find(mvg_intrinsic.first) == intrinsic_id_mapping.end())
+                {
+                    intrinsic_id_mapping.emplace(mvg_intrinsic.first, static_cast<uint32_t>(ret.intrinsics.size()));
+                }
+
+                assert(dynamic_cast<const Pinhole_Intrinsic*>(mvg_intrinsic.second.get()) != nullptr);
+                const Pinhole_Intrinsic& cam = static_cast<const Pinhole_Intrinsic&>(*mvg_intrinsic.second);
+
+                auto& result_intrinsic = ret.intrinsics.emplace_back();
+                result_intrinsic.width = cam.w();
+                result_intrinsic.height = cam.h();
+                result_intrinsic.k = cam.K();
+            }
+
+            ret.views.reserve(sfm_data.views.size());
+            const std::filesystem::path image_dir = sfm_data.s_root_path;
+            std::map<IndexT, uint32_t> view_id_mapping;
+            for (const auto& mvg_view : sfm_data.views)
+            {
+                const auto src_image = image_dir / mvg_view.second->s_Img_path;
+                if (!std::filesystem::is_regular_file(src_image))
+                {
+                    throw std::runtime_error(std::format("Cannot read the corresponding image: {}", src_image.string()));
+                }
+
+                if (sfm_data.IsPoseAndIntrinsicDefined(mvg_view.second.get()))
+                {
+                    view_id_mapping.emplace(mvg_view.first, static_cast<uint32_t>(ret.views.size()));
+
+                    auto& result_view = ret.views.emplace_back();
+                    result_view.intrinsic_id = intrinsic_id_mapping.at(mvg_view.second->id_intrinsic);
+
+                    const auto& mvg_pose = sfm_data.poses.at(mvg_view.second->id_pose);
+                    result_view.rotation = mvg_pose.rotation();
+                    result_view.center = mvg_pose.center();
+
+                    bool just_copy = true;
+                    const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
+                    if (camera.have_disto())
+                    {
+                        Image<RGBColor> image_rgb;
+                        if (ReadImage(src_image.string().c_str(), &image_rgb))
+                        {
+                            Image<RGBColor> image_rgb_ud;
+                            UndistortImage(image_rgb, &camera, image_rgb_ud, BLACK);
+
+                            result_view.image = Texture(image_rgb_ud.Width(), image_rgb_ud.Height(), 3);
+                            std::memcpy(result_view.image.Data(), image_rgb_ud.data(),
+                                result_view.image.Width() * result_view.image.Height() * result_view.image.NumChannels());
+
+                            just_copy = false;
+                        }
+                    }
+
+                    if (just_copy)
+                    {
+                        result_view.image = LoadTexture(src_image);
+                    }
+                }
+                else
+                {
+                    std::cout << "Cannot read the corresponding pose or intrinsic of view " << mvg_view.first << '\n';
+                }
+            }
+
+            ret.structure.reserve(sfm_data.GetLandmarks().size());
+            for (const auto& mvg_vertex : sfm_data.GetLandmarks())
+            {
+                const auto& mvg_landmark = mvg_vertex.second;
+                auto& result_landmark = ret.structure.emplace_back();
+                result_landmark.point = mvg_landmark.X;
+                for (const auto& mvg_observation : mvg_landmark.obs)
+                {
+                    const auto iter = view_id_mapping.find(mvg_observation.first);
+                    if (iter != view_id_mapping.end())
+                    {
+                        auto& result_observation = result_landmark.obs.emplace_back();
+                        result_observation.view_id = iter->second;
+                        result_observation.point = mvg_observation.second.x;
+                        result_observation.feat_id = mvg_observation.second.id_feat;
+                    }
+                }
+            }
+
+            return ret;
+        }
     };
 
     StructureFromMotion::StructureFromMotion() : impl_(std::make_unique<Impl>())
@@ -375,7 +475,8 @@ namespace AIHoloImager
     StructureFromMotion::StructureFromMotion(StructureFromMotion&& other) noexcept = default;
     StructureFromMotion& StructureFromMotion::operator=(StructureFromMotion&& other) noexcept = default;
 
-    void StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential, const std::filesystem::path& tmp_dir)
+    StructureFromMotion::Result StructureFromMotion::Process(
+        const std::filesystem::path& image_dir, bool sequential, const std::filesystem::path& tmp_dir)
     {
         return impl_->Process(image_dir, sequential, tmp_dir);
     }
