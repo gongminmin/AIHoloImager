@@ -3,15 +3,35 @@
 
 #include "AIHoloImager/AIHoloImager.hpp"
 
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+#endif
+
 #include "MeshRecon//MeshReconstruction.hpp"
 #include "SfM/StructureFromMotion.hpp"
+
+namespace
+{
+    std::filesystem::path ExePath()
+    {
+        char exe_path[MAX_PATH];
+        GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
+        return std::filesystem::path(exe_path);
+    }
+} // namespace
 
 namespace AIHoloImager
 {
     class AIHoloImager::Impl
     {
     public:
-        Impl(const std::filesystem::path& tmp_dir) : tmp_dir_(tmp_dir)
+        Impl(const std::filesystem::path& tmp_dir) : exe_dir_(ExePath()), tmp_dir_(tmp_dir), sfm_(exe_dir_), mesh_recon_(exe_dir_)
         {
         }
 
@@ -23,6 +43,7 @@ namespace AIHoloImager
         }
 
     private:
+        std::filesystem::path exe_dir_;
         std::filesystem::path tmp_dir_;
 
         StructureFromMotion sfm_;

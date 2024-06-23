@@ -8,16 +8,6 @@
 #include <map>
 #include <stdexcept>
 
-#ifdef _WIN32
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #include <windows.h>
-#endif
-
 #ifndef OPENMVG_USE_OPENMP
     #define OPENMVG_USE_OPENMP
 #endif
@@ -79,6 +69,10 @@ namespace AIHoloImager
         };
 
     public:
+        explicit Impl(const std::filesystem::path& exe_path) : exe_dir_(exe_path.parent_path())
+        {
+        }
+
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
@@ -99,9 +93,7 @@ namespace AIHoloImager
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
-            char exe_path[MAX_PATH];
-            GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
-            const auto camera_sensor_db_path = std::filesystem::path(exe_path).parent_path() / "sensor_width_camera_database.txt";
+            const auto camera_sensor_db_path = exe_dir_ / "sensor_width_camera_database.txt";
 
             std::vector<Datasheet> vec_database;
             if (!parseDatabase(camera_sensor_db_path.string(), vec_database))
@@ -464,9 +456,12 @@ namespace AIHoloImager
 
             return ret;
         }
+
+    private:
+        const std::filesystem::path exe_dir_;
     };
 
-    StructureFromMotion::StructureFromMotion() : impl_(std::make_unique<Impl>())
+    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_path) : impl_(std::make_unique<Impl>(exe_path))
     {
     }
 

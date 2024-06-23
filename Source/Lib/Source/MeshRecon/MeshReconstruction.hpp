@@ -13,7 +13,7 @@ namespace AIHoloImager
     class MeshReconstruction
     {
     public:
-        MeshReconstruction();
+        explicit MeshReconstruction(const std::filesystem::path& exe_path);
         MeshReconstruction(const MeshReconstruction& other) = delete;
         MeshReconstruction(MeshReconstruction&& other) noexcept;
         ~MeshReconstruction() noexcept;

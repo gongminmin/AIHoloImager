@@ -14,18 +14,23 @@ namespace AIHoloImager
     class MeshReconstruction::Impl
     {
     public:
+        explicit Impl(const std::filesystem::path& exe_path) : exe_dir_(exe_path.parent_path())
+        {
+        }
+
         void Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
         {
-            this->ToOpenMvs(sfm_input, tmp_dir);
+            working_dir_ = tmp_dir / "Mvs";
+            std::filesystem::create_directories(working_dir_);
+
+            std::string mvs_name = this->ToOpenMvs(sfm_input);
+            mvs_name = this->PointCloudDensification(mvs_name);
         }
 
     private:
-        void ToOpenMvs(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
+        std::string ToOpenMvs(const StructureFromMotion::Result& sfm_input)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
-
-            const auto mvs_dir = tmp_dir / "Mvs";
-            std::filesystem::create_directories(mvs_dir);
 
             MVS::Interface scene;
 
@@ -41,7 +46,7 @@ namespace AIHoloImager
                 camera.C = Eigen::Vector3d::Zero();
             }
 
-            const auto out_images_dir = mvs_dir / "Images";
+            const auto out_images_dir = working_dir_ / "Images";
             std::filesystem::create_directories(out_images_dir);
 
             scene.images.reserve(sfm_input.views.size());
@@ -58,9 +63,10 @@ namespace AIHoloImager
                 MVS::Interface::Platform& platform = scene.platforms[image.platformID];
                 image.cameraID = 0;
 
-                auto& pose = platform.poses.emplace_back();
                 image.poseID = static_cast<uint32_t>(platform.poses.size());
                 image.ID = static_cast<uint32_t>(i);
+
+                auto& pose = platform.poses.emplace_back();
                 pose.R = view.rotation;
                 pose.C = view.center;
             }
@@ -87,7 +93,7 @@ namespace AIHoloImager
                 vert.X = landmark.point.cast<float>();
             }
 
-            const auto out_mvs_file = mvs_dir / "Temp.mvs";
+            const auto out_mvs_file = working_dir_ / "Temp.mvs";
             if (!MVS::ARCHIVE::SerializeSave(scene, out_mvs_file.string()))
             {
                 throw std::runtime_error(std::format("Fail to save the file {}", out_mvs_file.string()));
@@ -101,10 +107,32 @@ namespace AIHoloImager
             }
             std::cout << "  " << scene.images.size() << " images\n"
                       << "  " << scene.vertices.size() << " landmarks\n";
+
+            return out_mvs_file.stem().string();
         }
+
+        std::string PointCloudDensification(const std::string& mvs_name)
+        {
+            const std::string output_mvs_name = mvs_name + "_Dense";
+
+            const std::string cmd =
+                std::format("{} {}.mvs -o {}.mvs --resolution-level 1 --number-views 8 --process-priority 0 --remove-dmaps 1 -w {}",
+                    (exe_dir_ / "DensifyPointCloud").string(), mvs_name, output_mvs_name, working_dir_.string());
+            const int ret = std::system(cmd.c_str());
+            if (ret != 0)
+            {
+                throw ret;
+            }
+
+            return output_mvs_name;
+        }
+
+    private:
+        std::filesystem::path exe_dir_;
+        std::filesystem::path working_dir_;
     };
 
-    MeshReconstruction::MeshReconstruction() : impl_(std::make_unique<Impl>())
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_path) : impl_(std::make_unique<Impl>(exe_path))
     {
     }
 

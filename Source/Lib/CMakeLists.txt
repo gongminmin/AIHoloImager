@@ -63,3 +63,5 @@ target_link_libraries(AIHoloImagerLib
         openMVG_sfm
         stb
 )
+
+add_dependencies(AIHoloImagerLib DeployOpenMVS)

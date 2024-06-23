@@ -64,7 +64,7 @@ namespace AIHoloImager
         };
 
     public:
-        StructureFromMotion();
+        explicit StructureFromMotion(const std::filesystem::path& exe_dir);
         StructureFromMotion(const StructureFromMotion& other) = delete;
         StructureFromMotion(StructureFromMotion&& other) noexcept;
         ~StructureFromMotion() noexcept;
