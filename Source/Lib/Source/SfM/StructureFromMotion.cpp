@@ -69,7 +69,7 @@ namespace AIHoloImager
         };
 
     public:
-        explicit Impl(const std::filesystem::path& exe_path) : exe_dir_(exe_path.parent_path())
+        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
         {
         }
 
@@ -417,8 +417,7 @@ namespace AIHoloImager
                             UndistortImage(image_rgb, &camera, image_rgb_ud, BLACK);
 
                             result_view.image = Texture(image_rgb_ud.Width(), image_rgb_ud.Height(), 3);
-                            std::memcpy(result_view.image.Data(), image_rgb_ud.data(),
-                                result_view.image.Width() * result_view.image.Height() * result_view.image.NumChannels());
+                            std::memcpy(result_view.image.Data(), image_rgb_ud.data(), result_view.image.DataSize());
 
                             just_copy = false;
                         }
@@ -461,7 +460,7 @@ namespace AIHoloImager
         const std::filesystem::path exe_dir_;
     };
 
-    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_path) : impl_(std::make_unique<Impl>(exe_path))
+    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
     }
 

@@ -29,6 +29,7 @@ namespace AIHoloImager
 
         uint8_t* Data() noexcept;
         const uint8_t* Data() const noexcept;
+        uint32_t DataSize() const noexcept;
 
     private:
         class Impl;

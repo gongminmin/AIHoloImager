@@ -15,6 +15,7 @@ AIHoloImager currently supports only Windows. To get started, use CMake to gener
 * [Git](http://git-scm.com/downloads). Put git into the PATH is recommended.
 * [Visual Studio 2022](https://www.visualstudio.com/downloads).
 * [CMake](https://www.cmake.org/download/). Version 3.20 or up. It's highly recommended to choose "Add CMake to the system PATH for all users" during installation.
+* [Python](https://www.python.org/downloads/). Version 3.10 or up.
 
 # License
 

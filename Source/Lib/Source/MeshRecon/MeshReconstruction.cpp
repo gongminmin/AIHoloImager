@@ -9,12 +9,14 @@
 #define _USE_EIGEN
 #include <InterfaceMVS.h>
 
+#include "MaskGen/MaskGenerator.hpp"
+
 namespace AIHoloImager
 {
     class MeshReconstruction::Impl
     {
     public:
-        explicit Impl(const std::filesystem::path& exe_path) : exe_dir_(exe_path.parent_path())
+        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
         {
         }
 
@@ -55,8 +57,6 @@ namespace AIHoloImager
                 const auto& view = sfm_input.views[i];
                 const auto image_path = out_images_dir / std::format("{}.jpg", i);
 
-                SaveTexture(view.image, image_path);
-
                 auto& image = scene.images.emplace_back();
                 image.name = image_path.string();
                 image.platformID = view.intrinsic_id;
@@ -69,6 +69,25 @@ namespace AIHoloImager
                 auto& pose = platform.poses.emplace_back();
                 pose.R = view.rotation;
                 pose.C = view.center;
+            }
+
+            {
+                MaskGenerator mask_gen(exe_dir_);
+                for (size_t i = 0; i < sfm_input.views.size(); ++i)
+                {
+                    std::cout << "Generating mask images (" << (i + 1) << " / " << sfm_input.views.size() << ")\r";
+
+                    const auto& view = sfm_input.views[i];
+                    SaveTexture(view.image, scene.images[i].name);
+
+                    Texture mask_image = mask_gen.Generate(view.image);
+                    const std::filesystem::path image_path = scene.images[i].name;
+                    const auto mask_path = image_path.parent_path() / (image_path.stem().string() + ".mask.png");
+                    SaveTexture(mask_image, mask_path);
+
+                    scene.images[i].maskName = mask_path.string();
+                }
+                std::cout << "\n\n";
             }
 
             scene.vertices.reserve(sfm_input.structure.size());
@@ -115,9 +134,9 @@ namespace AIHoloImager
         {
             const std::string output_mvs_name = mvs_name + "_Dense";
 
-            const std::string cmd =
-                std::format("{} {}.mvs -o {}.mvs --resolution-level 1 --number-views 8 --process-priority 0 --remove-dmaps 1 -w {}",
-                    (exe_dir_ / "DensifyPointCloud").string(), mvs_name, output_mvs_name, working_dir_.string());
+            const std::string cmd = std::format("{} {}.mvs -o {}.mvs --resolution-level 1 --number-views 8 --process-priority 0 "
+                                                "--remove-dmaps 1 --ignore-mask-label 0 -w {}",
+                (exe_dir_ / "DensifyPointCloud").string(), mvs_name, output_mvs_name, working_dir_.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
             {
@@ -132,11 +151,11 @@ namespace AIHoloImager
         std::filesystem::path working_dir_;
     };
 
-    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_path) : impl_(std::make_unique<Impl>(exe_path))
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
     }
 
-    MeshReconstruction::~MeshReconstruction() = default;
+    MeshReconstruction::~MeshReconstruction() noexcept = default;
 
     MeshReconstruction::MeshReconstruction(MeshReconstruction&& other) noexcept = default;
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;

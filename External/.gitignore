@@ -1,5 +1,6 @@
 assimp/assimp/
 cxxopts/cxxopts/
 openMVG/openMVG/
+PythonVenv/PythonVenv/
 stb/stb/
 zlib/zlib/

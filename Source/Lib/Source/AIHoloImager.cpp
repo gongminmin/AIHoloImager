@@ -18,11 +18,11 @@
 
 namespace
 {
-    std::filesystem::path ExePath()
+    std::filesystem::path ExeDir()
     {
         char exe_path[MAX_PATH];
         GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
-        return std::filesystem::path(exe_path);
+        return std::filesystem::path(exe_path).parent_path();
     }
 } // namespace
 
@@ -31,7 +31,7 @@ namespace AIHoloImager
     class AIHoloImager::Impl
     {
     public:
-        Impl(const std::filesystem::path& tmp_dir) : exe_dir_(ExePath()), tmp_dir_(tmp_dir), sfm_(exe_dir_), mesh_recon_(exe_dir_)
+        Impl(const std::filesystem::path& tmp_dir) : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), sfm_(exe_dir_), mesh_recon_(exe_dir_)
         {
         }
 

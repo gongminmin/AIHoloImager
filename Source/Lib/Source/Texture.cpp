@@ -42,6 +42,11 @@ namespace AIHoloImager
             return data_.data();
         }
 
+        uint32_t DataSize() const noexcept
+        {
+            return static_cast<uint32_t>(data_.size());
+        }
+
     private:
         uint32_t width_ = 0;
         uint32_t height_ = 0;
@@ -104,6 +109,11 @@ namespace AIHoloImager
         return impl_->Data();
     }
 
+    uint32_t Texture::DataSize() const noexcept
+    {
+        return impl_->DataSize();
+    }
+
     Texture LoadTexture(const std::filesystem::path& path)
     {
         int width, height;
@@ -112,7 +122,7 @@ namespace AIHoloImager
         Texture tex(width, height, 4);
         if (data != nullptr)
         {
-            std::memcpy(tex.Data(), data, width * height * 4);
+            std::memcpy(tex.Data(), data, tex.DataSize());
             stbi_image_free(data);
         }
 

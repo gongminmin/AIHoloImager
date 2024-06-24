@@ -32,6 +32,16 @@ set(mesh_recon_header_files
 source_group("Source Files\\MeshRecon" FILES ${mesh_recon_source_files})
 source_group("Header Files\\MeshRecon" FILES ${mesh_recon_header_files})
 
+set(mask_gen_source_files
+    Source/MaskGen/MaskGenerator.cpp
+    Source/MaskGen/MaskGenerator.py
+)
+set(mask_gen_header_files
+    Source/MaskGen/MaskGenerator.hpp
+)
+source_group("Source Files\\MaskGen" FILES ${mask_gen_source_files})
+source_group("Header Files\\MaskGen" FILES ${mask_gen_header_files})
+
 add_library(AIHoloImagerLib STATIC
     Include/AIHoloImager/AIHoloImager.hpp
     Include/AIHoloImager/Mesh.hpp
@@ -44,6 +54,8 @@ add_library(AIHoloImagerLib STATIC
     ${sfm_header_files}
     ${mesh_recon_source_files}
     ${mesh_recon_header_files}
+    ${mask_gen_source_files}
+    ${mask_gen_header_files}
 )
 
 target_include_directories(AIHoloImagerLib
@@ -55,13 +67,38 @@ target_include_directories(AIHoloImagerLib
         ${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/software/SfM/export
 )
 
+find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
+string(REPLACE "\\" "/" AIHI_PY_STDLIB_DIR ${Python3_STDLIB})
+string(REPLACE "\\" "/" AIHI_PY_RUNTIME_LIB_DIR ${Python3_RUNTIME_LIBRARY_DIRS})
+
+target_compile_definitions(AIHoloImagerLib
+    PRIVATE
+        AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
+        AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
+)
+
 target_link_libraries(AIHoloImagerLib
     PRIVATE
         assimp
         openMVG_exif
         openMVG_matching_image_collection
         openMVG_sfm
+        Python3::Python
         stb
 )
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS)
+set(mask_generator_src "${CMAKE_CURRENT_SOURCE_DIR}/Source/MaskGen/MaskGenerator.py")
+get_filename_component(mask_generator_dir ${mask_generator_src} DIRECTORY)
+get_filename_component(mask_generator_file_name ${mask_generator_src} NAME)
+get_filename_component(mask_generator_stem ${mask_generator_src} NAME_WE)
+set(mask_generator_dst "${output_dir}/${mask_generator_stem}.pyc")
+add_custom_command(OUTPUT ${mask_generator_dst}
+    COMMAND ${Python3_EXECUTABLE} -m compileall -b ${mask_generator_src}
+    COMMAND ${CMAKE_COMMAND} -E copy ${mask_generator_dir}/${mask_generator_stem}.pyc ${mask_generator_dst}
+    COMMENT "Compiling ${mask_generator_file_name} ..."
+    MAIN_DEPENDENCY ${mask_generator_src}
+    DEPENDS ${mask_generator_src}
+    VERBATIM COMMAND_EXPAND_LISTS
+)
+
+add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython)
