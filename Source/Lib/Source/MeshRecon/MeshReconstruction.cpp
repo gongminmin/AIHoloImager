@@ -27,6 +27,7 @@ namespace AIHoloImager
 
             std::string mvs_name = this->ToOpenMvs(sfm_input);
             mvs_name = this->PointCloudDensification(mvs_name);
+            std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
         }
 
     private:
@@ -140,10 +141,25 @@ namespace AIHoloImager
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
             {
-                throw ret;
+                throw std::runtime_error(std::format("DensifyPointCloud fails with {}", ret));
             }
 
             return output_mvs_name;
+        }
+
+        std::string RoughMeshReconstruction(const std::string& mvs_name)
+        {
+            const std::string output_mesh_name = mvs_name + "_Mesh";
+
+            const std::string cmd = std::format(
+                "{} {}.mvs -o {}.ply -w {}", (exe_dir_ / "ReconstructMesh").string(), mvs_name, output_mesh_name, working_dir_.string());
+            const int ret = std::system(cmd.c_str());
+            if (ret != 0)
+            {
+                throw std::runtime_error(std::format("ReconstructMesh fails with {}", ret));
+            }
+
+            return output_mesh_name;
         }
 
     private:
