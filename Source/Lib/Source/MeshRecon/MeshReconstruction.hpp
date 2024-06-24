@@ -21,7 +21,7 @@ namespace AIHoloImager
         MeshReconstruction& operator=(const MeshReconstruction& other) = delete;
         MeshReconstruction& operator=(MeshReconstruction&& other) noexcept;
 
-        void Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir);
+        void Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

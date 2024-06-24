@@ -20,7 +20,7 @@ namespace AIHoloImager
         {
         }
 
-        void Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
+        void Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir_);
@@ -28,6 +28,10 @@ namespace AIHoloImager
             std::string mvs_name = this->ToOpenMvs(sfm_input);
             mvs_name = this->PointCloudDensification(mvs_name);
             std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
+            if (refine_mesh)
+            {
+                mvs_name = this->MeshRefinement(mvs_name, mesh_name);
+            }
         }
 
     private:
@@ -162,6 +166,21 @@ namespace AIHoloImager
             return output_mesh_name;
         }
 
+        std::string MeshRefinement(const std::string& mvs_name, const std::string& mesh_name)
+        {
+            const std::string output_mesh_name = mesh_name + "_Refine";
+
+            const std::string cmd = std::format("{} {}.mvs -m {}.ply -o {}.ply --scales 1 --gradient-step 25.05 --cuda-device -1 -w {}",
+                (exe_dir_ / "RefineMesh").string(), mvs_name, mesh_name, output_mesh_name, working_dir_.string());
+            const int ret = std::system(cmd.c_str());
+            if (ret != 0)
+            {
+                throw std::runtime_error(std::format("RefineMesh fails with {}", ret));
+            }
+
+            return output_mesh_name;
+        }
+
     private:
         std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
@@ -176,8 +195,8 @@ namespace AIHoloImager
     MeshReconstruction::MeshReconstruction(MeshReconstruction&& other) noexcept = default;
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;
 
-    void MeshReconstruction::Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
+    void MeshReconstruction::Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(sfm_input, tmp_dir);
+        return impl_->Process(sfm_input, refine_mesh, tmp_dir);
     }
 } // namespace AIHoloImager

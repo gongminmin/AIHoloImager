@@ -41,6 +41,7 @@ set(deploy_files
     opencv_imgproc4.dll
     OpenEXR-3_1.dll
     ReconstructMesh.exe
+    RefineMesh.exe
     tiff.dll
     zstd.dll
 )
