@@ -55,8 +55,12 @@ namespace AIHoloImager
             PyConfig config;
             PyConfig_InitIsolatedConfig(&config);
 
-            std::wstring program_name = L"MaskGenerator";
-            config.program_name = program_name.data();
+            status = PyConfig_SetString(&config, &config.program_name, L"MaskGenerator");
+            if (PyStatus_Exception(status))
+            {
+                PyConfig_Clear(&config);
+                Py_ExitStatusException(status);
+            }
 
             config.module_search_paths_set = 1;
             for (const auto& path : paths)
@@ -64,11 +68,18 @@ namespace AIHoloImager
                 status = PyWideStringList_Append(&config.module_search_paths, path.c_str());
                 if (PyStatus_Exception(status))
                 {
+                    PyConfig_Clear(&config);
                     Py_ExitStatusException(status);
                 }
             }
 
-            Py_InitializeFromConfig(&config);
+            status = Py_InitializeFromConfig(&config);
+            if (PyStatus_Exception(status))
+            {
+                PyConfig_Clear(&config);
+                Py_ExitStatusException(status);
+            }
+
             PyConfig_Clear(&config);
 
             mask_generator_module_ = MakePyObjectPtr(PyImport_ImportModule("MaskGenerator"));
