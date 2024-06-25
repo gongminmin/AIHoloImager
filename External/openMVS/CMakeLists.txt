@@ -42,6 +42,7 @@ set(deploy_files
     OpenEXR-3_1.dll
     ReconstructMesh.exe
     RefineMesh.exe
+    TextureMesh.exe
     tiff.dll
     zstd.dll
 )

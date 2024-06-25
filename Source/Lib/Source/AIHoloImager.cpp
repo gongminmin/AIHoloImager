@@ -38,7 +38,7 @@ namespace AIHoloImager
         Mesh Generate(const std::filesystem::path& input_path)
         {
             const auto sfm_result = sfm_.Process(input_path, true, tmp_dir_);
-            mesh_recon_.Process(sfm_result, true, tmp_dir_);
+            mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
             return Mesh();
         }
 

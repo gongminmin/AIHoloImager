@@ -20,18 +20,21 @@ namespace AIHoloImager
         {
         }
 
-        void Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, const std::filesystem::path& tmp_dir)
+        void Process(
+            const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir_);
 
             std::string mvs_name = this->ToOpenMvs(sfm_input);
             mvs_name = this->PointCloudDensification(mvs_name);
+
             std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
             if (refine_mesh)
             {
-                mvs_name = this->MeshRefinement(mvs_name, mesh_name);
+                mesh_name = this->MeshRefinement(mvs_name, mesh_name);
             }
+            mesh_name = this->MeshTexturing(mvs_name, mesh_name, max_texture_size);
         }
 
     private:
@@ -181,6 +184,22 @@ namespace AIHoloImager
             return output_mesh_name;
         }
 
+        std::string MeshTexturing(const std::string& mvs_name, const std::string& mesh_name, uint32_t max_texture_size)
+        {
+            const std::string output_mesh_name = mesh_name + "_Texture";
+
+            const std::string cmd = std::format(
+                "{} {}.mvs -m {}.ply -o {}.glb --export-type glb --decimate 0.5 --ignore-mask-label 0 --max-texture-size {} -w {}",
+                (exe_dir_ / "TextureMesh").string(), mvs_name, mesh_name, output_mesh_name, max_texture_size, working_dir_.string());
+            const int ret = std::system(cmd.c_str());
+            if (ret != 0)
+            {
+                throw std::runtime_error(std::format("TextureMesh fails with {}", ret));
+            }
+
+            return output_mesh_name;
+        }
+
     private:
         std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
@@ -195,8 +214,9 @@ namespace AIHoloImager
     MeshReconstruction::MeshReconstruction(MeshReconstruction&& other) noexcept = default;
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;
 
-    void MeshReconstruction::Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, const std::filesystem::path& tmp_dir)
+    void MeshReconstruction::Process(
+        const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(sfm_input, refine_mesh, tmp_dir);
+        return impl_->Process(sfm_input, refine_mesh, max_texture_size, tmp_dir);
     }
 } // namespace AIHoloImager
