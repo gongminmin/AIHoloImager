@@ -13,56 +13,29 @@ add_custom_command(OUTPUT ${camera_database_dst}
     DEPENDS ${camera_database_src}
     VERBATIM COMMAND_EXPAND_LISTS
 )
-source_group("Resource Files" FILES ${camera_database_src})
 
-set(util_header_files
-    Source/Util/Noncopyable.hpp
-)
-source_group("Header Files\\Util" FILES ${util_header_files})
-
-set(sfm_source_files
-    Source/SfM/StructureFromMotion.cpp
-)
-set(sfm_header_files
-    Source/SfM/StructureFromMotion.hpp
-)
-source_group("Source Files\\SfM" FILES ${sfm_source_files})
-source_group("Header Files\\SfM" FILES ${sfm_header_files})
-
-set(mesh_recon_source_files
-    Source/MeshRecon/MeshReconstruction.cpp
-)
-set(mesh_recon_header_files
-    Source/MeshRecon/MeshReconstruction.hpp
-)
-source_group("Source Files\\MeshRecon" FILES ${mesh_recon_source_files})
-source_group("Header Files\\MeshRecon" FILES ${mesh_recon_header_files})
-
-set(mask_gen_source_files
-    Source/MaskGen/MaskGenerator.cpp
-    Source/MaskGen/MaskGenerator.py
-)
-set(mask_gen_header_files
-    Source/MaskGen/MaskGenerator.hpp
-)
-source_group("Source Files\\MaskGen" FILES ${mask_gen_source_files})
-source_group("Header Files\\MaskGen" FILES ${mask_gen_header_files})
-
-add_library(AIHoloImagerLib STATIC
+set(aihi_files
     Include/AIHoloImager/AIHoloImager.hpp
     Include/AIHoloImager/Mesh.hpp
     Include/AIHoloImager/Texture.hpp
     Source/AIHoloImager.cpp
     Source/Mesh.cpp
     Source/Texture.cpp
+    Source/Util/Noncopyable.hpp
+    Source/SfM/StructureFromMotion.cpp
+    Source/SfM/StructureFromMotion.hpp
+    Source/MeshRecon/MeshReconstruction.cpp
+    Source/MeshRecon/MeshReconstruction.hpp
+    Source/MaskGen/MaskGenerator.cpp
+    Source/MaskGen/MaskGenerator.py
+    Source/MaskGen/MaskGenerator.hpp
+)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
+source_group("Source" FILES ${camera_database_src})
+
+add_library(AIHoloImagerLib STATIC
     ${camera_database_src}
-    ${util_header_files}
-    ${sfm_source_files}
-    ${sfm_header_files}
-    ${mesh_recon_source_files}
-    ${mesh_recon_header_files}
-    ${mask_gen_source_files}
-    ${mask_gen_header_files}
+    ${aihi_files}
 )
 
 target_include_directories(AIHoloImagerLib
