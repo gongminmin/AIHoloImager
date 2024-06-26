@@ -13,7 +13,9 @@
     #include <windows.h>
 #endif
 
+#include "Gpu/GpuSystem.hpp"
 #include "MeshRecon//MeshReconstruction.hpp"
+#include "MvRenderer/MultiViewRenderer.hpp"
 #include "SfM/StructureFromMotion.hpp"
 
 namespace
@@ -31,14 +33,16 @@ namespace AIHoloImager
     class AIHoloImager::Impl
     {
     public:
-        Impl(const std::filesystem::path& tmp_dir) : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), sfm_(exe_dir_), mesh_recon_(exe_dir_)
+        explicit Impl(const std::filesystem::path& tmp_dir)
+            : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), sfm_(exe_dir_), mesh_recon_(exe_dir_), mv_renderer_(gpu_system_, 320, 320)
         {
         }
 
         Mesh Generate(const std::filesystem::path& input_path)
         {
             const auto sfm_result = sfm_.Process(input_path, true, tmp_dir_);
-            mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
+            const auto mesh_recon_result = mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
+            const auto mv_renderer_result = mv_renderer_.Render(mesh_recon_result.mesh);
             return Mesh();
         }
 
@@ -46,8 +50,10 @@ namespace AIHoloImager
         std::filesystem::path exe_dir_;
         std::filesystem::path tmp_dir_;
 
+        GpuSystem gpu_system_;
         StructureFromMotion sfm_;
         MeshReconstruction mesh_recon_;
+        MultiViewRenderer mv_renderer_;
     };
 
     AIHoloImager::AIHoloImager(const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(tmp_dir))

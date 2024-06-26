@@ -21,14 +21,41 @@ set(aihi_files
     Source/AIHoloImager.cpp
     Source/Mesh.cpp
     Source/Texture.cpp
-    Source/Util/Noncopyable.hpp
-    Source/SfM/StructureFromMotion.cpp
-    Source/SfM/StructureFromMotion.hpp
-    Source/MeshRecon/MeshReconstruction.cpp
-    Source/MeshRecon/MeshReconstruction.hpp
+    Source/Gpu/GpuBuffer.cpp
+    Source/Gpu/GpuBuffer.hpp
+    Source/Gpu/GpuBufferHelper.hpp
+    Source/Gpu/GpuCommandList.cpp
+    Source/Gpu/GpuCommandList.hpp
+    Source/Gpu/GpuDescriptorAllocator.cpp
+    Source/Gpu/GpuDescriptorAllocator.hpp
+    Source/Gpu/GpuDescriptorHeap.cpp
+    Source/Gpu/GpuDescriptorHeap.hpp
+    Source/Gpu/GpuMemoryAllocator.cpp
+    Source/Gpu/GpuMemoryAllocator.hpp
+    Source/Gpu/GpuResourceViews.cpp
+    Source/Gpu/GpuResourceViews.hpp
+    Source/Gpu/GpuSystem.cpp
+    Source/Gpu/GpuSystem.hpp
+    Source/Gpu/GpuTexture.cpp
+    Source/Gpu/GpuTexture.hpp
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.py
     Source/MaskGen/MaskGenerator.hpp
+    Source/MeshRecon/MeshReconstruction.cpp
+    Source/MeshRecon/MeshReconstruction.hpp
+    Source/MvRenderer/MultiViewRenderer.cpp
+    Source/MvRenderer/MultiViewRenderer.hpp
+    Source/MvRenderer/Shader/DownsampleCs.hlsl
+    Source/MvRenderer/Shader/RenderVs.hlsl
+    Source/MvRenderer/Shader/RenderPs.hlsl
+    Source/SfM/StructureFromMotion.cpp
+    Source/SfM/StructureFromMotion.hpp
+    Source/Util/ComPtr.hpp
+    Source/Util/ErrorHandling.cpp
+    Source/Util/ErrorHandling.hpp
+    Source/Util/Noncopyable.hpp
+    Source/Util/SmartPtrHelper.hpp
+    Source/Util/Uuid.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
 source_group("Source" FILES ${camera_database_src})
@@ -38,6 +65,26 @@ add_library(AIHoloImagerLib STATIC
     ${aihi_files}
 )
 
+macro(AddShaderFile file_name shader_type entry_point)
+    get_filename_component(file_base_name ${file_name} NAME_WE)
+    set(variable_name ${file_base_name}_shader)
+    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${file_base_name}.h")
+    set(debug_option "-Zi;-Od;-Qembed_debug")
+    set(release_option "-O2")
+
+    add_custom_command(OUTPUT ${output_name}
+        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}"
+        COMMENT "Compiling ${file_name} to ${output_name}..."
+        MAIN_DEPENDENCY ${file_name}
+        DEPENDS ${file_name}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+endmacro()
+
+AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
+AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
+AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")
+
 target_include_directories(AIHoloImagerLib
     PUBLIC
         Include
@@ -45,6 +92,7 @@ target_include_directories(AIHoloImagerLib
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
         ${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/software/SfM/export
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
 find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
@@ -60,6 +108,10 @@ target_compile_definitions(AIHoloImagerLib
 target_link_libraries(AIHoloImagerLib
     PRIVATE
         assimp
+        d3d12
+        dxgi
+        dxguid
+        DirectX-Headers
         openMVG_exif
         openMVG_matching_image_collection
         openMVG_sfm

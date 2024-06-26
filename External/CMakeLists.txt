@@ -126,6 +126,7 @@ add_subdirectory(zlib)
 
 add_subdirectory(assimp)
 add_subdirectory(cxxopts)
+add_subdirectory(DirectX-Headers)
 add_subdirectory(openMVG)
 add_subdirectory(openMVS)
 add_subdirectory(PythonVenv)

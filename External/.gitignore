@@ -1,5 +1,6 @@
 assimp/assimp/
 cxxopts/cxxopts/
+DirectX-Headers/DirectX-Headers/
 openMVG/openMVG/
 PythonVenv/PythonVenv/
 stb/stb/
