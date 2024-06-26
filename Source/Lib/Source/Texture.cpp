@@ -59,7 +59,7 @@ namespace AIHoloImager
     Texture::Texture(uint32_t width, uint32_t height, uint32_t num_channels) : impl_(std::make_unique<Impl>(width, height, num_channels))
     {
     }
-    Texture::Texture(const Texture& rhs) : impl_(std::make_unique<Impl>(*rhs.impl_))
+    Texture::Texture(const Texture& rhs) : impl_(rhs.impl_ ? std::make_unique<Impl>(*rhs.impl_) : nullptr)
     {
     }
     Texture::Texture(Texture&& rhs) noexcept = default;
@@ -69,13 +69,20 @@ namespace AIHoloImager
     {
         if (this != &rhs)
         {
-            if (!impl_)
+            if (rhs.impl_)
             {
-                impl_ = std::make_unique<Impl>(*rhs.impl_);
+                if (impl_)
+                {
+                    *impl_ = *rhs.impl_;
+                }
+                else
+                {
+                    impl_ = std::make_unique<Impl>(*rhs.impl_);
+                }
             }
             else
             {
-                *impl_ = *rhs.impl_;
+                impl_.reset();
             }
         }
         return *this;

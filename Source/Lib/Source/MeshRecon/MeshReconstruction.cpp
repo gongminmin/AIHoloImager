@@ -11,6 +11,8 @@
 
 #include "MaskGen/MaskGenerator.hpp"
 
+using namespace DirectX;
+
 namespace AIHoloImager
 {
     class MeshReconstruction::Impl
@@ -20,7 +22,7 @@ namespace AIHoloImager
         {
         }
 
-        void Process(
+        Result Process(
             const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
@@ -35,6 +37,43 @@ namespace AIHoloImager
                 mesh_name = this->MeshRefinement(mvs_name, mesh_name);
             }
             mesh_name = this->MeshTexturing(mvs_name, mesh_name, max_texture_size);
+
+            Result ret;
+
+            auto& mesh = ret.mesh;
+            mesh = LoadMesh(working_dir_ / (mesh_name + ".glb"));
+
+            std::vector<XMFLOAT3> positions(mesh.Vertices().size());
+            for (size_t i = 0; i < mesh.Vertices().size(); ++i)
+            {
+                positions[i] = mesh.Vertex(static_cast<uint32_t>(i)).pos;
+                positions[i].z = -positions[i].z; // RH to LH
+            }
+
+            auto& obb = ret.obb;
+            BoundingOrientedBox::CreateFromPoints(obb, positions.size(), positions.data(), sizeof(positions[0]));
+
+            const XMVECTOR center = XMLoadFloat3(&obb.Center);
+            const XMFLOAT3 extent = obb.Extents;
+            const float inv_max_dim = 1 / std::max(std::max(extent.x, extent.y), extent.z);
+
+            const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
+            const XMMATRIX pre_rotate =
+                XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&obb.Orientation))) * XMMatrixRotationZ(XM_PI / 2);
+            const XMMATRIX pre_scale = XMMatrixScaling(inv_max_dim, -inv_max_dim, -inv_max_dim);
+
+            const XMMATRIX model_mtx = pre_trans * pre_rotate * pre_scale;
+            for (size_t i = 0; i < mesh.Vertices().size(); ++i)
+            {
+                XMFLOAT3 transformed_pos;
+                XMStoreFloat3(&transformed_pos, XMVector3TransformCoord(XMLoadFloat3(&positions[i]), model_mtx));
+                transformed_pos.z = -transformed_pos.z; // LH to RH
+                mesh.Vertex(static_cast<uint32_t>(i)).pos = transformed_pos;
+            }
+
+            XMStoreFloat4x4(&ret.transform, XMMatrixInverse(nullptr, model_mtx));
+
+            return ret;
         }
 
     private:
@@ -214,7 +253,7 @@ namespace AIHoloImager
     MeshReconstruction::MeshReconstruction(MeshReconstruction&& other) noexcept = default;
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;
 
-    void MeshReconstruction::Process(
+    MeshReconstruction::Result MeshReconstruction::Process(
         const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
     {
         return impl_->Process(sfm_input, refine_mesh, max_texture_size, tmp_dir);

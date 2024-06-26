@@ -24,6 +24,7 @@ namespace AIHoloImager
 
     public:
         Mesh();
+        Mesh(uint32_t num_verts, uint32_t num_indices);
         Mesh(const Mesh& rhs);
         Mesh(Mesh&& rhs) noexcept;
         ~Mesh() noexcept;

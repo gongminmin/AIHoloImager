@@ -16,6 +16,10 @@ namespace AIHoloImager
     class Mesh::Impl
     {
     public:
+        Impl(uint32_t num_verts, uint32_t num_indices) : vertices_(num_verts), indices_(num_indices)
+        {
+        }
+
         std::span<const VertexFormat> Vertices() const noexcept
         {
             return std::span<const VertexFormat>(vertices_.begin(), vertices_.end());
@@ -75,7 +79,10 @@ namespace AIHoloImager
     };
 
     Mesh::Mesh() = default;
-    Mesh::Mesh(const Mesh& rhs) : impl_(std::make_unique<Impl>(*rhs.impl_))
+    Mesh::Mesh(uint32_t num_verts, uint32_t num_indices) : impl_(std::make_unique<Impl>(num_verts, num_indices))
+    {
+    }
+    Mesh::Mesh(const Mesh& rhs) : impl_(rhs.impl_ ? std::make_unique<Impl>(*rhs.impl_) : nullptr)
     {
     }
     Mesh::Mesh(Mesh&& rhs) noexcept = default;
@@ -85,13 +92,20 @@ namespace AIHoloImager
     {
         if (this != &rhs)
         {
-            if (!impl_)
+            if (rhs.impl_)
             {
-                impl_ = std::make_unique<Impl>(*rhs.impl_);
+                if (impl_)
+                {
+                    *impl_ = *rhs.impl_;
+                }
+                else
+                {
+                    impl_ = std::make_unique<Impl>(*rhs.impl_);
+                }
             }
             else
             {
-                *impl_ = *rhs.impl_;
+                impl_.reset();
             }
         }
         return *this;
@@ -168,6 +182,8 @@ namespace AIHoloImager
         if (ai_scene)
         {
             const aiMesh* ai_mesh = ai_scene->mMeshes[0];
+            mesh = Mesh(ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
+
             const aiMaterial* mtl = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
             unsigned int count = aiGetMaterialTextureCount(mtl, aiTextureType_DIFFUSE);
             if (count > 0)
@@ -177,14 +193,12 @@ namespace AIHoloImager
                 mesh.AlbedoTexture(LoadTexture(path.parent_path() / str.C_Str()));
             }
 
-            mesh.ResizeVertices(ai_mesh->mNumVertices);
             std::span<const Mesh::VertexFormat> vertices = mesh.Vertices();
             for (unsigned int vi = 0; vi < ai_mesh->mNumVertices; ++vi)
             {
                 mesh.Vertex(vi) = {XMFLOAT3(&ai_mesh->mVertices[vi].x), XMFLOAT2(&ai_mesh->mTextureCoords[0][vi].x)};
             }
 
-            mesh.ResizeIndices(ai_mesh->mNumFaces * 3);
             for (unsigned int fi = 0; fi < ai_mesh->mNumFaces; ++fi)
             {
                 for (uint32_t vi = 0; vi < 3; ++vi)
