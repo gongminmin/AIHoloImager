@@ -13,6 +13,12 @@ add_custom_command(OUTPUT ${camera_database_dst}
     DEPENDS ${camera_database_src}
     VERBATIM COMMAND_EXPAND_LISTS
 )
+source_group("Resource Files" FILES ${camera_database_src})
+
+set(util_header_files
+    Source/Util/Noncopyable.hpp
+)
+source_group("Header Files\\Util" FILES ${util_header_files})
 
 set(sfm_source_files
     Source/SfM/StructureFromMotion.cpp
@@ -50,6 +56,7 @@ add_library(AIHoloImagerLib STATIC
     Source/Mesh.cpp
     Source/Texture.cpp
     ${camera_database_src}
+    ${util_header_files}
     ${sfm_source_files}
     ${sfm_header_files}
     ${mesh_recon_source_files}

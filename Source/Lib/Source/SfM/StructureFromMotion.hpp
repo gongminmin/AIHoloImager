@@ -18,11 +18,14 @@
 #endif
 
 #include "AIHoloImager/Texture.hpp"
+#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {
     class StructureFromMotion
     {
+        DISALLOW_COPY_AND_ASSIGN(StructureFromMotion);
+
     public:
         struct View
         {
@@ -65,11 +68,9 @@ namespace AIHoloImager
 
     public:
         explicit StructureFromMotion(const std::filesystem::path& exe_dir);
-        StructureFromMotion(const StructureFromMotion& other) = delete;
         StructureFromMotion(StructureFromMotion&& other) noexcept;
         ~StructureFromMotion() noexcept;
 
-        StructureFromMotion& operator=(const StructureFromMotion& other) = delete;
         StructureFromMotion& operator=(StructureFromMotion&& other) noexcept;
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir);

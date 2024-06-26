@@ -6,18 +6,19 @@
 #include <filesystem>
 
 #include "AIHoloImager/Texture.hpp"
+#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {
     class MaskGenerator
     {
+        DISALLOW_COPY_AND_ASSIGN(MaskGenerator);
+
     public:
         explicit MaskGenerator(const std::filesystem::path& exe_dir);
-        MaskGenerator(const MaskGenerator& other) = delete;
         MaskGenerator(MaskGenerator&& other) noexcept;
         ~MaskGenerator() noexcept;
 
-        MaskGenerator& operator=(const MaskGenerator& other) = delete;
         MaskGenerator& operator=(MaskGenerator&& other) noexcept;
 
         Texture Generate(const Texture& input_image);
