@@ -19,6 +19,7 @@
 #include <DirectXMath.h>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -38,7 +39,7 @@ namespace AIHoloImager
         };
 
     public:
-        explicit MeshReconstruction(const std::filesystem::path& exe_dir);
+        MeshReconstruction(const std::filesystem::path& exe_dir, PythonSystem& python_system);
         MeshReconstruction(MeshReconstruction&& other) noexcept;
         ~MeshReconstruction() noexcept;
 

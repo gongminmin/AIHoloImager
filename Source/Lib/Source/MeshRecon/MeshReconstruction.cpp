@@ -18,7 +18,7 @@ namespace AIHoloImager
     class MeshReconstruction::Impl
     {
     public:
-        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
+        Impl(const std::filesystem::path& exe_dir, PythonSystem& python_system) : exe_dir_(exe_dir), python_system_(python_system)
         {
         }
 
@@ -119,7 +119,7 @@ namespace AIHoloImager
             }
 
             {
-                MaskGenerator mask_gen(exe_dir_);
+                MaskGenerator mask_gen(python_system_);
                 for (size_t i = 0; i < sfm_input.views.size(); ++i)
                 {
                     std::cout << "Generating mask images (" << (i + 1) << " / " << sfm_input.views.size() << ")\r";
@@ -242,9 +242,12 @@ namespace AIHoloImager
     private:
         std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
+
+        PythonSystem& python_system_;
     };
 
-    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir, PythonSystem& python_system)
+        : impl_(std::make_unique<Impl>(exe_dir, python_system))
     {
     }
 

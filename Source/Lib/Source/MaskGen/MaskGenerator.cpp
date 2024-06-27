@@ -3,107 +3,23 @@
 
 #include "MaskGenerator.hpp"
 
-#define Py_BUILD_CORE
-#include <Python.h>
-
-#include <iostream>
 #include <string_view>
 
 namespace AIHoloImager
 {
-    class PyObjDeleter
-    {
-    public:
-        void operator()(PyObject* p)
-        {
-            if (p != nullptr)
-            {
-                Py_DecRef(p);
-            }
-        }
-    };
-
-    using PyObjectPtr = std::unique_ptr<PyObject, PyObjDeleter>;
-
-    PyObjectPtr MakePyObjectPtr(PyObject* p)
-    {
-        return PyObjectPtr(p);
-    }
-
     class MaskGenerator::Impl
     {
     public:
-        explicit Impl(const std::filesystem::path& exe_dir)
+        explicit Impl(PythonSystem& python_system) : python_system_(python_system)
         {
-            std::vector<std::wstring> paths;
-            paths.push_back(std::filesystem::path(AIHI_PY_STDLIB_DIR).lexically_normal().wstring());
-            paths.push_back((std::filesystem::path(AIHI_PY_RUNTIME_LIB_DIR) / "DLLs").lexically_normal().wstring());
-            paths.push_back(exe_dir.lexically_normal().wstring());
-            paths.push_back((exe_dir / "Python/Lib/site-packages").lexically_normal().wstring());
+            mask_generator_module_ = python_system_.Import("MaskGenerator");
+            mask_generator_class_ = python_system_.GetAttr(*mask_generator_module_, "MaskGenerator");
+            mask_generator_ = python_system_.CallObject(*mask_generator_class_);
+            mask_generator_gen_method_ = python_system_.GetAttr(*mask_generator_, "Gen");
 
-            PyPreConfig pre_config;
-            PyPreConfig_InitIsolatedConfig(&pre_config);
-
-            pre_config.utf8_mode = 1;
-
-            PyStatus status = Py_PreInitialize(&pre_config);
-            if (PyStatus_Exception(status))
-            {
-                Py_ExitStatusException(status);
-            }
-
-            PyConfig config;
-            PyConfig_InitIsolatedConfig(&config);
-
-            status = PyConfig_SetString(&config, &config.program_name, L"MaskGenerator");
-            if (PyStatus_Exception(status))
-            {
-                PyConfig_Clear(&config);
-                Py_ExitStatusException(status);
-            }
-
-            config.module_search_paths_set = 1;
-            for (const auto& path : paths)
-            {
-                status = PyWideStringList_Append(&config.module_search_paths, path.c_str());
-                if (PyStatus_Exception(status))
-                {
-                    PyConfig_Clear(&config);
-                    Py_ExitStatusException(status);
-                }
-            }
-
-            status = Py_InitializeFromConfig(&config);
-            if (PyStatus_Exception(status))
-            {
-                PyConfig_Clear(&config);
-                Py_ExitStatusException(status);
-            }
-
-            PyConfig_Clear(&config);
-
-            mask_generator_module_ = MakePyObjectPtr(PyImport_ImportModule("MaskGenerator"));
-            mask_generator_class_ = MakePyObjectPtr(PyObject_GetAttrString(mask_generator_module_.get(), "MaskGenerator"));
-            mask_generator_ = MakePyObjectPtr(PyObject_CallObject(mask_generator_class_.get(), nullptr));
-            mask_generator_gen_method_ = MakePyObjectPtr(PyObject_GetAttrString(mask_generator_.get(), "Gen"));
-
-            pil_module_ = MakePyObjectPtr(PyImport_ImportModule("PIL"));
-            image_class_ = MakePyObjectPtr(PyObject_GetAttrString(pil_module_.get(), "Image"));
-            image_frombuffer_method_ = MakePyObjectPtr(PyObject_GetAttrString(image_class_.get(), "frombuffer"));
-        }
-
-        ~Impl()
-        {
-            image_frombuffer_method_.reset();
-            image_class_.reset();
-            pil_module_.reset();
-
-            mask_generator_gen_method_.reset();
-            mask_generator_.reset();
-            mask_generator_class_.reset();
-            mask_generator_module_.reset();
-
-            Py_Finalize();
+            pil_module_ = python_system_.Import("PIL");
+            image_class_ = python_system_.GetAttr(*pil_module_, "Image");
+            image_frombuffer_method_ = python_system_.GetAttr(*image_class_, "frombuffer");
         }
 
         Texture Generate(const Texture& input_image)
@@ -177,6 +93,8 @@ namespace AIHoloImager
         }
 
     private:
+        PythonSystem& python_system_;
+
         PyObjectPtr mask_generator_module_;
         PyObjectPtr mask_generator_class_;
         PyObjectPtr mask_generator_;
@@ -187,7 +105,7 @@ namespace AIHoloImager
         PyObjectPtr image_frombuffer_method_;
     };
 
-    MaskGenerator::MaskGenerator(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
+    MaskGenerator::MaskGenerator(PythonSystem& python_system) : impl_(std::make_unique<Impl>(python_system))
     {
     }
 

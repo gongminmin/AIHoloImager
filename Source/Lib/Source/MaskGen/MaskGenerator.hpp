@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "AIHoloImager/Texture.hpp"
+#include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -15,7 +16,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MaskGenerator);
 
     public:
-        explicit MaskGenerator(const std::filesystem::path& exe_dir);
+        explicit MaskGenerator(PythonSystem& python_system);
         MaskGenerator(MaskGenerator&& other) noexcept;
         ~MaskGenerator() noexcept;
 

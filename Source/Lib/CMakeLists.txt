@@ -39,8 +39,8 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/MaskGen/MaskGenerator.cpp
-    Source/MaskGen/MaskGenerator.py
     Source/MaskGen/MaskGenerator.hpp
+    Source/MaskGen/MaskGenerator.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
     Source/MvRenderer/MultiViewRenderer.cpp
@@ -48,6 +48,8 @@ set(aihi_files
     Source/MvRenderer/Shader/DownsampleCs.hlsl
     Source/MvRenderer/Shader/RenderVs.hlsl
     Source/MvRenderer/Shader/RenderPs.hlsl
+    Source/Python/PythonSystem.cpp
+    Source/Python/PythonSystem.hpp
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
     Source/Util/ComPtr.hpp
