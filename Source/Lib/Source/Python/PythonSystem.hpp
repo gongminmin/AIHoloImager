@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <span>
 
 #define Py_BUILD_CORE
 #include <Python.h>
@@ -45,6 +47,23 @@ namespace AIHoloImager
 
         PyObjectPtr CallObject(PyObject& object);
         PyObjectPtr CallObject(PyObject& object, PyObject& args);
+
+        PyObjectPtr MakeObject(long value);
+        PyObjectPtr MakeObject(std::wstring_view str);
+        PyObjectPtr MakeObject(std::span<const std::byte> mem);
+
+        PyObjectPtr MakeTuple(uint32_t size);
+        void SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item);
+        void SetTupleItem(PyObject& tuple, uint32_t index, PyObjectPtr item);
+
+        template <typename T>
+        T Cast(PyObject& object);
+
+        template <typename T>
+        T GetAttrOfType(PyObject& module, const char* name)
+        {
+            return this->Cast<T>(*this->GetAttr(module, name));
+        }
 
     private:
         class Impl;

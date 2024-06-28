@@ -3,6 +3,8 @@
 
 #include "MaskGenerator.hpp"
 
+#include <cstddef>
+#include <span>
 #include <string_view>
 
 namespace AIHoloImager
@@ -26,7 +28,7 @@ namespace AIHoloImager
         {
             PyObjectPtr py_input_image;
             {
-                auto args = MakePyObjectPtr(PyTuple_New(3));
+                auto args = python_system_.MakeTuple(3);
                 {
                     std::wstring_view mode;
                     switch (input_image.NumChannels())
@@ -42,37 +44,38 @@ namespace AIHoloImager
                         break;
                     }
 
-                    PyTuple_SetItem(args.get(), 0, PyUnicode_FromWideChar(mode.data(), mode.size()));
+                    python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(mode));
                 }
                 {
-                    auto size = MakePyObjectPtr(PyTuple_New(2));
+                    auto size = python_system_.MakeTuple(2);
                     {
-                        PyTuple_SetItem(size.get(), 0, PyLong_FromLong(input_image.Width()));
-                        PyTuple_SetItem(size.get(), 1, PyLong_FromLong(input_image.Height()));
+                        python_system_.SetTupleItem(*size, 0, python_system_.MakeObject(input_image.Width()));
+                        python_system_.SetTupleItem(*size, 1, python_system_.MakeObject(input_image.Height()));
                     }
-                    PyTuple_SetItem(args.get(), 1, size.release());
+                    python_system_.SetTupleItem(*args, 1, std::move(size));
                 }
                 {
-                    PyTuple_SetItem(args.get(), 2,
-                        PyBytes_FromStringAndSize(reinterpret_cast<const char*>(input_image.Data()), input_image.DataSize()));
+                    auto image = python_system_.MakeObject(
+                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
+                    python_system_.SetTupleItem(*args, 2, std::move(image));
                 }
 
-                py_input_image = MakePyObjectPtr(PyObject_CallObject(image_frombuffer_method_.get(), args.get()));
+                py_input_image = python_system_.CallObject(*image_frombuffer_method_, *args);
             }
 
-            auto args = MakePyObjectPtr(PyTuple_New(1));
+            auto args = python_system_.MakeTuple(1);
             {
-                PyTuple_SetItem(args.get(), 0, py_input_image.get());
+                python_system_.SetTupleItem(*args, 0, *py_input_image);
             }
 
-            auto py_mask_image = MakePyObjectPtr(PyObject_CallObject(mask_generator_gen_method_.get(), args.get()));
-            auto tobytes_method = MakePyObjectPtr(PyObject_GetAttrString(py_mask_image.get(), "tobytes"));
-            auto mask_data = MakePyObjectPtr(PyObject_CallObject(tobytes_method.get(), nullptr));
+            auto py_mask_image = python_system_.CallObject(*mask_generator_gen_method_, *args);
+            auto tobytes_method = python_system_.GetAttr(*py_mask_image, "tobytes");
+            auto mask_data = python_system_.CallObject(*tobytes_method);
 
-            const uint32_t width = PyLong_AsLong(PyObject_GetAttrString(py_mask_image.get(), "width"));
-            const uint32_t height = PyLong_AsLong(PyObject_GetAttrString(py_mask_image.get(), "height"));
+            const uint32_t width = python_system_.GetAttrOfType<long>(*py_mask_image, "width");
+            const uint32_t height = python_system_.GetAttrOfType<long>(*py_mask_image, "height");
             uint32_t num_channels = 3;
-            std::wstring_view mode_str = PyUnicode_AsWideCharString(PyObject_GetAttrString(py_mask_image.get(), "mode"), nullptr);
+            const std::wstring_view mode_str = python_system_.GetAttrOfType<std::wstring_view>(*py_mask_image, "mode");
             if (mode_str == L"L")
             {
                 num_channels = 1;
@@ -87,7 +90,7 @@ namespace AIHoloImager
             }
 
             Texture mask_image(width, height, num_channels);
-            std::memcpy(mask_image.Data(), PyBytes_AsString(mask_data.get()), mask_image.DataSize());
+            std::memcpy(mask_image.Data(), python_system_.Cast<std::span<const std::byte>>(*mask_data).data(), mask_image.DataSize());
 
             return mask_image;
         }

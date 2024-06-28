@@ -67,26 +67,6 @@ namespace AIHoloImager
         {
             Py_Finalize();
         }
-
-        PyObjectPtr Import(const char* name)
-        {
-            return MakePyObjectPtr(PyImport_ImportModule(name));
-        }
-
-        PyObjectPtr GetAttr(PyObject& module, const char* name)
-        {
-            return MakePyObjectPtr(PyObject_GetAttrString(&module, name));
-        }
-
-        PyObjectPtr CallObject(PyObject& object)
-        {
-            return MakePyObjectPtr(PyObject_CallObject(&object, nullptr));
-        }
-
-        PyObjectPtr CallObject(PyObject& object, PyObject& args)
-        {
-            return MakePyObjectPtr(PyObject_CallObject(&object, &args));
-        }
     };
 
     PythonSystem::PythonSystem(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
@@ -100,21 +80,73 @@ namespace AIHoloImager
 
     PyObjectPtr PythonSystem::Import(const char* name)
     {
-        return impl_->Import(name);
+        return MakePyObjectPtr(PyImport_ImportModule(name));
     }
 
     PyObjectPtr PythonSystem::GetAttr(PyObject& module, const char* name)
     {
-        return impl_->GetAttr(module, name);
+        return MakePyObjectPtr(PyObject_GetAttrString(&module, name));
     }
 
     PyObjectPtr PythonSystem::CallObject(PyObject& object)
     {
-        return impl_->CallObject(object);
+        return MakePyObjectPtr(PyObject_CallObject(&object, nullptr));
     }
 
     PyObjectPtr PythonSystem::CallObject(PyObject& object, PyObject& args)
     {
-        return impl_->CallObject(object, args);
+        return MakePyObjectPtr(PyObject_CallObject(&object, &args));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(long value)
+    {
+        return MakePyObjectPtr(PyLong_FromLong(value));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(std::wstring_view str)
+    {
+        return MakePyObjectPtr(PyUnicode_FromWideChar(str.data(), str.size()));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(std::span<const std::byte> mem)
+    {
+        return MakePyObjectPtr(PyBytes_FromStringAndSize(reinterpret_cast<const char*>(mem.data()), mem.size()));
+    }
+
+    PyObjectPtr PythonSystem::MakeTuple(uint32_t size)
+    {
+        return MakePyObjectPtr(PyTuple_New(size));
+    }
+
+    void PythonSystem::SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item)
+    {
+        PyTuple_SetItem(&tuple, index, &item);
+    }
+
+    void PythonSystem::SetTupleItem(PyObject& tuple, uint32_t index, PyObjectPtr item)
+    {
+        PyTuple_SetItem(&tuple, index, item.release());
+    }
+
+    template <>
+    long PythonSystem::Cast<long>(PyObject& object)
+    {
+        return PyLong_AsLong(&object);
+    }
+
+    template <>
+    std::wstring_view PythonSystem::Cast<std::wstring_view>(PyObject& object)
+    {
+        Py_ssize_t size;
+        wchar_t* str = PyUnicode_AsWideCharString(&object, &size);
+        return std::wstring_view(str, size);
+    }
+
+    template <>
+    std::span<const std::byte> PythonSystem::Cast<std::span<const std::byte>>(PyObject& object)
+    {
+        const Py_ssize_t size = PyBytes_Size(&object);
+        const char* data = PyBytes_AsString(&object);
+        return std::span<const std::byte>(reinterpret_cast<const std::byte*>(data), size);
     }
 } // namespace AIHoloImager
