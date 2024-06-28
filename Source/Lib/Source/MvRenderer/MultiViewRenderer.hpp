@@ -7,6 +7,7 @@
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -22,7 +23,7 @@ namespace AIHoloImager
         };
 
     public:
-        MultiViewRenderer(GpuSystem& gpu_system, uint32_t width, uint32_t height);
+        MultiViewRenderer(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height);
         MultiViewRenderer(MultiViewRenderer&& other) noexcept;
         ~MultiViewRenderer() noexcept;
 

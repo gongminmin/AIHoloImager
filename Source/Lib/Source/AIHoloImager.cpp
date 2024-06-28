@@ -36,7 +36,7 @@ namespace AIHoloImager
     public:
         explicit Impl(const std::filesystem::path& tmp_dir)
             : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), python_system_(exe_dir_), sfm_(exe_dir_), mesh_recon_(exe_dir_, python_system_),
-              mv_renderer_(gpu_system_, 320, 320)
+              mv_renderer_(gpu_system_, python_system_, 320, 320)
         {
         }
 

@@ -10,6 +10,7 @@
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "MvDiffusion/MultiViewDiffusion.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/ErrorHandling.hpp"
 #include "Util/Uuid.hpp"
@@ -122,8 +123,8 @@ namespace AIHoloImager
     class MultiViewRenderer::Impl
     {
     public:
-        Impl(GpuSystem& gpu_system, uint32_t width, uint32_t height)
-            : gpu_system_(gpu_system), proj_mtx_(XMMatrixPerspectiveFovLH(Fov, 1, 0.1f, 30))
+        Impl(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
+            : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(XMMatrixPerspectiveFovLH(Fov, 1, 0.1f, 30))
         {
             rtv_desc_block_ = gpu_system_.AllocRtvDescBlock(1);
             rtv_descriptor_size_ = gpu_system_.RtvDescSize();
@@ -332,6 +333,9 @@ namespace AIHoloImager
             Texture init_view_cpu_tex = ReadbackGpuTexture(gpu_system_, init_view_tex_);
             RemoveAlpha(init_view_cpu_tex);
 
+            MultiViewDiffusion mv_diffusion(python_system_);
+            Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
+
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
                 Render(vb, ib, num_indices, Azimuths[i], Elevations[i], CameraDist, multi_view_texs_[i]);
@@ -453,6 +457,7 @@ namespace AIHoloImager
 
     private:
         GpuSystem& gpu_system_;
+        PythonSystem& python_system_;
 
         GpuDescriptorBlock rtv_desc_block_;
         uint32_t rtv_descriptor_size_;
@@ -487,8 +492,8 @@ namespace AIHoloImager
         GpuDescriptorBlock downsample_srv_uav_desc_block_;
     };
 
-    MultiViewRenderer::MultiViewRenderer(GpuSystem& gpu_system, uint32_t width, uint32_t height)
-        : impl_(std::make_unique<Impl>(gpu_system, width, height))
+    MultiViewRenderer::MultiViewRenderer(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
+        : impl_(std::make_unique<Impl>(gpu_system, python_system, width, height))
     {
     }
 

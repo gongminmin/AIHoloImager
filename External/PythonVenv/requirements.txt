@@ -1,2 +1,15 @@
 numpy==1.26.4
 rembg[gpu]==2.0.57
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.1.0
+torchvision==0.16.0
+
+xformers==0.0.22.post7
+
+pytorch-lightning==2.1.2
+huggingface-hub==0.17.3
+omegaconf==2.3.0
+diffusers==0.20.2
+transformers==4.34.1
+accelerate==0.30.1

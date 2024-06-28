@@ -43,6 +43,9 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
+    Source/MvDiffusion/MultiViewDiffusion.cpp
+    Source/MvDiffusion/MultiViewDiffusion.hpp
+    Source/MvDiffusion/MultiViewDiffusion.py
     Source/MvRenderer/MultiViewRenderer.cpp
     Source/MvRenderer/MultiViewRenderer.hpp
     Source/MvRenderer/Shader/DownsampleCs.hlsl
@@ -121,18 +124,24 @@ target_link_libraries(AIHoloImagerLib
         stb
 )
 
-set(mask_generator_src "${CMAKE_CURRENT_SOURCE_DIR}/Source/MaskGen/MaskGenerator.py")
-get_filename_component(mask_generator_dir ${mask_generator_src} DIRECTORY)
-get_filename_component(mask_generator_file_name ${mask_generator_src} NAME)
-get_filename_component(mask_generator_stem ${mask_generator_src} NAME_WE)
-set(mask_generator_dst "${output_dir}/${mask_generator_stem}.pyc")
-add_custom_command(OUTPUT ${mask_generator_dst}
-    COMMAND ${Python3_EXECUTABLE} -m compileall -b ${mask_generator_src}
-    COMMAND ${CMAKE_COMMAND} -E copy ${mask_generator_dir}/${mask_generator_stem}.pyc ${mask_generator_dst}
-    COMMENT "Compiling ${mask_generator_file_name} ..."
-    MAIN_DEPENDENCY ${mask_generator_src}
-    DEPENDS ${mask_generator_src}
-    VERBATIM COMMAND_EXPAND_LISTS
+set(py_files
+    Source/MaskGen/MaskGenerator.py
+    Source/MvDiffusion/MultiViewDiffusion.py
 )
+foreach(py_file ${py_files})
+    get_filename_component(py_file_dir ${py_file} DIRECTORY)
+    get_filename_component(py_file_name ${py_file} NAME)
+    get_filename_component(py_file_stem ${py_file} NAME_WE)
+    set(py_file_dst "${output_dir}/${py_file_stem}.pyc")
+    add_custom_command(OUTPUT ${py_file_dst}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b ${py_file}
+        COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
+        COMMENT "Compiling ${py_file_name} ..."
+        MAIN_DEPENDENCY ${py_file}
+        DEPENDS ${py_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+endforeach()
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython)
+add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployInstantMesh)
