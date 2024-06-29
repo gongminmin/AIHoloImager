@@ -28,6 +28,8 @@ namespace
     constexpr float Azimuths[] = {30, 90, 150, 210, 270, 330};
     constexpr float Elevations[] = {20, -10, 20, -10, 20, -10};
     constexpr float Fov = XM_PI / 6;
+    const float MvScale = 1.6f; // The fine-tuned zero123plus in InstantMesh has a scale
+                                // (https://github.com/TencentARC/InstantMesh/commit/34c193cc96eebd46deb7c48a76613753ad777122)
 
     constexpr uint32_t DivUp(uint32_t a, uint32_t b) noexcept
     {
@@ -170,19 +172,19 @@ namespace AIHoloImager
                     CreateRootParameterAsDescriptorTable(&ranges[0], 1),
                 };
 
-                D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
-                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.MaxAnisotropy = 16;
-                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                bilinear_sampler_desc.MinLOD = 0.0f;
-                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                bilinear_sampler_desc.ShaderRegister = 0;
+                D3D12_STATIC_SAMPLER_DESC point_sampler_desc{};
+                point_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                point_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                point_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                point_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                point_sampler_desc.MaxAnisotropy = 16;
+                point_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                point_sampler_desc.MinLOD = 0.0f;
+                point_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+                point_sampler_desc.ShaderRegister = 0;
 
                 const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {static_cast<uint32_t>(std::size(root_params)), root_params, 1,
-                    &bilinear_sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT};
+                    &point_sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT};
 
                 ComPtr<ID3DBlob> blob;
                 ComPtr<ID3DBlob> error;
@@ -328,7 +330,14 @@ namespace AIHoloImager
             constexpr float CameraDist = 10;
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh.Indices().size());
-            Render(vb, ib, num_indices, 0, 45, CameraDist, init_view_tex_);
+
+            {
+                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, 0, 45, CameraDist);
+                Downsample(cmd_list, init_view_tex_);
+                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.WaitForGpu();
+            }
 
             Texture init_view_cpu_tex = ReadbackGpuTexture(gpu_system_, init_view_tex_);
             RemoveAlpha(init_view_cpu_tex);
@@ -338,7 +347,19 @@ namespace AIHoloImager
 
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
-                Render(vb, ib, num_indices, Azimuths[i], Elevations[i], CameraDist, multi_view_texs_[i]);
+                {
+                    GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    RenderToSsaa(cmd_list, vb, ib, num_indices, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                    gpu_system_.Execute(std::move(cmd_list));
+                    gpu_system_.WaitForGpu();
+                }
+                BlendWithDiffusion(mv_diffusion_tex, static_cast<uint32_t>(i));
+                {
+                    GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    Downsample(cmd_list, multi_view_texs_[i]);
+                    gpu_system_.Execute(std::move(cmd_list));
+                    gpu_system_.WaitForGpu();
+                }
             }
 
             Result ret;
@@ -352,107 +373,228 @@ namespace AIHoloImager
         }
 
     private:
-        void Render(GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices, float camera_azimuth, float camera_elevation, float camera_dist,
-            GpuTexture2D& target)
+        void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices, float camera_azimuth,
+            float camera_elevation, float camera_dist, float scale = 1)
         {
-            GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
+            const XMVECTOR camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
+            const XMVECTOR camera_dir = -XMVector3Normalize(camera_pos);
+            XMVECTOR up_vec;
+            if (-XMVectorGetY(camera_dir) > 0.95f)
             {
-                const XMVECTOR camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
-                const XMVECTOR camera_dir = -XMVector3Normalize(camera_pos);
-                XMVECTOR up_vec;
-                if (-XMVectorGetY(camera_dir) > 0.95f)
-                {
-                    up_vec = XMVectorSet(1, 0, 0, 0);
-                }
-                else
-                {
-                    up_vec = XMVectorSet(0, 1, 0, 0);
-                }
-
-                const XMMATRIX view_mtx = XMMatrixLookAtLH(camera_pos, XMVectorSet(0, 0, 0, 1.0f), up_vec);
-
-                XMStoreFloat4x4(&render_cb_->mvp, XMMatrixTranspose(view_mtx * proj_mtx_));
-                render_cb_.UploadToGpu();
-
-                vb.Transition(cmd_list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-                ib.Transition(cmd_list, D3D12_RESOURCE_STATE_INDEX_BUFFER);
-
-                ssaa_ds_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-                D3D12_VERTEX_BUFFER_VIEW vbv{};
-                vbv.BufferLocation = vb.GpuVirtualAddress();
-                vbv.SizeInBytes = vb.Size();
-                vbv.StrideInBytes = sizeof(Mesh::VertexFormat);
-                d3d12_cmd_list->IASetVertexBuffers(0, 1, &vbv);
-
-                D3D12_INDEX_BUFFER_VIEW ibv{};
-                ibv.BufferLocation = ib.GpuVirtualAddress();
-                ibv.SizeInBytes = ib.Size();
-                ibv.Format = DXGI_FORMAT_R32_UINT;
-                d3d12_cmd_list->IASetIndexBuffer(&ibv);
-
-                d3d12_cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-                d3d12_cmd_list->SetPipelineState(render_pso_.Get());
-                d3d12_cmd_list->SetGraphicsRootSignature(render_root_sig_.Get());
-
-                ID3D12DescriptorHeap* heaps[] = {render_srv_uav_desc_block_.NativeDescriptorHeap()};
-                d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(1, render_srv_uav_desc_block_.GpuHandle());
-
-                d3d12_cmd_list->SetGraphicsRootConstantBufferView(0, render_cb_.GpuVirtualAddress());
-
-                ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-                D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {ssaa_rtv_.CpuHandle()};
-                D3D12_CPU_DESCRIPTOR_HANDLE dsv = ssaa_dsv_.CpuHandle();
-                d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(std::size(rtvs)), rtvs, true, &dsv);
-
-                float clear_clr[] = {0, 0, 0, 0};
-                d3d12_cmd_list->ClearRenderTargetView(rtvs[0], clear_clr, 0, nullptr);
-                d3d12_cmd_list->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1, 0, 0, nullptr);
-
-                D3D12_VIEWPORT viewport{0, 0, static_cast<float>(ssaa_rt_tex_.Width(0)), static_cast<float>(ssaa_rt_tex_.Height(0)), 0, 1};
-                d3d12_cmd_list->RSSetViewports(1, &viewport);
-
-                D3D12_RECT scissor_rc{0, 0, static_cast<LONG>(ssaa_rt_tex_.Width(0)), static_cast<LONG>(ssaa_rt_tex_.Height(0))};
-                d3d12_cmd_list->RSSetScissorRects(1, &scissor_rc);
-
-                d3d12_cmd_list->DrawIndexedInstanced(num_indices, 1, 0, 0, 0);
-
-                ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+                up_vec = XMVectorSet(1, 0, 0, 0);
             }
+            else
             {
-                uint32_t descriptor_size = gpu_system_.CbvSrvUavDescSize();
-
-                d3d12_cmd_list->SetPipelineState(downsample_pso_.Get());
-                d3d12_cmd_list->SetComputeRootSignature(downsample_root_sig_.Get());
-
-                GpuShaderResourceView srv(
-                    gpu_system_, ssaa_rt_tex_, OffsetHandle(downsample_srv_uav_desc_block_.CpuHandle(), 0, descriptor_size));
-                GpuUnorderedAccessView uav(
-                    gpu_system_, target, OffsetHandle(downsample_srv_uav_desc_block_.CpuHandle(), 1, descriptor_size));
-
-                ID3D12DescriptorHeap* heaps[] = {downsample_srv_uav_desc_block_.NativeDescriptorHeap()};
-                d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-                d3d12_cmd_list->SetComputeRootDescriptorTable(
-                    0, OffsetHandle(downsample_srv_uav_desc_block_.GpuHandle(), 0, descriptor_size));
-                d3d12_cmd_list->SetComputeRootDescriptorTable(
-                    1, OffsetHandle(downsample_srv_uav_desc_block_.GpuHandle(), 1, descriptor_size));
-
-                target.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-                constexpr uint32_t BlockDim = 16;
-                d3d12_cmd_list->Dispatch(DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1);
-
-                target.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-                ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+                up_vec = XMVectorSet(0, 1, 0, 0);
             }
 
-            gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            const XMMATRIX view_mtx = XMMatrixLookAtLH(camera_pos, XMVectorSet(0, 0, 0, 1.0f), up_vec);
+
+            XMStoreFloat4x4(&render_cb_->mvp, XMMatrixTranspose(view_mtx * proj_mtx_));
+            render_cb_.UploadToGpu();
+
+            vb.Transition(cmd_list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+            ib.Transition(cmd_list, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+
+            ssaa_ds_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+            D3D12_VERTEX_BUFFER_VIEW vbv{};
+            vbv.BufferLocation = vb.GpuVirtualAddress();
+            vbv.SizeInBytes = vb.Size();
+            vbv.StrideInBytes = sizeof(Mesh::VertexFormat);
+            d3d12_cmd_list->IASetVertexBuffers(0, 1, &vbv);
+
+            D3D12_INDEX_BUFFER_VIEW ibv{};
+            ibv.BufferLocation = ib.GpuVirtualAddress();
+            ibv.SizeInBytes = ib.Size();
+            ibv.Format = DXGI_FORMAT_R32_UINT;
+            d3d12_cmd_list->IASetIndexBuffer(&ibv);
+
+            d3d12_cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+            d3d12_cmd_list->SetPipelineState(render_pso_.Get());
+            d3d12_cmd_list->SetGraphicsRootSignature(render_root_sig_.Get());
+
+            ID3D12DescriptorHeap* heaps[] = {render_srv_uav_desc_block_.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+            d3d12_cmd_list->SetGraphicsRootDescriptorTable(1, render_srv_uav_desc_block_.GpuHandle());
+
+            d3d12_cmd_list->SetGraphicsRootConstantBufferView(0, render_cb_.GpuVirtualAddress());
+
+            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {ssaa_rtv_.CpuHandle()};
+            D3D12_CPU_DESCRIPTOR_HANDLE dsv = ssaa_dsv_.CpuHandle();
+            d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(std::size(rtvs)), rtvs, true, &dsv);
+
+            float clear_clr[] = {0, 0, 0, 0};
+            d3d12_cmd_list->ClearRenderTargetView(rtvs[0], clear_clr, 0, nullptr);
+            d3d12_cmd_list->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1, 0, 0, nullptr);
+
+            const float offset_scale = (scale - 1) / 2;
+            D3D12_VIEWPORT viewport{-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
+                scale * ssaa_rt_tex_.Width(0), scale * ssaa_rt_tex_.Height(0), 0, 1};
+            d3d12_cmd_list->RSSetViewports(1, &viewport);
+
+            D3D12_RECT scissor_rc{0, 0, static_cast<LONG>(ssaa_rt_tex_.Width(0)), static_cast<LONG>(ssaa_rt_tex_.Height(0))};
+            d3d12_cmd_list->RSSetScissorRects(1, &scissor_rc);
+
+            d3d12_cmd_list->DrawIndexedInstanced(num_indices, 1, 0, 0, 0);
+
+            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
+
+        void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target)
+        {
+            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
+
+            uint32_t descriptor_size = gpu_system_.CbvSrvUavDescSize();
+
+            d3d12_cmd_list->SetPipelineState(downsample_pso_.Get());
+            d3d12_cmd_list->SetComputeRootSignature(downsample_root_sig_.Get());
+
+            GpuShaderResourceView srv(
+                gpu_system_, ssaa_rt_tex_, OffsetHandle(downsample_srv_uav_desc_block_.CpuHandle(), 0, descriptor_size));
+            GpuUnorderedAccessView uav(gpu_system_, target, OffsetHandle(downsample_srv_uav_desc_block_.CpuHandle(), 1, descriptor_size));
+
+            ID3D12DescriptorHeap* heaps[] = {downsample_srv_uav_desc_block_.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+            d3d12_cmd_list->SetComputeRootDescriptorTable(0, OffsetHandle(downsample_srv_uav_desc_block_.GpuHandle(), 0, descriptor_size));
+            d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(downsample_srv_uav_desc_block_.GpuHandle(), 1, descriptor_size));
+
+            target.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+            constexpr uint32_t BlockDim = 16;
+            d3d12_cmd_list->Dispatch(DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1);
+
+            target.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
+
+        void BlendWithDiffusion(Texture& mv_diffusion_tex, uint32_t index)
+        {
+            // TODO #13: Port to GPU
+
+            Texture rendered_read_back_tex = ReadbackGpuTexture(gpu_system_, ssaa_rt_tex_);
+
+            XMUINT2 rendered_min(rendered_read_back_tex.Width(), rendered_read_back_tex.Height());
+            XMUINT2 rendered_max(0, 0);
+            uint8_t* rendered_data = rendered_read_back_tex.Data();
+            const uint32_t rendered_width = rendered_read_back_tex.Width();
+            const uint32_t rendered_channels = rendered_read_back_tex.NumChannels();
+            for (uint32_t y = 0; y < rendered_read_back_tex.Height(); ++y)
+            {
+                for (uint32_t x = 0; x < rendered_read_back_tex.Width(); ++x)
+                {
+                    if (rendered_data[(y * rendered_width + x) * rendered_channels + 3] != 0)
+                    {
+                        rendered_min.x = std::min(rendered_min.x, x);
+                        rendered_max.x = std::max(rendered_max.x, x);
+                        rendered_min.y = std::min(rendered_min.y, y);
+                        rendered_max.y = std::max(rendered_max.y, y);
+                    }
+                }
+            }
+
+            constexpr uint32_t AtlasWidth = 2;
+            constexpr uint32_t AtlasHeight = 3;
+            constexpr uint32_t ValidThreshold = 237;
+
+            const uint32_t view_width = mv_diffusion_tex.Width() / AtlasWidth;
+            const uint32_t view_height = mv_diffusion_tex.Height() / AtlasHeight;
+
+            const uint32_t atlas_y = index / AtlasWidth;
+            const uint32_t atlas_x = index - atlas_y * AtlasWidth;
+            const uint32_t atlas_offset_x = atlas_x * view_width;
+            const uint32_t atlas_offset_y = atlas_y * view_height;
+
+            XMUINT2 diffusion_min(view_width, view_height);
+            XMUINT2 diffusion_max(0, 0);
+            const uint8_t* diffusion_data = mv_diffusion_tex.Data();
+            const uint32_t diffusion_width = mv_diffusion_tex.Width();
+            const uint32_t diffusion_channels = mv_diffusion_tex.NumChannels();
+            for (uint32_t y = 0; y < view_height; ++y)
+            {
+                for (uint32_t x = 0; x < view_width; ++x)
+                {
+                    const uint32_t pixel_offset = ((atlas_offset_y + y) * diffusion_width + (atlas_offset_x + x)) * diffusion_channels;
+                    for (uint32_t c = 0; c < 3; ++c)
+                    {
+                        if (diffusion_data[pixel_offset + c] < ValidThreshold)
+                        {
+                            diffusion_min.x = std::min(diffusion_min.x, x);
+                            diffusion_max.x = std::max(diffusion_max.x, x);
+                            diffusion_min.y = std::min(diffusion_min.y, y);
+                            diffusion_max.y = std::max(diffusion_max.y, y);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const float scale_x = static_cast<float>(diffusion_max.x - diffusion_min.x) / (rendered_max.x - rendered_min.x);
+            const float scale_y = static_cast<float>(diffusion_max.y - diffusion_min.y) / (rendered_max.y - rendered_min.y);
+            const float scale = std::min(scale_x, scale_y);
+
+            const auto is_empty = [](const uint8_t* rgb) -> bool {
+                constexpr int empty_color_r = 0xFF;
+                constexpr int empty_color_g = 0x7F;
+                constexpr int empty_color_b = 0x27;
+                return ((std::abs(static_cast<int>(rgb[0]) - empty_color_r) < 2) &&
+                        (std::abs(static_cast<int>(rgb[1]) - empty_color_g) < 20) &&
+                        (std::abs(static_cast<int>(rgb[2]) - empty_color_b) < 15));
+            };
+
+            const int rendered_center_x = rendered_read_back_tex.Width() / 2;
+            const int rendered_center_y = rendered_read_back_tex.Height() / 2;
+            const int diffusion_center_x = view_width / 2;
+            const int diffusion_center_y = view_height / 2;
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+            for (uint32_t y = 0; y < rendered_read_back_tex.Height(); ++y)
+            {
+                const uint32_t src_y = static_cast<uint32_t>(
+                    std::clamp(static_cast<int>(std::round((static_cast<int>(y) - rendered_center_y) * scale)) + diffusion_center_y, 0,
+                        static_cast<int>(view_height - 1)));
+                for (uint32_t x = 0; x < rendered_read_back_tex.Width(); ++x)
+                {
+                    const uint32_t src_x = static_cast<uint32_t>(
+                        std::clamp(static_cast<int>(std::round((static_cast<int>(x) - rendered_center_x) * scale)) + diffusion_center_x, 0,
+                            static_cast<int>(view_width - 1)));
+
+                    const uint32_t diffusion_offset = (atlas_offset_y + src_y) * diffusion_width + (atlas_offset_x + src_x);
+                    const uint32_t rendered_offset = y * rendered_width + x;
+
+                    bool rendered_valid = false;
+                    if ((rendered_data[rendered_offset * rendered_channels + 3] != 0) &&
+                        !is_empty(&rendered_data[rendered_offset * rendered_channels]))
+                    {
+                        rendered_valid = true;
+                    }
+
+                    bool diffusion_valid = false;
+                    for (uint32_t c = 0; c < 3; ++c)
+                    {
+                        if (diffusion_data[diffusion_offset * diffusion_channels + c] < ValidThreshold)
+                        {
+                            diffusion_valid = true;
+                            break;
+                        }
+                    }
+
+                    if (!rendered_valid && diffusion_valid)
+                    {
+                        memcpy(&rendered_data[rendered_offset * rendered_channels], &diffusion_data[diffusion_offset * diffusion_channels],
+                            diffusion_channels);
+                        rendered_data[rendered_offset * rendered_channels + 3] = 0xFF;
+                    }
+                }
+            }
+
+            UploadGpuTexture(gpu_system_, rendered_read_back_tex, ssaa_rt_tex_);
         }
 
     private:
