@@ -41,6 +41,9 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
+    Source/MeshGen/MeshGenerator.cpp
+    Source/MeshGen/MeshGenerator.hpp
+    Source/MeshGen/MeshGenerator.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
     Source/MvDiffusion/MultiViewDiffusion.cpp
@@ -109,6 +112,12 @@ target_compile_definitions(AIHoloImagerLib
         AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
         AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
 )
+if(ai_holo_imager_compiler_msvc)
+    target_compile_definitions(AIHoloImagerLib
+        PRIVATE
+            _CRT_SECURE_NO_WARNINGS
+    )
+endif()
 
 target_link_libraries(AIHoloImagerLib
     PRIVATE
@@ -126,6 +135,7 @@ target_link_libraries(AIHoloImagerLib
 
 set(py_files
     Source/MaskGen/MaskGenerator.py
+    Source/MeshGen/MeshGenerator.py
     Source/MvDiffusion/MultiViewDiffusion.py
 )
 foreach(py_file ${py_files})

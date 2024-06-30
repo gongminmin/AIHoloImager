@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <filesystem>
-
 #include "AIHoloImager/Texture.hpp"
 #include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"

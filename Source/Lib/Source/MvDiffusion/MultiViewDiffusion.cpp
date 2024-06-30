@@ -3,10 +3,6 @@
 
 #include "MultiViewDiffusion.hpp"
 
-#define Py_BUILD_CORE
-#include <Python.h>
-
-#include <iostream>
 #include <string_view>
 
 namespace AIHoloImager
@@ -17,13 +13,9 @@ namespace AIHoloImager
         explicit Impl(PythonSystem& python_system) : python_system_(python_system)
         {
             mv_diffusion_module_ = python_system_.Import("MultiViewDiffusion");
-            PyErr_Print();
             mv_diffusion_class_ = python_system_.GetAttr(*mv_diffusion_module_, "MultiViewDiffusion");
-            PyErr_Print();
             mv_diffusion_ = python_system_.CallObject(*mv_diffusion_class_);
-            PyErr_Print();
             mv_diffusion_gen_method_ = python_system_.GetAttr(*mv_diffusion_, "Gen");
-            PyErr_Print();
 
             pil_module_ = python_system_.Import("PIL");
             image_class_ = python_system_.GetAttr(*pil_module_, "Image");

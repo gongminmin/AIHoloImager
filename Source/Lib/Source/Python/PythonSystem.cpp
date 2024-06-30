@@ -20,6 +20,7 @@ namespace AIHoloImager
             paths.push_back((std::filesystem::path(AIHI_PY_RUNTIME_LIB_DIR) / "DLLs").lexically_normal().wstring());
             paths.push_back(exe_dir.lexically_normal().wstring());
             paths.push_back((exe_dir / "Python/Lib/site-packages").lexically_normal().wstring());
+            paths.push_back((exe_dir / "InstantMesh").lexically_normal().wstring());
 
             PyPreConfig pre_config;
             PyPreConfig_InitIsolatedConfig(&pre_config);
