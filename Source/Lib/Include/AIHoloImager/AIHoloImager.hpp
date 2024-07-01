@@ -1,27 +1,28 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#pragma once
+
 #include <filesystem>
 #include <memory>
-#include <span>
 
+#include "AIHoloImager/Common.hpp"
 #include "AIHoloImager/Mesh.hpp"
-#include "AIHoloImager/Texture.hpp"
 
 namespace AIHoloImager
 {
     class AIHoloImager
     {
     public:
-        explicit AIHoloImager(const std::filesystem::path& tmp_dir);
+        AIHI_API explicit AIHoloImager(const std::filesystem::path& tmp_dir);
         AIHoloImager(const AIHoloImager& rhs) = delete;
-        AIHoloImager(AIHoloImager&& rhs) noexcept;
-        ~AIHoloImager() noexcept;
+        AIHI_API AIHoloImager(AIHoloImager&& rhs) noexcept;
+        AIHI_API ~AIHoloImager() noexcept;
 
         AIHoloImager& operator=(const AIHoloImager& rhs) = delete;
-        AIHoloImager& operator=(AIHoloImager&& rhs) noexcept;
+        AIHI_API AIHoloImager& operator=(AIHoloImager&& rhs) noexcept;
 
-        Mesh Generate(const std::filesystem::path& input_path);
+        AIHI_API Mesh Generate(const std::filesystem::path& input_path);
 
     private:
         class Impl;

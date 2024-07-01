@@ -16,6 +16,7 @@ add_custom_command(OUTPUT ${camera_database_dst}
 
 set(aihi_files
     Include/AIHoloImager/AIHoloImager.hpp
+    Include/AIHoloImager/Common.hpp
     Include/AIHoloImager/Mesh.hpp
     Include/AIHoloImager/Texture.hpp
     Source/AIHoloImager.cpp
@@ -70,7 +71,7 @@ set(aihi_files
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
 source_group("Source" FILES ${camera_database_src})
 
-add_library(AIHoloImagerLib STATIC
+add_library(AIHoloImagerLib SHARED
     ${camera_database_src}
     ${aihi_files}
 )
