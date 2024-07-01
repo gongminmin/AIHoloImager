@@ -17,6 +17,7 @@
 #include "MeshGen/MeshGenerator.hpp"
 #include "MeshRecon//MeshReconstruction.hpp"
 #include "MvRenderer/MultiViewRenderer.hpp"
+#include "PostProcessor/PostProcessor.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 
@@ -37,7 +38,7 @@ namespace AIHoloImager
     public:
         explicit Impl(const std::filesystem::path& tmp_dir)
             : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), python_system_(exe_dir_), sfm_(exe_dir_), mesh_recon_(exe_dir_, python_system_),
-              mv_renderer_(gpu_system_, python_system_, 320, 320), mesh_gen_(python_system_)
+              mv_renderer_(gpu_system_, python_system_, 320, 320), mesh_gen_(python_system_), pp_(exe_dir_)
         {
         }
 
@@ -47,7 +48,7 @@ namespace AIHoloImager
             const auto mesh_recon_result = mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
             const auto mv_renderer_result = mv_renderer_.Render(mesh_recon_result.mesh);
             const auto mesh = mesh_gen_.Generate(mv_renderer_result.multi_view_images, tmp_dir_);
-            return Mesh();
+            return pp_.Process(mesh_recon_result, mesh, 2048, tmp_dir_);
         }
 
     private:
@@ -61,6 +62,7 @@ namespace AIHoloImager
         MeshReconstruction mesh_recon_;
         MultiViewRenderer mv_renderer_;
         MeshGenerator mesh_gen_;
+        PostProcessor pp_;
     };
 
     AIHoloImager::AIHoloImager(const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(tmp_dir))

@@ -71,12 +71,20 @@ int main(int argc, char* argv[])
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    AIHoloImager::AIHoloImager imager(tmp_dir);
-    AIHoloImager::Mesh mesh = imager.Generate(input_path);
+    try
+    {
+        AIHoloImager::AIHoloImager imager(tmp_dir);
+        const AIHoloImager::Mesh mesh = imager.Generate(input_path);
+        AIHoloImager::SaveMesh(mesh, output_path);
+
+        std::filesystem::remove_all(tmp_dir);
+    }
+    catch (std::exception& ex)
+    {
+        std::cout << "ERROR: " << ex.what() << '\n';
+    }
 
     auto elapse = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start);
-
-    AIHoloImager::SaveMesh(mesh, output_path);
 
     std::cout << "Total time: " << elapse.count() << " s\n";
 

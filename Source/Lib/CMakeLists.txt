@@ -54,6 +54,8 @@ set(aihi_files
     Source/MvRenderer/Shader/DownsampleCs.hlsl
     Source/MvRenderer/Shader/RenderVs.hlsl
     Source/MvRenderer/Shader/RenderPs.hlsl
+    Source/PostProcessor/PostProcessor.cpp
+    Source/PostProcessor/PostProcessor.hpp
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/SfM/StructureFromMotion.cpp
