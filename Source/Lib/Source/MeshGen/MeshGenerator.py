@@ -30,10 +30,9 @@ class MeshGenerator:
 
         self.model = instantiate_from_config(config.model_config)
 
-        model_ckpt_path = this_py_dir.joinpath("instant_mesh_large.ckpt")
-
+        model_ckpt_path = this_py_dir.joinpath("Models/instant_mesh_large.ckpt")
         if not model_ckpt_path.exists():
-            print("Downloading pre-trained models...")
+            print("Downloading pre-trained mesh generator models...")
             downloaded_model_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = model_ckpt_path.name, repo_type = "model")
             shutil.copyfile(downloaded_model_ckpt_path, model_ckpt_path)
 

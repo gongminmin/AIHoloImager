@@ -28,8 +28,9 @@ class MultiViewDiffusion:
             self.pipeline.scheduler.config, timestep_spacing = "trailing"
         )
 
-        unet_ckpt_path = this_py_dir.joinpath("diffusion_pytorch_model.bin")
+        unet_ckpt_path = this_py_dir.joinpath("Models/diffusion_pytorch_model.bin")
         if not unet_ckpt_path.exists():
+            print("Downloading pre-trained multi-view diffusion models...")
             downloaded_unet_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = unet_ckpt_path.name, repo_type = "model")
             shutil.copyfile(downloaded_unet_ckpt_path, unet_ckpt_path)
 
