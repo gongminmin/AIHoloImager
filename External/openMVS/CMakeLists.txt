@@ -46,6 +46,7 @@ set(deploy_files
     tiff.dll
     zstd.dll
 )
+set(depends_files)
 foreach(file ${deploy_files})
     add_custom_command(OUTPUT ${output_dir}/${file}
         COMMAND ${CMAKE_COMMAND} -E create_hardlink
@@ -53,10 +54,11 @@ foreach(file ${deploy_files})
             ${output_dir}/${file}
         COMMENT "Deploying ${file}..."
     )
+    list(APPEND depends_files ${output_dir}/${file})
 endforeach()
 
 add_custom_target(DeployOpenMVS ALL
-    DEPENDS ${deploy_files}
+    DEPENDS ${depends_files}
     WORKING_DIRECTORY ${output_dir}
 )
 

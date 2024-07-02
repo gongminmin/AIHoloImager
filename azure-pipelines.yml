@@ -20,27 +20,28 @@ stages:
     strategy:
       matrix:
         Windows_vc143_Debug:
-          vmImage: windows-2022
-          generator: 'Visual Studio 17 2022'
           configuration: Debug
         Windows_vc143_Release:
-          vmImage: windows-2022
-          generator: 'Visual Studio 17 2022'
           configuration: Release
 
     pool:
-      vmImage: $(vmImage)
+      vmImage: windows-2022
 
     steps:
       - checkout: self
         fetchDepth: 1
 
       - bash: |
+          choco install ninja
+        displayName: 'Install'
+
+      - bash: |
           git config --global user.email "dummy@example.com"
           git config --global user.name "Dummy Name"
         displayName: 'Config git'
 
-      - bash: |
-          cmake -B Build -G "$(generator)" .
-          cmake --build Build -j --config $(configuration)
+      - script: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
+          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
+          cmake --build Build -j
         displayName: 'Build'
