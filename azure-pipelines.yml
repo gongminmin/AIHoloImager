@@ -1,6 +1,3 @@
-variables:
-  configuration: Release
-
 stages:
 - stage: CodeFormatting
   jobs:
@@ -22,9 +19,14 @@ stages:
 
     strategy:
       matrix:
-        Windows_vc143:
+        Windows_vc143_Debug:
           vmImage: windows-2022
           generator: 'Visual Studio 17 2022'
+          configuration: Debug
+        Windows_vc143_Release:
+          vmImage: windows-2022
+          generator: 'Visual Studio 17 2022'
+          configuration: Release
 
     pool:
       vmImage: $(vmImage)

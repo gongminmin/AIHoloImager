@@ -29,6 +29,12 @@ DEFINE_UUID_OF(ID3D12PipelineState);
 DEFINE_UUID_OF(ID3D12Resource);
 DEFINE_UUID_OF(ID3D12RootSignature);
 
+#ifdef _DEBUG
+DEFINE_UUID_OF(IDXGIInfoQueue);
+DEFINE_UUID_OF(ID3D12Debug);
+DEFINE_UUID_OF(ID3D12InfoQueue);
+#endif
+
 namespace AIHoloImager
 {
     GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device)
