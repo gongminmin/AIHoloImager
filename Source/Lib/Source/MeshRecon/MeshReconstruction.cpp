@@ -240,7 +240,7 @@ namespace AIHoloImager
         }
 
     private:
-        std::filesystem::path exe_dir_;
+        const std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
 
         PythonSystem& python_system_;

@@ -10,7 +10,6 @@ set(ai_holo_imager_version ${ai_holo_imager_major_version}.${ai_holo_imager_mino
 
 project(AIHoloImager LANGUAGES CXX VERSION ${ai_holo_imager_version})
 
-include(${ai_holo_imager_cmake_module_dir}/Common.cmake)
 include(${ai_holo_imager_cmake_module_dir}/Platform.cmake)
 include(${ai_holo_imager_cmake_module_dir}/Compiler.cmake)
 

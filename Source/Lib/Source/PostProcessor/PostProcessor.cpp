@@ -172,7 +172,7 @@ namespace AIHoloImager
         }
 
     private:
-        std::filesystem::path exe_dir_;
+        const std::filesystem::path exe_dir_;
     };
 
     PostProcessor::PostProcessor(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))

@@ -413,6 +413,7 @@ namespace AIHoloImager
                         Image<RGBColor> image_rgb;
                         if (ReadImage(src_image.string().c_str(), &image_rgb))
                         {
+                            // TODO #15: Port to GPU
                             Image<RGBColor> image_rgb_ud;
                             UndistortImage(image_rgb, &camera, image_rgb_ud, BLACK);
 

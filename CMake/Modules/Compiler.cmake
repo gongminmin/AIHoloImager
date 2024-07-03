@@ -70,7 +70,7 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DAI_HOLO_IMAGER_SHIP")
     foreach(flag_var
         CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_MINSIZEREL)
-        set(${flag_var} "${${flag_var}} /fp:fast /Ob2 /GL /Qpar")
+        set(${flag_var} "${${flag_var}} /fp:fast /Ob2 /GL")
     endforeach()
 
     add_definitions(-DWIN32 -D_WINDOWS)

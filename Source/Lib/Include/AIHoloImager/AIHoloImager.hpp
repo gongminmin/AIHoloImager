@@ -3,10 +3,8 @@
 
 #include <filesystem>
 #include <memory>
-#include <span>
 
 #include "AIHoloImager/Mesh.hpp"
-#include "AIHoloImager/Texture.hpp"
 
 namespace AIHoloImager
 {
