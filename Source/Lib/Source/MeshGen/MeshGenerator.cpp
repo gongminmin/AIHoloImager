@@ -25,7 +25,7 @@ namespace AIHoloImager
             image_frombuffer_method_ = python_system_.GetAttr(*image_class_, "frombuffer");
         }
 
-        Mesh Generate(std::span<const Texture> input_images, const std::filesystem::path& tmp_dir)
+        Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             assert(input_images.size() == 6);
             assert(input_images[0].Width() == 320);
@@ -58,7 +58,7 @@ namespace AIHoloImager
                 py_input_images[i] = python_system_.CallObject(*image_frombuffer_method_, *args);
             }
 
-            auto args = python_system_.MakeTuple(2);
+            auto args = python_system_.MakeTuple(3);
             {
                 auto imgs_args = python_system_.MakeTuple(std::size(py_input_images));
                 for (uint32_t i = 0; i < std::size(py_input_images); ++i)
@@ -67,13 +67,16 @@ namespace AIHoloImager
                 }
                 python_system_.SetTupleItem(*args, 0, std::move(imgs_args));
             }
+            {
+                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(texture_size));
+            }
 
             std::filesystem::path output_mesh_path;
             {
                 auto output_dir = tmp_dir / "Mesh";
                 std::filesystem::create_directories(output_dir);
                 output_mesh_path = output_dir / "Temp.obj";
-                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(output_mesh_path.wstring()));
+                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(output_mesh_path.wstring()));
             }
 
             std::cout << "Generating mesh by AI...\n";
@@ -151,8 +154,8 @@ namespace AIHoloImager
     MeshGenerator::MeshGenerator(MeshGenerator&& other) noexcept = default;
     MeshGenerator& MeshGenerator::operator=(MeshGenerator&& other) noexcept = default;
 
-    Mesh MeshGenerator::Generate(std::span<const Texture> input_images, const std::filesystem::path& tmp_dir)
+    Mesh MeshGenerator::Generate(std::span<const Texture> input_images, uint32_t texture_size, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Generate(std::move(input_images), tmp_dir);
+        return impl_->Generate(std::move(input_images), texture_size, tmp_dir);
     }
 } // namespace AIHoloImager

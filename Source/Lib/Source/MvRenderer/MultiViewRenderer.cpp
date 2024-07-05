@@ -19,8 +19,8 @@
 #include "CompiledShader/RenderPs.h"
 #include "CompiledShader/RenderVs.h"
 
-using namespace DirectX;
 using namespace AIHoloImager;
+using namespace DirectX;
 
 namespace
 {
@@ -30,57 +30,6 @@ namespace
     constexpr float Fov = XM_PI / 6;
     const float MvScale = 1.6f; // The fine-tuned zero123plus in InstantMesh has a scale
                                 // (https://github.com/TencentARC/InstantMesh/commit/34c193cc96eebd46deb7c48a76613753ad777122)
-
-    constexpr uint32_t DivUp(uint32_t a, uint32_t b) noexcept
-    {
-        return (a + b - 1) / b;
-    }
-
-    D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,
-        uint32_t num_descriptor_ranges, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept
-    {
-        D3D12_ROOT_PARAMETER ret;
-        ret.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        ret.DescriptorTable.NumDescriptorRanges = num_descriptor_ranges;
-        ret.DescriptorTable.pDescriptorRanges = descriptor_ranges;
-        ret.ShaderVisibility = visibility;
-        return ret;
-    }
-
-    D3D12_ROOT_PARAMETER CreateRootParameterAsConstantBufferView(
-        uint32_t shader_register, uint32_t register_space = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept
-    {
-        D3D12_ROOT_PARAMETER ret;
-        ret.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        ret.Descriptor.ShaderRegister = shader_register;
-        ret.Descriptor.RegisterSpace = register_space;
-        ret.ShaderVisibility = visibility;
-        return ret;
-    }
-
-    void UploadGpuTexture(GpuSystem& gpu_system, const Texture& tex, GpuTexture2D& output_tex)
-    {
-        if (!output_tex || (output_tex.Width(0) != tex.Width()) || (output_tex.Height(0) != tex.Height()))
-        {
-            output_tex = GpuTexture2D(gpu_system, tex.Width(), tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
-        }
-
-        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
-        output_tex.Upload(gpu_system, cmd_list, 0, tex.Data());
-        gpu_system.Execute(std::move(cmd_list));
-    }
-
-    Texture ReadbackGpuTexture(GpuSystem& gpu_system, const GpuTexture2D& texture)
-    {
-        Texture ret(texture.Width(0), texture.Height(0), FormatSize(texture.Format()));
-
-        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
-        texture.Readback(gpu_system, cmd_list, 0, ret.Data());
-        gpu_system.Execute(std::move(cmd_list));
-
-        return ret;
-    }
 
     void RemoveAlpha(Texture& tex)
     {

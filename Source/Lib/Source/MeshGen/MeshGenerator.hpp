@@ -23,7 +23,7 @@ namespace AIHoloImager
 
         MeshGenerator& operator=(MeshGenerator&& other) noexcept;
 
-        Mesh Generate(std::span<const Texture> input_images, const std::filesystem::path& tmp_dir);
+        Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

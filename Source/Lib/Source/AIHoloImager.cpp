@@ -38,7 +38,7 @@ namespace AIHoloImager
     public:
         explicit Impl(const std::filesystem::path& tmp_dir)
             : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), python_system_(exe_dir_), sfm_(exe_dir_), mesh_recon_(exe_dir_, python_system_),
-              mv_renderer_(gpu_system_, python_system_, 320, 320), mesh_gen_(python_system_), pp_(exe_dir_)
+              mv_renderer_(gpu_system_, python_system_, 320, 320), mesh_gen_(python_system_), pp_(exe_dir_, gpu_system_)
         {
         }
 
@@ -47,8 +47,8 @@ namespace AIHoloImager
             const auto sfm_result = sfm_.Process(input_path, true, tmp_dir_);
             const auto mesh_recon_result = mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
             const auto mv_renderer_result = mv_renderer_.Render(mesh_recon_result.mesh);
-            const auto mesh = mesh_gen_.Generate(mv_renderer_result.multi_view_images, tmp_dir_);
-            return pp_.Process(mesh_recon_result, mesh, 2048, tmp_dir_);
+            const auto mesh = mesh_gen_.Generate(mv_renderer_result.multi_view_images, 2048, tmp_dir_);
+            return pp_.Process(mesh_recon_result, mesh, tmp_dir_);
         }
 
     private:

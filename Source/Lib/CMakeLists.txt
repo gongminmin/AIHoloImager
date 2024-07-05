@@ -56,6 +56,9 @@ set(aihi_files
     Source/MvRenderer/Shader/RenderPs.hlsl
     Source/PostProcessor/PostProcessor.cpp
     Source/PostProcessor/PostProcessor.hpp
+    Source/PostProcessor/Shader/DilateCs.hlsl
+    Source/PostProcessor/Shader/RefillTextureVs.hlsl
+    Source/PostProcessor/Shader/RefillTexturePs.hlsl
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/SfM/StructureFromMotion.cpp
@@ -94,6 +97,9 @@ endmacro()
 AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")
+AddShaderFile(Source/PostProcessor/Shader/DilateCs.hlsl "cs" "main")
+AddShaderFile(Source/PostProcessor/Shader/RefillTextureVs.hlsl "vs" "main")
+AddShaderFile(Source/PostProcessor/Shader/RefillTexturePs.hlsl "ps" "main")
 
 target_include_directories(AIHoloImagerLib
     PUBLIC

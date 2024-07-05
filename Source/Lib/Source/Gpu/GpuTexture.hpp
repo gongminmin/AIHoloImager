@@ -18,6 +18,7 @@
 #include <directx/d3d12.h>
 #include <directx/dxgiformat.h>
 
+#include "AIHoloImager/Texture.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -73,4 +74,7 @@ namespace AIHoloImager
     uint32_t FormatSize(DXGI_FORMAT fmt) noexcept;
     uint32_t NumPlanes(DXGI_FORMAT fmt) noexcept;
     void SubResourceToMipLevelPlane(uint32_t sub_resource, uint32_t num_mip_levels, uint32_t& mip, uint32_t& plane);
+
+    void UploadGpuTexture(GpuSystem& gpu_system, const Texture& tex, GpuTexture2D& output_tex);
+    Texture ReadbackGpuTexture(GpuSystem& gpu_system, const GpuTexture2D& texture);
 } // namespace AIHoloImager

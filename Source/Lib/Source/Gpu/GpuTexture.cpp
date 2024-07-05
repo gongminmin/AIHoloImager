@@ -59,6 +59,30 @@ namespace AIHoloImager
         mip = sub_resource - plane * num_mip_levels;
     }
 
+    void UploadGpuTexture(GpuSystem& gpu_system, const Texture& tex, GpuTexture2D& output_tex)
+    {
+        if (!output_tex || (output_tex.Width(0) != tex.Width()) || (output_tex.Height(0) != tex.Height()))
+        {
+            output_tex = GpuTexture2D(gpu_system, tex.Width(), tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
+        }
+
+        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+        output_tex.Upload(gpu_system, cmd_list, 0, tex.Data());
+        gpu_system.Execute(std::move(cmd_list));
+    }
+
+    Texture ReadbackGpuTexture(GpuSystem& gpu_system, const GpuTexture2D& texture)
+    {
+        Texture ret(texture.Width(0), texture.Height(0), FormatSize(texture.Format()));
+
+        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        texture.Readback(gpu_system, cmd_list, 0, ret.Data());
+        gpu_system.Execute(std::move(cmd_list));
+
+        return ret;
+    }
+
 
     GpuTexture2D::GpuTexture2D() = default;
 

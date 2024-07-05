@@ -26,7 +26,6 @@ class MeshGenerator:
         config = OmegaConf.load(this_py_dir.joinpath("InstantMesh/configs/instant-mesh-large.yaml"))
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.infer_config = config.infer_config
 
         self.model = instantiate_from_config(config.model_config)
 
@@ -46,7 +45,7 @@ class MeshGenerator:
 
         self.input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = radius).to(self.device)
 
-    def Gen(self, images, output_mesh_path : Path):
+    def Gen(self, images, texture_size, output_mesh_path : Path):
         mv_images = torch.empty(6, 3, 320, 320) # views, channels, height, width
         for i in range(0, 6):
             assert(images[i].size == (320, 320))
@@ -66,7 +65,7 @@ class MeshGenerator:
             mesh_out = self.model.extract_mesh(
                 planes,
                 use_texture_map = export_texmap,
-                **self.infer_config,
+                texture_resolution = texture_size
             )
             if export_texmap:
                 vertices, faces, uvs, mesh_tex_idx, tex_map = mesh_out
