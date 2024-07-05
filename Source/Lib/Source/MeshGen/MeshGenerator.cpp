@@ -3,8 +3,10 @@
 
 #include "MeshGenerator.hpp"
 
+#include <array>
 #include <cassert>
 #include <iostream>
+#include <set>
 
 namespace AIHoloImager
 {
@@ -77,7 +79,54 @@ namespace AIHoloImager
             std::cout << "Generating mesh by AI...\n";
             python_system_.CallObject(*mesh_generator_gen_method_, *args);
 
-            return LoadMesh(output_mesh_path);
+            Mesh ai_mesh = LoadMesh(output_mesh_path);
+
+            // The mesh from obj format is a triangle soup. Need to join closest vertices to make it a real mesh.
+
+            Mesh joined_mesh(0, static_cast<uint32_t>(ai_mesh.Indices().size()));
+            joined_mesh.AlbedoTexture(ai_mesh.AlbedoTexture());
+
+            constexpr float Scale = 1e5f;
+
+            std::set<std::array<int32_t, 5>> unique_int_vertex;
+            for (uint32_t i = 0; i < ai_mesh.Vertices().size(); ++i)
+            {
+                const auto& vertex = ai_mesh.Vertex(i);
+                std::array<int32_t, 5> int_vertex = {static_cast<int32_t>(vertex.pos.x * Scale + 0.5f),
+                    static_cast<int32_t>(vertex.pos.y * Scale + 0.5f), static_cast<int32_t>(vertex.pos.z * Scale + 0.5f),
+                    static_cast<int32_t>(vertex.texcoord.x * Scale + 0.5f), static_cast<int32_t>(vertex.texcoord.y * Scale + 0.5f)};
+                unique_int_vertex.emplace(std::move(int_vertex));
+            }
+
+            std::vector<std::array<int32_t, 5>> unique_int_vertex_vec(unique_int_vertex.begin(), unique_int_vertex.end());
+
+            joined_mesh.ResizeVertices(static_cast<uint32_t>(unique_int_vertex_vec.size()));
+            std::vector<uint32_t> unique_vertex_mapping(ai_mesh.Vertices().size());
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+            for (uint32_t i = 0; i < ai_mesh.Vertices().size(); ++i)
+            {
+                const auto& vertex = ai_mesh.Vertex(i);
+                const std::array<int32_t, 5> int_vertex = {static_cast<int32_t>(vertex.pos.x * Scale + 0.5f),
+                    static_cast<int32_t>(vertex.pos.y * Scale + 0.5f), static_cast<int32_t>(vertex.pos.z * Scale + 0.5f),
+                    static_cast<int32_t>(vertex.texcoord.x * Scale + 0.5f), static_cast<int32_t>(vertex.texcoord.y * Scale + 0.5f)};
+
+                const auto iter = std::lower_bound(unique_int_vertex_vec.begin(), unique_int_vertex_vec.end(), int_vertex);
+                assert(*iter == int_vertex);
+
+                const uint32_t found_index = static_cast<uint32_t>(iter - unique_int_vertex_vec.begin());
+                joined_mesh.Vertex(found_index) = vertex;
+                unique_vertex_mapping[i] = found_index;
+            }
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Indices().size()); ++i)
+            {
+                joined_mesh.Index(i) = unique_vertex_mapping[ai_mesh.Index(i)];
+            }
+
+            return joined_mesh;
         }
 
     private:

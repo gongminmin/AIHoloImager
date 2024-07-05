@@ -5,8 +5,6 @@
 
 #include <algorithm>
 #include <format>
-#include <set>
-#include <tuple>
 
 using namespace DirectX;
 
@@ -22,68 +20,25 @@ namespace AIHoloImager
         Mesh Process(const MeshReconstruction::Result& recon_input, const Mesh& ai_mesh, uint32_t max_texture_size,
             const std::filesystem::path& tmp_dir)
         {
-            std::set<std::tuple<int32_t, int32_t, int32_t>> unique_int_positions;
-            for (uint32_t i = 0; i < ai_mesh.Vertices().size(); ++i)
-            {
-                const auto& pos = ai_mesh.Vertex(i).pos;
-                std::tuple<int32_t, int32_t, int32_t> int_pos = {static_cast<int32_t>(pos.x * 1e5f + 0.5f),
-                    static_cast<uint32_t>(pos.y * 1e5f + 0.5f), static_cast<uint32_t>(pos.z * 1e5f + 0.5f)};
-                unique_int_positions.emplace(std::move(int_pos));
-            }
-
-            std::vector<std::tuple<int32_t, int32_t, int32_t>> unique_int_positions_vec(
-                unique_int_positions.begin(), unique_int_positions.end());
-            std::vector<XMFLOAT3> unique_positions_vec(unique_int_positions_vec.size());
-            std::vector<uint32_t> unique_position_mapping(ai_mesh.Vertices().size());
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < ai_mesh.Vertices().size(); ++i)
-            {
-                const auto& pos = ai_mesh.Vertex(i).pos;
-                const std::tuple<int32_t, int32_t, int32_t> int_pos = {static_cast<int32_t>(pos.x * 1e5f + 0.5f),
-                    static_cast<uint32_t>(pos.y * 1e5f + 0.5f), static_cast<uint32_t>(pos.z * 1e5f + 0.5f)};
-
-                const uint32_t found_pos_index =
-                    static_cast<uint32_t>(std::lower_bound(unique_int_positions_vec.begin(), unique_int_positions_vec.end(), int_pos) -
-                                          unique_int_positions_vec.begin());
-
-                unique_positions_vec[found_pos_index] = pos;
-                unique_position_mapping[i] = found_pos_index;
-            }
-
-            Mesh pos_only_mesh(static_cast<uint32_t>(unique_positions_vec.size()), 0);
+            // TextureMesh can't handle mesh with texture coordinate. Clear it.
+            Mesh pos_only_mesh(static_cast<uint32_t>(ai_mesh.Vertices().size()), static_cast<uint32_t>(ai_mesh.Indices().size()));
 
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < static_cast<uint32_t>(unique_positions_vec.size()); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Vertices().size()); ++i)
             {
                 auto& vertex = pos_only_mesh.Vertex(i);
-                vertex.pos.x = unique_positions_vec[i].x;
-                vertex.pos.y = unique_positions_vec[i].y;
-                vertex.pos.z = unique_positions_vec[i].z;
+                vertex.pos = ai_mesh.Vertex(i).pos;
                 vertex.texcoord = XMFLOAT2(0, 0);
             }
 
-            std::vector<uint32_t> indices;
-            indices.reserve(ai_mesh.Indices().size());
-            for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Indices().size() / 3); ++i)
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Indices().size()); ++i)
             {
-                const uint32_t tri[] = {unique_position_mapping[ai_mesh.Index(i * 3 + 0)],
-                    unique_position_mapping[ai_mesh.Index(i * 3 + 1)], unique_position_mapping[ai_mesh.Index(i * 3 + 2)]};
-                if ((tri[0] != tri[1]) && (tri[1] != tri[2]) && (tri[2] != tri[0]))
-                {
-                    indices.push_back(tri[0]);
-                    indices.push_back(tri[1]);
-                    indices.push_back(tri[2]);
-                }
-            }
-
-            pos_only_mesh.ResizeIndices(static_cast<uint32_t>(indices.size()));
-            for (uint32_t i = 0; i < indices.size(); ++i)
-            {
-                pos_only_mesh.Index(i) = indices[i];
+                pos_only_mesh.Index(i) = ai_mesh.Index(i);
             }
 
             const XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
