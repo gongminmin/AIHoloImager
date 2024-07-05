@@ -1,3 +1,6 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
 Texture2D diffuse_tex : register(t0);
 
 SamplerState point_sampler : register(s0);

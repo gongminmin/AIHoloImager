@@ -1,3 +1,6 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
 cbuffer param_cb : register(b0)
 {
     float4x4 mvp;
@@ -5,7 +8,6 @@ cbuffer param_cb : register(b0)
 
 void main(float3 pos : POSITION,
           float2 texcoord0 : TEXCOORD0,
-          uint vid : SV_VertexID,
           out float2 out_texcoord0 : TEXCOORD0,
           out float4 out_pos : SV_Position)
 {

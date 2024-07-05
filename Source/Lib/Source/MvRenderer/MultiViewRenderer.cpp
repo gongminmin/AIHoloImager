@@ -84,16 +84,20 @@ namespace
 
     void RemoveAlpha(Texture& tex)
     {
-        if (tex.NumChannels() != 3)
+        const uint32_t channels = tex.NumChannels();
+        if (channels != 3)
         {
             Texture ret(tex.Width(), tex.Height(), 3);
+
+            const uint8_t* src = tex.Data();
+            uint8_t* dst = ret.Data();
 
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
             for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
             {
-                memmove(&ret.Data()[i * 3], &tex.Data()[i * tex.NumChannels()], 3);
+                memcpy(&dst[i * 3], &src[i * channels], 3);
             }
 
             tex = std::move(ret);
@@ -134,20 +138,20 @@ namespace AIHoloImager
             dsv_desc_block_ = gpu_system_.AllocDsvDescBlock(1);
             dsv_descriptor_size_ = gpu_system_.DsvDescSize();
 
-            const DXGI_FORMAT color_fmt = DXGI_FORMAT_R8G8B8A8_UNORM;
-            const DXGI_FORMAT ds_fmt = DXGI_FORMAT_D32_FLOAT;
+            constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
+            constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
 
-            ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, color_fmt,
+            ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ColorFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON, L"ssaa_rt_tex_");
             ssaa_rtv_ = GpuRenderTargetView(
                 gpu_system_, ssaa_rt_tex_, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block_.CpuHandle(), 0, rtv_descriptor_size_));
 
-            ssaa_ds_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ds_fmt,
+            ssaa_ds_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, DsFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_COMMON, L"ssaa_ds_tex_");
             ssaa_dsv_ = GpuDepthStencilView(
                 gpu_system_, ssaa_ds_tex_, DXGI_FORMAT_UNKNOWN, OffsetHandle(dsv_desc_block_.CpuHandle(), 0, dsv_descriptor_size_));
 
-            init_view_tex_ = GpuTexture2D(gpu_system_, width, height, 1, color_fmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            init_view_tex_ = GpuTexture2D(gpu_system_, width, height, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COMMON, L"init_view_tex_");
             for (size_t i = 0; i < std::size(multi_view_texs_); ++i)
             {
@@ -155,7 +159,7 @@ namespace AIHoloImager
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, std::format(L"multi_view_tex_{}", i));
             }
 
-            ComPtr<ID3D12Device> d3d12_device(gpu_system_.NativeDevice());
+            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
             {
                 render_cb_ = ConstantBuffer<RenderConstantBuffer>(gpu_system_, 1, L"render_cb_");
@@ -288,9 +292,13 @@ namespace AIHoloImager
         ~Impl() noexcept
         {
             render_cb_ = ConstantBuffer<RenderConstantBuffer>();
-            render_root_sig_ = nullptr;
-            render_pso_ = nullptr;
+            render_root_sig_.Reset();
+            render_pso_.Reset();
             gpu_system_.DeallocCbvSrvUavDescBlock(std::move(render_srv_uav_desc_block_));
+
+            downsample_root_sig_.Reset();
+            downsample_pso_.Reset();
+            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(downsample_srv_uav_desc_block_));
 
             ssaa_dsv_.Reset();
             ssaa_ds_tex_.Reset();

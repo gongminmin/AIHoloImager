@@ -1,3 +1,6 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
 #define BLOCK_DIM 16
 #define SSAA_SCALE 4
 

@@ -102,7 +102,7 @@ namespace AIHoloImager
 
                 ++adapter_id;
 
-                adapter = nullptr;
+                adapter.Reset();
             }
         }
 
@@ -368,16 +368,16 @@ namespace AIHoloImager
 
         for (auto& cmd_queue : cmd_queues_)
         {
-            cmd_queue.cmd_queue = nullptr;
+            cmd_queue.cmd_queue.Reset();
             for (auto& cmd_allocator : cmd_queue.cmd_allocators)
             {
-                cmd_allocator = nullptr;
+                cmd_allocator.Reset();
             }
             cmd_queue.cmd_list_pool.clear();
         }
 
-        fence_ = nullptr;
-        device_ = nullptr;
+        fence_.Reset();
+        device_.Reset();
 
         frame_index_ = 0;
     }
