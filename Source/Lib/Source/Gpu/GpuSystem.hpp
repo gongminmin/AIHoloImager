@@ -42,7 +42,7 @@ namespace AIHoloImager
         };
 
     public:
-        explicit GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device = nullptr);
+        GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device = nullptr, bool enable_debug = false);
         ~GpuSystem() noexcept;
 
         GpuSystem(GpuSystem&& other) noexcept;

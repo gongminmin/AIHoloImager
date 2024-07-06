@@ -7,10 +7,7 @@
 #include <list>
 
 #include <dxgi1_6.h>
-
-#ifdef _DEBUG
-    #include <dxgidebug.h>
-#endif
+#include <dxgidebug.h>
 
 #include "GpuCommandList.hpp"
 #include "Util/ErrorHandling.hpp"
@@ -20,24 +17,21 @@
 DEFINE_UUID_OF(IDXGIAdapter1);
 DEFINE_UUID_OF(IDXGIFactory4);
 DEFINE_UUID_OF(IDXGIFactory6);
+DEFINE_UUID_OF(IDXGIInfoQueue);
 DEFINE_UUID_OF(ID3D12CommandAllocator);
 DEFINE_UUID_OF(ID3D12CommandQueue);
 DEFINE_UUID_OF(ID3D12DescriptorHeap);
+DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
 DEFINE_UUID_OF(ID3D12Fence);
+DEFINE_UUID_OF(ID3D12InfoQueue);
 DEFINE_UUID_OF(ID3D12PipelineState);
 DEFINE_UUID_OF(ID3D12Resource);
 DEFINE_UUID_OF(ID3D12RootSignature);
 
-#ifdef _DEBUG
-DEFINE_UUID_OF(IDXGIInfoQueue);
-DEFINE_UUID_OF(ID3D12Debug);
-DEFINE_UUID_OF(ID3D12InfoQueue);
-#endif
-
 namespace AIHoloImager
 {
-    GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device)
+    GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_debug)
         : upload_mem_allocator_(*this, true), readback_mem_allocator_(*this, false),
           rtv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
@@ -46,28 +40,30 @@ namespace AIHoloImager
         bool debug_dxgi = false;
 
         ComPtr<IDXGIFactory4> dxgi_factory;
-#ifdef _DEBUG
-        ComPtr<ID3D12Debug> debug_ctrl;
-        if (SUCCEEDED(::D3D12GetDebugInterface(UuidOf<ID3D12Debug>(), debug_ctrl.PutVoid())))
-        {
-            debug_ctrl->EnableDebugLayer();
-        }
-        else
-        {
-            ::OutputDebugStringW(L"WARNING: Direct3D Debug Device is not available\n");
-        }
 
-        ComPtr<IDXGIInfoQueue> dxgi_info_queue;
-        if (SUCCEEDED(::DXGIGetDebugInterface1(0, UuidOf<IDXGIInfoQueue>(), dxgi_info_queue.PutVoid())))
+        if (enable_debug)
         {
-            debug_dxgi = true;
+            ComPtr<ID3D12Debug> debug_ctrl;
+            if (SUCCEEDED(::D3D12GetDebugInterface(UuidOf<ID3D12Debug>(), debug_ctrl.PutVoid())))
+            {
+                debug_ctrl->EnableDebugLayer();
+            }
+            else
+            {
+                ::OutputDebugStringW(L"WARNING: Direct3D Debug Device is not available\n");
+            }
 
-            TIFHR(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, UuidOf<IDXGIFactory4>(), dxgi_factory.PutVoid()));
+            ComPtr<IDXGIInfoQueue> dxgi_info_queue;
+            if (SUCCEEDED(::DXGIGetDebugInterface1(0, UuidOf<IDXGIInfoQueue>(), dxgi_info_queue.PutVoid())))
+            {
+                debug_dxgi = true;
 
-            dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
-            dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+                TIFHR(::CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, UuidOf<IDXGIFactory4>(), dxgi_factory.PutVoid()));
+
+                dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+                dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+            }
         }
-#endif
 
         if (!debug_dxgi)
         {
@@ -106,25 +102,24 @@ namespace AIHoloImager
             }
         }
 
-#ifdef _DEBUG
-        if (!device_)
+        if (enable_debug && !device_)
         {
             ComPtr<IDXGIAdapter1> adapter;
             TIFHR(dxgi_factory->EnumWarpAdapter(UuidOf<IDXGIAdapter1>(), adapter.PutVoid()));
 
             TIFHR(::D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, UuidOf<ID3D12Device>(), device_.PutVoid()));
         }
-#endif
 
         Verify(device_ != nullptr);
 
-#ifdef _DEBUG
-        if (ComPtr<ID3D12InfoQueue> d3d_info_queue = device_.TryAs<ID3D12InfoQueue>())
+        if (enable_debug)
         {
-            d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-            d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            if (ComPtr<ID3D12InfoQueue> d3d_info_queue = device_.TryAs<ID3D12InfoQueue>())
+            {
+                d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+                d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            }
         }
-#endif
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
         {
