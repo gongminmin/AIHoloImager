@@ -16,34 +16,7 @@
 #include "CompiledShader/RefillTexturePs.h"
 #include "CompiledShader/RefillTextureVs.h"
 
-using namespace AIHoloImager;
 using namespace DirectX;
-
-namespace
-{
-    void Ensure4Channel(Texture& tex)
-    {
-        const uint32_t channels = tex.NumChannels();
-        if (channels != 4)
-        {
-            Texture ret(tex.Width(), tex.Height(), 3);
-
-            const uint8_t* src = tex.Data();
-            uint8_t* dst = ret.Data();
-
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
-            {
-                memcpy(&dst[i * 4], &src[i * channels], channels);
-                dst[i * 4 + 3] = 0xFF;
-            }
-
-            tex = std::move(ret);
-        }
-    }
-} // namespace
 
 namespace AIHoloImager
 {

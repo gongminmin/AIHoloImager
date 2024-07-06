@@ -31,28 +31,6 @@ namespace
     const float MvScale = 1.6f; // The fine-tuned zero123plus in InstantMesh has a scale
                                 // (https://github.com/TencentARC/InstantMesh/commit/34c193cc96eebd46deb7c48a76613753ad777122)
 
-    void RemoveAlpha(Texture& tex)
-    {
-        const uint32_t channels = tex.NumChannels();
-        if (channels != 3)
-        {
-            Texture ret(tex.Width(), tex.Height(), 3);
-
-            const uint8_t* src = tex.Data();
-            uint8_t* dst = ret.Data();
-
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
-            {
-                memcpy(&dst[i * 3], &src[i * channels], 3);
-            }
-
-            tex = std::move(ret);
-        }
-    }
-
     XMVECTOR SphericalCameraPose(float azimuth_deg, float elevation_deg, float radius)
     {
         const float azimuth = XMConvertToRadians(azimuth_deg);

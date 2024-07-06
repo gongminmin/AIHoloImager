@@ -18,6 +18,7 @@
 #endif
 
 #include "AIHoloImager/Texture.hpp"
+#include "Gpu/GpuSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -67,7 +68,7 @@ namespace AIHoloImager
         };
 
     public:
-        explicit StructureFromMotion(const std::filesystem::path& exe_dir);
+        StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system);
         StructureFromMotion(StructureFromMotion&& other) noexcept;
         ~StructureFromMotion() noexcept;
 

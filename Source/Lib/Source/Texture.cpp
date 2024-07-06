@@ -155,4 +155,49 @@ namespace AIHoloImager
                 tex.Data(), static_cast<int>(tex.Width() * tex.NumChannels()));
         }
     }
+
+    void Ensure4Channel(Texture& tex)
+    {
+        const uint32_t channels = tex.NumChannels();
+        if (channels != 4)
+        {
+            Texture ret(tex.Width(), tex.Height(), 3);
+
+            const uint8_t* src = tex.Data();
+            uint8_t* dst = ret.Data();
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
+            {
+                memcpy(&dst[i * 4], &src[i * channels], channels);
+                dst[i * 4 + 3] = 0xFF;
+            }
+
+            tex = std::move(ret);
+        }
+    }
+
+    void RemoveAlpha(Texture& tex)
+    {
+        const uint32_t channels = tex.NumChannels();
+        if (channels != 3)
+        {
+            Texture ret(tex.Width(), tex.Height(), 3);
+
+            const uint8_t* src = tex.Data();
+            uint8_t* dst = ret.Data();
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
+            {
+                memcpy(&dst[i * 3], &src[i * channels], 3);
+            }
+
+            tex = std::move(ret);
+        }
+    }
 } // namespace AIHoloImager

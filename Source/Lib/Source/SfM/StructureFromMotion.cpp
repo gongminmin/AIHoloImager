@@ -8,6 +8,8 @@
 #include <map>
 #include <stdexcept>
 
+#include <DirectXMath.h>
+
 #ifndef OPENMVG_USE_OPENMP
     #define OPENMVG_USE_OPENMP
 #endif
@@ -50,12 +52,21 @@
     #pragma warning(pop)
 #endif
 
+#include "Gpu/GpuBufferHelper.hpp"
+#include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuTexture.hpp"
+
+#include "CompiledShader/UndistortCs.h"
+
 using namespace openMVG;
 using namespace openMVG::cameras;
 using namespace openMVG::sfm;
 using namespace openMVG::image;
 using namespace openMVG::matching;
 using namespace openMVG::matching_image_collection;
+
+using namespace DirectX;
 
 namespace AIHoloImager
 {
@@ -69,8 +80,75 @@ namespace AIHoloImager
         };
 
     public:
-        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
+        explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
+            srv_descriptor_size_ = gpu_system.CbvSrvUavDescSize();
+
+            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
+
+            {
+                undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
+                undistort_srv_uav_desc_block_ = gpu_system_.AllocCbvSrvUavDescBlock(2);
+
+                const D3D12_DESCRIPTOR_RANGE ranges[] = {
+                    {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+                    {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+                };
+
+                const D3D12_ROOT_PARAMETER root_params[] = {
+                    CreateRootParameterAsConstantBufferView(0),
+                    CreateRootParameterAsDescriptorTable(&ranges[0], 1),
+                    CreateRootParameterAsDescriptorTable(&ranges[1], 1),
+                };
+
+                D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
+                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.MaxAnisotropy = 16;
+                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                bilinear_sampler_desc.MinLOD = 0.0f;
+                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+                bilinear_sampler_desc.ShaderRegister = 0;
+
+                const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
+                    static_cast<uint32_t>(std::size(root_params)), root_params, 1, &bilinear_sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_NONE};
+
+                ComPtr<ID3DBlob> blob;
+                ComPtr<ID3DBlob> error;
+                HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
+                if (FAILED(hr))
+                {
+                    ::OutputDebugStringW(
+                        std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer()))
+                            .c_str());
+                    TIFHR(hr);
+                }
+
+                TIFHR(d3d12_device->CreateRootSignature(
+                    1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), undistort_root_sig_.PutVoid()));
+
+                D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc;
+                pso_desc.pRootSignature = undistort_root_sig_.Get();
+                pso_desc.CS.pShaderBytecode = UndistortCs_shader;
+                pso_desc.CS.BytecodeLength = sizeof(UndistortCs_shader);
+                pso_desc.NodeMask = 0;
+                pso_desc.CachedPSO.pCachedBlob = nullptr;
+                pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
+                pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+                TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), undistort_pso_.PutVoid()));
+            }
+        }
+
+        ~Impl() noexcept
+        {
+            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>();
+            undistort_root_sig_.Reset();
+            undistort_pso_.Reset();
+            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(undistort_srv_uav_desc_block_));
+
+            gpu_system_.WaitForGpu();
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
@@ -384,6 +462,9 @@ namespace AIHoloImager
                 result_intrinsic.k = cam.K();
             }
 
+            GpuTexture2D distort_gpu_tex;
+            GpuTexture2D undistort_gpu_tex;
+
             ret.views.reserve(sfm_data.views.size());
             const std::filesystem::path image_dir = sfm_data.s_root_path;
             std::map<IndexT, uint32_t> view_id_mapping;
@@ -406,27 +487,42 @@ namespace AIHoloImager
                     result_view.rotation = mvg_pose.rotation();
                     result_view.center = mvg_pose.center();
 
-                    bool just_copy = true;
+                    result_view.image = LoadTexture(src_image);
+
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        Image<RGBColor> image_rgb;
-                        if (ReadImage(src_image.string().c_str(), &image_rgb))
+                        Ensure4Channel(result_view.image);
+
+                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image.Width()) ||
+                            (distort_gpu_tex.Height(0) != result_view.image.Height()))
                         {
-                            // TODO #15: Port to GPU
-                            Image<RGBColor> image_rgb_ud;
-                            UndistortImage(image_rgb, &camera, image_rgb_ud, BLACK);
-
-                            result_view.image = Texture(image_rgb_ud.Width(), image_rgb_ud.Height(), 3);
-                            std::memcpy(result_view.image.Data(), image_rgb_ud.data(), result_view.image.DataSize());
-
-                            just_copy = false;
+                            distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image.Width(), result_view.image.Height(), 1, ColorFmt,
+                                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
                         }
-                    }
+                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image.Width()) ||
+                            (undistort_gpu_tex.Height(0) != result_view.image.Height()))
+                        {
+                            undistort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image.Width(), result_view.image.Height(), 1,
+                                ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
+                        }
 
-                    if (just_copy)
-                    {
-                        result_view.image = LoadTexture(src_image);
+                        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                        distort_gpu_tex.Upload(gpu_system_, cmd_list, 0, result_view.image.Data());
+
+                        assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
+                        Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
+
+                        if (result_view.image.NumChannels() != 4)
+                        {
+                            result_view.image =
+                                Texture(undistort_gpu_tex.Width(0), undistort_gpu_tex.Height(0), FormatSize(undistort_gpu_tex.Format()));
+                        }
+                        undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image.Data());
+
+                        gpu_system_.Execute(std::move(cmd_list));
+                        gpu_system_.WaitForGpu();
                     }
                 }
                 else
@@ -454,14 +550,84 @@ namespace AIHoloImager
                 }
             }
 
+            distort_gpu_tex.Reset();
+            undistort_gpu_tex.Reset();
+
+            gpu_system_.WaitForGpu();
+
             return ret;
+        }
+
+        void Undistort(
+            GpuCommandList& cmd_list, const Pinhole_Intrinsic_Radial_K3& camera, const GpuTexture2D& input_tex, GpuTexture2D& output_tex)
+        {
+            constexpr uint32_t BlockDim = 16;
+
+            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
+
+            const auto& k = camera.K();
+            undistort_cb_->k.x = static_cast<float>(k(0, 0));
+            undistort_cb_->k.y = static_cast<float>(k(0, 2));
+            undistort_cb_->k.z = static_cast<float>(k(1, 2));
+            const auto& params = camera.getParams();
+            undistort_cb_->params.x = static_cast<float>(params[3]);
+            undistort_cb_->params.y = static_cast<float>(params[4]);
+            undistort_cb_->params.z = static_cast<float>(params[5]);
+            undistort_cb_->width_height.x = static_cast<float>(input_tex.Width(0));
+            undistort_cb_->width_height.y = static_cast<float>(input_tex.Height(0));
+            undistort_cb_->width_height.z = 1.0f / input_tex.Width(0);
+            undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
+            undistort_cb_.UploadToGpu();
+
+            d3d12_cmd_list->SetPipelineState(undistort_pso_.Get());
+            d3d12_cmd_list->SetComputeRootSignature(undistort_root_sig_.Get());
+
+            ID3D12DescriptorHeap* heaps[] = {undistort_srv_uav_desc_block_.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+
+            input_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+            GpuShaderResourceView srv(
+                gpu_system_, input_tex, OffsetHandle(undistort_srv_uav_desc_block_.CpuHandle(), 0, srv_descriptor_size_));
+            GpuUnorderedAccessView uav(
+                gpu_system_, output_tex, OffsetHandle(undistort_srv_uav_desc_block_.CpuHandle(), 1, srv_descriptor_size_));
+
+            d3d12_cmd_list->SetComputeRootConstantBufferView(0, undistort_cb_.GpuVirtualAddress());
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                1, OffsetHandle(undistort_srv_uav_desc_block_.GpuHandle(), 0, srv_descriptor_size_));
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                2, OffsetHandle(undistort_srv_uav_desc_block_.GpuHandle(), 1, srv_descriptor_size_));
+
+            d3d12_cmd_list->Dispatch(DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1);
+
+            output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
         }
 
     private:
         const std::filesystem::path exe_dir_;
+
+        GpuSystem& gpu_system_;
+        uint32_t srv_descriptor_size_;
+
+        struct UndistortConstantBuffer
+        {
+            XMFLOAT3 k;
+            float padding_0;
+            XMFLOAT3 params;
+            float padding_1;
+            XMFLOAT4 width_height;
+        };
+        ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
+        ComPtr<ID3D12RootSignature> undistort_root_sig_;
+        ComPtr<ID3D12PipelineState> undistort_pso_;
+        GpuDescriptorBlock undistort_srv_uav_desc_block_;
+
+        static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
     };
 
-    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
+    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
+        : impl_(std::make_unique<Impl>(exe_dir, gpu_system))
     {
     }
 

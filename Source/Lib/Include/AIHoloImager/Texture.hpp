@@ -38,4 +38,7 @@ namespace AIHoloImager
 
     Texture LoadTexture(const std::filesystem::path& path);
     void SaveTexture(const Texture& tex, const std::filesystem::path& path);
+
+    void Ensure4Channel(Texture& tex);
+    void RemoveAlpha(Texture& tex);
 } // namespace AIHoloImager
