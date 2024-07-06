@@ -270,20 +270,19 @@ namespace AIHoloImager
         auto* d3d12_device = gpu_system.NativeDevice();
 
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
-        uint32_t num_row = 0;
-        uint64_t row_size_in_bytes = 0;
         uint64_t required_size = 0;
-        d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, &num_row, &row_size_in_bytes, &required_size);
+        d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
 
         auto upload_mem_block =
             gpu_system.AllocUploadMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
 
-        assert(row_size_in_bytes >= width * format_size);
+        assert(layout.Footprint.RowPitch >= width * format_size);
 
         uint8_t* tex_data = upload_mem_block.CpuAddress<uint8_t>();
         for (uint32_t y = 0; y < height; ++y)
         {
-            memcpy(tex_data + y * row_size_in_bytes, reinterpret_cast<const uint8_t*>(data) + y * width * format_size, width * format_size);
+            memcpy(tex_data + y * layout.Footprint.RowPitch, reinterpret_cast<const uint8_t*>(data) + y * width * format_size,
+                width * format_size);
         }
 
         layout.Offset += upload_mem_block.Offset();
@@ -328,10 +327,8 @@ namespace AIHoloImager
         auto* d3d12_device = gpu_system.NativeDevice();
 
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
-        uint32_t num_row = 0;
-        uint64_t row_size_in_bytes = 0;
         uint64_t required_size = 0;
-        d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, &num_row, &row_size_in_bytes, &required_size);
+        d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
 
         auto readback_mem_block =
             gpu_system.AllocReadbackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
@@ -368,13 +365,13 @@ namespace AIHoloImager
         gpu_system.ExecuteAndReset(cmd_list);
         gpu_system.WaitForGpu();
 
-        assert(row_size_in_bytes >= width * format_size);
+        assert(layout.Footprint.RowPitch >= width * format_size);
 
         uint8_t* u8_data = reinterpret_cast<uint8_t*>(data);
         const uint8_t* tex_data = readback_mem_block.CpuAddress<uint8_t>();
         for (uint32_t y = 0; y < height; ++y)
         {
-            memcpy(&u8_data[y * width * format_size], tex_data + y * row_size_in_bytes, width * format_size);
+            memcpy(&u8_data[y * width * format_size], tex_data + y * layout.Footprint.RowPitch, width * format_size);
         }
 
         gpu_system.DeallocReadbackMemBlock(std::move(readback_mem_block));
