@@ -25,15 +25,9 @@ namespace AIHoloImager
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
-            rtv_desc_block_ = gpu_system_.AllocRtvDescBlock(1);
-            rtv_descriptor_size_ = gpu_system_.RtvDescSize();
-            srv_descriptor_size_ = gpu_system.CbvSrvUavDescSize();
-
             ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
             {
-                refill_texture_srv_uav_desc_block_ = gpu_system_.AllocCbvSrvUavDescBlock(2);
-
                 const D3D12_DESCRIPTOR_RANGE ranges[] = {
                     {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
                 };
@@ -116,8 +110,6 @@ namespace AIHoloImager
                 TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), refill_texture_pso_.PutVoid()));
             }
             {
-                dilate_srv_uav_desc_block_ = gpu_system_.AllocCbvSrvUavDescBlock(2 * DilateTimes);
-
                 const D3D12_DESCRIPTOR_RANGE ranges[] = {
                     {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
                     {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
@@ -161,8 +153,6 @@ namespace AIHoloImager
         {
             refill_texture_root_sig_ = nullptr;
             refill_texture_pso_ = nullptr;
-            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(refill_texture_srv_uav_desc_block_));
-            gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
 
             gpu_system_.WaitForGpu();
         }
@@ -427,16 +417,21 @@ namespace AIHoloImager
 
             vb.Transition(cmd_list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
+            auto rtv_desc_block = gpu_system_.AllocRtvDescBlock(1);
+            const uint32_t rtv_descriptor_size = gpu_system_.RtvDescSize();
+
             GpuTexture2D blended_tex(gpu_system_, ai_tex.Width(0), ai_tex.Height(0), 1, ColorFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
                 L"blended_tex");
             GpuRenderTargetView rtv(
-                gpu_system_, blended_tex, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block_.CpuHandle(), 0, rtv_descriptor_size_));
+                gpu_system_, blended_tex, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block.CpuHandle(), 0, rtv_descriptor_size));
 
-            GpuShaderResourceView ai_tex_srv(
-                gpu_system_, ai_tex, OffsetHandle(refill_texture_srv_uav_desc_block_.CpuHandle(), 0, srv_descriptor_size_));
+            auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
+            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
+
+            GpuShaderResourceView ai_tex_srv(gpu_system_, ai_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
             GpuShaderResourceView photo_tex_srv(
-                gpu_system_, photo_tex, OffsetHandle(refill_texture_srv_uav_desc_block_.CpuHandle(), 1, srv_descriptor_size_));
+                gpu_system_, photo_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
 
             D3D12_VERTEX_BUFFER_VIEW vbv{};
             vbv.BufferLocation = vb.GpuVirtualAddress();
@@ -449,9 +444,9 @@ namespace AIHoloImager
             d3d12_cmd_list->SetPipelineState(refill_texture_pso_.Get());
             d3d12_cmd_list->SetGraphicsRootSignature(refill_texture_root_sig_.Get());
 
-            ID3D12DescriptorHeap* heaps[] = {refill_texture_srv_uav_desc_block_.NativeDescriptorHeap()};
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
             d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-            d3d12_cmd_list->SetGraphicsRootDescriptorTable(0, refill_texture_srv_uav_desc_block_.GpuHandle());
+            d3d12_cmd_list->SetGraphicsRootDescriptorTable(0, srv_uav_desc_block.GpuHandle());
 
             blended_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -469,6 +464,9 @@ namespace AIHoloImager
 
             d3d12_cmd_list->DrawInstanced(static_cast<uint32_t>(vb.Size() / sizeof(TextureTransferVertexFormat)), 1, 0, 0);
 
+            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+            gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block));
+
             return blended_tex;
         }
 
@@ -476,13 +474,12 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
+            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
+
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
             d3d12_cmd_list->SetPipelineState(dilate_pso_.Get());
             d3d12_cmd_list->SetComputeRootSignature(dilate_root_sig_.Get());
-
-            ID3D12DescriptorHeap* heaps[] = {dilate_srv_uav_desc_block_.NativeDescriptorHeap()};
-            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
             GpuTexture2D* texs[] = {&tex, &tmp_tex};
             for (uint32_t i = 0; i < DilateTimes; ++i)
@@ -490,20 +487,23 @@ namespace AIHoloImager
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
 
+                auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
+
+                ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
+                d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+
                 texs[src]->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
                 texs[dst]->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-                GpuShaderResourceView srv(
-                    gpu_system_, *texs[src], OffsetHandle(dilate_srv_uav_desc_block_.CpuHandle(), i * 2 + 0, srv_descriptor_size_));
-                GpuUnorderedAccessView uav(
-                    gpu_system_, *texs[dst], OffsetHandle(dilate_srv_uav_desc_block_.CpuHandle(), i * 2 + 1, srv_descriptor_size_));
+                GpuShaderResourceView srv(gpu_system_, *texs[src], OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
+                GpuUnorderedAccessView uav(gpu_system_, *texs[dst], OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
 
-                d3d12_cmd_list->SetComputeRootDescriptorTable(
-                    0, OffsetHandle(dilate_srv_uav_desc_block_.GpuHandle(), i * 2 + 0, srv_descriptor_size_));
-                d3d12_cmd_list->SetComputeRootDescriptorTable(
-                    1, OffsetHandle(dilate_srv_uav_desc_block_.GpuHandle(), i * 2 + 1, srv_descriptor_size_));
+                d3d12_cmd_list->SetComputeRootDescriptorTable(0, OffsetHandle(srv_uav_desc_block.GpuHandle(), 0, srv_descriptor_size));
+                d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(srv_uav_desc_block.GpuHandle(), 1, srv_descriptor_size));
 
                 d3d12_cmd_list->Dispatch(DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1);
+
+                gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
             }
 
             tmp_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
@@ -523,17 +523,11 @@ namespace AIHoloImager
 
         GpuSystem& gpu_system_;
 
-        GpuDescriptorBlock rtv_desc_block_;
-        uint32_t rtv_descriptor_size_;
-        uint32_t srv_descriptor_size_;
-
         ComPtr<ID3D12RootSignature> refill_texture_root_sig_;
         ComPtr<ID3D12PipelineState> refill_texture_pso_;
-        GpuDescriptorBlock refill_texture_srv_uav_desc_block_;
 
         ComPtr<ID3D12RootSignature> dilate_root_sig_;
         ComPtr<ID3D12PipelineState> dilate_pso_;
-        GpuDescriptorBlock dilate_srv_uav_desc_block_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
         static constexpr uint32_t DilateTimes = 4;

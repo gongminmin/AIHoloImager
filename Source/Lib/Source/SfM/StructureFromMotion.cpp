@@ -82,13 +82,10 @@ namespace AIHoloImager
     public:
         explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
-            srv_descriptor_size_ = gpu_system.CbvSrvUavDescSize();
-
             ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
             {
                 undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
-                undistort_srv_uav_desc_block_ = gpu_system_.AllocCbvSrvUavDescBlock(2);
 
                 const D3D12_DESCRIPTOR_RANGE ranges[] = {
                     {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
@@ -146,7 +143,6 @@ namespace AIHoloImager
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>();
             undistort_root_sig_.Reset();
             undistort_pso_.Reset();
-            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(undistort_srv_uav_desc_block_));
 
             gpu_system_.WaitForGpu();
         }
@@ -582,33 +578,33 @@ namespace AIHoloImager
             d3d12_cmd_list->SetPipelineState(undistort_pso_.Get());
             d3d12_cmd_list->SetComputeRootSignature(undistort_root_sig_.Get());
 
-            ID3D12DescriptorHeap* heaps[] = {undistort_srv_uav_desc_block_.NativeDescriptorHeap()};
+            auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
+            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
+
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
             d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
             input_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
             output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            GpuShaderResourceView srv(
-                gpu_system_, input_tex, OffsetHandle(undistort_srv_uav_desc_block_.CpuHandle(), 0, srv_descriptor_size_));
-            GpuUnorderedAccessView uav(
-                gpu_system_, output_tex, OffsetHandle(undistort_srv_uav_desc_block_.CpuHandle(), 1, srv_descriptor_size_));
+            GpuShaderResourceView srv(gpu_system_, input_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
+            GpuUnorderedAccessView uav(gpu_system_, output_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
 
             d3d12_cmd_list->SetComputeRootConstantBufferView(0, undistort_cb_.GpuVirtualAddress());
-            d3d12_cmd_list->SetComputeRootDescriptorTable(
-                1, OffsetHandle(undistort_srv_uav_desc_block_.GpuHandle(), 0, srv_descriptor_size_));
-            d3d12_cmd_list->SetComputeRootDescriptorTable(
-                2, OffsetHandle(undistort_srv_uav_desc_block_.GpuHandle(), 1, srv_descriptor_size_));
+            d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(srv_uav_desc_block.GpuHandle(), 0, srv_descriptor_size));
+            d3d12_cmd_list->SetComputeRootDescriptorTable(2, OffsetHandle(srv_uav_desc_block.GpuHandle(), 1, srv_descriptor_size));
 
             d3d12_cmd_list->Dispatch(DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1);
 
             output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+
+            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
         }
 
     private:
         const std::filesystem::path exe_dir_;
 
         GpuSystem& gpu_system_;
-        uint32_t srv_descriptor_size_;
 
         struct UndistortConstantBuffer
         {
@@ -621,7 +617,6 @@ namespace AIHoloImager
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
         ComPtr<ID3D12RootSignature> undistort_root_sig_;
         ComPtr<ID3D12PipelineState> undistort_pso_;
-        GpuDescriptorBlock undistort_srv_uav_desc_block_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
     };
