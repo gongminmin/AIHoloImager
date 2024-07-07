@@ -9,6 +9,7 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
 #include "Util/ComPtr.hpp"
@@ -173,44 +174,8 @@ namespace AIHoloImager
                 pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
                 TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), render_pso_.PutVoid()));
             }
-            {
-                const D3D12_DESCRIPTOR_RANGE ranges[] = {
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                };
 
-                const D3D12_ROOT_PARAMETER root_params[] = {
-                    CreateRootParameterAsDescriptorTable(&ranges[0], 1),
-                    CreateRootParameterAsDescriptorTable(&ranges[1], 1),
-                };
-
-                const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-                    static_cast<uint32_t>(std::size(root_params)), root_params, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE};
-
-                ComPtr<ID3DBlob> blob;
-                ComPtr<ID3DBlob> error;
-                HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
-                if (FAILED(hr))
-                {
-                    ::OutputDebugStringW(
-                        std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer()))
-                            .c_str());
-                    TIFHR(hr);
-                }
-
-                TIFHR(d3d12_device->CreateRootSignature(
-                    1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), downsample_root_sig_.PutVoid()));
-
-                D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc;
-                pso_desc.pRootSignature = downsample_root_sig_.Get();
-                pso_desc.CS.pShaderBytecode = DownsampleCs_shader;
-                pso_desc.CS.BytecodeLength = sizeof(DownsampleCs_shader);
-                pso_desc.NodeMask = 0;
-                pso_desc.CachedPSO.pCachedBlob = nullptr;
-                pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
-                pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-                TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), downsample_pso_.PutVoid()));
-            }
+            downsample_shader_ = GpuComputeShader(gpu_system_, std::span(DownsampleCs_shader, sizeof(DownsampleCs_shader)), 0, 1, 1, {});
         }
 
         ~Impl() noexcept
@@ -218,9 +183,6 @@ namespace AIHoloImager
             render_cb_ = ConstantBuffer<RenderConstantBuffer>();
             render_root_sig_.Reset();
             render_pso_.Reset();
-
-            downsample_root_sig_.Reset();
-            downsample_pso_.Reset();
 
             ssaa_dsv_.Reset();
             ssaa_ds_tex_.Reset();
@@ -381,32 +343,12 @@ namespace AIHoloImager
 
         void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target)
         {
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
-            const uint32_t descriptor_size = gpu_system_.CbvSrvUavDescSize();
-
-            d3d12_cmd_list->SetPipelineState(downsample_pso_.Get());
-            d3d12_cmd_list->SetComputeRootSignature(downsample_root_sig_.Get());
-
-            auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
-
-            GpuShaderResourceView srv(gpu_system_, ssaa_rt_tex_, OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, descriptor_size));
-            GpuUnorderedAccessView uav(gpu_system_, target, OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, descriptor_size));
-
-            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
-            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-            d3d12_cmd_list->SetComputeRootDescriptorTable(0, OffsetHandle(srv_uav_desc_block.GpuHandle(), 0, descriptor_size));
-            d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(srv_uav_desc_block.GpuHandle(), 1, descriptor_size));
-
-            target.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
             constexpr uint32_t BlockDim = 16;
-            d3d12_cmd_list->Dispatch(DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1);
 
-            target.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-
-            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+            const GpuTexture2D* srv_tex = &ssaa_rt_tex_;
+            GpuTexture2D* uav_tex = &target;
+            cmd_list.Compute(downsample_shader_, DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1, {},
+                std::span(&srv_tex, 1), std::span(&uav_tex, 1));
         }
 
         void BlendWithDiffusion(Texture& mv_diffusion_tex, uint32_t index)
@@ -561,8 +503,7 @@ namespace AIHoloImager
         ComPtr<ID3D12RootSignature> render_root_sig_;
         ComPtr<ID3D12PipelineState> render_pso_;
 
-        ComPtr<ID3D12RootSignature> downsample_root_sig_;
-        ComPtr<ID3D12PipelineState> downsample_pso_;
+        GpuComputeShader downsample_shader_;
     };
 
     MultiViewRenderer::MultiViewRenderer(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)

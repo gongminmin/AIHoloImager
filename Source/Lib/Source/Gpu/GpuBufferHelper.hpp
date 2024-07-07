@@ -12,10 +12,21 @@
 
 namespace AIHoloImager
 {
-    template <typename T>
-    class ConstantBuffer final
+    class GeneralConstantBuffer
     {
-        static_assert(std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>);
+    public:
+        virtual ~GeneralConstantBuffer() noexcept = default;
+
+        virtual D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress(uint32_t frame_index = 0) const noexcept = 0;
+
+    protected:
+        GeneralConstantBuffer() noexcept = default;
+    };
+
+    template <typename T>
+    class ConstantBuffer final : public GeneralConstantBuffer
+    {
+        static_assert(std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && ((sizeof(T) & 0xF) == 0));
 
     public:
         using value_type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
@@ -24,7 +35,7 @@ namespace AIHoloImager
         ConstantBuffer() noexcept = default;
 
         explicit ConstantBuffer(GpuSystem& gpu_system, uint32_t num_frames = 1, std::wstring_view name = L"")
-            : buffer_(gpu_system, num_frames * Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type)), name),
+            : buffer_(gpu_system, num_frames * Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type)), std::move(name)),
               aligned_size_(Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type))), num_frames_(num_frames)
         {
         }
@@ -90,7 +101,7 @@ namespace AIHoloImager
             return buffer_.NativeResource();
         }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress(uint32_t frame_index = 0) const noexcept
+        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress(uint32_t frame_index = 0) const noexcept override
         {
             return buffer_.GpuVirtualAddress() + frame_index * aligned_size_;
         }

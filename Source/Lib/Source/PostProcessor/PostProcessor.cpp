@@ -7,9 +7,11 @@
 #include <array>
 #include <format>
 #include <set>
+#include <span>
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 
 #include "CompiledShader/DilateCs.h"
@@ -109,44 +111,8 @@ namespace AIHoloImager
                 pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
                 TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), refill_texture_pso_.PutVoid()));
             }
-            {
-                const D3D12_DESCRIPTOR_RANGE ranges[] = {
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                };
 
-                const D3D12_ROOT_PARAMETER root_params[] = {
-                    CreateRootParameterAsDescriptorTable(&ranges[0], 1),
-                    CreateRootParameterAsDescriptorTable(&ranges[1], 1),
-                };
-
-                const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-                    static_cast<uint32_t>(std::size(root_params)), root_params, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE};
-
-                ComPtr<ID3DBlob> blob;
-                ComPtr<ID3DBlob> error;
-                HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
-                if (FAILED(hr))
-                {
-                    ::OutputDebugStringW(
-                        std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer()))
-                            .c_str());
-                    TIFHR(hr);
-                }
-
-                TIFHR(d3d12_device->CreateRootSignature(
-                    1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), dilate_root_sig_.PutVoid()));
-
-                D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc;
-                pso_desc.pRootSignature = dilate_root_sig_.Get();
-                pso_desc.CS.pShaderBytecode = DilateCs_shader;
-                pso_desc.CS.BytecodeLength = sizeof(DilateCs_shader);
-                pso_desc.NodeMask = 0;
-                pso_desc.CachedPSO.pCachedBlob = nullptr;
-                pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
-                pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-                TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), dilate_pso_.PutVoid()));
-            }
+            dilate_shader_ = GpuComputeShader(gpu_system_, {DilateCs_shader, sizeof(DilateCs_shader)}, 0, 1, 1, {});
         }
 
         ~Impl()
@@ -474,48 +440,27 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
-            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
-
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
-            d3d12_cmd_list->SetPipelineState(dilate_pso_.Get());
-            d3d12_cmd_list->SetComputeRootSignature(dilate_root_sig_.Get());
-
             GpuTexture2D* texs[] = {&tex, &tmp_tex};
             for (uint32_t i = 0; i < DilateTimes; ++i)
             {
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
 
-                auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
-
-                ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
-                d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-
-                texs[src]->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-                texs[dst]->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-                GpuShaderResourceView srv(gpu_system_, *texs[src], OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
-                GpuUnorderedAccessView uav(gpu_system_, *texs[dst], OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
-
-                d3d12_cmd_list->SetComputeRootDescriptorTable(0, OffsetHandle(srv_uav_desc_block.GpuHandle(), 0, srv_descriptor_size));
-                d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(srv_uav_desc_block.GpuHandle(), 1, srv_descriptor_size));
-
-                d3d12_cmd_list->Dispatch(DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1);
-
-                gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+                const GpuTexture2D* srv_tex = texs[src];
+                GpuTexture2D* uav_tex = texs[dst];
+                cmd_list.Compute(dilate_shader_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, {},
+                    std::span(&srv_tex, 1), std::span(&uav_tex, 1));
             }
-
-            tmp_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
 
             if constexpr (DilateTimes & 1)
             {
                 tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
 
+                auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
                 d3d12_cmd_list->CopyResource(tex.NativeTexture(), tmp_tex.NativeTexture());
-            }
 
-            tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+                tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            }
         }
 
     private:
@@ -526,8 +471,7 @@ namespace AIHoloImager
         ComPtr<ID3D12RootSignature> refill_texture_root_sig_;
         ComPtr<ID3D12PipelineState> refill_texture_pso_;
 
-        ComPtr<ID3D12RootSignature> dilate_root_sig_;
-        ComPtr<ID3D12PipelineState> dilate_pso_;
+        GpuComputeShader dilate_shader_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
         static constexpr uint32_t DilateTimes = 4;

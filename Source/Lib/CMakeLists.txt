@@ -34,6 +34,8 @@ set(aihi_files
     Source/Gpu/GpuMemoryAllocator.hpp
     Source/Gpu/GpuResourceViews.cpp
     Source/Gpu/GpuResourceViews.hpp
+    Source/Gpu/GpuShader.cpp
+    Source/Gpu/GpuShader.hpp
     Source/Gpu/GpuSystem.cpp
     Source/Gpu/GpuSystem.hpp
     Source/Gpu/GpuTexture.cpp

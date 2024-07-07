@@ -55,6 +55,7 @@
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 
 #include "CompiledShader/UndistortCs.h"
@@ -82,67 +83,25 @@ namespace AIHoloImager
     public:
         explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
-            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
+            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
 
-            {
-                undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
-
-                const D3D12_DESCRIPTOR_RANGE ranges[] = {
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-                };
-
-                const D3D12_ROOT_PARAMETER root_params[] = {
-                    CreateRootParameterAsConstantBufferView(0),
-                    CreateRootParameterAsDescriptorTable(&ranges[0], 1),
-                    CreateRootParameterAsDescriptorTable(&ranges[1], 1),
-                };
-
-                D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
-                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.MaxAnisotropy = 16;
-                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                bilinear_sampler_desc.MinLOD = 0.0f;
-                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                bilinear_sampler_desc.ShaderRegister = 0;
-
-                const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-                    static_cast<uint32_t>(std::size(root_params)), root_params, 1, &bilinear_sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_NONE};
-
-                ComPtr<ID3DBlob> blob;
-                ComPtr<ID3DBlob> error;
-                HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
-                if (FAILED(hr))
-                {
-                    ::OutputDebugStringW(
-                        std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer()))
-                            .c_str());
-                    TIFHR(hr);
-                }
-
-                TIFHR(d3d12_device->CreateRootSignature(
-                    1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), undistort_root_sig_.PutVoid()));
-
-                D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc;
-                pso_desc.pRootSignature = undistort_root_sig_.Get();
-                pso_desc.CS.pShaderBytecode = UndistortCs_shader;
-                pso_desc.CS.BytecodeLength = sizeof(UndistortCs_shader);
-                pso_desc.NodeMask = 0;
-                pso_desc.CachedPSO.pCachedBlob = nullptr;
-                pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
-                pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-                TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), undistort_pso_.PutVoid()));
-            }
+            D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
+            bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+            bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+            bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+            bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+            bilinear_sampler_desc.MaxAnisotropy = 16;
+            bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+            bilinear_sampler_desc.MinLOD = 0.0f;
+            bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+            bilinear_sampler_desc.ShaderRegister = 0;
+            undistort_shader_ = GpuComputeShader(
+                gpu_system_, std::span(UndistortCs_shader, sizeof(UndistortCs_shader)), 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
         }
 
         ~Impl() noexcept
         {
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>();
-            undistort_root_sig_.Reset();
-            undistort_pso_.Reset();
 
             gpu_system_.WaitForGpu();
         }
@@ -559,8 +518,6 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
             const auto& k = camera.K();
             undistort_cb_->k.x = static_cast<float>(k(0, 0));
             undistort_cb_->k.y = static_cast<float>(k(0, 2));
@@ -575,30 +532,11 @@ namespace AIHoloImager
             undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb_.UploadToGpu();
 
-            d3d12_cmd_list->SetPipelineState(undistort_pso_.Get());
-            d3d12_cmd_list->SetComputeRootSignature(undistort_root_sig_.Get());
-
-            auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
-            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
-
-            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
-            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-
-            input_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-            output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-            GpuShaderResourceView srv(gpu_system_, input_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
-            GpuUnorderedAccessView uav(gpu_system_, output_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
-
-            d3d12_cmd_list->SetComputeRootConstantBufferView(0, undistort_cb_.GpuVirtualAddress());
-            d3d12_cmd_list->SetComputeRootDescriptorTable(1, OffsetHandle(srv_uav_desc_block.GpuHandle(), 0, srv_descriptor_size));
-            d3d12_cmd_list->SetComputeRootDescriptorTable(2, OffsetHandle(srv_uav_desc_block.GpuHandle(), 1, srv_descriptor_size));
-
-            d3d12_cmd_list->Dispatch(DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1);
-
-            output_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-
-            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+            const GeneralConstantBuffer* cb = &undistort_cb_;
+            const GpuTexture2D* srv_texs = &input_tex;
+            GpuTexture2D* uav_tex = &output_tex;
+            cmd_list.Compute(undistort_shader_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1,
+                std::span(&cb, 1), std::span(&srv_texs, 1), std::span(&uav_tex, 1));
         }
 
     private:
@@ -615,8 +553,7 @@ namespace AIHoloImager
             XMFLOAT4 width_height;
         };
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
-        ComPtr<ID3D12RootSignature> undistort_root_sig_;
-        ComPtr<ID3D12PipelineState> undistort_pso_;
+        GpuComputeShader undistort_shader_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
     };
