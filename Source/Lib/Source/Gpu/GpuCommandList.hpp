@@ -6,6 +6,7 @@
 #include <span>
 
 #include "GpuBufferHelper.hpp"
+#include "GpuResourceViews.hpp"
 #include "GpuShader.hpp"
 #include "GpuSystem.hpp"
 #include "GpuTexture.hpp"
@@ -16,6 +17,41 @@ namespace AIHoloImager
     class GpuCommandList
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandList)
+
+    public:
+        struct VertexBufferBinding
+        {
+            const GpuBuffer* vb;
+            uint32_t offset;
+            uint32_t stride;
+        };
+
+        struct IndexBufferBinding
+        {
+            const GpuBuffer* ib;
+            uint32_t offset;
+            DXGI_FORMAT format;
+        };
+
+        struct ShaderBinding
+        {
+            GpuRenderPipeline::ShaderStage stage;
+            std::span<const GeneralConstantBuffer*> cbs;
+            std::span<const GpuTexture2D*> srvs;
+            std::span<GpuTexture2D*> uavs;
+        };
+
+        struct RenderTargetBinding
+        {
+            GpuTexture2D* texture;
+            GpuRenderTargetView* rtv;
+        };
+
+        struct DepthStencilBinding
+        {
+            GpuTexture2D* texture;
+            GpuDepthStencilView* dsv;
+        };
 
     public:
         GpuCommandList() noexcept;
@@ -41,6 +77,9 @@ namespace AIHoloImager
 
         void Transition(std::span<const D3D12_RESOURCE_BARRIER> barriers) const noexcept;
 
+        void Render(std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num, const GpuRenderPipeline& pipeline,
+            std::span<const ShaderBinding> shader_bindings, std::span<const RenderTargetBinding> rts, const DepthStencilBinding* ds,
+            std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects);
         void Compute(const GpuComputeShader& shader, uint32_t group_x, uint32_t group_y, uint32_t group_z,
             std::span<const GeneralConstantBuffer*> cbs, std::span<const GpuTexture2D*> srvs, std::span<GpuTexture2D*> uavs);
 

@@ -79,6 +79,208 @@ namespace AIHoloImager
         }
     }
 
+    void GpuCommandList::Render(std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
+        const GpuRenderPipeline& pipeline, std::span<const ShaderBinding> shader_bindings, std::span<const RenderTargetBinding> rts,
+        const DepthStencilBinding* ds, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects)
+    {
+        ID3D12GraphicsCommandList* d3d12_cmd_list;
+        switch (type_)
+        {
+        case GpuSystem::CmdQueueType::Render:
+        case GpuSystem::CmdQueueType::Compute:
+            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            break;
+
+        default:
+            throw std::runtime_error("This type of command list can't Compute.");
+        }
+
+        if (!vbs.empty())
+        {
+            auto vbvs = std::make_unique<D3D12_VERTEX_BUFFER_VIEW[]>(vbs.size());
+            for (uint32_t i = 0; i < static_cast<uint32_t>(vbs.size()); ++i)
+            {
+                const auto& vb_binding = vbs[i];
+                assert(vb_binding.vb != nullptr);
+
+                vb_binding.vb->Transition(*this, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+                D3D12_VERTEX_BUFFER_VIEW& vbv = vbvs[i];
+                vbv.BufferLocation = vb_binding.vb->GpuVirtualAddress() + vb_binding.offset;
+                vbv.SizeInBytes = vb_binding.vb->Size();
+                vbv.StrideInBytes = vb_binding.stride;
+            }
+            d3d12_cmd_list->IASetVertexBuffers(0, static_cast<uint32_t>(vbs.size()), vbvs.get());
+        }
+        else
+        {
+            d3d12_cmd_list->IASetVertexBuffers(0, 0, nullptr);
+        }
+
+        if (ib != nullptr)
+        {
+            ib->ib->Transition(*this, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+
+            D3D12_INDEX_BUFFER_VIEW ibv;
+            ibv.BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset;
+            ibv.SizeInBytes = ib->ib->Size();
+            ibv.Format = ib->format;
+            d3d12_cmd_list->IASetIndexBuffer(&ibv);
+        }
+        else
+        {
+            d3d12_cmd_list->IASetIndexBuffer(nullptr);
+        }
+
+        for (const auto& rt : rts)
+        {
+            if (rt.texture != nullptr)
+            {
+                rt.texture->Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            }
+        }
+        if (ds != nullptr)
+        {
+            ds->texture->Transition(*this, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        }
+
+        d3d12_cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
+        d3d12_cmd_list->SetGraphicsRootSignature(pipeline.NativeRootSignature());
+
+        std::vector<const ShaderBinding*> sorted_shader_bindings;
+        sorted_shader_bindings.reserve(shader_bindings.size());
+        for (uint32_t i = 0; i < static_cast<uint32_t>(GpuRenderPipeline::ShaderStage::Num); ++i)
+        {
+            for (const auto& binding : shader_bindings)
+            {
+                if (static_cast<GpuRenderPipeline::ShaderStage>(i) == binding.stage)
+                {
+                    sorted_shader_bindings.push_back(&binding);
+                    break;
+                }
+            }
+        }
+
+        uint32_t num_descs = 0;
+        for (const auto& binding : sorted_shader_bindings)
+        {
+            num_descs += static_cast<uint32_t>(binding->srvs.size() + binding->uavs.size());
+        }
+
+        GpuDescriptorBlock srv_uav_desc_block;
+        if (num_descs > 0)
+        {
+            srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock(num_descs);
+
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+        }
+        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
+
+        uint32_t heap_base = 0;
+        uint32_t root_index = 0;
+
+        for (const auto& binding : sorted_shader_bindings)
+        {
+            if (!binding->srvs.empty())
+            {
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
+                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                std::vector<GpuShaderResourceView> sr_views;
+                for (const auto& srv : binding->srvs)
+                {
+                    if (srv != nullptr)
+                    {
+                        srv->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
+                        sr_views.push_back(GpuShaderResourceView(
+                            *gpu_system_, *srv, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
+                    }
+
+                    ++heap_base;
+                }
+
+                ++root_index;
+            }
+
+            if (!binding->uavs.empty())
+            {
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
+                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                std::vector<GpuUnorderedAccessView> ua_views;
+                for (const auto* uav : binding->uavs)
+                {
+                    if (uav != nullptr)
+                    {
+                        uav->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                        ua_views.push_back(GpuUnorderedAccessView(
+                            *gpu_system_, *uav, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
+                    }
+
+                    ++heap_base;
+                }
+
+                ++root_index;
+            }
+
+            for (const auto* cb : binding->cbs)
+            {
+                d3d12_cmd_list->SetGraphicsRootConstantBufferView(root_index, cb->GpuVirtualAddress());
+                ++root_index;
+            }
+        }
+
+        std::unique_ptr<D3D12_CPU_DESCRIPTOR_HANDLE[]> rt_views;
+        if (!rts.empty())
+        {
+            rt_views = std::make_unique<D3D12_CPU_DESCRIPTOR_HANDLE[]>(rts.size());
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rts.size()); ++i)
+            {
+                if (rts[i].rtv != nullptr)
+                {
+                    rt_views[i] = rts[i].rtv->CpuHandle();
+                }
+                else
+                {
+                    rt_views[i] = {~0ULL};
+                }
+            }
+        }
+        D3D12_CPU_DESCRIPTOR_HANDLE ds_view;
+        if (ds != nullptr)
+        {
+            ds_view = ds->dsv->CpuHandle();
+        }
+        d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(rts.size()), rt_views.get(), true, ds != nullptr ? &ds_view : nullptr);
+
+        d3d12_cmd_list->RSSetViewports(static_cast<uint32_t>(viewports.size()), viewports.data());
+        d3d12_cmd_list->RSSetScissorRects(static_cast<uint32_t>(scissor_rects.size()), scissor_rects.data());
+
+        if (ib != nullptr)
+        {
+            d3d12_cmd_list->DrawIndexedInstanced(num, 1, 0, 0, 0);
+        }
+        else
+        {
+            d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
+        }
+
+        for (auto& rt : rts)
+        {
+            if (rt.texture != nullptr)
+            {
+                rt.texture->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
+            }
+        }
+        if (ds != nullptr)
+        {
+            ds->texture->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
+        }
+
+        gpu_system_->DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+    }
+
     void GpuCommandList::Compute(const GpuComputeShader& shader, uint32_t group_x, uint32_t group_y, uint32_t group_z,
         std::span<const GeneralConstantBuffer*> cbs, std::span<const GpuTexture2D*> srvs, std::span<GpuTexture2D*> uavs)
     {

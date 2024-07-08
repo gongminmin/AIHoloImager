@@ -27,17 +27,20 @@ namespace AIHoloImager
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
-            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
-
             {
-                const D3D12_DESCRIPTOR_RANGE ranges[] = {
-                    {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+                const GpuRenderPipeline::ShaderInfo shaders[] = {
+                    {GpuRenderPipeline::ShaderStage::Vertex, RefillTextureVs_shader, 0, 0, 0},
+                    {GpuRenderPipeline::ShaderStage::Pixel, RefillTexturePs_shader, 0, 2, 0},
                 };
 
-                const D3D12_ROOT_PARAMETER root_params[] = {
-                    // PS
-                    CreateRootParameterAsDescriptorTable(&ranges[0], 1),
-                };
+                const DXGI_FORMAT rtv_formats[] = {ColorFmt};
+
+                GpuRenderPipeline::States states;
+                states.cull_mode = GpuRenderPipeline::CullMode::None;
+                states.conservative_raster = true;
+                states.depth_enable = false;
+                states.rtv_formats = rtv_formats;
+                states.dsv_format = DXGI_FORMAT_UNKNOWN;
 
                 D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
                 bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -50,66 +53,13 @@ namespace AIHoloImager
                 bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
                 bilinear_sampler_desc.ShaderRegister = 0;
 
-                const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {static_cast<uint32_t>(std::size(root_params)), root_params, 1,
-                    &bilinear_sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT};
-
-                ComPtr<ID3DBlob> blob;
-                ComPtr<ID3DBlob> error;
-                HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
-                if (FAILED(hr))
-                {
-                    ::OutputDebugStringW(
-                        std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer()))
-                            .c_str());
-                    TIFHR(hr);
-                }
-
-                TIFHR(d3d12_device->CreateRootSignature(
-                    1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), refill_texture_root_sig_.PutVoid()));
-
                 const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
                 };
 
-                D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
-                pso_desc.pRootSignature = refill_texture_root_sig_.Get();
-                pso_desc.VS.pShaderBytecode = RefillTextureVs_shader;
-                pso_desc.VS.BytecodeLength = sizeof(RefillTextureVs_shader);
-                pso_desc.PS.pShaderBytecode = RefillTexturePs_shader;
-                pso_desc.PS.BytecodeLength = sizeof(RefillTexturePs_shader);
-                for (uint32_t i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
-                {
-                    pso_desc.BlendState.RenderTarget[i].SrcBlend = D3D12_BLEND_ONE;
-                    pso_desc.BlendState.RenderTarget[i].DestBlend = D3D12_BLEND_ZERO;
-                    pso_desc.BlendState.RenderTarget[i].BlendOp = D3D12_BLEND_OP_ADD;
-                    pso_desc.BlendState.RenderTarget[i].SrcBlendAlpha = D3D12_BLEND_ONE;
-                    pso_desc.BlendState.RenderTarget[i].DestBlendAlpha = D3D12_BLEND_ZERO;
-                    pso_desc.BlendState.RenderTarget[i].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-                    pso_desc.BlendState.RenderTarget[i].LogicOp = D3D12_LOGIC_OP_NOOP;
-                    pso_desc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-                }
-                pso_desc.SampleMask = UINT_MAX;
-                pso_desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-                pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-                pso_desc.RasterizerState.FrontCounterClockwise = TRUE;
-                pso_desc.RasterizerState.DepthClipEnable = TRUE;
-                pso_desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
-                pso_desc.DepthStencilState.DepthEnable = FALSE;
-                pso_desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-                pso_desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-                pso_desc.InputLayout.pInputElementDescs = input_elems;
-                pso_desc.InputLayout.NumElements = static_cast<uint32_t>(std::size(input_elems));
-                pso_desc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
-                pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-                pso_desc.NumRenderTargets = 1;
-                pso_desc.RTVFormats[0] = ColorFmt;
-                pso_desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-                pso_desc.SampleDesc.Count = 1;
-                pso_desc.SampleDesc.Quality = 0;
-                pso_desc.NodeMask = 0;
-                pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-                TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), refill_texture_pso_.PutVoid()));
+                refill_texture_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, shaders, std::span(&bilinear_sampler_desc, 1), states, input_elems);
             }
 
             dilate_shader_ = GpuComputeShader(gpu_system_, DilateCs_shader, 0, 1, 1, {});
@@ -117,9 +67,6 @@ namespace AIHoloImager
 
         ~Impl()
         {
-            refill_texture_root_sig_ = nullptr;
-            refill_texture_pso_ = nullptr;
-
             gpu_system_.WaitForGpu();
         }
 
@@ -381,8 +328,6 @@ namespace AIHoloImager
         {
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-            vb.Transition(cmd_list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
             auto rtv_desc_block = gpu_system_.AllocRtvDescBlock(1);
             const uint32_t rtv_descriptor_size = gpu_system_.RtvDescSize();
 
@@ -392,45 +337,26 @@ namespace AIHoloImager
             GpuRenderTargetView rtv(
                 gpu_system_, blended_tex, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block.CpuHandle(), 0, rtv_descriptor_size));
 
-            auto srv_uav_desc_block = gpu_system_.AllocCbvSrvUavDescBlock(2);
-            const uint32_t srv_descriptor_size = gpu_system_.CbvSrvUavDescSize();
+            const float clear_clr[] = {0, 0, 0, 0};
+            d3d12_cmd_list->ClearRenderTargetView(rtv.CpuHandle(), clear_clr, 0, nullptr);
 
-            GpuShaderResourceView ai_tex_srv(gpu_system_, ai_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 0, srv_descriptor_size));
-            GpuShaderResourceView photo_tex_srv(
-                gpu_system_, photo_tex, OffsetHandle(srv_uav_desc_block.CpuHandle(), 1, srv_descriptor_size));
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(TextureTransferVertexFormat)}};
+            const uint32_t num_verts = static_cast<uint32_t>(vb.Size() / sizeof(TextureTransferVertexFormat));
 
-            D3D12_VERTEX_BUFFER_VIEW vbv{};
-            vbv.BufferLocation = vb.GpuVirtualAddress();
-            vbv.SizeInBytes = vb.Size();
-            vbv.StrideInBytes = sizeof(TextureTransferVertexFormat);
-            d3d12_cmd_list->IASetVertexBuffers(0, 1, &vbv);
+            const GpuTexture2D* srv_texs[] = {&ai_tex, &photo_tex};
+            const GpuCommandList::ShaderBinding shader_bindings[] = {
+                {GpuRenderPipeline::ShaderStage::Vertex, {}, {}, {}},
+                {GpuRenderPipeline::ShaderStage::Pixel, {}, srv_texs, {}},
+            };
 
-            d3d12_cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&blended_tex, &rtv}};
 
-            d3d12_cmd_list->SetPipelineState(refill_texture_pso_.Get());
-            d3d12_cmd_list->SetGraphicsRootSignature(refill_texture_root_sig_.Get());
+            const D3D12_VIEWPORT viewport{0, 0, static_cast<float>(blended_tex.Width(0)), static_cast<float>(blended_tex.Height(0)), 0, 1};
+            const D3D12_RECT scissor_rc{0, 0, static_cast<LONG>(blended_tex.Width(0)), static_cast<LONG>(blended_tex.Height(0))};
 
-            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
-            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-            d3d12_cmd_list->SetGraphicsRootDescriptorTable(0, srv_uav_desc_block.GpuHandle());
+            cmd_list.Render(vb_bindings, nullptr, num_verts, refill_texture_pipeline_, shader_bindings, rt_bindings, nullptr,
+                std::span(&viewport, 1), std::span(&scissor_rc, 1));
 
-            blended_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvs[] = {rtv.CpuHandle()};
-            d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(std::size(rtvs)), rtvs, true, nullptr);
-
-            float clear_clr[] = {0, 0, 0, 0};
-            d3d12_cmd_list->ClearRenderTargetView(rtvs[0], clear_clr, 0, nullptr);
-
-            D3D12_VIEWPORT viewport{0, 0, static_cast<float>(blended_tex.Width(0)), static_cast<float>(blended_tex.Height(0)), 0, 1};
-            d3d12_cmd_list->RSSetViewports(1, &viewport);
-
-            D3D12_RECT scissor_rc{0, 0, static_cast<LONG>(blended_tex.Width(0)), static_cast<LONG>(blended_tex.Height(0))};
-            d3d12_cmd_list->RSSetScissorRects(1, &scissor_rc);
-
-            d3d12_cmd_list->DrawInstanced(static_cast<uint32_t>(vb.Size() / sizeof(TextureTransferVertexFormat)), 1, 0, 0);
-
-            gpu_system_.DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block));
 
             return blended_tex;
@@ -468,9 +394,7 @@ namespace AIHoloImager
 
         GpuSystem& gpu_system_;
 
-        ComPtr<ID3D12RootSignature> refill_texture_root_sig_;
-        ComPtr<ID3D12PipelineState> refill_texture_pso_;
-
+        GpuRenderPipeline refill_texture_pipeline_;
         GpuComputeShader dilate_shader_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
