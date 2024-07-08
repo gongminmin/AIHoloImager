@@ -95,8 +95,7 @@ namespace AIHoloImager
             bilinear_sampler_desc.MinLOD = 0.0f;
             bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
             bilinear_sampler_desc.ShaderRegister = 0;
-            undistort_shader_ = GpuComputeShader(
-                gpu_system_, std::span(UndistortCs_shader, sizeof(UndistortCs_shader)), 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
+            undistort_shader_ = GpuComputeShader(gpu_system_, UndistortCs_shader, 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
         }
 
         ~Impl() noexcept

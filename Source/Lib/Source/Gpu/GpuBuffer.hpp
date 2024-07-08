@@ -46,7 +46,7 @@ namespace AIHoloImager
         virtual void Reset() noexcept;
 
         D3D12_RESOURCE_STATES State() const noexcept;
-        void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state);
+        void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const;
 
     protected:
         ComPtr<ID3D12Resource> resource_;

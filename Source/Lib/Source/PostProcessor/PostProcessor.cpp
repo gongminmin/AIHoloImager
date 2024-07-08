@@ -112,7 +112,7 @@ namespace AIHoloImager
                 TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), refill_texture_pso_.PutVoid()));
             }
 
-            dilate_shader_ = GpuComputeShader(gpu_system_, {DilateCs_shader, sizeof(DilateCs_shader)}, 0, 1, 1, {});
+            dilate_shader_ = GpuComputeShader(gpu_system_, DilateCs_shader, 0, 1, 1, {});
         }
 
         ~Impl()

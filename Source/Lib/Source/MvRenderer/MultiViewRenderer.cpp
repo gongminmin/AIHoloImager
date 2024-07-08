@@ -175,7 +175,7 @@ namespace AIHoloImager
                 TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), render_pso_.PutVoid()));
             }
 
-            downsample_shader_ = GpuComputeShader(gpu_system_, std::span(DownsampleCs_shader, sizeof(DownsampleCs_shader)), 0, 1, 1, {});
+            downsample_shader_ = GpuComputeShader(gpu_system_, DownsampleCs_shader, 0, 1, 1, {});
         }
 
         ~Impl() noexcept

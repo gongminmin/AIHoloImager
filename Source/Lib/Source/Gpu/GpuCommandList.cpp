@@ -99,7 +99,7 @@ namespace AIHoloImager
         d3d12_cmd_list->SetPipelineState(shader.NativePipelineState());
         d3d12_cmd_list->SetComputeRootSignature(shader.NativeRootSignature());
 
-        auto srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock(2);
+        auto srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock((srvs.empty() ? 0 : 1) + (uavs.empty() ? 0 : 1));
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
 
         ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
@@ -108,52 +108,56 @@ namespace AIHoloImager
         uint32_t heap_base = 0;
         uint32_t root_index = 0;
 
-        d3d12_cmd_list->SetComputeRootDescriptorTable(
-            root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
-        std::vector<GpuShaderResourceView> sr_views;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(srvs.size()); ++i, ++heap_base)
-        {
-            const auto* srv = srvs[i];
-            if (srv != nullptr)
-            {
-                srv->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
-                sr_views.push_back(
-                    GpuShaderResourceView(*gpu_system_, *srv, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
-            }
-        }
         if (!srvs.empty())
         {
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+            std::vector<GpuShaderResourceView> sr_views;
+            for (const auto& srv : srvs)
+            {
+                if (srv != nullptr)
+                {
+                    srv->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
+                    sr_views.push_back(GpuShaderResourceView(
+                        *gpu_system_, *srv, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
+                }
+
+                ++heap_base;
+            }
+
             ++root_index;
         }
 
-        d3d12_cmd_list->SetComputeRootDescriptorTable(
-            root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
-        std::vector<GpuUnorderedAccessView> ua_views;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(uavs.size()); ++i, ++heap_base)
-        {
-            const auto* uav = uavs[i];
-            if (uav != nullptr)
-            {
-                uav->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                ua_views.push_back(
-                    GpuUnorderedAccessView(*gpu_system_, *uav, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
-            }
-        }
         if (!uavs.empty())
         {
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+            std::vector<GpuUnorderedAccessView> ua_views;
+            for (const auto* uav : uavs)
+            {
+                if (uav != nullptr)
+                {
+                    uav->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    ua_views.push_back(GpuUnorderedAccessView(
+                        *gpu_system_, *uav, OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size)));
+                }
+
+                ++heap_base;
+            }
+
             ++root_index;
         }
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(cbs.size()); ++i, ++root_index)
+        for (const auto* cb : cbs)
         {
-            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cbs[i]->GpuVirtualAddress());
+            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cb->GpuVirtualAddress());
+            ++root_index;
         }
 
         d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(uavs.size()); ++i, ++heap_base)
+        for (const auto* uav : uavs)
         {
-            const auto* uav = uavs[i];
             if (uav != nullptr)
             {
                 uav->Transition(*this, D3D12_RESOURCE_STATE_COMMON);

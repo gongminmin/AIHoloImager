@@ -14,28 +14,40 @@ namespace AIHoloImager
     GpuComputeShader::GpuComputeShader(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs,
         uint32_t num_uavs, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
     {
-        const D3D12_DESCRIPTOR_RANGE ranges[] = {
-            {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-            {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
-        };
-
-        const uint32_t num_root_params = num_cbs + num_srvs + num_uavs;
-
-        auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
-        uint32_t root_index = 0;
+        const uint32_t num_desc_ranges = (num_srvs ? 1 : 0) + (num_uavs ? 1 : 0);
+        auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
+        uint32_t range_index = 0;
         if (num_srvs != 0)
         {
-            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[0], 1);
-            ++root_index;
+            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ++range_index;
         }
         if (num_uavs != 0)
         {
-            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[1], 1);
-            ++root_index;
+            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ++range_index;
         }
-        for (uint32_t i = 0; i < num_cbs; ++i, ++root_index)
+
+        const uint32_t num_root_params = num_desc_ranges + num_cbs;
+        auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
+        uint32_t root_index = 0;
+        range_index = 0;
+        if (num_srvs != 0)
+        {
+            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
+            ++root_index;
+            ++range_index;
+        }
+        if (num_uavs != 0)
+        {
+            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
+            ++root_index;
+            ++range_index;
+        }
+        for (uint32_t i = 0; i < num_cbs; ++i)
         {
             root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
+            ++root_index;
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {

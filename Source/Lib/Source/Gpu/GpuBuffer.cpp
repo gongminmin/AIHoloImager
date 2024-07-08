@@ -118,7 +118,7 @@ namespace AIHoloImager
         return curr_state_;
     }
 
-    void GpuBuffer::Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state)
+    void GpuBuffer::Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const
     {
         D3D12_RESOURCE_BARRIER barrier;
         if (curr_state_ != target_state)
