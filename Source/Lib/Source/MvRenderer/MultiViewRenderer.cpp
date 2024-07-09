@@ -12,9 +12,6 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
-#include "Util/ComPtr.hpp"
-#include "Util/ErrorHandling.hpp"
-#include "Util/Uuid.hpp"
 
 #include "CompiledShader/DownsampleCs.h"
 #include "CompiledShader/RenderPs.h"

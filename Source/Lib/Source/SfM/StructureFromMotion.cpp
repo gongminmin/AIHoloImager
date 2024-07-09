@@ -54,7 +54,6 @@
 
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
-#include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 
@@ -468,11 +467,6 @@ namespace AIHoloImager
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        if (result_view.image.NumChannels() != 4)
-                        {
-                            result_view.image =
-                                Texture(undistort_gpu_tex.Width(0), undistort_gpu_tex.Height(0), FormatSize(undistort_gpu_tex.Format()));
-                        }
                         undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image.Data());
 
                         gpu_system_.Execute(std::move(cmd_list));

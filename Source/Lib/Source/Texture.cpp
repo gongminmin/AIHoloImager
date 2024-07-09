@@ -161,7 +161,7 @@ namespace AIHoloImager
         const uint32_t channels = tex.NumChannels();
         if (channels != 4)
         {
-            Texture ret(tex.Width(), tex.Height(), 3);
+            Texture ret(tex.Width(), tex.Height(), 4);
 
             const uint8_t* src = tex.Data();
             uint8_t* dst = ret.Data();
