@@ -53,6 +53,9 @@ set(aihi_files
     Source/MvDiffusion/MultiViewDiffusion.py
     Source/MvRenderer/MultiViewRenderer.cpp
     Source/MvRenderer/MultiViewRenderer.hpp
+    Source/MvRenderer/Shader/BlendCs.hlsl
+    Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl
+    Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl
     Source/MvRenderer/Shader/DownsampleCs.hlsl
     Source/MvRenderer/Shader/RenderVs.hlsl
     Source/MvRenderer/Shader/RenderPs.hlsl
@@ -97,6 +100,9 @@ macro(AddShaderFile file_name shader_type entry_point)
     )
 endmacro()
 
+AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
+AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
+AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")

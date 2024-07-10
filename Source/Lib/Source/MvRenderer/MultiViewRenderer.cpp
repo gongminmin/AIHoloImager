@@ -13,6 +13,9 @@
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
 
+#include "CompiledShader/BlendCs.h"
+#include "CompiledShader/CalcDiffusionBoxCs.h"
+#include "CompiledShader/CalcRenderedBoxCs.h"
 #include "CompiledShader/DownsampleCs.h"
 #include "CompiledShader/RenderPs.h"
 #include "CompiledShader/RenderVs.h"
@@ -67,7 +70,8 @@ namespace AIHoloImager
             constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
 
             ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ColorFmt,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON, L"ssaa_rt_tex_");
+                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
+                L"ssaa_rt_tex_");
             ssaa_rtv_ = GpuRenderTargetView(
                 gpu_system_, ssaa_rt_tex_, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block_.CpuHandle(), 0, rtv_descriptor_size));
 
@@ -120,6 +124,29 @@ namespace AIHoloImager
             }
 
             downsample_shader_ = GpuComputeShader(gpu_system_, DownsampleCs_shader, 0, 1, 1, {});
+
+            calc_rendered_box_shader_ = GpuComputeShader(gpu_system_, CalcRenderedBoxCs_shader, 0, 1, 1, {});
+
+            calc_diffusion_box_cb_ = ConstantBuffer<CalcDiffusionBoxConstantBuffer>(gpu_system_, 1, L"calc_diffusion_box_cb_");
+            calc_diffusion_box_shader_ = GpuComputeShader(gpu_system_, CalcDiffusionBoxCs_shader, 1, 1, 1, {});
+
+            {
+                blend_cb_ = ConstantBuffer<BlendConstantBuffer>(gpu_system_, 1, L"blend_cb_");
+
+                D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
+                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                bilinear_sampler_desc.MaxAnisotropy = 16;
+                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                bilinear_sampler_desc.MinLOD = 0.0f;
+                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+                bilinear_sampler_desc.ShaderRegister = 0;
+                blend_shader_ = GpuComputeShader(gpu_system_, BlendCs_shader, 1, 2, 1, std::span{&bilinear_sampler_desc, 1});
+            }
+            bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
         }
 
         ~Impl() noexcept
@@ -140,6 +167,10 @@ namespace AIHoloImager
 
             gpu_system_.DeallocDsvDescBlock(std::move(dsv_desc_block_));
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
+
+            calc_diffusion_box_cb_ = ConstantBuffer<CalcDiffusionBoxConstantBuffer>();
+            blend_cb_ = ConstantBuffer<BlendConstantBuffer>();
+            bb_tex_.Reset();
 
             gpu_system_.WaitForGpu();
         }
@@ -171,28 +202,33 @@ namespace AIHoloImager
                 gpu_system_.WaitForGpu();
             }
 
-            Texture init_view_cpu_tex = ReadbackGpuTexture(gpu_system_, init_view_tex_);
-            RemoveAlpha(init_view_cpu_tex);
+            GpuTexture2D mv_diffusion_gpu_tex;
+            {
+                Texture init_view_cpu_tex = ReadbackGpuTexture(gpu_system_, init_view_tex_);
+                RemoveAlpha(init_view_cpu_tex);
 
-            MultiViewDiffusion mv_diffusion(python_system_);
-            Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
+                MultiViewDiffusion mv_diffusion(python_system_);
+                Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
+                Ensure4Channel(mv_diffusion_tex);
+
+                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
+                    DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
+                mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
+            }
 
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
-                {
-                    GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                    RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
-                    gpu_system_.Execute(std::move(cmd_list));
-                    gpu_system_.WaitForGpu();
-                }
-                BlendWithDiffusion(mv_diffusion_tex, static_cast<uint32_t>(i));
-                {
-                    GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                    Downsample(cmd_list, multi_view_texs_[i]);
-                    gpu_system_.Execute(std::move(cmd_list));
-                    gpu_system_.WaitForGpu();
-                }
+                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
+                Downsample(cmd_list, multi_view_texs_[i]);
+                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.WaitForGpu();
             }
+
+            mv_diffusion_gpu_tex.Reset();
 
             Result ret;
             for (uint32_t i = 0; i < 6; ++i)
@@ -264,128 +300,61 @@ namespace AIHoloImager
                 std::span(&srv_tex, 1), std::span(&uav_tex, 1));
         }
 
-        void BlendWithDiffusion(Texture& mv_diffusion_tex, uint32_t index)
+        void BlendWithDiffusion(GpuCommandList& cmd_list, GpuTexture2D& mv_diffusion_tex, uint32_t index)
         {
-            // TODO #13: Port to GPU
-
-            Texture rendered_read_back_tex = ReadbackGpuTexture(gpu_system_, ssaa_rt_tex_);
-
-            XMUINT2 rendered_min(rendered_read_back_tex.Width(), rendered_read_back_tex.Height());
-            XMUINT2 rendered_max(0, 0);
-            uint8_t* rendered_data = rendered_read_back_tex.Data();
-            const uint32_t rendered_width = rendered_read_back_tex.Width();
-            const uint32_t rendered_channels = rendered_read_back_tex.NumChannels();
-            for (uint32_t y = 0; y < rendered_read_back_tex.Height(); ++y)
-            {
-                for (uint32_t x = 0; x < rendered_read_back_tex.Width(); ++x)
-                {
-                    if (rendered_data[(y * rendered_width + x) * rendered_channels + 3] != 0)
-                    {
-                        rendered_min.x = std::min(rendered_min.x, x);
-                        rendered_max.x = std::max(rendered_max.x, x);
-                        rendered_min.y = std::min(rendered_min.y, y);
-                        rendered_max.y = std::max(rendered_max.y, y);
-                    }
-                }
-            }
-
+            constexpr uint32_t BlockDim = 16;
             constexpr uint32_t AtlasWidth = 2;
             constexpr uint32_t AtlasHeight = 3;
-            constexpr uint32_t ValidThreshold = 237;
 
-            const uint32_t view_width = mv_diffusion_tex.Width() / AtlasWidth;
-            const uint32_t view_height = mv_diffusion_tex.Height() / AtlasHeight;
+            const uint32_t view_width = mv_diffusion_tex.Width(0) / AtlasWidth;
+            const uint32_t view_height = mv_diffusion_tex.Height(0) / AtlasHeight;
 
             const uint32_t atlas_y = index / AtlasWidth;
             const uint32_t atlas_x = index - atlas_y * AtlasWidth;
             const uint32_t atlas_offset_x = atlas_x * view_width;
             const uint32_t atlas_offset_y = atlas_y * view_height;
 
-            XMUINT2 diffusion_min(view_width, view_height);
-            XMUINT2 diffusion_max(0, 0);
-            const uint8_t* diffusion_data = mv_diffusion_tex.Data();
-            const uint32_t diffusion_width = mv_diffusion_tex.Width();
-            const uint32_t diffusion_channels = mv_diffusion_tex.NumChannels();
-            for (uint32_t y = 0; y < view_height; ++y)
+            uint32_t bb_init[] = {ssaa_rt_tex_.Width(0), ssaa_rt_tex_.Height(0), 0, 0, view_width, view_height, 0, 0};
+            bb_tex_.Upload(gpu_system_, cmd_list, 0, bb_init);
+
             {
-                for (uint32_t x = 0; x < view_width; ++x)
-                {
-                    const uint32_t pixel_offset = ((atlas_offset_y + y) * diffusion_width + (atlas_offset_x + x)) * diffusion_channels;
-                    for (uint32_t c = 0; c < 3; ++c)
-                    {
-                        if (diffusion_data[pixel_offset + c] < ValidThreshold)
-                        {
-                            diffusion_min.x = std::min(diffusion_min.x, x);
-                            diffusion_max.x = std::max(diffusion_max.x, x);
-                            diffusion_min.y = std::min(diffusion_min.y, y);
-                            diffusion_max.y = std::max(diffusion_max.y, y);
-                            break;
-                        }
-                    }
-                }
+                const GpuTexture2D* srv_texs[] = {&ssaa_rt_tex_};
+                GpuTexture2D* uav_texs[] = {&bb_tex_};
+                cmd_list.Compute(calc_rendered_box_shader_, DivUp(ssaa_rt_tex_.Width(0), BlockDim), DivUp(ssaa_rt_tex_.Height(0), BlockDim),
+                    1, {}, srv_texs, uav_texs);
             }
-
-            const float scale_x = static_cast<float>(diffusion_max.x - diffusion_min.x) / (rendered_max.x - rendered_min.x);
-            const float scale_y = static_cast<float>(diffusion_max.y - diffusion_min.y) / (rendered_max.y - rendered_min.y);
-            const float scale = std::min(scale_x, scale_y);
-
-            const auto is_empty = [](const uint8_t* rgb) -> bool {
-                constexpr int empty_color_r = 0xFF;
-                constexpr int empty_color_g = 0x7F;
-                constexpr int empty_color_b = 0x27;
-                return ((std::abs(static_cast<int>(rgb[0]) - empty_color_r) < 2) &&
-                        (std::abs(static_cast<int>(rgb[1]) - empty_color_g) < 20) &&
-                        (std::abs(static_cast<int>(rgb[2]) - empty_color_b) < 15));
-            };
-
-            const int rendered_center_x = rendered_read_back_tex.Width() / 2;
-            const int rendered_center_y = rendered_read_back_tex.Height() / 2;
-            const int diffusion_center_x = view_width / 2;
-            const int diffusion_center_y = view_height / 2;
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t y = 0; y < rendered_read_back_tex.Height(); ++y)
             {
-                const uint32_t src_y = static_cast<uint32_t>(
-                    std::clamp(static_cast<int>(std::round((static_cast<int>(y) - rendered_center_y) * scale)) + diffusion_center_y, 0,
-                        static_cast<int>(view_height - 1)));
-                for (uint32_t x = 0; x < rendered_read_back_tex.Width(); ++x)
-                {
-                    const uint32_t src_x = static_cast<uint32_t>(
-                        std::clamp(static_cast<int>(std::round((static_cast<int>(x) - rendered_center_x) * scale)) + diffusion_center_x, 0,
-                            static_cast<int>(view_width - 1)));
+                calc_diffusion_box_cb_->atlas_offset_view_size.x = atlas_offset_x;
+                calc_diffusion_box_cb_->atlas_offset_view_size.y = atlas_offset_y;
+                calc_diffusion_box_cb_->atlas_offset_view_size.z = view_width;
+                calc_diffusion_box_cb_->atlas_offset_view_size.w = view_height;
+                calc_diffusion_box_cb_.UploadToGpu();
 
-                    const uint32_t diffusion_offset = (atlas_offset_y + src_y) * diffusion_width + (atlas_offset_x + src_x);
-                    const uint32_t rendered_offset = y * rendered_width + x;
-
-                    bool rendered_valid = false;
-                    if ((rendered_data[rendered_offset * rendered_channels + 3] != 0) &&
-                        !is_empty(&rendered_data[rendered_offset * rendered_channels]))
-                    {
-                        rendered_valid = true;
-                    }
-
-                    bool diffusion_valid = false;
-                    for (uint32_t c = 0; c < 3; ++c)
-                    {
-                        if (diffusion_data[diffusion_offset * diffusion_channels + c] < ValidThreshold)
-                        {
-                            diffusion_valid = true;
-                            break;
-                        }
-                    }
-
-                    if (!rendered_valid && diffusion_valid)
-                    {
-                        memcpy(&rendered_data[rendered_offset * rendered_channels], &diffusion_data[diffusion_offset * diffusion_channels],
-                            diffusion_channels);
-                        rendered_data[rendered_offset * rendered_channels + 3] = 0xFF;
-                    }
-                }
+                const GeneralConstantBuffer* cbs[] = {&calc_diffusion_box_cb_};
+                const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex};
+                GpuTexture2D* uav_texs[] = {&bb_tex_};
+                cmd_list.Compute(
+                    calc_diffusion_box_shader_, DivUp(view_width, BlockDim), DivUp(view_height, BlockDim), 1, cbs, srv_texs, uav_texs);
             }
+            {
+                blend_cb_->atlas_offset_view_size.x = atlas_offset_x;
+                blend_cb_->atlas_offset_view_size.y = atlas_offset_y;
+                blend_cb_->atlas_offset_view_size.z = view_width;
+                blend_cb_->atlas_offset_view_size.w = view_height;
+                blend_cb_->rendered_diffusion_center.x = ssaa_rt_tex_.Width(0) / 2;
+                blend_cb_->rendered_diffusion_center.y = ssaa_rt_tex_.Height(0) / 2;
+                blend_cb_->rendered_diffusion_center.z = view_width / 2;
+                blend_cb_->rendered_diffusion_center.w = view_height / 2;
+                blend_cb_->diffusion_inv_size.x = 1.0f / mv_diffusion_tex.Width(0);
+                blend_cb_->diffusion_inv_size.y = 1.0f / mv_diffusion_tex.Height(0);
+                blend_cb_.UploadToGpu();
 
-            UploadGpuTexture(gpu_system_, rendered_read_back_tex, ssaa_rt_tex_);
+                const GeneralConstantBuffer* cbs[] = {&blend_cb_};
+                const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex, &bb_tex_};
+                GpuTexture2D* uav_texs[] = {&ssaa_rt_tex_};
+                cmd_list.Compute(blend_shader_, DivUp(ssaa_rt_tex_.Width(0), BlockDim), DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, cbs,
+                    srv_texs, uav_texs);
+            }
         }
 
     private:
@@ -416,6 +385,25 @@ namespace AIHoloImager
         GpuRenderPipeline render_pipeline_;
 
         GpuComputeShader downsample_shader_;
+
+        GpuComputeShader calc_rendered_box_shader_;
+
+        struct CalcDiffusionBoxConstantBuffer
+        {
+            XMUINT4 atlas_offset_view_size;
+        };
+        ConstantBuffer<CalcDiffusionBoxConstantBuffer> calc_diffusion_box_cb_;
+        GpuComputeShader calc_diffusion_box_shader_;
+
+        struct BlendConstantBuffer
+        {
+            XMUINT4 atlas_offset_view_size;
+            XMUINT4 rendered_diffusion_center;
+            XMFLOAT4 diffusion_inv_size;
+        };
+        ConstantBuffer<BlendConstantBuffer> blend_cb_;
+        GpuComputeShader blend_shader_;
+        GpuTexture2D bb_tex_;
     };
 
     MultiViewRenderer::MultiViewRenderer(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)

@@ -30,6 +30,9 @@ namespace AIHoloImager
         case DXGI_FORMAT_B8G8R8X8_UNORM:
         case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
         case DXGI_FORMAT_R16G16_SINT:
+        case DXGI_FORMAT_R32_UINT:
+        case DXGI_FORMAT_R32_SINT:
+        case DXGI_FORMAT_R32_FLOAT:
             return 4;
 
         default:
