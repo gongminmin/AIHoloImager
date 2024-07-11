@@ -66,6 +66,8 @@ namespace AIHoloImager
             uint32_t dst_y, const D3D12_BOX& src_box);
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+
         ComPtr<ID3D12Resource> resource_;
         D3D12_RESOURCE_DESC desc_{};
         mutable std::vector<D3D12_RESOURCE_STATES> curr_states_;

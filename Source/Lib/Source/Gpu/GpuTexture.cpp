@@ -91,7 +91,7 @@ namespace AIHoloImager
 
     GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, DXGI_FORMAT format,
         D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES init_state, std::wstring_view name)
-        : curr_states_(mip_levels * NumPlanes(format), init_state)
+        : gpu_system_(&gpu_system), curr_states_(mip_levels * NumPlanes(format), init_state)
     {
         const D3D12_HEAP_PROPERTIES default_heap_prop = {
             D3D12_HEAP_TYPE_DEFAULT, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
@@ -121,7 +121,14 @@ namespace AIHoloImager
         }
     }
 
-    GpuTexture2D::~GpuTexture2D() noexcept = default;
+    GpuTexture2D::~GpuTexture2D()
+    {
+        if (resource_)
+        {
+            gpu_system_->Recycle(std::move(resource_));
+        }
+    }
+
     GpuTexture2D::GpuTexture2D(GpuTexture2D&& other) noexcept = default;
     GpuTexture2D& GpuTexture2D::operator=(GpuTexture2D&& other) noexcept = default;
 

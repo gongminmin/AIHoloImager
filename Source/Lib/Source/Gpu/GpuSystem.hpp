@@ -85,9 +85,12 @@ namespace AIHoloImager
 
         void HandleDeviceLost();
 
+        void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
+
     private:
         ID3D12CommandAllocator* CurrentCommandAllocator(CmdQueueType type) const noexcept;
         uint64_t ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value);
+        void ClearStallResources();
 
     private:
         ComPtr<ID3D12Device> device_;
@@ -112,6 +115,8 @@ namespace AIHoloImager
         GpuDescriptorAllocator rtv_desc_allocator_;
         GpuDescriptorAllocator dsv_desc_allocator_;
         GpuDescriptorAllocator cbv_srv_uav_desc_allocator_;
+
+        std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
     };
 
     D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,

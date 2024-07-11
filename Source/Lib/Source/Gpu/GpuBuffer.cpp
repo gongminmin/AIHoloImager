@@ -14,7 +14,7 @@ namespace AIHoloImager
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags,
         D3D12_RESOURCE_STATES init_state, std::wstring_view name)
-        : heap_type_(heap_type), curr_state_(init_state)
+        : gpu_system_(&gpu_system), heap_type_(heap_type), curr_state_(init_state)
     {
         const D3D12_HEAP_PROPERTIES heap_prop = {heap_type, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
 
@@ -45,7 +45,13 @@ namespace AIHoloImager
         }
     }
 
-    GpuBuffer::~GpuBuffer() noexcept = default;
+    GpuBuffer::~GpuBuffer()
+    {
+        if (resource_)
+        {
+            gpu_system_->Recycle(std::move(resource_));
+        }
+    }
 
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;

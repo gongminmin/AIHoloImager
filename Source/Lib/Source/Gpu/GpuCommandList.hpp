@@ -55,7 +55,7 @@ namespace AIHoloImager
     public:
         GpuCommandList() noexcept;
         GpuCommandList(GpuSystem& gpu_system, ID3D12CommandAllocator* cmd_allocator, GpuSystem::CmdQueueType type);
-        ~GpuCommandList() noexcept;
+        ~GpuCommandList();
 
         GpuCommandList(GpuCommandList&& other) noexcept;
         GpuCommandList& operator=(GpuCommandList&& other) noexcept;
@@ -90,5 +90,6 @@ namespace AIHoloImager
 
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         ComPtr<ID3D12CommandList> cmd_list_;
+        bool closed_ = false;
     };
 } // namespace AIHoloImager

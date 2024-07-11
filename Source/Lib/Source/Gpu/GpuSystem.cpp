@@ -192,6 +192,8 @@ namespace AIHoloImager
             ::WaitForSingleObjectEx(fence_event_.get(), INFINITE, FALSE);
         }
 
+        this->ClearStallResources();
+
         fence_vals_[frame_index_] = curr_fence_value + 1;
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
@@ -348,6 +350,8 @@ namespace AIHoloImager
                 }
             }
         }
+
+        this->ClearStallResources();
     }
 
     void GpuSystem::HandleDeviceLost()
@@ -373,6 +377,34 @@ namespace AIHoloImager
         device_.Reset();
 
         frame_index_ = 0;
+    }
+
+    void GpuSystem::Recycle(ComPtr<ID3D12DeviceChild>&& resource)
+    {
+        stall_resources_.emplace_back(std::move(resource), fence_vals_[frame_index_]);
+    }
+
+    void GpuSystem::ClearStallResources()
+    {
+        const uint64_t completed_fence = fence_->GetCompletedValue();
+        for (auto iter = stall_resources_.begin(); iter != stall_resources_.end();)
+        {
+            if (std::get<1>(*iter) <= completed_fence)
+            {
+                iter = stall_resources_.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+
+        upload_mem_allocator_.ClearStallPages(completed_fence);
+        readback_mem_allocator_.ClearStallPages(completed_fence);
+
+        rtv_desc_allocator_.ClearStallPages(completed_fence);
+        dsv_desc_allocator_.ClearStallPages(completed_fence);
+        cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
     }
 
     ID3D12CommandAllocator* GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type) const noexcept

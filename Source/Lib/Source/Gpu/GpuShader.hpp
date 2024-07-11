@@ -58,7 +58,7 @@ namespace AIHoloImager
         GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
             std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers,
             const States& states);
-        ~GpuRenderPipeline() noexcept;
+        ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
         GpuRenderPipeline& operator=(GpuRenderPipeline&& other) noexcept;
@@ -67,6 +67,8 @@ namespace AIHoloImager
         ID3D12PipelineState* NativePipelineState() const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+
         ComPtr<ID3D12RootSignature> root_sig_;
         ComPtr<ID3D12PipelineState> pso_;
     };
@@ -78,7 +80,7 @@ namespace AIHoloImager
     public:
         GpuComputePipeline() noexcept;
         GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers);
-        ~GpuComputePipeline() noexcept;
+        ~GpuComputePipeline();
 
         GpuComputePipeline(GpuComputePipeline&& other) noexcept;
         GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
@@ -87,6 +89,8 @@ namespace AIHoloImager
         ID3D12PipelineState* NativePipelineState() const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+
         ComPtr<ID3D12RootSignature> root_sig_;
         ComPtr<ID3D12PipelineState> pso_;
     };

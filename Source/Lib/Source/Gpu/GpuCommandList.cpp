@@ -44,7 +44,13 @@ namespace AIHoloImager
         }
     }
 
-    GpuCommandList::~GpuCommandList() noexcept = default;
+    GpuCommandList::~GpuCommandList()
+    {
+        if (cmd_list_ && !closed_)
+        {
+            Unreachable("Command list is destructed without executing.");
+        }
+    }
 
     GpuCommandList::GpuCommandList(GpuCommandList&& other) noexcept = default;
     GpuCommandList& GpuCommandList::operator=(GpuCommandList&& other) noexcept = default;
@@ -374,6 +380,7 @@ namespace AIHoloImager
         default:
             Unreachable();
         }
+        closed_ = true;
     }
 
     void GpuCommandList::Reset(ID3D12CommandAllocator* cmd_allocator)
@@ -392,5 +399,6 @@ namespace AIHoloImager
         default:
             Unreachable();
         }
+        closed_ = false;
     }
 } // namespace AIHoloImager

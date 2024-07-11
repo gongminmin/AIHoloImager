@@ -13,6 +13,7 @@ namespace AIHoloImager
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
         std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states)
+        : gpu_system_(&gpu_system)
     {
         uint32_t num_desc_ranges = 0;
         for (uint32_t s = 0; s < NumShaderStages; ++s)
@@ -179,7 +180,17 @@ namespace AIHoloImager
         pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
     }
-    GpuRenderPipeline::~GpuRenderPipeline() noexcept = default;
+
+    GpuRenderPipeline::~GpuRenderPipeline()
+    {
+        if (root_sig_)
+        {
+            gpu_system_->Recycle(std::move(root_sig_));
+
+            assert(pso_);
+            gpu_system_->Recycle(std::move(pso_));
+        }
+    }
 
     GpuRenderPipeline::GpuRenderPipeline(GpuRenderPipeline&& other) noexcept = default;
     GpuRenderPipeline& GpuRenderPipeline::operator=(GpuRenderPipeline&& other) noexcept = default;
@@ -198,6 +209,7 @@ namespace AIHoloImager
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
     GpuComputePipeline::GpuComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
+        : gpu_system_(&gpu_system)
     {
         const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
@@ -260,7 +272,17 @@ namespace AIHoloImager
         pso_desc.NodeMask = 0;
         TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
     }
-    GpuComputePipeline::~GpuComputePipeline() noexcept = default;
+
+    GpuComputePipeline::~GpuComputePipeline()
+    {
+        if (root_sig_)
+        {
+            gpu_system_->Recycle(std::move(root_sig_));
+
+            assert(pso_);
+            gpu_system_->Recycle(std::move(pso_));
+        }
+    }
 
     GpuComputePipeline::GpuComputePipeline(GpuComputePipeline&& other) noexcept = default;
     GpuComputePipeline& GpuComputePipeline::operator=(GpuComputePipeline&& other) noexcept = default;

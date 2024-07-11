@@ -67,11 +67,6 @@ namespace AIHoloImager
             }
         }
 
-        ~Impl()
-        {
-            gpu_system_.WaitForGpu();
-        }
-
         Mesh Process(const MeshReconstruction::Result& recon_input, const Mesh& ai_mesh, const std::filesystem::path& tmp_dir)
         {
             const XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
@@ -215,14 +210,8 @@ namespace AIHoloImager
             this->DilateTexture(cmd_list, blended_tex, dilated_tmp_tex);
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
 
             target_mesh.AlbedoTexture(ReadbackGpuTexture(gpu_system_, blended_tex));
-
-            blended_tex.Reset();
-            dilated_tmp_tex.Reset();
-
-            gpu_system_.WaitForGpu();
         }
 
         std::vector<TextureTransferVertexFormat> GenTextureTransferVertices(Mesh& target_mesh, const Mesh& textured_mesh)

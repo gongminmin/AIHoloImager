@@ -99,13 +99,6 @@ namespace AIHoloImager
             undistort_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span(&bilinear_sampler_desc, 1));
         }
 
-        ~Impl() noexcept
-        {
-            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>();
-
-            gpu_system_.WaitForGpu();
-        }
-
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
@@ -499,11 +492,6 @@ namespace AIHoloImager
                     }
                 }
             }
-
-            distort_gpu_tex.Reset();
-            undistort_gpu_tex.Reset();
-
-            gpu_system_.WaitForGpu();
 
             return ret;
         }

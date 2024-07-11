@@ -161,28 +161,8 @@ namespace AIHoloImager
 
         ~Impl() noexcept
         {
-            render_cb_ = ConstantBuffer<RenderConstantBuffer>();
-
-            ssaa_dsv_.Reset();
-            ssaa_ds_tex_.Reset();
-
-            ssaa_rtv_.Reset();
-            ssaa_rt_tex_.Reset();
-
-            init_view_tex_.Reset();
-            for (auto& tex : multi_view_texs_)
-            {
-                tex.Reset();
-            }
-
             gpu_system_.DeallocDsvDescBlock(std::move(dsv_desc_block_));
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
-
-            calc_diffusion_box_cb_ = ConstantBuffer<CalcDiffusionBoxConstantBuffer>();
-            blend_cb_ = ConstantBuffer<BlendConstantBuffer>();
-            bb_tex_.Reset();
-
-            gpu_system_.WaitForGpu();
         }
 
         Result Render(const Mesh& mesh)
@@ -209,7 +189,6 @@ namespace AIHoloImager
                 RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_tex, 0, 45, CameraDist);
                 Downsample(cmd_list, init_view_tex_);
                 gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
             }
 
             GpuTexture2D mv_diffusion_gpu_tex;
