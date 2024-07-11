@@ -79,8 +79,8 @@ namespace AIHoloImager
         }
     }
 
-    void GpuCommandList::Render(std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
-        const GpuRenderPipeline& pipeline, std::span<const ShaderBinding> shader_bindings, std::span<const RenderTargetBinding> rts,
+    void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
+        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<const RenderTargetBinding> rts,
         const DepthStencilBinding* ds, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects)
     {
         ID3D12GraphicsCommandList* d3d12_cmd_list;
@@ -281,7 +281,7 @@ namespace AIHoloImager
         gpu_system_->DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
-    void GpuCommandList::Compute(const GpuComputeShader& shader, uint32_t group_x, uint32_t group_y, uint32_t group_z,
+    void GpuCommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
         std::span<const GeneralConstantBuffer*> cbs, std::span<const GpuTexture2D*> srvs, std::span<GpuTexture2D*> uavs)
     {
         assert(gpu_system_ != nullptr);
@@ -298,8 +298,8 @@ namespace AIHoloImager
             throw std::runtime_error("This type of command list can't Compute.");
         }
 
-        d3d12_cmd_list->SetPipelineState(shader.NativePipelineState());
-        d3d12_cmd_list->SetComputeRootSignature(shader.NativeRootSignature());
+        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
+        d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
 
         auto srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock((srvs.empty() ? 0 : 1) + (uavs.empty() ? 0 : 1));
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();

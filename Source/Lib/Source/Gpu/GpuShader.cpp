@@ -12,7 +12,7 @@ namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, std::span<const ShaderInfo> shaders,
-        std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states, std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems)
+        std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states)
     {
         std::vector<const ShaderInfo*> sorted_shaders;
         sorted_shaders.reserve(shaders.size());
@@ -203,8 +203,8 @@ namespace AIHoloImager
     }
 
 
-    GpuComputeShader::GpuComputeShader() noexcept = default;
-    GpuComputeShader::GpuComputeShader(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs,
+    GpuComputePipeline::GpuComputePipeline() noexcept = default;
+    GpuComputePipeline::GpuComputePipeline(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs,
         uint32_t num_uavs, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
     {
         const uint32_t num_desc_ranges = (num_srvs ? 1 : 0) + (num_uavs ? 1 : 0);
@@ -271,17 +271,17 @@ namespace AIHoloImager
         pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
     }
-    GpuComputeShader::~GpuComputeShader() noexcept = default;
+    GpuComputePipeline::~GpuComputePipeline() noexcept = default;
 
-    GpuComputeShader::GpuComputeShader(GpuComputeShader&& other) noexcept = default;
-    GpuComputeShader& GpuComputeShader::operator=(GpuComputeShader&& other) noexcept = default;
+    GpuComputePipeline::GpuComputePipeline(GpuComputePipeline&& other) noexcept = default;
+    GpuComputePipeline& GpuComputePipeline::operator=(GpuComputePipeline&& other) noexcept = default;
 
-    ID3D12RootSignature* GpuComputeShader::NativeRootSignature() const noexcept
+    ID3D12RootSignature* GpuComputePipeline::NativeRootSignature() const noexcept
     {
         return root_sig_.Get();
     }
 
-    ID3D12PipelineState* GpuComputeShader::NativePipelineState() const noexcept
+    ID3D12PipelineState* GpuComputePipeline::NativePipelineState() const noexcept
     {
         return pso_.Get();
     }

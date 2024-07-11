@@ -55,8 +55,8 @@ namespace AIHoloImager
 
     public:
         GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, std::span<const ShaderInfo> shaders, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers,
-            const States& states, std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems);
+        GpuRenderPipeline(GpuSystem& gpu_system, std::span<const ShaderInfo> shaders, std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems,
+            std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states);
         ~GpuRenderPipeline() noexcept;
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
@@ -70,18 +70,18 @@ namespace AIHoloImager
         ComPtr<ID3D12PipelineState> pso_;
     };
 
-    class GpuComputeShader
+    class GpuComputePipeline
     {
-        DISALLOW_COPY_AND_ASSIGN(GpuComputeShader)
+        DISALLOW_COPY_AND_ASSIGN(GpuComputePipeline)
 
     public:
-        GpuComputeShader() noexcept;
-        GpuComputeShader(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs, uint32_t num_uavs,
+        GpuComputePipeline() noexcept;
+        GpuComputePipeline(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs, uint32_t num_uavs,
             std::span<const D3D12_STATIC_SAMPLER_DESC> samplers);
-        ~GpuComputeShader() noexcept;
+        ~GpuComputePipeline() noexcept;
 
-        GpuComputeShader(GpuComputeShader&& other) noexcept;
-        GpuComputeShader& operator=(GpuComputeShader&& other) noexcept;
+        GpuComputePipeline(GpuComputePipeline&& other) noexcept;
+        GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
 
         ID3D12RootSignature* NativeRootSignature() const noexcept;
         ID3D12PipelineState* NativePipelineState() const noexcept;

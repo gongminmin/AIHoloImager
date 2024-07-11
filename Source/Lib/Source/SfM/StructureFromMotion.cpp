@@ -94,7 +94,7 @@ namespace AIHoloImager
             bilinear_sampler_desc.MinLOD = 0.0f;
             bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
             bilinear_sampler_desc.ShaderRegister = 0;
-            undistort_shader_ = GpuComputeShader(gpu_system_, UndistortCs_shader, 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
+            undistort_pipeline_ = GpuComputePipeline(gpu_system_, UndistortCs_shader, 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
         }
 
         ~Impl() noexcept
@@ -525,11 +525,11 @@ namespace AIHoloImager
             undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb_.UploadToGpu();
 
-            const GeneralConstantBuffer* cb = &undistort_cb_;
-            const GpuTexture2D* srv_texs = &input_tex;
-            GpuTexture2D* uav_tex = &output_tex;
-            cmd_list.Compute(undistort_shader_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1,
-                std::span(&cb, 1), std::span(&srv_texs, 1), std::span(&uav_tex, 1));
+            const GeneralConstantBuffer* cbs[] = {&undistort_cb_};
+            const GpuTexture2D* srv_texs[] = {&input_tex};
+            GpuTexture2D* uav_texs[] = {&output_tex};
+            cmd_list.Compute(undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, cbs,
+                srv_texs, uav_texs);
         }
 
     private:
@@ -546,7 +546,7 @@ namespace AIHoloImager
             XMFLOAT4 width_height;
         };
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
-        GpuComputeShader undistort_shader_;
+        GpuComputePipeline undistort_pipeline_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
     };

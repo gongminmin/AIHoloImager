@@ -59,10 +59,10 @@ namespace AIHoloImager
                 };
 
                 refill_texture_pipeline_ =
-                    GpuRenderPipeline(gpu_system_, shaders, std::span(&bilinear_sampler_desc, 1), states, input_elems);
+                    GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&bilinear_sampler_desc, 1), states);
             }
 
-            dilate_shader_ = GpuComputeShader(gpu_system_, DilateCs_shader, 0, 1, 1, {});
+            dilate_pipeline_ = GpuComputePipeline(gpu_system_, DilateCs_shader, 0, 1, 1, {});
         }
 
         ~Impl()
@@ -351,11 +351,12 @@ namespace AIHoloImager
 
             const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&blended_tex, &rtv}};
 
-            const D3D12_VIEWPORT viewport{0, 0, static_cast<float>(blended_tex.Width(0)), static_cast<float>(blended_tex.Height(0)), 0, 1};
-            const D3D12_RECT scissor_rc{0, 0, static_cast<LONG>(blended_tex.Width(0)), static_cast<LONG>(blended_tex.Height(0))};
+            const D3D12_VIEWPORT viewports[] = {
+                {0, 0, static_cast<float>(blended_tex.Width(0)), static_cast<float>(blended_tex.Height(0)), 0, 1}};
+            const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(blended_tex.Width(0)), static_cast<LONG>(blended_tex.Height(0))}};
 
-            cmd_list.Render(vb_bindings, nullptr, num_verts, refill_texture_pipeline_, shader_bindings, rt_bindings, nullptr,
-                std::span(&viewport, 1), std::span(&scissor_rc, 1));
+            cmd_list.Render(
+                refill_texture_pipeline_, vb_bindings, nullptr, num_verts, shader_bindings, rt_bindings, nullptr, viewports, scissor_rcs);
 
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block));
 
@@ -372,10 +373,10 @@ namespace AIHoloImager
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
 
-                const GpuTexture2D* srv_tex = texs[src];
-                GpuTexture2D* uav_tex = texs[dst];
-                cmd_list.Compute(dilate_shader_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, {},
-                    std::span(&srv_tex, 1), std::span(&uav_tex, 1));
+                const GpuTexture2D* srv_texs[] = {texs[src]};
+                GpuTexture2D* uav_texs[] = {texs[dst]};
+                cmd_list.Compute(dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, {},
+                    srv_texs, uav_texs);
             }
 
             if constexpr (DilateTimes & 1)
@@ -395,7 +396,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system_;
 
         GpuRenderPipeline refill_texture_pipeline_;
-        GpuComputeShader dilate_shader_;
+        GpuComputePipeline dilate_pipeline_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
         static constexpr uint32_t DilateTimes = 4;
