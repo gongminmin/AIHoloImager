@@ -80,7 +80,7 @@ namespace AIHoloImager
     }
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
-        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<const RenderTargetBinding> rts,
+        uint32_t num, const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const RenderTargetBinding> rts,
         const DepthStencilBinding* ds, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects)
     {
         ID3D12GraphicsCommandList* d3d12_cmd_list;
@@ -149,24 +149,11 @@ namespace AIHoloImager
         d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
         d3d12_cmd_list->SetGraphicsRootSignature(pipeline.NativeRootSignature());
 
-        std::vector<const ShaderBinding*> sorted_shader_bindings;
-        sorted_shader_bindings.reserve(shader_bindings.size());
-        for (uint32_t i = 0; i < static_cast<uint32_t>(GpuRenderPipeline::ShaderStage::Num); ++i)
-        {
-            for (const auto& binding : shader_bindings)
-            {
-                if (static_cast<GpuRenderPipeline::ShaderStage>(i) == binding.stage)
-                {
-                    sorted_shader_bindings.push_back(&binding);
-                    break;
-                }
-            }
-        }
-
         uint32_t num_descs = 0;
-        for (const auto& binding : sorted_shader_bindings)
+        for (uint32_t s = 0; s < GpuRenderPipeline::NumShaderStages; ++s)
         {
-            num_descs += static_cast<uint32_t>(binding->srvs.size() + binding->uavs.size());
+            const auto& binding = shader_bindings[s];
+            num_descs += static_cast<uint32_t>(binding.srvs.size() + binding.uavs.size());
         }
 
         GpuDescriptorBlock srv_uav_desc_block;
@@ -182,14 +169,15 @@ namespace AIHoloImager
         uint32_t heap_base = 0;
         uint32_t root_index = 0;
 
-        for (const auto& binding : sorted_shader_bindings)
+        for (uint32_t s = 0; s < GpuRenderPipeline::NumShaderStages; ++s)
         {
-            if (!binding->srvs.empty())
+            const auto& binding = shader_bindings[s];
+            if (!binding.srvs.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
                     root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
                 std::vector<GpuShaderResourceView> sr_views;
-                for (const auto& srv : binding->srvs)
+                for (const auto& srv : binding.srvs)
                 {
                     if (srv != nullptr)
                     {
@@ -204,12 +192,12 @@ namespace AIHoloImager
                 ++root_index;
             }
 
-            if (!binding->uavs.empty())
+            if (!binding.uavs.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
                     root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
                 std::vector<GpuUnorderedAccessView> ua_views;
-                for (const auto* uav : binding->uavs)
+                for (const auto* uav : binding.uavs)
                 {
                     if (uav != nullptr)
                     {
@@ -224,7 +212,7 @@ namespace AIHoloImager
                 ++root_index;
             }
 
-            for (const auto* cb : binding->cbs)
+            for (const auto* cb : binding.cbs)
             {
                 d3d12_cmd_list->SetGraphicsRootConstantBufferView(root_index, cb->GpuVirtualAddress());
                 ++root_index;
@@ -281,8 +269,8 @@ namespace AIHoloImager
         gpu_system_->DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
-    void GpuCommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
-        std::span<const GeneralConstantBuffer*> cbs, std::span<const GpuTexture2D*> srvs, std::span<GpuTexture2D*> uavs)
+    void GpuCommandList::Compute(
+        const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding)
     {
         assert(gpu_system_ != nullptr);
 
@@ -301,7 +289,8 @@ namespace AIHoloImager
         d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
         d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
 
-        auto srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock((srvs.empty() ? 0 : 1) + (uavs.empty() ? 0 : 1));
+        auto srv_uav_desc_block =
+            gpu_system_->AllocCbvSrvUavDescBlock((shader_binding.srvs.empty() ? 0 : 1) + (shader_binding.uavs.empty() ? 0 : 1));
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
 
         ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
@@ -310,12 +299,12 @@ namespace AIHoloImager
         uint32_t heap_base = 0;
         uint32_t root_index = 0;
 
-        if (!srvs.empty())
+        if (!shader_binding.srvs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
                 root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
             std::vector<GpuShaderResourceView> sr_views;
-            for (const auto& srv : srvs)
+            for (const auto& srv : shader_binding.srvs)
             {
                 if (srv != nullptr)
                 {
@@ -330,12 +319,12 @@ namespace AIHoloImager
             ++root_index;
         }
 
-        if (!uavs.empty())
+        if (!shader_binding.uavs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
                 root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
             std::vector<GpuUnorderedAccessView> ua_views;
-            for (const auto* uav : uavs)
+            for (const auto* uav : shader_binding.uavs)
             {
                 if (uav != nullptr)
                 {
@@ -350,7 +339,7 @@ namespace AIHoloImager
             ++root_index;
         }
 
-        for (const auto* cb : cbs)
+        for (const auto* cb : shader_binding.cbs)
         {
             d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cb->GpuVirtualAddress());
             ++root_index;
@@ -358,7 +347,7 @@ namespace AIHoloImager
 
         d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
 
-        for (const auto* uav : uavs)
+        for (const auto* uav : shader_binding.uavs)
         {
             if (uav != nullptr)
             {

@@ -91,9 +91,9 @@ namespace AIHoloImager
             {
                 render_cb_ = ConstantBuffer<RenderConstantBuffer>(gpu_system_, 1, L"render_cb_");
 
-                const GpuRenderPipeline::ShaderInfo shaders[] = {
-                    {GpuRenderPipeline::ShaderStage::Vertex, RenderVs_shader, 1, 0, 0},
-                    {GpuRenderPipeline::ShaderStage::Pixel, RenderPs_shader, 0, 1, 0},
+                const ShaderInfo shaders[] = {
+                    {RenderVs_shader, 1, 0, 0},
+                    {RenderPs_shader, 0, 1, 0},
                 };
 
                 const DXGI_FORMAT rtv_formats[] = {ssaa_rt_tex_.Format()};
@@ -123,12 +123,20 @@ namespace AIHoloImager
                 render_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&point_sampler_desc, 1), states);
             }
 
-            downsample_pipeline_ = GpuComputePipeline(gpu_system_, DownsampleCs_shader, 0, 1, 1, {});
+            {
+                const ShaderInfo shader = {DownsampleCs_shader, 0, 1, 1};
+                downsample_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
+                const ShaderInfo shader = {CalcRenderedBoxCs_shader, 0, 1, 1};
+                calc_rendered_box_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
+                calc_diffusion_box_cb_ = ConstantBuffer<CalcDiffusionBoxConstantBuffer>(gpu_system_, 1, L"calc_diffusion_box_cb_");
 
-            calc_rendered_box_pipeline_ = GpuComputePipeline(gpu_system_, CalcRenderedBoxCs_shader, 0, 1, 1, {});
-
-            calc_diffusion_box_cb_ = ConstantBuffer<CalcDiffusionBoxConstantBuffer>(gpu_system_, 1, L"calc_diffusion_box_cb_");
-            calc_diffusion_box_pipeline_ = GpuComputePipeline(gpu_system_, CalcDiffusionBoxCs_shader, 1, 1, 1, {});
+                const ShaderInfo shader = {CalcDiffusionBoxCs_shader, 1, 1, 1};
+                calc_diffusion_box_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
 
             {
                 blend_cb_ = ConstantBuffer<BlendConstantBuffer>(gpu_system_, 1, L"blend_cb_");
@@ -143,7 +151,9 @@ namespace AIHoloImager
                 bilinear_sampler_desc.MinLOD = 0.0f;
                 bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
                 bilinear_sampler_desc.ShaderRegister = 0;
-                blend_pipeline_ = GpuComputePipeline(gpu_system_, BlendCs_shader, 1, 2, 1, std::span{&bilinear_sampler_desc, 1});
+
+                const ShaderInfo shader = {BlendCs_shader, 1, 2, 1};
+                blend_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
             }
             bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
@@ -274,8 +284,8 @@ namespace AIHoloImager
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
             const GpuTexture2D* srv_texs[] = {&albedo_tex};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
-                {GpuRenderPipeline::ShaderStage::Vertex, cbs, {}, {}},
-                {GpuRenderPipeline::ShaderStage::Pixel, {}, srv_texs, {}},
+                {cbs, {}, {}},
+                {{}, srv_texs, {}},
             };
 
             const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&ssaa_rt_tex_, &ssaa_rtv_}};
@@ -296,8 +306,8 @@ namespace AIHoloImager
 
             const GpuTexture2D* srv_texs[] = {&ssaa_rt_tex_};
             GpuTexture2D* uav_texs[] = {&target};
-            cmd_list.Compute(
-                downsample_pipeline_, DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1, {}, srv_texs, uav_texs);
+            const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
+            cmd_list.Compute(downsample_pipeline_, DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1, shader_binding);
         }
 
         void BlendWithDiffusion(GpuCommandList& cmd_list, GpuTexture2D& mv_diffusion_tex, uint32_t index)
@@ -320,8 +330,9 @@ namespace AIHoloImager
             {
                 const GpuTexture2D* srv_texs[] = {&ssaa_rt_tex_};
                 GpuTexture2D* uav_texs[] = {&bb_tex_};
+                const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
                 cmd_list.Compute(calc_rendered_box_pipeline_, DivUp(ssaa_rt_tex_.Width(0), BlockDim),
-                    DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, {}, srv_texs, uav_texs);
+                    DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, shader_binding);
             }
             {
                 calc_diffusion_box_cb_->atlas_offset_view_size.x = atlas_offset_x;
@@ -333,8 +344,9 @@ namespace AIHoloImager
                 const GeneralConstantBuffer* cbs[] = {&calc_diffusion_box_cb_};
                 const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex};
                 GpuTexture2D* uav_texs[] = {&bb_tex_};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
                 cmd_list.Compute(
-                    calc_diffusion_box_pipeline_, DivUp(view_width, BlockDim), DivUp(view_height, BlockDim), 1, cbs, srv_texs, uav_texs);
+                    calc_diffusion_box_pipeline_, DivUp(view_width, BlockDim), DivUp(view_height, BlockDim), 1, shader_binding);
             }
             {
                 blend_cb_->atlas_offset_view_size.x = atlas_offset_x;
@@ -352,8 +364,9 @@ namespace AIHoloImager
                 const GeneralConstantBuffer* cbs[] = {&blend_cb_};
                 const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex, &bb_tex_};
                 GpuTexture2D* uav_texs[] = {&ssaa_rt_tex_};
-                cmd_list.Compute(blend_pipeline_, DivUp(ssaa_rt_tex_.Width(0), BlockDim), DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, cbs,
-                    srv_texs, uav_texs);
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
+                cmd_list.Compute(
+                    blend_pipeline_, DivUp(ssaa_rt_tex_.Width(0), BlockDim), DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, shader_binding);
             }
         }
 

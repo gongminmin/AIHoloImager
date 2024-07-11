@@ -14,7 +14,7 @@ namespace
 {
     uint32_t descriptor_size[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
 
-    uint16_t constexpr DescriptorPageSize[] = {32 * 1024, 1 * 1024, 8 * 1024, 4 * 1024};
+    constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 1 * 1024, 8 * 1024, 4 * 1024};
 
     void UpdateDescriptorSize(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type)
     {
@@ -36,6 +36,10 @@ namespace AIHoloImager
         {
             gpu_handle_ = heap_.GpuHandleStart();
         }
+        else
+        {
+            gpu_handle_ = {};
+        }
     }
 
     GpuDescriptorPage::~GpuDescriptorPage() noexcept = default;
@@ -56,13 +60,13 @@ namespace AIHoloImager
         gpu_handle_ = {};
     }
 
-    void GpuDescriptorBlock::Reset(GpuDescriptorPage const& page, uint32_t offset, uint32_t size) noexcept
+    void GpuDescriptorBlock::Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept
     {
         native_heap_ = page.Heap().NativeDescriptorHeap();
         offset_ = offset;
         size_ = size;
 
-        uint32_t const desc_size = descriptor_size[this->NativeDescriptorHeap()->GetDesc().Type];
+        const uint32_t desc_size = descriptor_size[this->NativeDescriptorHeap()->GetDesc().Type];
         std::tie(cpu_handle_, gpu_handle_) = OffsetHandle(page.CpuHandleStart(), page.GpuHandleStart(), offset, desc_size);
     }
 
@@ -165,7 +169,7 @@ namespace AIHoloImager
                 }
             }
 
-            AI_HOLO_IMAGER_UNREACHABLE("This descriptor block is not allocated by this allocator");
+            Unreachable("This descriptor block is not allocated by this allocator");
         }
     }
 
@@ -190,8 +194,8 @@ namespace AIHoloImager
             {
                 if (stall_iter->fence_value <= fence_value)
                 {
-                    auto const free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
-                        stall_iter->free_range.first_offset, [](PageInfo::FreeRange const& free_range, uint32_t first_offset) {
+                    const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
+                        stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {
                             return free_range.first_offset < first_offset;
                         });
                     if (free_iter == page.free_list.end())
@@ -210,7 +214,7 @@ namespace AIHoloImager
                         bool merge_with_prev = false;
                         if (free_iter != page.free_list.begin())
                         {
-                            auto const prev_free_iter = std::prev(free_iter);
+                            const auto prev_free_iter = std::prev(free_iter);
                             if (prev_free_iter->last_offset == stall_iter->free_range.first_offset)
                             {
                                 prev_free_iter->last_offset = stall_iter->free_range.last_offset;
@@ -228,7 +232,7 @@ namespace AIHoloImager
                         free_iter->first_offset = stall_iter->free_range.first_offset;
                         if (free_iter != page.free_list.begin())
                         {
-                            auto const prev_free_iter = std::prev(free_iter);
+                            const auto prev_free_iter = std::prev(free_iter);
                             if (prev_free_iter->last_offset == free_iter->first_offset)
                             {
                                 prev_free_iter->last_offset = free_iter->last_offset;

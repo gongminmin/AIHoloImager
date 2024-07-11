@@ -94,7 +94,9 @@ namespace AIHoloImager
             bilinear_sampler_desc.MinLOD = 0.0f;
             bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
             bilinear_sampler_desc.ShaderRegister = 0;
-            undistort_pipeline_ = GpuComputePipeline(gpu_system_, UndistortCs_shader, 1, 1, 1, std::span(&bilinear_sampler_desc, 1));
+
+            const ShaderInfo shader = {UndistortCs_shader, 1, 1, 1};
+            undistort_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span(&bilinear_sampler_desc, 1));
         }
 
         ~Impl() noexcept
@@ -528,8 +530,9 @@ namespace AIHoloImager
             const GeneralConstantBuffer* cbs[] = {&undistort_cb_};
             const GpuTexture2D* srv_texs[] = {&input_tex};
             GpuTexture2D* uav_texs[] = {&output_tex};
-            cmd_list.Compute(undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, cbs,
-                srv_texs, uav_texs);
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
+            cmd_list.Compute(
+                undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, shader_binding);
         }
 
     private:

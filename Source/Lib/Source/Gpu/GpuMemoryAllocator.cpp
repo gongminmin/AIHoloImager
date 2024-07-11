@@ -183,7 +183,7 @@ namespace AIHoloImager
                 }
             }
 
-            AI_HOLO_IMAGER_UNREACHABLE("This memory block is not allocated by this allocator");
+            Unreachable("This memory block is not allocated by this allocator");
         }
     }
 

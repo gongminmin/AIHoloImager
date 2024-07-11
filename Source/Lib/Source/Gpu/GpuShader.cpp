@@ -11,58 +11,49 @@
 namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
-    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, std::span<const ShaderInfo> shaders,
+    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
         std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states)
     {
-        std::vector<const ShaderInfo*> sorted_shaders;
-        sorted_shaders.reserve(shaders.size());
-        for (uint32_t i = 0; i < static_cast<uint32_t>(ShaderStage::Num); ++i)
-        {
-            for (const auto& shader : shaders)
-            {
-                if (static_cast<ShaderStage>(i) == shader.stage)
-                {
-                    sorted_shaders.push_back(&shader);
-                    break;
-                }
-            }
-        }
-
         uint32_t num_desc_ranges = 0;
-        for (const auto& shader : sorted_shaders)
+        for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
-            num_desc_ranges += (shader->num_srvs ? 1 : 0) + (shader->num_uavs ? 1 : 0);
+            const auto& shader = shaders[s];
+            num_desc_ranges += (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
         }
 
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
-        for (const auto* shader : sorted_shaders)
+        for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
-            if (shader->num_srvs != 0)
+            const auto& shader = shaders[s];
+            if (shader.num_srvs != 0)
             {
-                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader->num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader.num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
                 ++range_index;
             }
-            if (shader->num_uavs != 0)
+            if (shader.num_uavs != 0)
             {
-                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader->num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
                 ++range_index;
             }
         }
 
         uint32_t num_root_params = num_desc_ranges;
-        for (const auto& shader : sorted_shaders)
+        for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
-            num_root_params += shader->num_cbs;
+            const auto& shader = shaders[s];
+            num_root_params += shader.num_cbs;
         }
 
         auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
         uint32_t root_index = 0;
         range_index = 0;
-        for (const auto& shader : sorted_shaders)
+        for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
+            const auto& shader = shaders[s];
+
             D3D12_SHADER_VISIBILITY visibility;
-            switch (shader->stage)
+            switch (static_cast<ShaderStage>(s))
             {
             case ShaderStage::Vertex:
                 visibility = D3D12_SHADER_VISIBILITY_VERTEX;
@@ -77,19 +68,19 @@ namespace AIHoloImager
                 break;
             }
 
-            if (shader->num_srvs != 0)
+            if (shader.num_srvs != 0)
             {
                 root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
                 ++root_index;
                 ++range_index;
             }
-            if (shader->num_uavs != 0)
+            if (shader.num_uavs != 0)
             {
                 root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
                 ++root_index;
                 ++range_index;
             }
-            for (uint32_t i = 0; i < shader->num_cbs; ++i)
+            for (uint32_t i = 0; i < shader.num_cbs; ++i)
             {
                 root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
                 ++root_index;
@@ -121,9 +112,10 @@ namespace AIHoloImager
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
         pso_desc.pRootSignature = root_sig_.Get();
-        for (const auto& shader : shaders)
+        for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
-            switch (shader.stage)
+            const auto& shader = shaders[s];
+            switch (static_cast<ShaderStage>(s))
             {
             case ShaderStage::Vertex:
                 pso_desc.VS.pShaderBytecode = shader.bytecode.data();
@@ -204,40 +196,40 @@ namespace AIHoloImager
 
 
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
-    GpuComputePipeline::GpuComputePipeline(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs,
-        uint32_t num_uavs, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
+    GpuComputePipeline::GpuComputePipeline(
+        GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
     {
-        const uint32_t num_desc_ranges = (num_srvs ? 1 : 0) + (num_uavs ? 1 : 0);
+        const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
-        if (num_srvs != 0)
+        if (shader.num_srvs != 0)
         {
-            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader.num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
             ++range_index;
         }
-        if (num_uavs != 0)
+        if (shader.num_uavs != 0)
         {
-            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
             ++range_index;
         }
 
-        const uint32_t num_root_params = num_desc_ranges + num_cbs;
+        const uint32_t num_root_params = num_desc_ranges + shader.num_cbs;
         auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
         uint32_t root_index = 0;
         range_index = 0;
-        if (num_srvs != 0)
+        if (shader.num_srvs != 0)
         {
             root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
             ++root_index;
             ++range_index;
         }
-        if (num_uavs != 0)
+        if (shader.num_uavs != 0)
         {
             root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
             ++root_index;
             ++range_index;
         }
-        for (uint32_t i = 0; i < num_cbs; ++i)
+        for (uint32_t i = 0; i < shader.num_cbs; ++i)
         {
             root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
             ++root_index;
@@ -261,14 +253,11 @@ namespace AIHoloImager
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.PutVoid()));
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc;
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{};
         pso_desc.pRootSignature = root_sig_.Get();
-        pso_desc.CS.pShaderBytecode = bytecode.data();
-        pso_desc.CS.BytecodeLength = bytecode.size();
+        pso_desc.CS.pShaderBytecode = shader.bytecode.data();
+        pso_desc.CS.BytecodeLength = shader.bytecode.size();
         pso_desc.NodeMask = 0;
-        pso_desc.CachedPSO.pCachedBlob = nullptr;
-        pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
-        pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
     }
     GpuComputePipeline::~GpuComputePipeline() noexcept = default;

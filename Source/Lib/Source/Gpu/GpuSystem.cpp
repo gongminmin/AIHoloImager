@@ -38,9 +38,7 @@ namespace AIHoloImager
           cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
         bool debug_dxgi = false;
-
         ComPtr<IDXGIFactory4> dxgi_factory;
-
         if (enable_debug)
         {
             ComPtr<ID3D12Debug> debug_ctrl;

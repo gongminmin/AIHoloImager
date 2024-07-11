@@ -14,6 +14,14 @@
 
 namespace AIHoloImager
 {
+    struct ShaderInfo
+    {
+        std::span<const uint8_t> bytecode;
+        uint32_t num_cbs = 0;
+        uint32_t num_srvs = 0;
+        uint32_t num_uavs = 0;
+    };
+
     class GpuRenderPipeline
     {
         DISALLOW_COPY_AND_ASSIGN(GpuRenderPipeline)
@@ -26,15 +34,7 @@ namespace AIHoloImager
 
             Num,
         };
-
-        struct ShaderInfo
-        {
-            ShaderStage stage;
-            std::span<const uint8_t> bytecode;
-            uint32_t num_cbs;
-            uint32_t num_srvs;
-            uint32_t num_uavs;
-        };
+        static constexpr uint32_t NumShaderStages = static_cast<uint32_t>(ShaderStage::Num);
 
         enum CullMode
         {
@@ -55,8 +55,9 @@ namespace AIHoloImager
 
     public:
         GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, std::span<const ShaderInfo> shaders, std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems,
-            std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states);
+        GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
+            std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers,
+            const States& states);
         ~GpuRenderPipeline() noexcept;
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
@@ -76,8 +77,7 @@ namespace AIHoloImager
 
     public:
         GpuComputePipeline() noexcept;
-        GpuComputePipeline(GpuSystem& gpu_system, std::span<const uint8_t> bytecode, uint32_t num_cbs, uint32_t num_srvs, uint32_t num_uavs,
-            std::span<const D3D12_STATIC_SAMPLER_DESC> samplers);
+        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers);
         ~GpuComputePipeline() noexcept;
 
         GpuComputePipeline(GpuComputePipeline&& other) noexcept;

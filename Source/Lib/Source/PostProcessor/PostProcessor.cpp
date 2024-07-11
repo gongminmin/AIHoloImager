@@ -28,9 +28,9 @@ namespace AIHoloImager
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
             {
-                const GpuRenderPipeline::ShaderInfo shaders[] = {
-                    {GpuRenderPipeline::ShaderStage::Vertex, RefillTextureVs_shader, 0, 0, 0},
-                    {GpuRenderPipeline::ShaderStage::Pixel, RefillTexturePs_shader, 0, 2, 0},
+                const ShaderInfo shaders[] = {
+                    {RefillTextureVs_shader, 0, 0, 0},
+                    {RefillTexturePs_shader, 0, 2, 0},
                 };
 
                 const DXGI_FORMAT rtv_formats[] = {ColorFmt};
@@ -61,8 +61,10 @@ namespace AIHoloImager
                 refill_texture_pipeline_ =
                     GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&bilinear_sampler_desc, 1), states);
             }
-
-            dilate_pipeline_ = GpuComputePipeline(gpu_system_, DilateCs_shader, 0, 1, 1, {});
+            {
+                const ShaderInfo shader = {DilateCs_shader, 0, 1, 1};
+                dilate_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
         }
 
         ~Impl()
@@ -345,8 +347,8 @@ namespace AIHoloImager
 
             const GpuTexture2D* srv_texs[] = {&ai_tex, &photo_tex};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
-                {GpuRenderPipeline::ShaderStage::Vertex, {}, {}, {}},
-                {GpuRenderPipeline::ShaderStage::Pixel, {}, srv_texs, {}},
+                {{}, {}, {}},
+                {{}, srv_texs, {}},
             };
 
             const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&blended_tex, &rtv}};
@@ -375,8 +377,9 @@ namespace AIHoloImager
 
                 const GpuTexture2D* srv_texs[] = {texs[src]};
                 GpuTexture2D* uav_texs[] = {texs[dst]};
-                cmd_list.Compute(dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, {},
-                    srv_texs, uav_texs);
+                const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
+                cmd_list.Compute(
+                    dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, shader_binding);
             }
 
             if constexpr (DilateTimes & 1)

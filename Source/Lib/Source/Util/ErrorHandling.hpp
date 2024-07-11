@@ -17,8 +17,6 @@
     #include <windows.h>
 #endif
 
-#define AI_HOLO_IMAGER_UNREACHABLE(msg) __assume(false)
-
 namespace AIHoloImager
 {
     std::string CombineFileLine(std::string_view file, uint32_t line);
@@ -39,10 +37,10 @@ namespace AIHoloImager
         }
 
     private:
-        HRESULT const hr_;
+        const HRESULT hr_;
     };
 
-    [[noreturn]] inline void Unreachable()
+    [[noreturn]] inline void Unreachable([[maybe_unused]] std::string_view msg = {})
     {
 #if defined(_MSC_VER)
         __assume(false);

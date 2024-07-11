@@ -37,7 +37,7 @@ namespace AIHoloImager
 
         default:
             // TODO: Support more formats
-            AI_HOLO_IMAGER_UNREACHABLE("Unsupported format");
+            Unreachable("Unsupported format");
         }
     }
 
