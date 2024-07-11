@@ -27,7 +27,6 @@
     #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
-#include <openMVG/cameras/Camera_undistort_image.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
 #include <openMVG/exif/sensor_width_database/ParseDatabase.hpp>
 #include <openMVG/features/regions.hpp>

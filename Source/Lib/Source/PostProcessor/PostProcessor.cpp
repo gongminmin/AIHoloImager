@@ -190,28 +190,31 @@ namespace AIHoloImager
             memcpy(vb.Map(), texture_transfer_vertices.data(), vb.Size());
             vb.Unmap(D3D12_RANGE{0, vb.Size()});
 
-            GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
             Texture ai_texture = ai_mesh.AlbedoTexture();
             Ensure4Channel(ai_texture);
             Texture photo_texture = textured_mesh.AlbedoTexture();
             Ensure4Channel(photo_texture);
 
-            GpuTexture2D ai_gpu_tex;
-            UploadGpuTexture(gpu_system_, ai_texture, ai_gpu_tex);
-            GpuTexture2D photo_gpu_tex;
-            UploadGpuTexture(gpu_system_, photo_texture, photo_gpu_tex);
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            GpuTexture2D ai_gpu_tex(gpu_system_, ai_texture.Width(), ai_texture.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
+            GpuTexture2D photo_gpu_tex(gpu_system_, photo_texture.Width(), photo_texture.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
+            ai_gpu_tex.Upload(gpu_system_, cmd_list, 0, ai_texture.Data());
+            photo_gpu_tex.Upload(gpu_system_, cmd_list, 0, photo_texture.Data());
 
             GpuTexture2D blended_tex = this->BlendTextures(cmd_list, vb, ai_gpu_tex, photo_gpu_tex);
             GpuTexture2D dilated_tmp_tex(gpu_system_, blended_tex.Width(0), blended_tex.Height(0), 1, ColorFmt,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
-                L"dilated_tmp_tex");
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"dilated_tmp_tex");
 
-            this->DilateTexture(cmd_list, blended_tex, dilated_tmp_tex);
+            GpuTexture2D* dilated_tex = this->DilateTexture(cmd_list, blended_tex, dilated_tmp_tex);
 
+            Texture target_texture(dilated_tex->Width(0), dilated_tex->Height(0), FormatSize(dilated_tex->Format()));
+            dilated_tex->Readback(gpu_system_, cmd_list, 0, target_texture.Data());
             gpu_system_.Execute(std::move(cmd_list));
 
-            target_mesh.AlbedoTexture(ReadbackGpuTexture(gpu_system_, blended_tex));
+            target_mesh.AlbedoTexture(target_texture);
         }
 
         std::vector<TextureTransferVertexFormat> GenTextureTransferVertices(Mesh& target_mesh, const Mesh& textured_mesh)
@@ -354,7 +357,7 @@ namespace AIHoloImager
             return blended_tex;
         }
 
-        void DilateTexture(GpuCommandList& cmd_list, GpuTexture2D& tex, GpuTexture2D& tmp_tex)
+        GpuTexture2D* DilateTexture(GpuCommandList& cmd_list, GpuTexture2D& tex, GpuTexture2D& tmp_tex)
         {
             constexpr uint32_t BlockDim = 16;
 
@@ -371,14 +374,16 @@ namespace AIHoloImager
                     dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, shader_binding);
             }
 
+            tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            tmp_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+
             if constexpr (DilateTimes & 1)
             {
-                tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
-
-                auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-                d3d12_cmd_list->CopyResource(tex.NativeTexture(), tmp_tex.NativeTexture());
-
-                tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+                return &tmp_tex;
+            }
+            else
+            {
+                return &tex;
             }
         }
 

@@ -177,8 +177,15 @@ namespace AIHoloImager
             memcpy(ib.Map(), mesh.Indices().data(), ib.Size());
             ib.Unmap(D3D12_RANGE{0, ib.Size()});
 
-            GpuTexture2D albedo_tex;
-            UploadGpuTexture(gpu_system_, mesh.AlbedoTexture(), albedo_tex);
+            GpuTexture2D albedo_gpu_tex;
+            {
+                const auto& albedo_tex = mesh.AlbedoTexture();
+                albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                    D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
+            }
 
             constexpr float CameraDist = 10;
 
@@ -186,31 +193,39 @@ namespace AIHoloImager
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_tex, 0, 45, CameraDist);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_tex, 0, 45, CameraDist);
                 Downsample(cmd_list, init_view_tex_);
                 gpu_system_.Execute(std::move(cmd_list));
             }
 
             GpuTexture2D mv_diffusion_gpu_tex;
             {
-                Texture init_view_cpu_tex = ReadbackGpuTexture(gpu_system_, init_view_tex_);
-                RemoveAlpha(init_view_cpu_tex);
+                Texture init_view_cpu_tex;
+                {
+                    init_view_cpu_tex = Texture(init_view_tex_.Width(0), init_view_tex_.Height(0), FormatSize(init_view_tex_.Format()));
+                    auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    init_view_tex_.Readback(gpu_system_, cmd_list, 0, init_view_cpu_tex.Data());
+                    gpu_system_.Execute(std::move(cmd_list));
+                }
 
+                Ensure3Channel(init_view_cpu_tex);
                 MultiViewDiffusion mv_diffusion(python_system_);
                 Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
                 Ensure4Channel(mv_diffusion_tex);
 
-                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
-                    DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
-                mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
-                gpu_system_.Execute(std::move(cmd_list));
+                {
+                    auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
+                        DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
+                    mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
+                    gpu_system_.Execute(std::move(cmd_list));
+                }
             }
 
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
-                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
                 BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
                 Downsample(cmd_list, multi_view_texs_[i]);
                 gpu_system_.Execute(std::move(cmd_list));
@@ -222,8 +237,14 @@ namespace AIHoloImager
             Result ret;
             for (uint32_t i = 0; i < 6; ++i)
             {
-                ret.multi_view_images[i] = ReadbackGpuTexture(gpu_system_, multi_view_texs_[i]);
-                RemoveAlpha(ret.multi_view_images[i]);
+                ret.multi_view_images[i] =
+                    Texture(multi_view_texs_[i].Width(0), multi_view_texs_[i].Height(0), FormatSize(multi_view_texs_[i].Format()));
+
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                multi_view_texs_[i].Readback(gpu_system_, cmd_list, 0, ret.multi_view_images[i].Data());
+                gpu_system_.Execute(std::move(cmd_list));
+
+                Ensure3Channel(ret.multi_view_images[i]);
             }
 
             return ret;

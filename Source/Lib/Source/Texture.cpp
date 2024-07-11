@@ -4,6 +4,7 @@
 #include "AIHoloImager/Texture.hpp"
 
 #include <cstring>
+#include <utility>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -179,7 +180,7 @@ namespace AIHoloImager
         }
     }
 
-    void RemoveAlpha(Texture& tex)
+    void Ensure3Channel(Texture& tex)
     {
         const uint32_t channels = tex.NumChannels();
         if (channels != 3)
@@ -189,12 +190,18 @@ namespace AIHoloImager
             const uint8_t* src = tex.Data();
             uint8_t* dst = ret.Data();
 
+            const uint32_t copy_channels = std::min(channels, 3u);
+
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
             for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
             {
-                memcpy(&dst[i * 3], &src[i * channels], 3);
+                memcpy(&dst[i * 3], &src[i * channels], copy_channels);
+                if (copy_channels < 3)
+                {
+                    memset(&dst[i * 3 + copy_channels], 0, 3 - copy_channels);
+                }
             }
 
             tex = std::move(ret);
