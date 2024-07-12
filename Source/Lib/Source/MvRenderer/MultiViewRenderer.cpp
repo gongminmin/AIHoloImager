@@ -273,10 +273,12 @@ namespace AIHoloImager
             XMStoreFloat4x4(&render_cb_->mvp, XMMatrixTranspose(view_mtx * proj_mtx_));
             render_cb_.UploadToGpu();
 
+            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            ssaa_ds_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
             const float clear_clr[] = {0, 0, 0, 0};
             d3d12_cmd_list->ClearRenderTargetView(ssaa_rtv_.CpuHandle(), clear_clr, 0, nullptr);
-            d3d12_cmd_list->ClearDepthStencilView(
-                ssaa_dsv_.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1, 0, 0, nullptr);
+            d3d12_cmd_list->ClearDepthStencilView(ssaa_dsv_.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1, 0, 0, nullptr);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(Mesh::VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};

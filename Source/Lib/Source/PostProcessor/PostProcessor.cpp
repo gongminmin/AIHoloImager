@@ -331,6 +331,8 @@ namespace AIHoloImager
             GpuRenderTargetView rtv(
                 gpu_system_, blended_tex, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block.CpuHandle(), 0, rtv_descriptor_size));
 
+            blended_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
             const float clear_clr[] = {0, 0, 0, 0};
             d3d12_cmd_list->ClearRenderTargetView(rtv.CpuHandle(), clear_clr, 0, nullptr);
 
@@ -373,9 +375,6 @@ namespace AIHoloImager
                 cmd_list.Compute(
                     dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, shader_binding);
             }
-
-            tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-            tmp_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
 
             if constexpr (DilateTimes & 1)
             {

@@ -260,18 +260,6 @@ namespace AIHoloImager
             d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
         }
 
-        for (auto& rt : rts)
-        {
-            if (rt.texture != nullptr)
-            {
-                rt.texture->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
-            }
-        }
-        if (ds != nullptr)
-        {
-            ds->texture->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
-        }
-
         gpu_system_->DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
@@ -352,14 +340,6 @@ namespace AIHoloImager
         }
 
         d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
-
-        for (const auto* uav : shader_binding.uavs)
-        {
-            if (uav != nullptr)
-            {
-                uav->Transition(*this, D3D12_RESOURCE_STATE_COMMON);
-            }
-        }
 
         gpu_system_->DeallocCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }

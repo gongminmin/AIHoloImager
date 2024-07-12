@@ -293,12 +293,9 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        auto src_old_state = this->State(0);
         this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
-
-        this->Transition(cmd_list, src_old_state);
 
         gpu_system.DeallocUploadMemBlock(std::move(upload_mem_block));
     }
@@ -341,12 +338,9 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        auto src_old_state = this->State(0);
-        this->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
-
-        this->Transition(cmd_list, src_old_state);
 
         gpu_system.ExecuteAndReset(cmd_list);
         gpu_system.WaitForGpu();
@@ -379,15 +373,10 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        auto src_old_state = other.State(0);
-        auto dst_old_state = this->State(0);
         other.Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_SOURCE);
         this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, dst_x, dst_y, 0, &src, &src_box);
-
-        other.Transition(cmd_list, src_old_state);
-        this->Transition(cmd_list, dst_old_state);
 
         gpu_system.ExecuteAndReset(cmd_list);
     }
