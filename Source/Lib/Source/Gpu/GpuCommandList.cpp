@@ -283,12 +283,16 @@ namespace AIHoloImager
         d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
         d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
 
-        auto srv_uav_desc_block =
-            gpu_system_->AllocCbvSrvUavDescBlock((shader_binding.srvs.empty() ? 0 : 1) + (shader_binding.uavs.empty() ? 0 : 1));
-        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
+        const uint32_t num_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
+        GpuDescriptorBlock srv_uav_desc_block;
+        if (num_descs > 0)
+        {
+            srv_uav_desc_block = gpu_system_->AllocCbvSrvUavDescBlock(num_descs);
 
-        ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
-        d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+        }
+        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
 
         uint32_t heap_base = 0;
         uint32_t root_index = 0;
