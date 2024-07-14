@@ -159,7 +159,7 @@ namespace AIHoloImager
                 D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
         }
 
-        ~Impl() noexcept
+        ~Impl()
         {
             gpu_system_.DeallocDsvDescBlock(std::move(dsv_desc_block_));
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
@@ -200,47 +200,34 @@ namespace AIHoloImager
 
             GpuTexture2D mv_diffusion_gpu_tex;
             {
-                Texture init_view_cpu_tex;
-                {
-                    init_view_cpu_tex = Texture(init_view_tex_.Width(0), init_view_tex_.Height(0), FormatSize(init_view_tex_.Format()));
-                    auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                    init_view_tex_.Readback(gpu_system_, cmd_list, 0, init_view_cpu_tex.Data());
-                    gpu_system_.Execute(std::move(cmd_list));
-                }
+                Texture init_view_cpu_tex = Texture(init_view_tex_.Width(0), init_view_tex_.Height(0), FormatSize(init_view_tex_.Format()));
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                init_view_tex_.Readback(gpu_system_, cmd_list, 0, init_view_cpu_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
 
                 Ensure3Channel(init_view_cpu_tex);
                 MultiViewDiffusion mv_diffusion(python_system_);
                 Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
                 Ensure4Channel(mv_diffusion_tex);
 
-                {
-                    auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                    mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
-                        DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
-                    mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
-                    gpu_system_.Execute(std::move(cmd_list));
-                }
+                cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
+                    DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
+                mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
             }
 
+            Result ret;
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
                 BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
                 Downsample(cmd_list, multi_view_texs_[i]);
-                gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
-            }
 
-            mv_diffusion_gpu_tex.Reset();
-
-            Result ret;
-            for (uint32_t i = 0; i < 6; ++i)
-            {
                 ret.multi_view_images[i] =
                     Texture(multi_view_texs_[i].Width(0), multi_view_texs_[i].Height(0), FormatSize(multi_view_texs_[i].Format()));
 
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 multi_view_texs_[i].Readback(gpu_system_, cmd_list, 0, ret.multi_view_images[i].Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
@@ -294,7 +281,7 @@ namespace AIHoloImager
             const GpuCommandList::DepthStencilBinding ds_binding = {&ssaa_ds_tex_, &ssaa_dsv_};
 
             const float offset_scale = (scale - 1) / 2;
-            const D3D12_VIEWPORT viewports[]{{-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
+            const D3D12_VIEWPORT viewports[] = {{-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
                 scale * ssaa_rt_tex_.Width(0), scale * ssaa_rt_tex_.Height(0), 0, 1}};
             const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(ssaa_rt_tex_.Width(0)), static_cast<LONG>(ssaa_rt_tex_.Height(0))}};
 
