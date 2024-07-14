@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -29,7 +30,7 @@ namespace AIHoloImager
 
         MultiViewRenderer& operator=(MultiViewRenderer&& other) noexcept;
 
-        Result Render(const Mesh& mesh);
+        Result Render(const Mesh& mesh, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

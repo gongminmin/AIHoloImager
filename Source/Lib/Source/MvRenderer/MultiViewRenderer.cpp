@@ -165,7 +165,7 @@ namespace AIHoloImager
             gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
         }
 
-        Result Render(const Mesh& mesh)
+        Result Render(const Mesh& mesh, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.Vertices().size() * sizeof(Mesh::VertexFormat)), D3D12_HEAP_TYPE_UPLOAD,
                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
@@ -189,6 +189,11 @@ namespace AIHoloImager
 
             constexpr float CameraDist = 10;
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+            const auto output_dir = tmp_dir / "Renderer";
+            std::filesystem::create_directories(output_dir);
+#endif
+
             const uint32_t num_indices = static_cast<uint32_t>(mesh.Indices().size());
 
             {
@@ -205,10 +210,18 @@ namespace AIHoloImager
                 init_view_tex_.Readback(gpu_system_, cmd_list, 0, init_view_cpu_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+                SaveTexture(init_view_cpu_tex, output_dir / "InitView.png");
+#endif
+
                 Ensure3Channel(init_view_cpu_tex);
                 MultiViewDiffusion mv_diffusion(python_system_);
                 Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
                 Ensure4Channel(mv_diffusion_tex);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                SaveTexture(mv_diffusion_tex, output_dir / "Diffusion.png");
+#endif
 
                 cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
@@ -232,6 +245,10 @@ namespace AIHoloImager
                 gpu_system_.Execute(std::move(cmd_list));
 
                 Ensure3Channel(ret.multi_view_images[i]);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                SaveTexture(ret.multi_view_images[i], output_dir / std::format("View{}.png", i));
+#endif
             }
 
             return ret;
@@ -418,8 +435,8 @@ namespace AIHoloImager
     MultiViewRenderer::MultiViewRenderer(MultiViewRenderer&& other) noexcept = default;
     MultiViewRenderer& MultiViewRenderer::operator=(MultiViewRenderer&& other) noexcept = default;
 
-    MultiViewRenderer::Result MultiViewRenderer::Render(const Mesh& mesh)
+    MultiViewRenderer::Result MultiViewRenderer::Render(const Mesh& mesh, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Render(mesh);
+        return impl_->Render(mesh, tmp_dir);
     }
 } // namespace AIHoloImager

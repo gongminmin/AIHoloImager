@@ -47,7 +47,7 @@ namespace AIHoloImager
         {
             const auto sfm_result = sfm_.Process(input_path, true, tmp_dir_);
             const auto mesh_recon_result = mesh_recon_.Process(sfm_result, true, 2048, tmp_dir_);
-            const auto mv_renderer_result = mv_renderer_.Render(mesh_recon_result.mesh);
+            const auto mv_renderer_result = mv_renderer_.Render(mesh_recon_result.mesh, tmp_dir_);
             const auto mesh = mesh_gen_.Generate(mv_renderer_result.multi_view_images, 2048, tmp_dir_);
             return pp_.Process(mesh_recon_result, mesh, tmp_dir_);
         }

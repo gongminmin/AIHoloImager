@@ -45,7 +45,9 @@
 #include <openMVG/sfm/pipelines/sfm_matches_provider.hpp>
 #include <openMVG/sfm/pipelines/sfm_regions_provider.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
-#include <openMVG/sfm/sfm_data_io.hpp>
+#ifdef AIHI_KEEP_INTERMEDIATES
+    #include <openMVG/sfm/sfm_data_io.hpp>
+#endif
 #include <openMVG/sfm/sfm_data_utils.hpp>
 #ifdef _MSC_VER
     #pragma warning(pop)
@@ -380,7 +382,9 @@ namespace AIHoloImager
             }
 
             const SfM_Data processed_sfm_data = sfm_engine->Get_SfM_Data();
+#ifdef AIHI_KEEP_INTERMEDIATES
             Save(processed_sfm_data, (tmp_dir / "PointCloud_CameraPoses.ply").string(), ESfM_Data::ALL);
+#endif
 
             return processed_sfm_data;
         }

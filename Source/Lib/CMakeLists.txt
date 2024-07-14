@@ -130,6 +130,12 @@ target_compile_definitions(AIHoloImagerLib
         AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
         AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
 )
+if(AIHI_KEEP_INTERMEDIATES)
+    target_compile_definitions(AIHoloImagerLib
+        PUBLIC
+            AIHI_KEEP_INTERMEDIATES
+    )
+endif()
 if(ai_holo_imager_compiler_msvc)
     target_compile_definitions(AIHoloImagerLib
         PRIVATE

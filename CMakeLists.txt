@@ -20,6 +20,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
+option(AIHI_KEEP_INTERMEDIATES "Keep intermediate results" OFF)
+
 add_subdirectory(External)
 add_subdirectory(Source)
 

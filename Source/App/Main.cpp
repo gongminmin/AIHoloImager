@@ -77,7 +77,9 @@ int main(int argc, char* argv[])
         const AIHoloImager::Mesh mesh = imager.Generate(input_path);
         AIHoloImager::SaveMesh(mesh, output_path);
 
+#ifndef AIHI_KEEP_INTERMEDIATES
         std::filesystem::remove_all(tmp_dir);
+#endif
     }
     catch (std::exception& ex)
     {
