@@ -7,11 +7,10 @@ import shutil
 import numpy as np
 import torch
 from pytorch_lightning import seed_everything
-from omegaconf import OmegaConf
 from PIL import Image
 from huggingface_hub import hf_hub_download
 
-from src.utils.train_util import instantiate_from_config
+from src.models.lrm_mesh import InstantMesh
 from src.utils.camera_util import get_zero123plus_input_cameras
 from src.utils.mesh_util import save_obj, save_obj_with_mtl
 
@@ -23,11 +22,12 @@ class MeshGenerator:
 
         radius = 4
 
-        config = OmegaConf.load(this_py_dir.joinpath("InstantMesh/configs/instant-mesh-large.yaml"))
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = instantiate_from_config(config.model_config)
+        self.model = InstantMesh(encoder_freeze = False, encoder_model_name = "facebook/dino-vitb16", encoder_feat_dim = 768,
+            transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16, triplane_low_res = 32,
+            triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128, grid_scale = 2.1
+        )
 
         model_ckpt_path = this_py_dir.joinpath("Models/instant_mesh_large.ckpt")
         if not model_ckpt_path.exists():
