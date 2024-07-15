@@ -8,13 +8,13 @@ torchvision==0.16.0
 xformers==0.0.22.post7
 
 pytorch-lightning==2.1.2
-huggingface-hub==0.17.3
+huggingface-hub==0.19.3
 diffusers==0.20.2
-transformers==4.34.1
+transformers==4.38.0
 accelerate==0.30.1
 
-einops
-trimesh
-xatlas
-ninja
+einops==0.8.0
+trimesh==4.4.3
+xatlas==0.0.9
+ninja==1.11.1
 git+https://github.com/NVlabs/nvdiffrast/
