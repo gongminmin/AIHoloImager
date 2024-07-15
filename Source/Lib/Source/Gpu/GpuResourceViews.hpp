@@ -7,10 +7,12 @@
 
 #include <directx/d3d12.h>
 
+#include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {
+    class GpuCommandList;
     class GpuSystem;
     class GpuTexture2D;
 
@@ -20,25 +22,25 @@ namespace AIHoloImager
 
     public:
         GpuShaderResourceView() noexcept;
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuShaderResourceView(
-            GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuShaderResourceView(
-            GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format,
-            D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        ~GpuShaderResourceView() noexcept;
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        ~GpuShaderResourceView();
 
         GpuShaderResourceView(GpuShaderResourceView&& other) noexcept;
         GpuShaderResourceView& operator=(GpuShaderResourceView&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        void Reset();
 
-        void Reset() noexcept;
+        void Transition(GpuCommandList& cmd_list) const;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+        const GpuTexture2D* texture_ = nullptr;
+        GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -48,19 +50,25 @@ namespace AIHoloImager
 
     public:
         GpuRenderTargetView() noexcept;
-        GpuRenderTargetView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        ~GpuRenderTargetView() noexcept;
+        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        ~GpuRenderTargetView();
 
         GpuRenderTargetView(GpuRenderTargetView&& other) noexcept;
         GpuRenderTargetView& operator=(GpuRenderTargetView&& other) noexcept;
 
         explicit operator bool() const noexcept;
 
-        void Reset() noexcept;
+        void Reset();
+
+        void Transition(GpuCommandList& cmd_list) const;
 
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+        GpuTexture2D* texture_ = nullptr;
+        GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -70,19 +78,25 @@ namespace AIHoloImager
 
     public:
         GpuDepthStencilView() noexcept;
-        GpuDepthStencilView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        ~GpuDepthStencilView() noexcept;
+        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        ~GpuDepthStencilView();
 
         GpuDepthStencilView(GpuDepthStencilView&& other) noexcept;
         GpuDepthStencilView& operator=(GpuDepthStencilView&& other) noexcept;
 
         explicit operator bool() const noexcept;
 
-        void Reset() noexcept;
+        void Reset();
+
+        void Transition(GpuCommandList& cmd_list) const;
 
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+        GpuTexture2D* texture_ = nullptr;
+        GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -92,25 +106,25 @@ namespace AIHoloImager
 
     public:
         GpuUnorderedAccessView() noexcept;
-        GpuUnorderedAccessView(GpuSystem& gpu_system, const GpuTexture2D& texture, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuUnorderedAccessView(
-            GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuUnorderedAccessView(
-            GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format,
-            D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle);
-        ~GpuUnorderedAccessView() noexcept;
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        ~GpuUnorderedAccessView();
 
         GpuUnorderedAccessView(GpuUnorderedAccessView&& other) noexcept;
         GpuUnorderedAccessView& operator=(GpuUnorderedAccessView&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        void Reset();
 
-        void Reset() noexcept;
+        void Transition(GpuCommandList& cmd_list) const;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
 
     private:
+        GpuSystem* gpu_system_ = nullptr;
+        GpuTexture2D* texture_ = nullptr;
+        GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 } // namespace AIHoloImager

@@ -35,7 +35,9 @@ namespace AIHoloImager
         : upload_mem_allocator_(*this, true), readback_mem_allocator_(*this, false),
           rtv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-          cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+          cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          shader_visible_cbv_srv_uav_desc_allocator_(
+              *this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
         bool debug_dxgi = false;
         ComPtr<IDXGIFactory4> dxgi_factory;
@@ -292,6 +294,21 @@ namespace AIHoloImager
         return cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
     }
 
+    GpuDescriptorBlock GpuSystem::AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
+    {
+        return shader_visible_cbv_srv_uav_desc_allocator_.Allocate(size);
+    }
+
+    void GpuSystem::DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
+    {
+        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_vals_[frame_index_]);
+    }
+
+    void GpuSystem::ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
+    {
+        return shader_visible_cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
+    }
+
     GpuMemoryBlock GpuSystem::AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
     {
         return upload_mem_allocator_.Allocate(size_in_bytes, alignment);
@@ -362,6 +379,7 @@ namespace AIHoloImager
         rtv_desc_allocator_.Clear();
         dsv_desc_allocator_.Clear();
         cbv_srv_uav_desc_allocator_.Clear();
+        shader_visible_cbv_srv_uav_desc_allocator_.Clear();
 
         for (auto& cmd_queue : cmd_queues_)
         {
@@ -405,6 +423,7 @@ namespace AIHoloImager
         rtv_desc_allocator_.ClearStallPages(completed_fence);
         dsv_desc_allocator_.ClearStallPages(completed_fence);
         cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
+        shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
     }
 
     ID3D12CommandAllocator* GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type) const noexcept

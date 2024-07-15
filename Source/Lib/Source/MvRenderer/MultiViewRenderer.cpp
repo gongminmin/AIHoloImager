@@ -60,32 +60,28 @@ namespace AIHoloImager
         Impl(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
             : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(XMMatrixPerspectiveFovLH(Fov, 1, 0.1f, 30))
         {
-            rtv_desc_block_ = gpu_system_.AllocRtvDescBlock(1);
-            const uint32_t rtv_descriptor_size = gpu_system_.RtvDescSize();
-
-            dsv_desc_block_ = gpu_system_.AllocDsvDescBlock(1);
-            const uint32_t dsv_descriptor_size = gpu_system_.DsvDescSize();
-
             constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
             constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
 
             ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ColorFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
                 L"ssaa_rt_tex_");
-            ssaa_rtv_ = GpuRenderTargetView(
-                gpu_system_, ssaa_rt_tex_, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block_.CpuHandle(), 0, rtv_descriptor_size));
+            ssaa_rtv_ = GpuRenderTargetView(gpu_system_, ssaa_rt_tex_);
+            ssaa_srv_ = GpuShaderResourceView(gpu_system_, ssaa_rt_tex_);
+            ssaa_uav_ = GpuUnorderedAccessView(gpu_system_, ssaa_rt_tex_);
 
             ssaa_ds_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, DsFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_COMMON, L"ssaa_ds_tex_");
-            ssaa_dsv_ = GpuDepthStencilView(
-                gpu_system_, ssaa_ds_tex_, DXGI_FORMAT_UNKNOWN, OffsetHandle(dsv_desc_block_.CpuHandle(), 0, dsv_descriptor_size));
+            ssaa_dsv_ = GpuDepthStencilView(gpu_system_, ssaa_ds_tex_);
 
             init_view_tex_ = GpuTexture2D(gpu_system_, width, height, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COMMON, L"init_view_tex_");
+            init_view_uav_ = GpuUnorderedAccessView(gpu_system_, init_view_tex_);
             for (size_t i = 0; i < std::size(multi_view_texs_); ++i)
             {
                 multi_view_texs_[i] = GpuTexture2D(gpu_system_, width, height, 1, init_view_tex_.Format(),
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, std::format(L"multi_view_tex_{}", i));
+                multi_view_uavs_[i] = GpuUnorderedAccessView(gpu_system_, multi_view_texs_[i]);
             }
 
             {
@@ -157,12 +153,8 @@ namespace AIHoloImager
             }
             bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
-        }
-
-        ~Impl()
-        {
-            gpu_system_.DeallocDsvDescBlock(std::move(dsv_desc_block_));
-            gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block_));
+            bb_srv_ = GpuShaderResourceView(gpu_system_, bb_tex_);
+            bb_uav_ = GpuUnorderedAccessView(gpu_system_, bb_tex_);
         }
 
         Result Render(const Mesh& mesh, [[maybe_unused]] const std::filesystem::path& tmp_dir)
@@ -186,6 +178,7 @@ namespace AIHoloImager
                 albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }
+            GpuShaderResourceView albedo_gpu_srv(gpu_system_, albedo_gpu_tex);
 
             constexpr float CameraDist = 10;
 
@@ -198,8 +191,8 @@ namespace AIHoloImager
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_tex, 0, 45, CameraDist);
-                Downsample(cmd_list, init_view_tex_);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_srv, 0, 45, CameraDist);
+                Downsample(cmd_list, init_view_tex_, init_view_uav_);
                 gpu_system_.Execute(std::move(cmd_list));
             }
 
@@ -234,9 +227,9 @@ namespace AIHoloImager
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_tex, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_srv, Azimuths[i], Elevations[i], CameraDist, MvScale);
                 BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
-                Downsample(cmd_list, multi_view_texs_[i]);
+                Downsample(cmd_list, multi_view_texs_[i], multi_view_uavs_[i]);
 
                 ret.multi_view_images[i] =
                     Texture(multi_view_texs_[i].Width(0), multi_view_texs_[i].Height(0), FormatSize(multi_view_texs_[i].Format()));
@@ -255,8 +248,8 @@ namespace AIHoloImager
         }
 
     private:
-        void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices, const GpuTexture2D& albedo_tex,
-            float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
+        void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices,
+            const GpuShaderResourceView& albedo_srv, float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
         {
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
@@ -288,14 +281,13 @@ namespace AIHoloImager
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
 
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
-            const GpuTexture2D* srv_texs[] = {&albedo_tex};
+            const GpuShaderResourceView* srvs[] = {&albedo_srv};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {cbs, {}, {}},
-                {{}, srv_texs, {}},
+                {{}, srvs, {}},
             };
 
-            const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&ssaa_rt_tex_, &ssaa_rtv_}};
-            const GpuCommandList::DepthStencilBinding ds_binding = {&ssaa_ds_tex_, &ssaa_dsv_};
+            const GpuRenderTargetView* rtvs[] = {&ssaa_rtv_};
 
             const float offset_scale = (scale - 1) / 2;
             const D3D12_VIEWPORT viewports[] = {{-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
@@ -303,17 +295,18 @@ namespace AIHoloImager
             const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(ssaa_rt_tex_.Width(0)), static_cast<LONG>(ssaa_rt_tex_.Height(0))}};
 
             cmd_list.Render(
-                render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rt_bindings, &ds_binding, viewports, scissor_rcs);
+                render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, &ssaa_dsv_, viewports, scissor_rcs);
         }
 
-        void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target)
+        void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target_tex, GpuUnorderedAccessView& target_uav)
         {
             constexpr uint32_t BlockDim = 16;
 
-            const GpuTexture2D* srv_texs[] = {&ssaa_rt_tex_};
-            GpuTexture2D* uav_texs[] = {&target};
-            const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
-            cmd_list.Compute(downsample_pipeline_, DivUp(target.Width(0), BlockDim), DivUp(target.Height(0), BlockDim), 1, shader_binding);
+            const GpuShaderResourceView* srvs[] = {&ssaa_srv_};
+            GpuUnorderedAccessView* uavs[] = {&target_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {{}, srvs, uavs};
+            cmd_list.Compute(
+                downsample_pipeline_, DivUp(target_tex.Width(0), BlockDim), DivUp(target_tex.Height(0), BlockDim), 1, shader_binding);
         }
 
         void BlendWithDiffusion(GpuCommandList& cmd_list, GpuTexture2D& mv_diffusion_tex, uint32_t index)
@@ -333,10 +326,12 @@ namespace AIHoloImager
             uint32_t bb_init[] = {ssaa_rt_tex_.Width(0), ssaa_rt_tex_.Height(0), 0, 0, view_width, view_height, 0, 0};
             bb_tex_.Upload(gpu_system_, cmd_list, 0, bb_init);
 
+            GpuShaderResourceView mv_diffusion_srv(gpu_system_, mv_diffusion_tex);
+
             {
-                const GpuTexture2D* srv_texs[] = {&ssaa_rt_tex_};
-                GpuTexture2D* uav_texs[] = {&bb_tex_};
-                const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
+                const GpuShaderResourceView* srvs[] = {&ssaa_srv_};
+                GpuUnorderedAccessView* uavs[] = {&bb_uav_};
+                const GpuCommandList::ShaderBinding shader_binding = {{}, srvs, uavs};
                 cmd_list.Compute(calc_rendered_box_pipeline_, DivUp(ssaa_rt_tex_.Width(0), BlockDim),
                     DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, shader_binding);
             }
@@ -348,9 +343,9 @@ namespace AIHoloImager
                 calc_diffusion_box_cb_.UploadToGpu();
 
                 const GeneralConstantBuffer* cbs[] = {&calc_diffusion_box_cb_};
-                const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex};
-                GpuTexture2D* uav_texs[] = {&bb_tex_};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
+                const GpuShaderResourceView* srvs[] = {&mv_diffusion_srv};
+                GpuUnorderedAccessView* uavs[] = {&bb_uav_};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(
                     calc_diffusion_box_pipeline_, DivUp(view_width, BlockDim), DivUp(view_height, BlockDim), 1, shader_binding);
             }
@@ -368,9 +363,9 @@ namespace AIHoloImager
                 blend_cb_.UploadToGpu();
 
                 const GeneralConstantBuffer* cbs[] = {&blend_cb_};
-                const GpuTexture2D* srv_texs[] = {&mv_diffusion_tex, &bb_tex_};
-                GpuTexture2D* uav_texs[] = {&ssaa_rt_tex_};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
+                const GpuShaderResourceView* srvs[] = {&mv_diffusion_srv, &bb_srv_};
+                GpuUnorderedAccessView* uavs[] = {&ssaa_uav_};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(
                     blend_pipeline_, DivUp(ssaa_rt_tex_.Width(0), BlockDim), DivUp(ssaa_rt_tex_.Height(0), BlockDim), 1, shader_binding);
             }
@@ -380,16 +375,17 @@ namespace AIHoloImager
         GpuSystem& gpu_system_;
         PythonSystem& python_system_;
 
-        GpuDescriptorBlock rtv_desc_block_;
-        GpuDescriptorBlock dsv_desc_block_;
-
         GpuTexture2D init_view_tex_;
+        GpuUnorderedAccessView init_view_uav_;
         GpuTexture2D multi_view_texs_[6];
+        GpuUnorderedAccessView multi_view_uavs_[6];
 
         static constexpr uint32_t SsaaScale = 4;
 
         GpuTexture2D ssaa_rt_tex_;
         GpuRenderTargetView ssaa_rtv_;
+        GpuShaderResourceView ssaa_srv_;
+        GpuUnorderedAccessView ssaa_uav_;
 
         GpuTexture2D ssaa_ds_tex_;
         GpuDepthStencilView ssaa_dsv_;
@@ -423,6 +419,8 @@ namespace AIHoloImager
         ConstantBuffer<BlendConstantBuffer> blend_cb_;
         GpuComputePipeline blend_pipeline_;
         GpuTexture2D bb_tex_;
+        GpuShaderResourceView bb_srv_;
+        GpuUnorderedAccessView bb_uav_;
     };
 
     MultiViewRenderer::MultiViewRenderer(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)

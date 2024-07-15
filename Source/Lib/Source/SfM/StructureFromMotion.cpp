@@ -449,7 +449,7 @@ namespace AIHoloImager
                             (distort_gpu_tex.Height(0) != result_view.image.Height()))
                         {
                             distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image.Width(), result_view.image.Height(), 1, ColorFmt,
-                                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
+                                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
                         }
                         if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image.Width()) ||
                             (undistort_gpu_tex.Height(0) != result_view.image.Height()))
@@ -518,10 +518,13 @@ namespace AIHoloImager
             undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb_.UploadToGpu();
 
+            GpuShaderResourceView input_srv(gpu_system_, input_tex);
+            GpuUnorderedAccessView output_uav(gpu_system_, output_tex);
+
             const GeneralConstantBuffer* cbs[] = {&undistort_cb_};
-            const GpuTexture2D* srv_texs[] = {&input_tex};
-            GpuTexture2D* uav_texs[] = {&output_tex};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srv_texs, uav_texs};
+            const GpuShaderResourceView* srvs[] = {&input_srv};
+            GpuUnorderedAccessView* uavs[] = {&output_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(
                 undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, shader_binding);
         }

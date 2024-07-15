@@ -322,14 +322,10 @@ namespace AIHoloImager
         {
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-            auto rtv_desc_block = gpu_system_.AllocRtvDescBlock(1);
-            const uint32_t rtv_descriptor_size = gpu_system_.RtvDescSize();
-
             GpuTexture2D blended_tex(gpu_system_, ai_tex.Width(0), ai_tex.Height(0), 1, ColorFmt,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
                 L"blended_tex");
-            GpuRenderTargetView rtv(
-                gpu_system_, blended_tex, DXGI_FORMAT_UNKNOWN, OffsetHandle(rtv_desc_block.CpuHandle(), 0, rtv_descriptor_size));
+            GpuRenderTargetView rtv(gpu_system_, blended_tex);
 
             blended_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -339,22 +335,23 @@ namespace AIHoloImager
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(TextureTransferVertexFormat)}};
             const uint32_t num_verts = static_cast<uint32_t>(vb.Size() / sizeof(TextureTransferVertexFormat));
 
-            const GpuTexture2D* srv_texs[] = {&ai_tex, &photo_tex};
+            GpuShaderResourceView ai_srv(gpu_system_, ai_tex);
+            GpuShaderResourceView photo_srv(gpu_system_, photo_tex);
+
+            const GpuShaderResourceView* srvs[] = {&ai_srv, &photo_srv};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {{}, {}, {}},
-                {{}, srv_texs, {}},
+                {{}, srvs, {}},
             };
 
-            const GpuCommandList::RenderTargetBinding rt_bindings[] = {{&blended_tex, &rtv}};
+            const GpuRenderTargetView* rtvs[] = {&rtv};
 
             const D3D12_VIEWPORT viewports[] = {
                 {0, 0, static_cast<float>(blended_tex.Width(0)), static_cast<float>(blended_tex.Height(0)), 0, 1}};
             const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(blended_tex.Width(0)), static_cast<LONG>(blended_tex.Height(0))}};
 
             cmd_list.Render(
-                refill_texture_pipeline_, vb_bindings, nullptr, num_verts, shader_bindings, rt_bindings, nullptr, viewports, scissor_rcs);
-
-            gpu_system_.DeallocRtvDescBlock(std::move(rtv_desc_block));
+                refill_texture_pipeline_, vb_bindings, nullptr, num_verts, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
 
             return blended_tex;
         }
@@ -363,15 +360,22 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
+            GpuShaderResourceView tex_srv(gpu_system_, tex);
+            GpuShaderResourceView tmp_tex_srv(gpu_system_, tmp_tex);
+            GpuUnorderedAccessView tex_uav(gpu_system_, tex);
+            GpuUnorderedAccessView tmp_tex_uav(gpu_system_, tmp_tex);
+
             GpuTexture2D* texs[] = {&tex, &tmp_tex};
+            GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
+            GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
             for (uint32_t i = 0; i < DilateTimes; ++i)
             {
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
 
-                const GpuTexture2D* srv_texs[] = {texs[src]};
-                GpuTexture2D* uav_texs[] = {texs[dst]};
-                const GpuCommandList::ShaderBinding shader_binding = {{}, srv_texs, uav_texs};
+                const GpuShaderResourceView* srvs[] = {tex_srvs[src]};
+                GpuUnorderedAccessView* uavs[] = {tex_uavs[dst]};
+                const GpuCommandList::ShaderBinding shader_binding = {{}, srvs, uavs};
                 cmd_list.Compute(
                     dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, shader_binding);
             }

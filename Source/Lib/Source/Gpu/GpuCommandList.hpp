@@ -36,20 +36,8 @@ namespace AIHoloImager
         struct ShaderBinding
         {
             std::span<const GeneralConstantBuffer*> cbs;
-            std::span<const GpuTexture2D*> srvs;
-            std::span<GpuTexture2D*> uavs;
-        };
-
-        struct RenderTargetBinding
-        {
-            GpuTexture2D* texture;
-            GpuRenderTargetView* rtv;
-        };
-
-        struct DepthStencilBinding
-        {
-            GpuTexture2D* texture;
-            GpuDepthStencilView* dsv;
+            std::span<const GpuShaderResourceView*> srvs;
+            std::span<GpuUnorderedAccessView*> uavs;
         };
 
     public:
@@ -77,8 +65,8 @@ namespace AIHoloImager
         void Transition(std::span<const D3D12_RESOURCE_BARRIER> barriers) const noexcept;
 
         void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
-            const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const RenderTargetBinding> rts,
-            const DepthStencilBinding* ds, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects);
+            const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
+            const GpuDepthStencilView* dsv, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
 
