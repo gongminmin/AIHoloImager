@@ -48,8 +48,24 @@ namespace AIHoloImager
 
 
     GpuDescriptorBlock::GpuDescriptorBlock() noexcept = default;
-    GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept = default;
-    GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept = default;
+    GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept
+        : native_heap_(std::exchange(other.native_heap_, {})), offset_(std::exchange(other.offset_, {})),
+          size_(std::exchange(other.size_, {})), cpu_handle_(std::exchange(other.cpu_handle_, {})),
+          gpu_handle_(std::exchange(other.gpu_handle_, {}))
+    {
+    }
+    GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept
+    {
+        if (this != &other)
+        {
+            native_heap_ = std::exchange(other.native_heap_, {});
+            offset_ = std::exchange(other.offset_, {});
+            size_ = std::exchange(other.size_, {});
+            cpu_handle_ = std::exchange(other.cpu_handle_, {});
+            gpu_handle_ = std::exchange(other.gpu_handle_, {});
+        }
+        return *this;
+    }
 
     void GpuDescriptorBlock::Reset() noexcept
     {
