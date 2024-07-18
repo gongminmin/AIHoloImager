@@ -2,6 +2,7 @@ assimp/assimp/
 cxxopts/cxxopts/
 DirectX-Headers/DirectX-Headers/
 InstantMesh/InstantMesh/
+nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 PythonVenv/PythonVenv/
 stb/stb/

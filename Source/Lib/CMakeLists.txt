@@ -127,6 +127,7 @@ string(REPLACE "\\" "/" AIHI_PY_RUNTIME_LIB_DIR ${Python3_RUNTIME_LIBRARY_DIRS})
 
 target_compile_definitions(AIHoloImagerLib
     PRIVATE
+        AIHI_PY_VERSION="${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
         AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
         AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
 )

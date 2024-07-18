@@ -13,12 +13,21 @@ namespace AIHoloImager
     class MeshGenerator::Impl
     {
     public:
-        explicit Impl(PythonSystem& python_system) : python_system_(python_system)
+        Impl(const std::filesystem::path& exe_dir, PythonSystem& python_system) : python_system_(python_system)
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
             mesh_generator_gen_method_ = python_system_.GetAttr(*mesh_generator_, "Gen");
+
+            // Copy the binary to exe's directory for future usage
+            if (!std::filesystem::exists(exe_dir / "nvdiffrast_plugin.pyd"))
+            {
+                const std::filesystem::path local_app_data_dir = std::getenv("LOCALAPPDATA");
+                const std::filesystem::path nvdiffrast_plugin_dir =
+                    local_app_data_dir / ("torch_extensions/torch_extensions/Cache/py" AIHI_PY_VERSION "_cu121/nvdiffrast_plugin");
+                std::filesystem::copy(nvdiffrast_plugin_dir / "nvdiffrast_plugin.pyd", exe_dir);
+            }
 
             pil_module_ = python_system_.Import("PIL");
             image_class_ = python_system_.GetAttr(*pil_module_, "Image");
@@ -145,7 +154,8 @@ namespace AIHoloImager
         PyObjectPtr image_frombuffer_method_;
     };
 
-    MeshGenerator::MeshGenerator(PythonSystem& python_system) : impl_(std::make_unique<Impl>(python_system))
+    MeshGenerator::MeshGenerator(const std::filesystem::path& exe_dir, PythonSystem& python_system)
+        : impl_(std::make_unique<Impl>(exe_dir, python_system))
     {
     }
 

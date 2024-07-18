@@ -4,6 +4,9 @@
 from pathlib import Path
 import shutil
 
+import importlib
+from nvdiffrast.torch.ops import _cached_plugin
+
 import numpy as np
 import torch
 from pytorch_lightning import seed_everything
@@ -17,6 +20,12 @@ from src.utils.mesh_util import save_obj, save_obj_with_mtl
 class MeshGenerator:
     def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
+
+        try:
+            # Inject the cached binary into nvdiffrast to prevent recompiling
+            _cached_plugin[False] = importlib.import_module("nvdiffrast_plugin")
+        except:
+            pass
 
         seed_everything(42)
 

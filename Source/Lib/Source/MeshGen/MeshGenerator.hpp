@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <span>
 
 #include "AIHoloImager/Mesh.hpp"
@@ -17,7 +18,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MeshGenerator);
 
     public:
-        explicit MeshGenerator(PythonSystem& python_system);
+        MeshGenerator(const std::filesystem::path& exe_dir, PythonSystem& python_system);
         MeshGenerator(MeshGenerator&& other) noexcept;
         ~MeshGenerator() noexcept;
 
