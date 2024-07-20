@@ -46,6 +46,8 @@ set(aihi_files
     Source/MeshGen/MeshGenerator.cpp
     Source/MeshGen/MeshGenerator.hpp
     Source/MeshGen/MeshGenerator.py
+    Source/MeshGen/LrmFlexiCubes.py
+    Source/MeshGen/LrmMarchingCubes.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
     Source/MvDiffusion/MultiViewDiffusion.cpp
@@ -161,6 +163,8 @@ target_link_libraries(AIHoloImagerLib
 set(py_files
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/MeshGenerator.py
+    Source/MeshGen/LrmFlexiCubes.py
+    Source/MeshGen/LrmMarchingCubes.py
     Source/MvDiffusion/MultiViewDiffusion.py
 )
 foreach(py_file ${py_files})
