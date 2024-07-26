@@ -5,6 +5,7 @@
 # The major difference is removing the batch_size, since it's always 1.
 # Also, tons of code clean and simplification is taken placed.
 
+import mcubes
 import torch
 import torch.nn as nn
 
@@ -16,7 +17,7 @@ from src.models.geometry.rep_3d.flexicubes_geometry import FlexiCubesGeometry
 from src.models.renderer.synthesizer_mesh import TriplaneSynthesizer
 from src.utils.mesh_util import xatlas_uvmap
 
-class LrmFlexiCubes(nn.Module):
+class Lrm(nn.Module):
     def __init__(self,
                  device,
                  encoder_freeze: bool = False,
@@ -32,7 +33,7 @@ class LrmFlexiCubes(nn.Module):
                  grid_res: int = 128,
                  grid_scale: float = 2.0,
                  fovy = 50.0):
-        super(LrmFlexiCubes, self).__init__()
+        super(Lrm, self).__init__()
 
         self.device = device
         self.grid_res = grid_res
@@ -67,10 +68,7 @@ class LrmFlexiCubes(nn.Module):
             device = self.device,
         )
 
-    def PreTrainedModelName(self):
-        return "instant_mesh_large"
-
-    def GenerateMesh(self, images, cameras, texture_resolution: int = 1024):
+    def GenerateMesh(self, images, cameras, texture_resolution : int = 1024, uses_flexicubes : bool = True):
         image_feats = self.encoder(images.unsqueeze(0), cameras.unsqueeze(0))
         image_feats = image_feats.reshape(1, image_feats.shape[0] * image_feats.shape[1], image_feats.shape[2])
 
@@ -78,7 +76,7 @@ class LrmFlexiCubes(nn.Module):
         assert(planes.shape[0] == 1)
         planes = planes.squeeze(0)
 
-        vertices, faces = self.PredictGeometry(planes)
+        vertices, faces = self.PredictGeometry(planes, uses_flexicubes)
 
         uvs, mesh_tex_idx, gb_pos, tex_hard_mask = xatlas_uvmap(
             self.geometry.renderer.ctx, vertices, faces, resolution = texture_resolution)
@@ -119,21 +117,32 @@ class LrmFlexiCubes(nn.Module):
 
         return sdf, deformation, weight
 
-    def PredictGeometry(self, planes):
-        # Step 1: first get the sdf and deformation value for each vertices in the tetrahedon grid.
+    def PredictGeometry(self, planes, uses_flexicubes : bool):
+        # Step 1: first get the sdf and deformation value for each vertices in the grid.
         sdf, deformation, weight = self.PredictSdfDeformation(planes)
-        verts_deformed = self.geometry.verts + deformation
-        indices = self.geometry.indices
-        
-        # Step 2: Using marching tet to obtain the mesh
-        verts, faces, _ = self.geometry.get_mesh(
-            verts_deformed,
-            sdf.squeeze(-1),
-            with_uv = False,
-            indices = indices,
-            weight_n = weight.squeeze(-1),
-            is_training = False
-        )
+
+        # Step 2: Using marching cubes to obtain the mesh
+        if uses_flexicubes:
+            verts, faces, _ = self.geometry.get_mesh(
+                self.geometry.verts + deformation,
+                sdf.squeeze(-1),
+                with_uv = False,
+                indices = self.geometry.indices,
+                weight_n = weight.squeeze(-1),
+                is_training = False
+            )
+        else:
+            sdf = sdf.squeeze(-1).reshape(self.grid_res + 1, self.grid_res + 1, self.grid_res + 1)
+            verts, faces = mcubes.marching_cubes(sdf.cpu().numpy(), 0)
+
+            verts = torch.tensor(verts, dtype = torch.float32, device = self.device)
+            verts = verts / self.grid_res * 2 - 1
+            verts *= 1.04 # Not sure why we need this scale
+
+            faces = torch.tensor(faces.astype(int), dtype = torch.long, device = self.device)
+            # Flip the triangles
+            faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.long, device = self.device))
+
         return verts, faces
 
     def PredictTexture(self, planes, tex_pos, hard_mask):

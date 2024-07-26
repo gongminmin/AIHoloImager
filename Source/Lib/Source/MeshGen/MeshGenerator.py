@@ -27,26 +27,17 @@ class MeshGenerator:
 
         seed_everything(42)
 
-        uses_flexicubes = True
         radius = 4
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        encoder_model_name = "facebook/dino-vitb16"
-        if uses_flexicubes:
-            from LrmFlexiCubes import LrmFlexiCubes
-            self.model = LrmFlexiCubes(self.device, encoder_freeze = False, encoder_model_name = encoder_model_name, encoder_feat_dim = 768,
-                transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16, triplane_low_res = 32,
-                triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128, grid_scale = 2.1, fovy = 30.0
-            )
-        else:
-            from LrmMarchingCubes import LrmMarchingCubes
-            self.model = LrmMarchingCubes(self.device, encoder_freeze = False, encoder_model_name = encoder_model_name, encoder_feat_dim = 768,
-                transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16, triplane_low_res = 32,
-                triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128, mesh_threshold = 10.0
-            )
+        from Lrm import Lrm
+        self.model = Lrm(self.device, encoder_freeze = False, encoder_model_name = "facebook/dino-vitb16", encoder_feat_dim = 768,
+            transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16, triplane_low_res = 32,
+            triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128, grid_scale = 2.1, fovy = 30.0
+        )
 
-        model_ckpt_path = this_py_dir.joinpath(f"Models/{self.model.PreTrainedModelName()}.ckpt")
+        model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")
         if not model_ckpt_path.exists():
             print("Downloading pre-trained mesh generator models...")
             downloaded_model_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = model_ckpt_path.name, repo_type = "model")
@@ -75,7 +66,7 @@ class MeshGenerator:
         mv_images = mv_images.clamp(0, 1)
 
         with torch.no_grad():
-            vertices, faces, uvs, mesh_tex_idx, tex_map = self.model.GenerateMesh(mv_images, self.input_cameras, texture_size)
+            vertices, faces, uvs, mesh_tex_idx, tex_map = self.model.GenerateMesh(mv_images, self.input_cameras, texture_size, uses_flexicubes = True)
             save_obj_with_mtl(
                 vertices.cpu().numpy(),
                 uvs.cpu().numpy(),
