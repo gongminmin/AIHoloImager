@@ -69,12 +69,243 @@ namespace AIHoloImager
 
         Mesh Process(const MeshReconstruction::Result& recon_input, const Mesh& ai_mesh, const std::filesystem::path& tmp_dir)
         {
+            const Mesh* cleaned_mesh;
+            Mesh tmp_cleaned_mesh;
+            {
+                Mesh pos_only_mesh;
+                {
+                    constexpr float Scale = 1e5f;
+
+                    std::set<std::array<int32_t, 3>> unique_int_pos;
+                    for (uint32_t i = 0; i < ai_mesh.Vertices().size(); ++i)
+                    {
+                        const auto& pos = ai_mesh.Vertex(i).pos;
+                        std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f),
+                            static_cast<int32_t>(pos.y * Scale + 0.5f), static_cast<int32_t>(pos.z * Scale + 0.5f)};
+                        unique_int_pos.emplace(std::move(int_pos));
+                    }
+
+                    pos_only_mesh = Mesh(static_cast<uint32_t>(unique_int_pos.size()), static_cast<uint32_t>(ai_mesh.Indices().size()));
+
+                    std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
+                    std::vector<uint32_t> vertex_mapping(ai_mesh.Vertices().size());
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Vertices().size()); ++i)
+                    {
+                        const auto& pos = ai_mesh.Vertex(i).pos;
+                        const std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f),
+                            static_cast<int32_t>(pos.y * Scale + 0.5f), static_cast<int32_t>(pos.z * Scale + 0.5f)};
+
+                        const auto iter = std::lower_bound(unique_int_pos_vec.begin(), unique_int_pos_vec.end(), int_pos);
+                        assert(*iter == int_pos);
+
+                        vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
+
+                        auto& pos_only_vert = pos_only_mesh.Vertex(vertex_mapping[i]);
+                        pos_only_vert.pos = pos;
+                        pos_only_vert.texcoord = XMFLOAT2(0, 0);
+                    }
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Indices().size()); i += 3)
+                    {
+                        for (uint32_t j = 0; j < 3; ++j)
+                        {
+                            pos_only_mesh.Index(i + j) = vertex_mapping[ai_mesh.Index(i + j)];
+                        }
+                    }
+                }
+
+                std::vector<uint32_t> num_neighboring_faces(pos_only_mesh.Vertices().size(), 0);
+                std::vector<uint32_t> neighboring_face_indices(pos_only_mesh.Indices().size());
+                const auto mesh_indices = pos_only_mesh.Indices();
+                for (uint32_t i = 0; i < static_cast<uint32_t>(pos_only_mesh.Indices().size() / 3); ++i)
+                {
+                    const uint32_t base_index = i * 3;
+                    for (uint32_t j = 0; j < 3; ++j)
+                    {
+                        bool degenerated = false;
+                        for (uint32_t k = 0; k < j; ++k)
+                        {
+                            if (mesh_indices[base_index + j] == mesh_indices[base_index + k])
+                            {
+                                degenerated = true;
+                                break;
+                            }
+                        }
+
+                        if (!degenerated)
+                        {
+                            const uint32_t vi = mesh_indices[base_index + j];
+                            neighboring_face_indices[base_index + j] = num_neighboring_faces[vi];
+                            ++num_neighboring_faces[vi];
+                        }
+                    }
+                }
+
+                std::vector<uint32_t> base_neighboring_faces(pos_only_mesh.Vertices().size() + 1);
+                base_neighboring_faces[0] = 0;
+                for (size_t i = 1; i < pos_only_mesh.Vertices().size() + 1; ++i)
+                {
+                    base_neighboring_faces[i] = base_neighboring_faces[i - 1] + num_neighboring_faces[i - 1];
+                }
+
+                std::vector<uint32_t> neighboring_faces(base_neighboring_faces.back());
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                for (uint32_t i = 0; i < static_cast<uint32_t>(pos_only_mesh.Indices().size() / 3); ++i)
+                {
+                    const uint32_t base_index = i * 3;
+                    for (uint32_t j = 0; j < 3; ++j)
+                    {
+                        bool degenerated = false;
+                        for (uint32_t k = 0; k < j; ++k)
+                        {
+                            if (mesh_indices[base_index + j] == mesh_indices[base_index + k])
+                            {
+                                degenerated = true;
+                                break;
+                            }
+                        }
+
+                        if (!degenerated)
+                        {
+                            const uint32_t vi = mesh_indices[base_index + j];
+                            neighboring_faces[base_neighboring_faces[vi] + neighboring_face_indices[base_index + j]] = i;
+                        }
+                    }
+                }
+
+                std::vector<bool> vertex_occupied(pos_only_mesh.Vertices().size(), false);
+                std::vector<uint32_t> largest_comp_face_indices;
+                float largest_bb_extent_sq = 0;
+                uint32_t num_comps = 0;
+                for (;;)
+                {
+                    uint32_t start_vertex = 0;
+                    while ((start_vertex < vertex_occupied.size()) && vertex_occupied[start_vertex])
+                    {
+                        ++start_vertex;
+                    }
+
+                    if (start_vertex >= vertex_occupied.size())
+                    {
+                        break;
+                    }
+
+                    std::vector<uint32_t> check_vertices(1, start_vertex);
+                    std::set<uint32_t> check_vertices_tmp;
+                    std::set<uint32_t> new_component_faces;
+                    std::set<uint32_t> new_component_vertices;
+                    while (!check_vertices.empty())
+                    {
+                        for (uint32_t cvi = 0; cvi < check_vertices.size(); ++cvi)
+                        {
+                            const uint32_t check_vertex = check_vertices[cvi];
+                            for (uint32_t fi = base_neighboring_faces[check_vertex]; fi < base_neighboring_faces[check_vertex + 1]; ++fi)
+                            {
+                                new_component_faces.insert(neighboring_faces[fi]);
+                                for (uint32_t j = 0; j < 3; ++j)
+                                {
+                                    const uint32_t nvi = mesh_indices[neighboring_faces[fi] * 3 + j];
+                                    if (new_component_vertices.find(nvi) == new_component_vertices.end())
+                                    {
+                                        check_vertices_tmp.insert(nvi);
+                                        new_component_vertices.insert(nvi);
+                                        vertex_occupied[nvi] = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        check_vertices = std::vector<uint32_t>(check_vertices_tmp.begin(), check_vertices_tmp.end());
+                        check_vertices_tmp.clear();
+                    }
+
+                    if (new_component_faces.empty())
+                    {
+                        break;
+                    }
+
+                    XMVECTOR bb_min = XMVectorSplatX(XMVectorSetX(XMVectorZero(), std::numeric_limits<float>::max()));
+                    XMVECTOR bb_max = XMVectorSplatX(XMVectorSetX(XMVectorZero(), std::numeric_limits<float>::lowest()));
+                    for (const uint32_t vi : new_component_vertices)
+                    {
+                        const auto& vert = pos_only_mesh.Vertex(vi);
+                        const XMVECTOR pos = XMLoadFloat3(&vert.pos);
+                        bb_min = XMVectorMin(bb_min, pos);
+                        bb_max = XMVectorMax(bb_max, pos);
+                    }
+
+                    const float bb_extent_sq = XMVectorGetX(XMVector3LengthSq(bb_max - bb_min));
+                    if (bb_extent_sq > largest_bb_extent_sq)
+                    {
+                        largest_comp_face_indices.assign(new_component_faces.begin(), new_component_faces.end());
+                        largest_bb_extent_sq = bb_extent_sq;
+                    }
+
+                    ++num_comps;
+                }
+
+                if (num_comps > 1)
+                {
+                    const auto indices = ai_mesh.Indices();
+                    std::set<uint32_t> comp_vertex_indices;
+                    for (uint32_t i = 0; i < largest_comp_face_indices.size(); ++i)
+                    {
+                        for (uint32_t j = 0; j < 3; ++j)
+                        {
+                            comp_vertex_indices.insert(indices[largest_comp_face_indices[i] * 3 + j]);
+                        }
+                    }
+
+                    std::vector<uint32_t> vert_mapping(ai_mesh.Vertices().size(), ~0U);
+                    uint32_t new_index = 0;
+                    for (const uint32_t vi : comp_vertex_indices)
+                    {
+                        vert_mapping[vi] = new_index;
+                        ++new_index;
+                    }
+
+                    tmp_cleaned_mesh = Mesh(
+                        static_cast<uint32_t>(comp_vertex_indices.size()), static_cast<uint32_t>(largest_comp_face_indices.size() * 3));
+                    tmp_cleaned_mesh.AlbedoTexture(ai_mesh.AlbedoTexture());
+
+                    const auto vertices = ai_mesh.Vertices();
+                    new_index = 0;
+                    for (const uint32_t vi : comp_vertex_indices)
+                    {
+                        tmp_cleaned_mesh.Vertex(new_index) = vertices[vi];
+                        ++new_index;
+                    }
+
+                    for (uint32_t i = 0; i < largest_comp_face_indices.size(); ++i)
+                    {
+                        for (uint32_t j = 0; j < 3; ++j)
+                        {
+                            tmp_cleaned_mesh.Index(i * 3 + j) = vert_mapping[indices[largest_comp_face_indices[i] * 3 + j]];
+                        }
+                    }
+
+                    cleaned_mesh = &tmp_cleaned_mesh;
+                }
+                else
+                {
+                    cleaned_mesh = &ai_mesh;
+                }
+            }
+
             const XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
 
-            std::vector<XMFLOAT3> rh_positions(ai_mesh.Vertices().size());
-            for (uint32_t i = 0; i < static_cast<uint32_t>(ai_mesh.Vertices().size()); ++i)
+            std::vector<XMFLOAT3> rh_positions(cleaned_mesh->Vertices().size());
+            for (uint32_t i = 0; i < static_cast<uint32_t>(cleaned_mesh->Vertices().size()); ++i)
             {
-                XMFLOAT3 pos = ai_mesh.Vertex(i).pos;
+                XMFLOAT3 pos = cleaned_mesh->Vertex(i).pos;
                 std::swap(pos.y, pos.z);
 
                 XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), transform_mtx));
@@ -91,13 +322,14 @@ namespace AIHoloImager
             const float scale_z = ai_obb.Extents.z / recon_input.obb.Extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
-            Mesh transformed_mesh(static_cast<uint32_t>(ai_mesh.Vertices().size()), static_cast<uint32_t>(ai_mesh.Indices().size()));
+            Mesh transformed_mesh(
+                static_cast<uint32_t>(cleaned_mesh->Vertices().size()), static_cast<uint32_t>(cleaned_mesh->Indices().size()));
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
             {
                 auto& vertex = transformed_mesh.Vertex(i);
 
-                XMFLOAT3 pos = ai_mesh.Vertex(i).pos;
+                XMFLOAT3 pos = cleaned_mesh->Vertex(i).pos;
                 pos.x *= scale;
                 pos.y *= scale;
                 pos.z *= scale;
@@ -115,7 +347,7 @@ namespace AIHoloImager
 #endif
             for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Indices().size()); ++i)
             {
-                transformed_mesh.Index(i) = ai_mesh.Index(i);
+                transformed_mesh.Index(i) = cleaned_mesh->Index(i);
             }
 
             const auto working_dir = tmp_dir / "Mvs";
@@ -133,9 +365,9 @@ namespace AIHoloImager
 #endif
             for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
             {
-                transformed_mesh.Vertex(i).texcoord = ai_mesh.Vertex(i).texcoord;
+                transformed_mesh.Vertex(i).texcoord = cleaned_mesh->Vertex(i).texcoord;
             }
-            RefillTexture(transformed_mesh, ai_mesh, textured_mesh);
+            RefillTexture(transformed_mesh, *cleaned_mesh, textured_mesh);
 
             const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
