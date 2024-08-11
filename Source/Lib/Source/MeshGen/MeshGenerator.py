@@ -66,7 +66,7 @@ class MeshGenerator:
         mv_images = mv_images.clamp(0, 1)
 
         with torch.no_grad():
-            vertices, faces, uvs, mesh_tex_idx, tex_map = self.model.GenerateMesh(mv_images, self.input_cameras, texture_size, uses_flexicubes = True)
+            vertices, faces, uvs, mesh_tex_idx, tex_map = self.model.GenerateMesh(mv_images, self.input_cameras, texture_size)
             save_obj_with_mtl(
                 vertices.cpu().numpy(),
                 uvs.cpu().numpy(),
