@@ -46,45 +46,49 @@ namespace AIHoloImager
             num_root_params += shader.num_cbs;
         }
 
-        auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
-        uint32_t root_index = 0;
-        range_index = 0;
-        for (uint32_t s = 0; s < NumShaderStages; ++s)
+        std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
+        if (num_root_params > 0)
         {
-            const auto& shader = shaders[s];
-
-            D3D12_SHADER_VISIBILITY visibility;
-            switch (static_cast<ShaderStage>(s))
+            root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
+            uint32_t root_index = 0;
+            range_index = 0;
+            for (uint32_t s = 0; s < NumShaderStages; ++s)
             {
-            case ShaderStage::Vertex:
-                visibility = D3D12_SHADER_VISIBILITY_VERTEX;
-                break;
+                const auto& shader = shaders[s];
 
-            case ShaderStage::Pixel:
-                visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                break;
+                D3D12_SHADER_VISIBILITY visibility;
+                switch (static_cast<ShaderStage>(s))
+                {
+                case ShaderStage::Vertex:
+                    visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                    break;
 
-            default:
-                visibility = D3D12_SHADER_VISIBILITY_ALL;
-                break;
-            }
+                case ShaderStage::Pixel:
+                    visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                    break;
 
-            if (shader.num_srvs != 0)
-            {
-                root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
-                ++root_index;
-                ++range_index;
-            }
-            if (shader.num_uavs != 0)
-            {
-                root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
-                ++root_index;
-                ++range_index;
-            }
-            for (uint32_t i = 0; i < shader.num_cbs; ++i)
-            {
-                root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
-                ++root_index;
+                default:
+                    visibility = D3D12_SHADER_VISIBILITY_ALL;
+                    break;
+                }
+
+                if (shader.num_srvs != 0)
+                {
+                    root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
+                    ++root_index;
+                    ++range_index;
+                }
+                if (shader.num_uavs != 0)
+                {
+                    root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
+                    ++root_index;
+                    ++range_index;
+                }
+                for (uint32_t i = 0; i < shader.num_cbs; ++i)
+                {
+                    root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
+                    ++root_index;
+                }
             }
         }
 
@@ -94,7 +98,8 @@ namespace AIHoloImager
             flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         }
 
-        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(), 1, samplers.data(), flags};
+        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
+            num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()), samplers.data(), flags};
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;
@@ -226,25 +231,29 @@ namespace AIHoloImager
         }
 
         const uint32_t num_root_params = num_desc_ranges + shader.num_cbs;
-        auto root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
-        uint32_t root_index = 0;
-        range_index = 0;
-        if (shader.num_srvs != 0)
+        std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
+        if (num_root_params > 0)
         {
-            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
-            ++root_index;
-            ++range_index;
-        }
-        if (shader.num_uavs != 0)
-        {
-            root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
-            ++root_index;
-            ++range_index;
-        }
-        for (uint32_t i = 0; i < shader.num_cbs; ++i)
-        {
-            root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
-            ++root_index;
+            root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
+            uint32_t root_index = 0;
+            range_index = 0;
+            if (shader.num_srvs != 0)
+            {
+                root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
+                ++root_index;
+                ++range_index;
+            }
+            if (shader.num_uavs != 0)
+            {
+                root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
+                ++root_index;
+                ++range_index;
+            }
+            for (uint32_t i = 0; i < shader.num_cbs; ++i)
+            {
+                root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
+                ++root_index;
+            }
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
