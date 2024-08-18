@@ -446,7 +446,7 @@ namespace AIHoloImager
             dilated_tex->Readback(gpu_system_, cmd_list, 0, target_texture.Data());
             gpu_system_.Execute(std::move(cmd_list));
 
-            target_mesh.AlbedoTexture(target_texture);
+            target_mesh.AlbedoTexture(std::move(target_texture));
         }
 
         std::vector<TextureTransferVertexFormat> GenTextureTransferVertices(Mesh& target_mesh, const Mesh& textured_mesh)

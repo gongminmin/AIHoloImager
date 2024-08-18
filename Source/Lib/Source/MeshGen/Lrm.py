@@ -104,7 +104,7 @@ class Lrm(nn.Module):
                     l.append((z * size + y) * size + x)
         self.cube_boundary_indices = torch.tensor(l, dtype = torch.int, device = self.device).unsqueeze(1)
 
-    def GenerateMesh(self, images, cameras, texture_resolution : int = 1024):
+    def GenerateMesh(self, images, cameras, texture_resolution : int):
         image_feats = self.encoder(images.unsqueeze(0), cameras.unsqueeze(0))
         image_feats = image_feats.reshape(1, image_feats.shape[0] * image_feats.shape[1], image_feats.shape[2])
 
@@ -165,9 +165,9 @@ class Lrm(nn.Module):
         verts = verts / self.grid_res * 2 - 1
         verts *= 1.04 # Not sure why we need this scale
 
-        faces = torch.tensor(faces.astype(int), dtype = torch.long, device = self.device)
+        faces = torch.tensor(faces.astype(int), dtype = torch.int32, device = self.device)
         # Flip the triangles
-        faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.long, device = self.device))
+        faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.int32, device = self.device))
 
         return verts, faces
 
