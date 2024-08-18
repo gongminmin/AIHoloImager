@@ -12,6 +12,7 @@
 
 namespace AIHoloImager
 {
+    class GpuBuffer;
     class GpuCommandList;
     class GpuSystem;
     class GpuTexture2D;
@@ -110,6 +111,9 @@ namespace AIHoloImager
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size);
+        GpuUnorderedAccessView(
+            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
         ~GpuUnorderedAccessView();
 
         GpuUnorderedAccessView(GpuUnorderedAccessView&& other) noexcept;
@@ -124,6 +128,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuTexture2D* texture_ = nullptr;
+        GpuBuffer* buffer_ = nullptr;
         GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };

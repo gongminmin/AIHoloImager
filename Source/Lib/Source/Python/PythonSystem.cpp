@@ -129,6 +129,11 @@ namespace AIHoloImager
         PyTuple_SetItem(&tuple, index, item.release());
     }
 
+    PyObjectPtr PythonSystem::GetTupleItem(PyObject& tuple, uint32_t index)
+    {
+        return MakePyObjectPtr(PyTuple_GetItem(&tuple, index));
+    }
+
     template <>
     long PythonSystem::Cast<long>(PyObject& object)
     {
@@ -143,8 +148,7 @@ namespace AIHoloImager
         return std::wstring_view(str, size);
     }
 
-    template <>
-    std::span<const std::byte> PythonSystem::Cast<std::span<const std::byte>>(PyObject& object)
+    std::span<const std::byte> PythonSystem::ToBytes(PyObject& object)
     {
         const Py_ssize_t size = PyBytes_Size(&object);
         const char* data = PyBytes_AsString(&object);

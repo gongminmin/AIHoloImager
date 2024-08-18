@@ -55,9 +55,18 @@ namespace AIHoloImager
         PyObjectPtr MakeTuple(uint32_t size);
         void SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item);
         void SetTupleItem(PyObject& tuple, uint32_t index, PyObjectPtr item);
+        PyObjectPtr GetTupleItem(PyObject& tuple, uint32_t index);
 
         template <typename T>
         T Cast(PyObject& object);
+
+        std::span<const std::byte> ToBytes(PyObject& object);
+        template <typename T>
+        std::span<T> ToSpan(PyObject& object)
+        {
+            const auto bytes = ToBytes(object);
+            return std::span<T>(reinterpret_cast<T*>(bytes.data()), bytes.size() / sizeof(T));
+        }
 
         template <typename T>
         T GetAttrOfType(PyObject& module, const char* name)

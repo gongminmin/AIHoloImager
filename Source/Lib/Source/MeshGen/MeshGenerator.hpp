@@ -8,6 +8,7 @@
 
 #include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImager/Texture.hpp"
+#include "Gpu/GpuSystem.hpp"
 #include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -18,7 +19,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MeshGenerator);
 
     public:
-        MeshGenerator(const std::filesystem::path& exe_dir, PythonSystem& python_system);
+        MeshGenerator(GpuSystem& gpu_system, PythonSystem& python_system);
         MeshGenerator(MeshGenerator&& other) noexcept;
         ~MeshGenerator() noexcept;
 

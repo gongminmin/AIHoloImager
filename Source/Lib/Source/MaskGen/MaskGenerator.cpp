@@ -90,7 +90,7 @@ namespace AIHoloImager
             }
 
             Texture mask_image(width, height, num_channels);
-            std::memcpy(mask_image.Data(), python_system_.Cast<std::span<const std::byte>>(*mask_data).data(), mask_image.DataSize());
+            std::memcpy(mask_image.Data(), python_system_.ToBytes(*mask_data).data(), mask_image.DataSize());
 
             return mask_image;
         }

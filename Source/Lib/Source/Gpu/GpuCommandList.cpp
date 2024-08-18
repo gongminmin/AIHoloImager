@@ -348,6 +348,42 @@ namespace AIHoloImager
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
+    void GpuCommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
+    {
+        ID3D12GraphicsCommandList* d3d12_cmd_list;
+        switch (type_)
+        {
+        case GpuSystem::CmdQueueType::Render:
+        case GpuSystem::CmdQueueType::Compute:
+            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            break;
+
+        default:
+            throw std::runtime_error("This type of command list can't Copy.");
+        }
+
+        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+        d3d12_cmd_list->CopyResource(dest.NativeBuffer(), src.NativeBuffer());
+    }
+
+    void GpuCommandList::Copy(GpuTexture2D& dest, const GpuTexture2D& src)
+    {
+        ID3D12GraphicsCommandList* d3d12_cmd_list;
+        switch (type_)
+        {
+        case GpuSystem::CmdQueueType::Render:
+        case GpuSystem::CmdQueueType::Compute:
+            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            break;
+
+        default:
+            throw std::runtime_error("This type of command list can't Copy.");
+        }
+
+        d3d12_cmd_list->CopyResource(dest.NativeTexture(), src.NativeTexture());
+    }
+
     void GpuCommandList::Close()
     {
         switch (type_)

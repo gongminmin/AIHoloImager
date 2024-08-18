@@ -40,6 +40,9 @@ set(aihi_files
     Source/Gpu/GpuSystem.hpp
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
+    Source/MeshGen/Shader/FillPosTextureVs.hlsl
+    Source/MeshGen/Shader/FillPosTexturePs.hlsl
+    Source/MeshGen/Shader/GetPosListCs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
@@ -101,6 +104,9 @@ macro(AddShaderFile file_name shader_type entry_point)
     )
 endmacro()
 
+AddShaderFile(Source/MeshGen/Shader/FillPosTextureVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/FillPosTexturePs.hlsl "ps" "main")
+AddShaderFile(Source/MeshGen/Shader/GetPosListCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
@@ -128,7 +134,6 @@ string(REPLACE "\\" "/" AIHI_PY_RUNTIME_LIB_DIR ${Python3_RUNTIME_LIBRARY_DIRS})
 
 target_compile_definitions(AIHoloImagerLib
     PRIVATE
-        AIHI_PY_VERSION="${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}"
         AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
         AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
 )
@@ -157,6 +162,7 @@ target_link_libraries(AIHoloImagerLib
         openMVG_sfm
         Python3::Python
         stb
+        xatlas
 )
 
 set(py_files

@@ -83,4 +83,37 @@ namespace AIHoloImager
     private:
         void* mapped_data_ = nullptr;
     };
+
+    class GpuReadbackBuffer final : public GpuBuffer
+    {
+    public:
+        GpuReadbackBuffer() noexcept;
+        GpuReadbackBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name = L"");
+        GpuReadbackBuffer(GpuSystem& gpu_system, const void* data, uint32_t size, std::wstring_view name = L"");
+        ~GpuReadbackBuffer() noexcept;
+
+        GpuReadbackBuffer(GpuReadbackBuffer&& other) noexcept;
+        GpuReadbackBuffer& operator=(GpuReadbackBuffer&& other) noexcept;
+
+        GpuReadbackBuffer Share() const;
+
+        void Reset() noexcept override;
+
+        void* MappedData() noexcept;
+        const void* MappedData() const noexcept;
+
+        template <typename T>
+        T* MappedData() noexcept
+        {
+            return reinterpret_cast<T*>(this->MappedData());
+        }
+        template <typename T>
+        const T* MappedData() const noexcept
+        {
+            return reinterpret_cast<const T*>(this->MappedData());
+        }
+
+    private:
+        void* mapped_data_ = nullptr;
+    };
 } // namespace AIHoloImager

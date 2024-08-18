@@ -197,4 +197,58 @@ namespace AIHoloImager
     {
         return mapped_data_;
     }
+
+
+    GpuReadbackBuffer::GpuReadbackBuffer() noexcept = default;
+
+    GpuReadbackBuffer::GpuReadbackBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
+        : GpuBuffer(gpu_system, size, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST, std::move(name)),
+          mapped_data_(this->Map())
+    {
+    }
+
+    GpuReadbackBuffer::GpuReadbackBuffer(GpuSystem& gpu_system, const void* data, uint32_t size, std::wstring_view name)
+        : GpuReadbackBuffer(gpu_system, size, std::move(name))
+    {
+        memcpy(MappedData<void>(), data, size);
+    }
+
+    GpuReadbackBuffer::~GpuReadbackBuffer() noexcept
+    {
+        this->Reset();
+    }
+
+    GpuReadbackBuffer::GpuReadbackBuffer(GpuReadbackBuffer&& other) noexcept = default;
+    GpuReadbackBuffer& GpuReadbackBuffer::operator=(GpuReadbackBuffer&& other) noexcept = default;
+
+    GpuReadbackBuffer GpuReadbackBuffer::Share() const
+    {
+        GpuReadbackBuffer buffer;
+        buffer.resource_ = resource_;
+        buffer.desc_ = desc_;
+        buffer.heap_type_ = heap_type_;
+        buffer.curr_state_ = curr_state_;
+        buffer.mapped_data_ = mapped_data_;
+        return buffer;
+    }
+
+    void GpuReadbackBuffer::Reset() noexcept
+    {
+        if (resource_)
+        {
+            this->Unmap();
+        }
+
+        GpuBuffer::Reset();
+    }
+
+    void* GpuReadbackBuffer::MappedData() noexcept
+    {
+        return mapped_data_;
+    }
+
+    const void* GpuReadbackBuffer::MappedData() const noexcept
+    {
+        return mapped_data_;
+    }
 } // namespace AIHoloImager

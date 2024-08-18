@@ -10,12 +10,10 @@
 import mcubes
 import torch
 import torch.nn as nn
-import nvdiffrast.torch as dr
 
 from src.models.decoder.transformer import TriplaneTransformer
 from src.models.encoder.dino_wrapper import DinoWrapper
 from src.models.renderer.synthesizer_mesh import TriplaneSynthesizer
-from src.utils.mesh_util import xatlas_uvmap
 
 class Lrm(nn.Module):
     def __init__(self,
@@ -57,8 +55,6 @@ class Lrm(nn.Module):
             triplane_dim = triplane_dim,
             samples_per_ray = rendering_samples_per_ray,
         )
-
-        self.renderer_ctx = dr.RasterizeCudaContext(device = self.device)
 
         size = self.grid_res + 1
 
@@ -104,22 +100,20 @@ class Lrm(nn.Module):
                     l.append((z * size + y) * size + x)
         self.cube_boundary_indices = torch.tensor(l, dtype = torch.int, device = self.device).unsqueeze(1)
 
-    def GenerateMesh(self, images, cameras, texture_resolution : int):
+    def GenerateMesh(self, images, cameras):
         image_feats = self.encoder(images.unsqueeze(0), cameras.unsqueeze(0))
         image_feats = image_feats.reshape(1, image_feats.shape[0] * image_feats.shape[1], image_feats.shape[2])
 
         planes = self.transformer(image_feats)
         assert(planes.shape[0] == 1)
-        planes = planes.squeeze(0)
+        self.planes = planes.squeeze(0)
 
-        vertices, faces = self.PredictGeometry(planes)
+        return self.PredictGeometry(self.planes)
 
-        uvs, mesh_tex_idx, gb_pos, tex_hard_mask = xatlas_uvmap(
-            self.renderer_ctx, vertices, faces, resolution = texture_resolution)
-        tex_hard_mask = tex_hard_mask.float().squeeze(0)
-        texture_map = self.PredictTexture(planes, gb_pos, tex_hard_mask) * tex_hard_mask
-
-        return vertices, faces, uvs, mesh_tex_idx, texture_map
+    def QueryColors(self, positions):
+        colors = self.synthesizer.get_texture_prediction(self.planes.unsqueeze(0), positions.unsqueeze(0))
+        assert(colors.shape[0] == 1)
+        return colors.squeeze(0)
 
     def PredictSdfDeformation(self, planes):
         # Step 1: predict the SDF and deformation
@@ -170,27 +164,3 @@ class Lrm(nn.Module):
         faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.int32, device = self.device))
 
         return verts, faces
-
-    def PredictTexture(self, planes, tex_pos, hard_mask):
-        tex_pos *= hard_mask
-        tex_pos = tex_pos.reshape(-1, 3)
-
-        n_point_list = torch.sum(hard_mask.long().reshape(-1), dim = -1)
-        max_point = n_point_list.max()
-        expanded_hard_mask = (hard_mask.reshape(-1, 1) > 0.5).expand(-1, 3)
-        tex_pos = tex_pos[expanded_hard_mask].reshape(-1, 3)
-        if tex_pos.shape[0] < max_point:
-            tex_pos = torch.cat([tex_pos,
-                    torch.zeros(max_point - tex_pos.shape[0], 3,
-                            device = self.device, dtype = torch.float32)],
-                    dim = 1)
-
-        tex_feat = self.synthesizer.get_texture_prediction(planes.unsqueeze(0), tex_pos.unsqueeze(0))
-        assert(tex_feat.shape[0] == 1)
-        tex_feat = tex_feat.squeeze(0)
-
-        final_tex_feat = torch.zeros(hard_mask.shape[0] * hard_mask.shape[1], tex_feat.shape[-1], device = self.device)
-        expanded_hard_mask = (hard_mask.reshape(-1, 1) > 0.5).expand(-1, final_tex_feat.shape[-1])
-        final_tex_feat[expanded_hard_mask] = tex_feat[: n_point_list].reshape(-1)
-
-        return final_tex_feat.reshape(hard_mask.shape[0], hard_mask.shape[1], final_tex_feat.shape[-1])

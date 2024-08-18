@@ -69,6 +69,8 @@ namespace AIHoloImager
             const GpuDepthStencilView* dsv, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
+        void Copy(GpuBuffer& dest, const GpuBuffer& src);
+        void Copy(GpuTexture2D& dest, const GpuTexture2D& src);
 
         void Close();
         void Reset(ID3D12CommandAllocator* cmd_allocator);

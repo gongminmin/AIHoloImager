@@ -212,6 +212,27 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
     }
 
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)
+        : GpuUnorderedAccessView(gpu_system, buffer, 0, buffer.Size() / element_size, element_size)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(
+        GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
+        : gpu_system_(&gpu_system), buffer_(&buffer)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
+        uav_desc.Format = DXGI_FORMAT_UNKNOWN;
+        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uav_desc.Buffer.FirstElement = first_element;
+        uav_desc.Buffer.NumElements = num_elements;
+        uav_desc.Buffer.StructureByteStride = element_size;
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(buffer.NativeBuffer(), nullptr, &uav_desc, cpu_handle_);
+    }
+
     GpuUnorderedAccessView::~GpuUnorderedAccessView()
     {
         this->Reset();
@@ -231,7 +252,14 @@ namespace AIHoloImager
 
     void GpuUnorderedAccessView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (texture_ != nullptr)
+        {
+            texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        else if (buffer_ != nullptr)
+        {
+            buffer_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
     }
 
     void GpuUnorderedAccessView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
