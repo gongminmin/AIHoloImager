@@ -274,7 +274,7 @@ namespace AIHoloImager
 
                     tmp_cleaned_mesh = Mesh(
                         static_cast<uint32_t>(comp_vertex_indices.size()), static_cast<uint32_t>(largest_comp_face_indices.size() * 3));
-                    tmp_cleaned_mesh.AlbedoTexture(ai_mesh.AlbedoTexture());
+                    tmp_cleaned_mesh.AlbedoTexture() = ai_mesh.AlbedoTexture();
 
                     const auto vertices = ai_mesh.Vertices();
                     new_index = 0;
@@ -367,7 +367,7 @@ namespace AIHoloImager
             {
                 transformed_mesh.Vertex(i).texcoord = cleaned_mesh->Vertex(i).texcoord;
             }
-            RefillTexture(transformed_mesh, *cleaned_mesh, textured_mesh);
+            this->RefillTexture(transformed_mesh, *cleaned_mesh, textured_mesh);
 
             const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
@@ -446,7 +446,7 @@ namespace AIHoloImager
             dilated_tex->Readback(gpu_system_, cmd_list, 0, target_texture.Data());
             gpu_system_.Execute(std::move(cmd_list));
 
-            target_mesh.AlbedoTexture(std::move(target_texture));
+            target_mesh.AlbedoTexture() = std::move(target_texture);
         }
 
         std::vector<TextureTransferVertexFormat> GenTextureTransferVertices(Mesh& target_mesh, const Mesh& textured_mesh)

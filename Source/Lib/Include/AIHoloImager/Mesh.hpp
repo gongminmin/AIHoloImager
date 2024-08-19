@@ -46,8 +46,8 @@ namespace AIHoloImager
         uint32_t Index(uint32_t index) const;
         uint32_t& Index(uint32_t index);
 
+        Texture& AlbedoTexture() noexcept;
         const Texture& AlbedoTexture() const noexcept;
-        void AlbedoTexture(Texture tex);
 
     private:
         class Impl;

@@ -128,14 +128,14 @@ namespace AIHoloImager
                 auto faces_data = python_system_.CallObject(*faces_tobytes_method);
                 const auto indices = python_system_.ToSpan<const uint32_t>(*faces_data);
 
-                pos_only_mesh = CleanMesh(positions, indices);
+                pos_only_mesh = this->CleanMesh(positions, indices);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveMesh(pos_only_mesh, output_dir / "AiMeshPosOnly.glb");
 #endif
             }
 
-            Mesh pos_uv_mesh = UnwrapUv(pos_only_mesh, texture_size);
+            Mesh pos_uv_mesh = this->UnwrapUv(pos_only_mesh, texture_size);
 
             GpuReadbackBuffer counter_cpu_buff;
             GpuReadbackBuffer uv_cpu_buff;
@@ -143,12 +143,12 @@ namespace AIHoloImager
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                GpuTexture2D pos_tex = GenPosTex(cmd_list, pos_uv_mesh, texture_size);
+                GpuTexture2D pos_tex = this->GenPosTex(cmd_list, pos_uv_mesh, texture_size);
 
                 GpuBuffer counter_buff;
                 GpuBuffer uv_buff;
                 GpuBuffer pos_buff;
-                PosTexToList(cmd_list, pos_tex, counter_buff, uv_buff, pos_buff);
+                this->PosTexToList(cmd_list, pos_tex, counter_buff, uv_buff, pos_buff);
 
                 counter_cpu_buff = GpuReadbackBuffer(gpu_system_, counter_buff.Size(), L"counter_cpu_buff");
                 cmd_list.Copy(counter_cpu_buff, counter_buff);
@@ -164,7 +164,7 @@ namespace AIHoloImager
             }
 
             Texture ai_tex = this->GenTexture(counter_cpu_buff, uv_cpu_buff, pos_cpu_buff, texture_size);
-            pos_uv_mesh.AlbedoTexture(std::move(ai_tex));
+            pos_uv_mesh.AlbedoTexture() = std::move(ai_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(pos_uv_mesh, output_dir / "AiMesh.glb");

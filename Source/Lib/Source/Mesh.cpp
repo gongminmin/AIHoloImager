@@ -62,13 +62,13 @@ namespace AIHoloImager
             return indices_[index];
         }
 
-        const Texture& AlbedoTexture() const noexcept
+        Texture& AlbedoTexture() noexcept
         {
             return albedo_tex_;
         }
-        void AlbedoTexture(Texture tex)
+        const Texture& AlbedoTexture() const noexcept
         {
-            albedo_tex_ = std::move(tex);
+            return albedo_tex_;
         }
 
     private:
@@ -159,13 +159,13 @@ namespace AIHoloImager
         return impl_->Index(index);
     }
 
-    const Texture& Mesh::AlbedoTexture() const noexcept
+    Texture& Mesh::AlbedoTexture() noexcept
     {
         return impl_->AlbedoTexture();
     }
-    void Mesh::AlbedoTexture(Texture tex)
+    const Texture& Mesh::AlbedoTexture() const noexcept
     {
-        impl_->AlbedoTexture(std::move(tex));
+        return impl_->AlbedoTexture();
     }
 
     Mesh LoadMesh(const std::filesystem::path& path)
@@ -190,7 +190,7 @@ namespace AIHoloImager
             {
                 aiString str;
                 aiGetMaterialTexture(mtl, aiTextureType_DIFFUSE, 0, &str, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-                mesh.AlbedoTexture(LoadTexture(path.parent_path() / str.C_Str()));
+                mesh.AlbedoTexture() = LoadTexture(path.parent_path() / str.C_Str());
             }
 
             std::span<const Mesh::VertexFormat> vertices = mesh.Vertices();
