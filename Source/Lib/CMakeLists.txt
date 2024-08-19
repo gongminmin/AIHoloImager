@@ -40,9 +40,10 @@ set(aihi_files
     Source/Gpu/GpuSystem.hpp
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
-    Source/MeshGen/Shader/FillPosTextureVs.hlsl
-    Source/MeshGen/Shader/FillPosTexturePs.hlsl
+    Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GetPosListCs.hlsl
+    Source/MeshGen/Shader/TransferTextureVs.hlsl
+    Source/MeshGen/Shader/TransferTexturePs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
@@ -63,11 +64,6 @@ set(aihi_files
     Source/MvRenderer/Shader/DownsampleCs.hlsl
     Source/MvRenderer/Shader/RenderVs.hlsl
     Source/MvRenderer/Shader/RenderPs.hlsl
-    Source/PostProcessor/PostProcessor.cpp
-    Source/PostProcessor/PostProcessor.hpp
-    Source/PostProcessor/Shader/DilateCs.hlsl
-    Source/PostProcessor/Shader/RefillTextureVs.hlsl
-    Source/PostProcessor/Shader/RefillTexturePs.hlsl
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/SfM/Shader/UndistortCs.hlsl
@@ -104,18 +100,16 @@ macro(AddShaderFile file_name shader_type entry_point)
     )
 endmacro()
 
-AddShaderFile(Source/MeshGen/Shader/FillPosTextureVs.hlsl "vs" "main")
-AddShaderFile(Source/MeshGen/Shader/FillPosTexturePs.hlsl "ps" "main")
+AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GetPosListCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/TransferTextureVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/TransferTexturePs.hlsl "ps" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")
-AddShaderFile(Source/PostProcessor/Shader/DilateCs.hlsl "cs" "main")
-AddShaderFile(Source/PostProcessor/Shader/RefillTextureVs.hlsl "vs" "main")
-AddShaderFile(Source/PostProcessor/Shader/RefillTexturePs.hlsl "ps" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
 
 target_include_directories(AIHoloImagerLib
