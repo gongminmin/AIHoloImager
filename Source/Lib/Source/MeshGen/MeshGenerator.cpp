@@ -585,22 +585,15 @@ namespace AIHoloImager
         Mesh GenTextureFromPhotos(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const MeshReconstruction::Result& recon_input,
             uint32_t texture_size, GpuTexture2D& pos_gpu_tex, const std::filesystem::path& tmp_dir)
         {
-            const XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
-
-            std::vector<XMFLOAT3> rh_positions(pos_only_mesh.Vertices().size());
-            for (uint32_t i = 0; i < static_cast<uint32_t>(pos_only_mesh.Vertices().size()); ++i)
-            {
-                XMFLOAT3 pos = pos_only_mesh.Vertex(i).pos;
-                std::swap(pos.y, pos.z);
-
-                XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), transform_mtx));
-                pos.z = -pos.z;
-
-                rh_positions[i] = pos;
-            }
+            XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
+            transform_mtx *= XMMatrixScaling(1, 1, -1);        // RH to LH
+            std::swap(transform_mtx.r[1], transform_mtx.r[2]); // Swap Y and Z
 
             DirectX::BoundingOrientedBox ai_obb;
-            BoundingOrientedBox::CreateFromPoints(ai_obb, rh_positions.size(), &rh_positions[0], sizeof(rh_positions[0]));
+            BoundingOrientedBox::CreateFromPoints(
+                ai_obb, pos_only_mesh.Vertices().size(), &pos_only_mesh.Vertices()[0].pos, sizeof(pos_only_mesh.Vertices()[0]));
+
+            ai_obb.Transform(ai_obb, transform_mtx);
 
             const float scale_x = ai_obb.Extents.x / recon_input.obb.Extents.x;
             const float scale_y = ai_obb.Extents.y / recon_input.obb.Extents.y;
@@ -610,20 +603,14 @@ namespace AIHoloImager
             Mesh transformed_mesh(
                 static_cast<uint32_t>(pos_uv_mesh.Vertices().size()), static_cast<uint32_t>(pos_uv_mesh.Indices().size()));
 
+            transform_mtx = XMMatrixScaling(scale, scale, scale) * transform_mtx;
             for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
             {
                 auto& vertex = transformed_mesh.Vertex(i);
 
-                XMFLOAT3 pos = pos_uv_mesh.Vertex(i).pos;
-                pos.x *= scale;
-                pos.y *= scale;
-                pos.z *= scale;
-                std::swap(pos.y, pos.z);
+                const auto& pos = pos_uv_mesh.Vertex(i).pos;
+                XMStoreFloat3(&vertex.pos, XMVector3TransformCoord(XMLoadFloat3(&pos), transform_mtx));
 
-                XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), transform_mtx));
-                pos.z = -pos.z;
-
-                vertex.pos = pos;
                 vertex.texcoord = XMFLOAT2(0, 0); // TextureMesh can't handle mesh with texture coordinate. Clear it.
             }
 
@@ -665,18 +652,16 @@ namespace AIHoloImager
 
             const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
-            const XMMATRIX pre_rotate =
-                XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&recon_input.obb.Orientation))) * XMMatrixRotationZ(XM_PI / 2);
-            const XMMATRIX pre_scale = XMMatrixScaling(1, -1, -1);
+            const XMMATRIX pre_rotate = XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&recon_input.obb.Orientation))) *
+                                        XMMatrixRotationZ(XM_PI / 2) * XMMatrixRotationX(XM_PI);
+            const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
 
-            const XMMATRIX adjust_mtx = pre_trans * pre_rotate * pre_scale;
+            const XMMATRIX adjust_mtx = handedness * pre_trans * pre_rotate * handedness;
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
             {
                 auto& pos = transformed_mesh.Vertex(i).pos;
-                pos.z = -pos.z;
                 XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), adjust_mtx));
-                pos.z = -pos.z;
             }
 
             return transformed_mesh;
@@ -693,12 +678,10 @@ namespace AIHoloImager
         void RefillTexture(
             Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh, uint32_t texture_size, GpuTexture2D& pos_gpu_tex)
         {
-            std::vector<TextureTransferVertexFormat> texture_transfer_vertices =
-                this->GenTextureTransferVertices(target_mesh, pos_uv_mesh, textured_mesh);
-
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(texture_transfer_vertices.size() * sizeof(TextureTransferVertexFormat)),
+            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(textured_mesh.Indices().size() * sizeof(TextureTransferVertexFormat)),
                 D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
-            memcpy(vb.Map(), texture_transfer_vertices.data(), vb.Size());
+            this->GenTextureTransferVertices(
+                target_mesh, pos_uv_mesh, textured_mesh, reinterpret_cast<TextureTransferVertexFormat*>(vb.Map()));
             vb.Unmap(D3D12_RANGE{0, vb.Size()});
 
             Texture photo_texture = textured_mesh.AlbedoTexture();
@@ -720,8 +703,8 @@ namespace AIHoloImager
             target_mesh.AlbedoTexture() = std::move(color_texture);
         }
 
-        std::vector<TextureTransferVertexFormat> GenTextureTransferVertices(
-            const Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh)
+        void GenTextureTransferVertices(const Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh,
+            TextureTransferVertexFormat* texture_transfer_vertices)
         {
             constexpr float Scale = 1e5f;
 
@@ -755,16 +738,10 @@ namespace AIHoloImager
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < static_cast<uint32_t>(target_mesh.Indices().size()); i += 3)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(target_mesh.Indices().size()); ++i)
             {
-                for (uint32_t j = 0; j < 3; ++j)
-                {
-                    unique_indices[i + j] = vertex_mapping[target_mesh.Index(i + j)];
-                }
+                unique_indices[i] = vertex_mapping[target_mesh.Index(i)];
             }
-
-            std::vector<TextureTransferVertexFormat> texture_transfer_vertices;
-            texture_transfer_vertices.reserve(textured_mesh.Indices().size());
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(textured_mesh.Indices().size()); i += 3)
             {
@@ -782,7 +759,7 @@ namespace AIHoloImager
                 }
 
                 bool found = false;
-                for (uint32_t j = 0; j < static_cast<uint32_t>(unique_indices.size()); j += 3)
+                for (uint32_t j = 0; (j < static_cast<uint32_t>(unique_indices.size())) && !found; j += 3)
                 {
                     // The mesh processed by TextureMesh has a different vertex order and index order than the input one. As a result, we
                     // have to correspondent triangles by checking positions of 3 vertices. If a triangle in ai_mesh has the same vertex
@@ -803,7 +780,7 @@ namespace AIHoloImager
                             {
                                 // pos_uv_mesh and target_mesh have the same vertex order
                                 const auto& ai_mesh_vertex = pos_uv_mesh.Vertex(pos_uv_mesh.Index(j + (k + l) % 3));
-                                auto& vertex = texture_transfer_vertices.emplace_back();
+                                auto& vertex = texture_transfer_vertices[i + l];
                                 vertex.pos = ai_mesh_vertex.pos;
                                 vertex.ai_tc = ai_mesh_vertex.texcoord;
                                 vertex.photo_tc = textured_mesh.Vertex(textured_mesh.Index(i + l)).texcoord;
@@ -812,17 +789,10 @@ namespace AIHoloImager
                             break;
                         }
                     }
-
-                    if (found)
-                    {
-                        break;
-                    }
                 }
 
                 assert(found);
             }
-
-            return texture_transfer_vertices;
         }
 
         void TransferTexture(GpuCommandList& cmd_list, GpuBuffer& vb, const GpuTexture2D& photo_tex, uint32_t texture_size,
