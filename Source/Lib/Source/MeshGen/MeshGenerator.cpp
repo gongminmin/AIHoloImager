@@ -643,9 +643,9 @@ namespace AIHoloImager
 
             const std::string output_mesh_name = mesh_name + "_Texture";
 
-            const std::string cmd =
-                std::format("{} Temp.mvs -m {}.glb -o {}.glb --export-type glb --ignore-mask-label 0 --max-texture-size 8192 -w {}",
-                    (exe_dir_ / "TextureMesh").string(), mesh_name, output_mesh_name, working_dir.string());
+            const std::string cmd = std::format("{} Temp.mvs -m {}.glb -o {}.glb --export-type glb --ignore-mask-label 0 "
+                                                "--max-texture-size 8192 --process-priority 0 -w {}",
+                (exe_dir_ / "TextureMesh").string(), mesh_name, output_mesh_name, working_dir.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
             {

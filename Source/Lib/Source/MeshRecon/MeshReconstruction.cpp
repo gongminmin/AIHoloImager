@@ -197,8 +197,8 @@ namespace AIHoloImager
         {
             const std::string output_mesh_name = mvs_name + "_Mesh";
 
-            const std::string cmd = std::format(
-                "{} {}.mvs -o {}.ply -w {}", (exe_dir_ / "ReconstructMesh").string(), mvs_name, output_mesh_name, working_dir_.string());
+            const std::string cmd = std::format("{} {}.mvs -o {}.ply --process-priority 0 -w {}", (exe_dir_ / "ReconstructMesh").string(),
+                mvs_name, output_mesh_name, working_dir_.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
             {
@@ -212,8 +212,9 @@ namespace AIHoloImager
         {
             const std::string output_mesh_name = mesh_name + "_Refine";
 
-            const std::string cmd = std::format("{} {}.mvs -m {}.ply -o {}.ply --scales 1 --gradient-step 25.05 --cuda-device -1 -w {}",
-                (exe_dir_ / "RefineMesh").string(), mvs_name, mesh_name, output_mesh_name, working_dir_.string());
+            const std::string cmd =
+                std::format("{} {}.mvs -m {}.ply -o {}.ply --scales 1 --gradient-step 25.05 --cuda-device -1 --process-priority 0 -w {}",
+                    (exe_dir_ / "RefineMesh").string(), mvs_name, mesh_name, output_mesh_name, working_dir_.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
             {
@@ -227,8 +228,8 @@ namespace AIHoloImager
         {
             const std::string output_mesh_name = mesh_name + "_Texture";
 
-            const std::string cmd = std::format(
-                "{} {}.mvs -m {}.ply -o {}.glb --export-type glb --decimate 0.5 --ignore-mask-label 0 --max-texture-size {} -w {}",
+            const std::string cmd = std::format("{} {}.mvs -m {}.ply -o {}.glb --export-type glb --decimate 0.5 --ignore-mask-label 0 "
+                                                "--max-texture-size {} --process-priority 0 -w {}",
                 (exe_dir_ / "TextureMesh").string(), mvs_name, mesh_name, output_mesh_name, max_texture_size, working_dir_.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
