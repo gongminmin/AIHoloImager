@@ -9,7 +9,7 @@
 
 #include <DirectXMath.h>
 
-#include "Texture.hpp"
+#include "AIHoloImager/Texture.hpp"
 
 namespace AIHoloImager
 {

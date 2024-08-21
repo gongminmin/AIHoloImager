@@ -1,6 +1,8 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#pragma once
+
 #include <filesystem>
 #include <memory>
 
