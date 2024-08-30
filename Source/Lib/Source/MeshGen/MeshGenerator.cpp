@@ -36,10 +36,6 @@ namespace AIHoloImager
             mesh_generator_gen_pos_mesh_method_ = python_system_.GetAttr(*mesh_generator_, "GenPosMesh");
             mesh_generator_query_colors_method_ = python_system_.GetAttr(*mesh_generator_, "QueryColors");
 
-            pil_module_ = python_system_.Import("PIL");
-            image_class_ = python_system_.GetAttr(*pil_module_, "Image");
-            image_frombuffer_method_ = python_system_.GetAttr(*image_class_, "frombuffer");
-
             {
                 const ShaderInfo shaders[] = {
                     {TransferTextureVs_shader, 0, 0, 0},
@@ -98,56 +94,29 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
-            PyObjectPtr py_input_images[6];
-            for (size_t i = 0; i < input_images.size(); ++i)
-            {
-                auto& input_image = input_images[i];
-
-                auto args = python_system_.MakeTuple(3);
-                {
-                    python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(L"RGB"));
-                }
-                {
-                    auto size = python_system_.MakeTuple(2);
-                    {
-                        python_system_.SetTupleItem(*size, 0, python_system_.MakeObject(input_image.Width()));
-                        python_system_.SetTupleItem(*size, 1, python_system_.MakeObject(input_image.Height()));
-                    }
-                    python_system_.SetTupleItem(*args, 1, std::move(size));
-                }
-                {
-                    auto image = python_system_.MakeObject(
-                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
-                    python_system_.SetTupleItem(*args, 2, std::move(image));
-                }
-
-                py_input_images[i] = python_system_.CallObject(*image_frombuffer_method_, *args);
-            }
-
             auto args = python_system_.MakeTuple(1);
             {
-                auto imgs_args = python_system_.MakeTuple(std::size(py_input_images));
-                for (uint32_t i = 0; i < std::size(py_input_images); ++i)
+                const uint32_t num_images = static_cast<uint32_t>(input_images.size());
+                auto imgs_args = python_system_.MakeTuple(num_images);
+                for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    python_system_.SetTupleItem(*imgs_args, i, std::move(py_input_images[i]));
+                    const auto& input_image = input_images[i];
+                    auto image = python_system_.MakeObject(
+                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
+                    python_system_.SetTupleItem(*imgs_args, i, std::move(image));
                 }
                 python_system_.SetTupleItem(*args, 0, std::move(imgs_args));
             }
 
-            auto verts_faces = python_system_.CallObject(*mesh_generator_gen_pos_mesh_method_, *args);
-
             Mesh pos_only_mesh;
             {
-                auto verts = python_system_.GetTupleItem(*verts_faces, 0);
-                auto faces = python_system_.GetTupleItem(*verts_faces, 1);
+                const auto verts_faces = python_system_.CallObject(*mesh_generator_gen_pos_mesh_method_, *args);
 
-                auto verts_tobytes_method = python_system_.GetAttr(*verts, "tobytes");
-                auto verts_data = python_system_.CallObject(*verts_tobytes_method);
-                const auto positions = python_system_.ToSpan<const XMFLOAT3>(*verts_data);
+                const auto verts = python_system_.GetTupleItem(*verts_faces, 0);
+                const auto faces = python_system_.GetTupleItem(*verts_faces, 1);
 
-                auto faces_tobytes_method = python_system_.GetAttr(*faces, "tobytes");
-                auto faces_data = python_system_.CallObject(*faces_tobytes_method);
-                const auto indices = python_system_.ToSpan<const uint32_t>(*faces_data);
+                const auto positions = python_system_.ToSpan<const XMFLOAT3>(*verts);
+                const auto indices = python_system_.ToSpan<const uint32_t>(*faces);
 
                 pos_only_mesh = this->CleanMesh(positions, indices);
 
@@ -565,10 +534,7 @@ namespace AIHoloImager
                 python_system_.SetTupleItem(*query_colors_args, 1, python_system_.MakeObject(count));
             }
 
-            auto colors_py = python_system_.CallObject(*mesh_generator_query_colors_method_, *query_colors_args);
-
-            auto colors_tobytes_method = python_system_.GetAttr(*colors_py, "tobytes");
-            auto colors_data = python_system_.CallObject(*colors_tobytes_method);
+            auto colors_data = python_system_.CallObject(*mesh_generator_query_colors_method_, *query_colors_args);
             const auto colors = python_system_.ToSpan<const uint32_t>(*colors_data);
 
             uint32_t* tex_data = reinterpret_cast<uint32_t*>(texture.Data());
@@ -880,10 +846,6 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_;
         PyObjectPtr mesh_generator_gen_pos_mesh_method_;
         PyObjectPtr mesh_generator_query_colors_method_;
-
-        PyObjectPtr pil_module_;
-        PyObjectPtr image_class_;
-        PyObjectPtr image_frombuffer_method_;
 
         GpuRenderPipeline transfer_texture_pipeline_;
         GpuComputePipeline get_pos_list_pipeline_;

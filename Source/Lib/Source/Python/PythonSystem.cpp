@@ -131,7 +131,9 @@ namespace AIHoloImager
 
     PyObjectPtr PythonSystem::GetTupleItem(PyObject& tuple, uint32_t index)
     {
-        return MakePyObjectPtr(PyTuple_GetItem(&tuple, index));
+        PyObject* obj = PyTuple_GetItem(&tuple, index);
+        Py_IncRef(obj);
+        return MakePyObjectPtr(obj);
     }
 
     template <>

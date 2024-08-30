@@ -4,10 +4,10 @@
 from pathlib import Path
 import shutil
 
-import numpy as np
-import torch
-from pytorch_lightning import seed_everything
 from huggingface_hub import hf_hub_download
+import numpy as np
+from pytorch_lightning import seed_everything
+import torch
 
 from src.utils.camera_util import get_zero123plus_input_cameras
 
@@ -47,18 +47,18 @@ class MeshGenerator:
     def GenPosMesh(self, images):
         mv_images = torch.empty(6, 3, 320, 320) # views, channels, height, width
         for i in range(0, 6):
-            assert(images[i].size == (320, 320))
-            mv_image = np.asarray(images[i], dtype = np.float32)
-            mv_images[i] = torch.from_numpy(mv_image).permute(2, 0, 1).contiguous()
+            mv_image = np.frombuffer(images[i], dtype = np.uint8, count = 320 * 320 * 3)
+            mv_image = torch.from_numpy(mv_image.copy()).to(self.device)
+            mv_images[i] = mv_image.reshape(320, 320, 3).permute(2, 0, 1)
 
-        mv_images = mv_images.to(self.device)
+        mv_images = mv_images.float().contiguous()
         mv_images /= 255.0
         mv_images = mv_images.clamp(0, 1)
 
         with torch.no_grad():
             vertices, indices = self.model.GenerateMesh(mv_images, self.input_cameras)
 
-        return (vertices.cpu().numpy(), indices.cpu().numpy())
+        return (vertices.cpu().numpy().tobytes(), indices.cpu().numpy().tobytes())
 
     def QueryColors(self, positions, size):
         positions = np.frombuffer(positions, dtype = np.float32, count = size * 3)
@@ -73,4 +73,4 @@ class MeshGenerator:
                              device = self.device, dtype = torch.uint8)],
                          dim = 1)
 
-        return colors.cpu().numpy()
+        return colors.cpu().numpy().tobytes()

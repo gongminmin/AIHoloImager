@@ -1,12 +1,11 @@
 # Copyright (c) 2024 Minmin Gong
 #
 
-import numpy as np
 from pathlib import Path
 
+import numpy as np
 import onnxruntime as ort
 from PIL import Image
-from PIL.Image import Image as PILImage
 import pooch
 
 from cv2 import (
@@ -31,23 +30,31 @@ class MaskGenerator:
                 progressbar = True,
             )
 
-        self.device = "cuda"
         sess_opts = ort.SessionOptions()
-        providers = ["CUDAExecutionProvider", ]
+        providers = ["CUDAExecutionProvider"]
         self.inference_session = ort.InferenceSession(
             u2net_model_path,
             providers = providers,
             sess_options = sess_opts,
         )
 
+        if self.inference_session.get_providers()[0] == providers[0]:
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+
         self.kernel = getStructuringElement(MORPH_ELLIPSE, (3, 3))
 
-    def Gen(self, img):
+    def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:
+        img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
+        img = img.reshape((height, width, num_channels))
+
         mask = self.Predict(img)
         mask = self.PostProcess(mask)
-        return mask
 
-    def Predict(self, img : PILImage) -> PILImage:
+        return mask.tobytes()
+
+    def Predict(self, img : np.ndarray) -> np.ndarray:
         norm_img = self.Normalize(img, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), (320, 320))
         norm_img_ort = ort.OrtValue.ortvalue_from_numpy(norm_img, self.device, 0)
 
@@ -68,19 +75,27 @@ class MaskGenerator:
         pred = (pred - mi) / (ma - mi)
         pred = np.squeeze(pred)
 
-        mask = Image.fromarray((pred * 255).astype("uint8"), mode = "L")
-        mask = mask.resize(img.size, Image.Resampling.LANCZOS)
+        mask = Image.fromarray((pred * 255).astype(np.uint8), mode = "L")
+        mask = mask.resize((img.shape[1], img.shape[0]), Image.Resampling.LANCZOS)
+        mask = np.array(mask)
 
         return mask
 
-    def PostProcess(self, mask : PILImage) -> PILImage:
-        mask = np.array(mask)
+    def PostProcess(self, mask : np.ndarray) -> np.ndarray:
         mask = morphologyEx(mask, MORPH_OPEN, self.kernel)
         mask = GaussianBlur(mask, (5, 5), sigmaX = 2, sigmaY = 2, borderType = BORDER_DEFAULT)
         mask = np.where(mask < 127, 0, 255).astype(np.uint8)
-        return Image.fromarray(mask)
+        return mask
 
-    def Normalize(self, img, mean, std, size):
+    def Normalize(self, img : np.ndarray, mean, std, size) -> np.ndarray:
+        if img.shape[2] == 1:
+            mode = "L"
+        elif img.shape[2] == 3:
+            mode = "RGB"
+        else:
+            assert(img.shape[2] == 4)
+            mode = "RGBA"
+        img = Image.fromarray(img, mode = mode)
         img = img.convert("RGB").resize(size, Image.Resampling.LANCZOS)
 
         img = np.array(img)

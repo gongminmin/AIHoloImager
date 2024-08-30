@@ -6,6 +6,8 @@ import shutil
 
 from diffusers import DiffusionPipeline, EulerAncestralDiscreteScheduler
 from huggingface_hub import hf_hub_download
+import numpy as np
+from PIL import Image
 from pytorch_lightning import seed_everything
 import torch
 
@@ -57,5 +59,14 @@ class MultiViewDiffusion:
 
         self.pipeline = self.pipeline.to(device)
 
-    def Gen(self, input_image, num_steps : int):
-        return self.pipeline(input_image, num_inference_steps = num_steps).images[0]
+    def Gen(self, input_image_data : bytes, width : int, height : int, num_channels : int, num_steps : int):
+        if num_channels == 1:
+            mode = "L"
+        elif num_channels == 3:
+            mode = "RGB"
+        else:
+            assert(num_channels == 4)
+            mode = "RGBA"
+        input_image = Image.frombuffer(mode, (width, height), input_image_data)
+        image = np.array(self.pipeline(input_image, num_inference_steps = num_steps).images[0])
+        return (image.tobytes(), image.shape[1], image.shape[0], image.shape[2])

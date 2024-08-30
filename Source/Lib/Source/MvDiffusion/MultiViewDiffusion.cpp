@@ -16,82 +16,34 @@ namespace AIHoloImager
             mv_diffusion_class_ = python_system_.GetAttr(*mv_diffusion_module_, "MultiViewDiffusion");
             mv_diffusion_ = python_system_.CallObject(*mv_diffusion_class_);
             mv_diffusion_gen_method_ = python_system_.GetAttr(*mv_diffusion_, "Gen");
-
-            pil_module_ = python_system_.Import("PIL");
-            image_class_ = python_system_.GetAttr(*pil_module_, "Image");
-            image_frombuffer_method_ = python_system_.GetAttr(*image_class_, "frombuffer");
         }
 
         Texture Generate(const Texture& input_image, uint32_t num_steps)
         {
-            PyObjectPtr py_input_image;
+            auto args = python_system_.MakeTuple(5);
             {
-                auto args = python_system_.MakeTuple(3);
-                {
-                    std::wstring_view mode;
-                    switch (input_image.NumChannels())
-                    {
-                    case 1:
-                        mode = L"L";
-                        break;
-                    case 3:
-                        mode = L"RGB";
-                        break;
-                    case 4:
-                        mode = L"RGBA";
-                        break;
-                    }
+                auto image = python_system_.MakeObject(
+                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
+                python_system_.SetTupleItem(*args, 0, std::move(image));
 
-                    python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(mode));
-                }
-                {
-                    auto size = python_system_.MakeTuple(2);
-                    {
-                        python_system_.SetTupleItem(*size, 0, python_system_.MakeObject(input_image.Width()));
-                        python_system_.SetTupleItem(*size, 1, python_system_.MakeObject(input_image.Height()));
-                    }
-                    python_system_.SetTupleItem(*args, 1, std::move(size));
-                }
-                {
-                    auto image = python_system_.MakeObject(
-                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
-                    python_system_.SetTupleItem(*args, 2, std::move(image));
-                }
+                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(input_image.Width()));
+                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(input_image.Height()));
+                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(input_image.NumChannels()));
 
-                py_input_image = python_system_.CallObject(*image_frombuffer_method_, *args);
+                python_system_.SetTupleItem(*args, 4, python_system_.MakeObject(num_steps));
             }
 
-            auto args = python_system_.MakeTuple(2);
-            {
-                python_system_.SetTupleItem(*args, 0, *py_input_image);
-            }
-            {
-                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(num_steps));
-            }
+            const auto mv_image_tuple = python_system_.CallObject(*mv_diffusion_gen_method_, *args);
 
-            auto py_mv_image = python_system_.CallObject(*mv_diffusion_gen_method_, *args);
-            auto tobytes_method = python_system_.GetAttr(*py_mv_image, "tobytes");
-            auto mask_data = python_system_.CallObject(*tobytes_method);
-
-            const uint32_t width = python_system_.GetAttrOfType<long>(*py_mv_image, "width");
-            const uint32_t height = python_system_.GetAttrOfType<long>(*py_mv_image, "height");
-            uint32_t num_channels = 3;
-            const std::wstring_view mode_str = python_system_.GetAttrOfType<std::wstring_view>(*py_mv_image, "mode");
-            if (mode_str == L"L")
-            {
-                num_channels = 1;
-            }
-            else if (mode_str == L"RGB")
-            {
-                num_channels = 3;
-            }
-            else if ((mode_str == L"RGBA") || (mode_str == L"RGBX"))
-            {
-                num_channels = 4;
-            }
+            const auto mv_image_data = python_system_.GetTupleItem(*mv_image_tuple, 0);
+            const uint32_t width = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 1));
+            const uint32_t height = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 2));
+            const uint32_t num_channels = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 3));
 
             Texture mv_image(width, height, num_channels);
-            std::memcpy(mv_image.Data(), PyBytes_AsString(mask_data.get()), mv_image.DataSize());
+            const auto mv_image_span = python_system_.ToBytes(*mv_image_data);
+            assert(mv_image_span.size() == mv_image.DataSize());
+            std::memcpy(mv_image.Data(), mv_image_span.data(), mv_image_span.size());
 
             return mv_image;
         }
@@ -103,10 +55,6 @@ namespace AIHoloImager
         PyObjectPtr mv_diffusion_class_;
         PyObjectPtr mv_diffusion_;
         PyObjectPtr mv_diffusion_gen_method_;
-
-        PyObjectPtr pil_module_;
-        PyObjectPtr image_class_;
-        PyObjectPtr image_frombuffer_method_;
     };
 
     MultiViewDiffusion::MultiViewDiffusion(PythonSystem& python_system) : impl_(std::make_unique<Impl>(python_system))
