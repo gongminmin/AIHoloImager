@@ -1,6 +1,5 @@
 numpy==1.26.4
 pooch==1.8.2
-opencv-python-headless==4.10.0.84
 
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.1.0

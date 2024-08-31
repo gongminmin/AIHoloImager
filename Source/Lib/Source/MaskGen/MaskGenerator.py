@@ -5,17 +5,9 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from PIL import Image
 import pooch
-
-from cv2 import (
-    BORDER_DEFAULT,
-    MORPH_ELLIPSE,
-    MORPH_OPEN,
-    GaussianBlur,
-    getStructuringElement,
-    morphologyEx,
-)
+import torch
+import torchvision.transforms as transforms
 
 class MaskGenerator:
     def __init__(self):
@@ -30,83 +22,92 @@ class MaskGenerator:
                 progressbar = True,
             )
 
+        if torch.cuda.is_available():
+            providers = ["CUDAExecutionProvider"]
+            self.device_onnx = "cuda"
+        else:
+            providers = ["CPUExecutionProvider"]
+            self.device_onnx = "cpu"
+        self.device = torch.device(self.device_onnx)
+
         sess_opts = ort.SessionOptions()
-        providers = ["CUDAExecutionProvider"]
         self.inference_session = ort.InferenceSession(
             u2net_model_path,
             providers = providers,
             sess_options = sess_opts,
         )
 
-        if self.inference_session.get_providers()[0] == providers[0]:
-            self.device = "cuda"
-        else:
-            self.device = "cpu"
+        self.kernel = torch.tensor([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype = torch.float32,
+                                   device = self.device).unsqueeze(0).unsqueeze(0)
 
-        self.kernel = getStructuringElement(MORPH_ELLIPSE, (3, 3))
+        self.blurer = transforms.GaussianBlur(kernel_size = (5, 5), sigma = 2.0).to(self.device)
 
     def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:
-        img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
-        img = img.reshape((height, width, num_channels))
+        with torch.no_grad():
+            img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
+            img = torch.from_numpy(img.copy()).to(self.device)
+            img = img.reshape((height, width, num_channels))
 
-        mask = self.Predict(img)
-        mask = self.PostProcess(mask)
+            mask = self.Predict(img)
+            mask = self.PostProcess(mask)
 
+            mask = mask.cpu().numpy()
         return mask.tobytes()
 
-    def Predict(self, img : np.ndarray) -> np.ndarray:
-        norm_img = self.Normalize(img, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), (320, 320))
-        norm_img_ort = ort.OrtValue.ortvalue_from_numpy(norm_img, self.device, 0)
+    def Predict(self, img : torch.Tensor) -> torch.Tensor:
+        predict_size = (320, 320)
+        norm_img = self.Normalize(img, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), predict_size).contiguous()
 
         io_binding = self.inference_session.io_binding()
-        io_binding.bind_input(name = self.inference_session.get_inputs()[0].name, device_type = self.device,
-                              device_id = 0, element_type = np.float32, shape = norm_img_ort.shape(),
-                              buffer_ptr = norm_img_ort.data_ptr())
-        io_binding.bind_output(name = self.inference_session.get_outputs()[0].name, device_type = self.device)
+        io_binding.bind_input(name = self.inference_session.get_inputs()[0].name, device_type = self.device_onnx,
+                              device_id = 0, element_type = np.float32, shape = norm_img.shape,
+                              buffer_ptr = norm_img.data_ptr())
+
+        output_size = (1, 1, predict_size[1], predict_size[0])
+        output_torch = torch.empty(output_size, dtype = torch.float32, device = self.device).contiguous()
+        io_binding.bind_output(name = self.inference_session.get_outputs()[0].name, device_type = self.device_onnx,
+                               device_id = 0, element_type = np.float32, shape = output_size,
+                               buffer_ptr = output_torch.data_ptr())
 
         self.inference_session.run_with_iobinding(io_binding)
-        ort_outs = io_binding.copy_outputs_to_cpu()
+        pred = output_torch[:, 0, :, :]
 
-        pred = ort_outs[0][:, 0, :, :]
-
-        ma = np.max(pred)
-        mi = np.min(pred)
+        ma = torch.max(pred)
+        mi = torch.min(pred)
 
         pred = (pred - mi) / (ma - mi)
-        pred = np.squeeze(pred)
 
-        mask = Image.fromarray((pred * 255).astype(np.uint8), mode = "L")
-        mask = mask.resize((img.shape[1], img.shape[0]), Image.Resampling.LANCZOS)
-        mask = np.array(mask)
+        upscaler = transforms.Resize((img.shape[0], img.shape[1]), transforms.InterpolationMode.BICUBIC,
+                                     antialias = True).to(self.device)
+        mask = upscaler((pred * 255).byte())
 
-        return mask
+        return mask # [C, H, W]
 
-    def PostProcess(self, mask : np.ndarray) -> np.ndarray:
-        mask = morphologyEx(mask, MORPH_OPEN, self.kernel)
-        mask = GaussianBlur(mask, (5, 5), sigmaX = 2, sigmaY = 2, borderType = BORDER_DEFAULT)
-        mask = np.where(mask < 127, 0, 255).astype(np.uint8)
-        return mask
+    def PostProcess(self, mask : torch.Tensor) -> torch.Tensor:
+        mask = (mask.float() / 255.0).unsqueeze(0) # [B, C, H, W]
 
-    def Normalize(self, img : np.ndarray, mean, std, size) -> np.ndarray:
-        if img.shape[2] == 1:
-            mode = "L"
-        elif img.shape[2] == 3:
-            mode = "RGB"
-        else:
-            assert(img.shape[2] == 4)
-            mode = "RGBA"
-        img = Image.fromarray(img, mode = mode)
-        img = img.convert("RGB").resize(size, Image.Resampling.LANCZOS)
+        mask = torch.gt(mask, 0.5).float()
+        mask = 1 - torch.clamp(torch.nn.functional.conv2d(1 - mask, self.kernel, padding = (1, 1)), 0, 1)
+        mask = torch.gt(mask, 0.5).float()
+        mask = torch.clamp(torch.nn.functional.conv2d(mask, self.kernel, padding = (1, 1)), 0, 1)
 
-        img = np.array(img)
-        img = img / np.max(img)
+        mask = mask.squeeze(0) # [C, H, W]
+        mask = self.blurer((mask * 255).byte())
+        mask = (torch.gt(mask, 127) * 255).byte()
 
-        norm_img = np.zeros((img.shape[0], img.shape[1], 3))
-        norm_img[:, :, 0] = (img[:, :, 0] - mean[0]) / std[0]
-        norm_img[:, :, 1] = (img[:, :, 1] - mean[1]) / std[1]
-        norm_img[:, :, 2] = (img[:, :, 2] - mean[2]) / std[2]
+        return mask # [C, H, W]
 
-        norm_img = norm_img.transpose((2, 0, 1))
-        norm_img = np.expand_dims(norm_img, 0).astype(np.float32)
+    def Normalize(self, img : torch.Tensor, mean, std, size) -> torch.Tensor:
+        img = img[:, :, : 3]
+        img = img.permute(2, 0, 1) # [C, H, W]
+        downscaler = transforms.Resize((size[1], size[0]), transforms.InterpolationMode.BICUBIC,
+                                       antialias = True).to(self.device)
+        img = downscaler(img)
+
+        img = img / torch.max(img)
+
+        normalizer = transforms.Normalize(mean, std)
+        norm_img = normalizer(img)
+        norm_img = norm_img.unsqueeze(0).float()
 
         return norm_img
