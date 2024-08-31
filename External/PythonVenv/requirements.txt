@@ -1,5 +1,7 @@
 numpy==1.26.4
 pooch==1.8.2
+onnx==1.16.2
+onnx2torch==1.5.15
 
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.1.0

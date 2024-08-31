@@ -4,7 +4,8 @@
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
+import onnx
+import onnx2torch
 import pooch
 import torch
 import torchvision.transforms as transforms
@@ -22,20 +23,12 @@ class MaskGenerator:
                 progressbar = True,
             )
 
-        if torch.cuda.is_available():
-            providers = ["CUDAExecutionProvider"]
-            self.device_onnx = "cuda"
-        else:
-            providers = ["CPUExecutionProvider"]
-            self.device_onnx = "cpu"
-        self.device = torch.device(self.device_onnx)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        sess_opts = ort.SessionOptions()
-        self.inference_session = ort.InferenceSession(
-            u2net_model_path,
-            providers = providers,
-            sess_options = sess_opts,
-        )
+        onnx_model = onnx.load(u2net_model_path)
+        self.u2net = onnx2torch.convert(onnx_model)
+        self.u2net.eval()
+        self.u2net.to(self.device)
 
         self.kernel = torch.tensor([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype = torch.float32,
                                    device = self.device).unsqueeze(0).unsqueeze(0)
@@ -46,7 +39,7 @@ class MaskGenerator:
         with torch.no_grad():
             img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
             img = torch.from_numpy(img.copy()).to(self.device)
-            img = img.reshape((height, width, num_channels))
+            img = img.reshape(height, width, num_channels)
 
             mask = self.Predict(img)
             mask = self.PostProcess(mask)
@@ -58,19 +51,9 @@ class MaskGenerator:
         predict_size = (320, 320)
         norm_img = self.Normalize(img, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), predict_size).contiguous()
 
-        io_binding = self.inference_session.io_binding()
-        io_binding.bind_input(name = self.inference_session.get_inputs()[0].name, device_type = self.device_onnx,
-                              device_id = 0, element_type = np.float32, shape = norm_img.shape,
-                              buffer_ptr = norm_img.data_ptr())
-
-        output_size = (1, 1, predict_size[1], predict_size[0])
-        output_torch = torch.empty(output_size, dtype = torch.float32, device = self.device).contiguous()
-        io_binding.bind_output(name = self.inference_session.get_outputs()[0].name, device_type = self.device_onnx,
-                               device_id = 0, element_type = np.float32, shape = output_size,
-                               buffer_ptr = output_torch.data_ptr())
-
-        self.inference_session.run_with_iobinding(io_binding)
-        pred = output_torch[:, 0, :, :]
+        outs = self.u2net(norm_img)
+        pred = outs[0][:, 0, :, :]
+        pred = pred.contiguous()
 
         ma = torch.max(pred)
         mi = torch.min(pred)
