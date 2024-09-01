@@ -1,3 +1,6 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
 #define BLOCK_DIM 16
 
 Texture2D pos_tex : register(t0);

@@ -69,6 +69,7 @@ set(aihi_files
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
+    Source/Util/Shader/Util.hlslh
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
     Source/Util/ErrorHandling.hpp
@@ -92,7 +93,7 @@ macro(AddShaderFile file_name shader_type entry_point)
     set(release_option "-O2")
 
     add_custom_command(OUTPUT ${output_name}
-        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}"
+        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${CMAKE_CURRENT_SOURCE_DIR}/Source/Util/Shader/"
         COMMENT "Compiling ${file_name} to ${output_name}..."
         MAIN_DEPENDENCY ${file_name}
         DEPENDS ${file_name}

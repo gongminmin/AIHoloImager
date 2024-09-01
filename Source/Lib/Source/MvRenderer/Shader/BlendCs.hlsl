@@ -1,6 +1,8 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#include "Util.hlslh"
+
 #define BLOCK_DIM 16
 
 cbuffer param_cb : register(b0)
@@ -16,12 +18,6 @@ Texture2D<uint> bb_tex : register(t1);
 SamplerState bilinear_sampler : register(s0);
 
 RWTexture2D<unorm float4> rendered_tex : register(u0);
-
-bool IsEmpty(float3 rgb)
-{
-    const int3 EmptyColor = int3(0xFF, 0x7F, 0x27);
-    return all(abs(int3(round(rgb.rgb * 255)) - EmptyColor) < int3(2, 20, 15));
-};
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
 void main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)

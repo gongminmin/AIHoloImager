@@ -1,0 +1,8 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
+bool IsEmpty(float3 rgb)
+{
+    const int3 EmptyColor = int3(0xFF, 0x7F, 0x27);
+    return all(abs(int3(round(rgb.rgb * 255)) - EmptyColor) < int3(2, 20, 15));
+};

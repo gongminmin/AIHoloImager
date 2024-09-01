@@ -1,3 +1,6 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
 void main(float3 pos : POSITION,
           float2 ai_tc : TEXCOORD0,
           float2 photo_tc : TEXCOORD1,
