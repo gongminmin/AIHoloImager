@@ -33,6 +33,7 @@ namespace AIHoloImager
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
+            mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
             mesh_generator_gen_pos_mesh_method_ = python_system_.GetAttr(*mesh_generator_, "GenPosMesh");
             mesh_generator_query_colors_method_ = python_system_.GetAttr(*mesh_generator_, "QueryColors");
 
@@ -108,9 +109,11 @@ namespace AIHoloImager
                 python_system_.SetTupleItem(*args, 0, std::move(imgs_args));
             }
 
+            python_system_.CallObject(*mesh_generator_gen_nerf_method_, *args);
+
             Mesh pos_only_mesh;
             {
-                const auto verts_faces = python_system_.CallObject(*mesh_generator_gen_pos_mesh_method_, *args);
+                const auto verts_faces = python_system_.CallObject(*mesh_generator_gen_pos_mesh_method_);
 
                 const auto verts = python_system_.GetTupleItem(*verts_faces, 0);
                 const auto faces = python_system_.GetTupleItem(*verts_faces, 1);
@@ -844,6 +847,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_module_;
         PyObjectPtr mesh_generator_class_;
         PyObjectPtr mesh_generator_;
+        PyObjectPtr mesh_generator_gen_nerf_method_;
         PyObjectPtr mesh_generator_gen_pos_mesh_method_;
         PyObjectPtr mesh_generator_query_colors_method_;
 

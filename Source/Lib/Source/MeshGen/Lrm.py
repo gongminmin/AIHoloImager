@@ -10,6 +10,7 @@
 from pathlib import Path
 
 import mcubes
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -81,12 +82,12 @@ class Lrm(nn.Module):
         self.cube_verts = (self.cube_verts / grid_res - 0.5) * grid_scale
 
         cube_corners_offset = torch.tensor([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]],
-                                           dtype = torch.int)
-        cube_corners_offset *= torch.tensor([size * size, size, 1], dtype = torch.int)
+                                           dtype = torch.int32)
+        cube_corners_offset *= torch.tensor([size * size, size, 1], dtype = torch.int32)
         cube_corners_offset = torch.sum(cube_corners_offset, 1)
         cube_corners_offset = cube_corners_offset.to(self.device)
 
-        self.cube_indices = torch.arange(size * size * size, dtype = torch.int, device = self.device)
+        self.cube_indices = torch.arange(size * size * size, dtype = torch.int32, device = self.device)
         self.cube_indices = self.cube_indices.reshape(size, size, size)
         self.cube_indices = self.cube_indices[0 : grid_res, 0 : grid_res, 0 : grid_res]
         self.cube_indices = self.cube_indices.reshape(-1, 1).expand(-1, 8)
@@ -94,7 +95,7 @@ class Lrm(nn.Module):
 
         center = self.grid_res // 2 + 1
         self.cube_center_indices = torch.tensor([(center * size + center) * size + center],
-                                                dtype = torch.int, device = self.device).unsqueeze(0)
+                                                dtype = torch.int32, device = self.device).unsqueeze(0)
 
         l = []
         for z in range(0, 2):
@@ -117,9 +118,9 @@ class Lrm(nn.Module):
             for y in range(0, size):
                 for x in range(0, size):
                     l.append((z * size + y) * size + x)
-        self.cube_boundary_indices = torch.tensor(l, dtype = torch.int, device = self.device).unsqueeze(1)
+        self.cube_boundary_indices = torch.tensor(l, dtype = torch.int32, device = self.device).unsqueeze(1)
 
-    def GenerateMesh(self, images, cameras):
+    def GenNeRF(self, images, cameras):
         image_feats = self.encoder(images.unsqueeze(0), cameras.unsqueeze(0))
         image_feats = image_feats.reshape(1, image_feats.shape[0] * image_feats.shape[1], image_feats.shape[2])
 
@@ -127,17 +128,35 @@ class Lrm(nn.Module):
         assert(planes.shape[0] == 1)
         self.planes = planes.squeeze(0)
 
-        return self.PredictGeometry(self.planes)
+    def PredictMesh(self):
+        # Step 1: first get the sdf and deformation value for each vertices in the grid.
+        sdf, deformation, weight = self.PredictSdfDeformation()
+
+        # Step 2: Using marching cubes to obtain the mesh
+        size = self.grid_res + 1
+        sdf = sdf.squeeze(-1).reshape(size, size, size)
+        verts, faces = mcubes.marching_cubes(sdf.cpu().numpy(), 0)
+
+        verts = verts.astype(np.float32)
+        verts = torch.from_numpy(verts).to(self.device)
+        verts = (verts / self.grid_res - 0.5) * self.grid_scale
+
+        faces = faces.astype(np.int32)
+        faces = torch.from_numpy(faces).to(self.device)
+        # Flip the triangles
+        faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.int32, device = self.device))
+
+        return verts, faces
 
     def QueryColors(self, positions):
         colors = self.synthesizer.get_texture_prediction(self.planes.unsqueeze(0), positions.unsqueeze(0))
         assert(colors.shape[0] == 1)
         return colors.squeeze(0)
 
-    def PredictSdfDeformation(self, planes):
+    def PredictSdfDeformation(self):
         # Step 1: predict the SDF and deformation
         sdf, deformation, weight = self.synthesizer.get_geometry_prediction(
-            planes.unsqueeze(0),
+            self.planes.unsqueeze(0),
             self.cube_verts.unsqueeze(0),
             self.cube_indices
         )
@@ -151,8 +170,9 @@ class Lrm(nn.Module):
         deformation = 1.0 / (self.grid_res * deformation_multiplier) * torch.tanh(deformation)
 
         # Step 3: Fix some sdf if we observe empty shape (full positive or full negative)
-        sdf_bxnxnxn = sdf.reshape(self.grid_res + 1, self.grid_res + 1, self.grid_res + 1)
-        sdf_less_boundary = sdf_bxnxnxn[1 : -1, 1 : -1, 1 : -1].reshape(-1)
+        size = self.grid_res + 1
+        sdf_nxnxn = sdf.reshape(size, size, size)
+        sdf_less_boundary = sdf_nxnxn[1 : -1, 1 : -1, 1 : -1].reshape(-1)
         pos_shape = torch.sum((sdf_less_boundary > 0).int(), dim = -1)
         neg_shape = torch.sum((sdf_less_boundary < 0).int(), dim = -1)
         zero_surface = torch.bitwise_or(pos_shape == 0, neg_shape == 0).item()
@@ -165,20 +185,3 @@ class Lrm(nn.Module):
             sdf = torch.lerp(new_sdf, sdf, update_mask)
 
         return sdf, deformation, weight
-
-    def PredictGeometry(self, planes):
-        # Step 1: first get the sdf and deformation value for each vertices in the grid.
-        sdf, deformation, weight = self.PredictSdfDeformation(planes)
-
-        # Step 2: Using marching cubes to obtain the mesh
-        sdf = sdf.squeeze(-1).reshape(self.grid_res + 1, self.grid_res + 1, self.grid_res + 1)
-        verts, faces = mcubes.marching_cubes(sdf.cpu().numpy(), 0)
-
-        verts = torch.tensor(verts, dtype = torch.float32, device = self.device)
-        verts = (verts / self.grid_res - 0.5) * self.grid_scale
-
-        faces = torch.tensor(faces.astype(int), dtype = torch.int32, device = self.device)
-        # Flip the triangles
-        faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.int32, device = self.device))
-
-        return verts, faces
