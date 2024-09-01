@@ -10,6 +10,7 @@ from pytorch_lightning import seed_everything
 import torch
 
 from src.utils.camera_util import get_zero123plus_input_cameras
+from Lrm import Lrm
 
 class MeshGenerator:
     def __init__(self):
@@ -21,10 +22,9 @@ class MeshGenerator:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        from Lrm import Lrm
         self.model = Lrm(self.device, encoder_feat_dim = 768, transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16,
             triplane_low_res = 32, triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128,
-            grid_scale = 2.1, fovy = 30.0
+            grid_scale = 2.1
         )
 
         model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")

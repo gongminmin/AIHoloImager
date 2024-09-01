@@ -29,12 +29,12 @@ class Lrm(nn.Module):
                  triplane_dim : int = 80,
                  rendering_samples_per_ray : int = 128,
                  grid_res : int = 128,
-                 grid_scale : float = 2.0,
-                 fovy : float = 50.0):
+                 grid_scale : float = 2.0):
         super(Lrm, self).__init__()
 
         self.device = device
         self.grid_res = grid_res
+        self.grid_scale = grid_scale
 
         this_py_dir = Path(__file__).parent.resolve()
         pretrained_dir = this_py_dir.joinpath("Models/dino-vitb16")
@@ -175,8 +175,7 @@ class Lrm(nn.Module):
         verts, faces = mcubes.marching_cubes(sdf.cpu().numpy(), 0)
 
         verts = torch.tensor(verts, dtype = torch.float32, device = self.device)
-        verts = verts / self.grid_res * 2 - 1
-        verts *= 1.04 # Not sure why we need this scale
+        verts = (verts / self.grid_res - 0.5) * self.grid_scale
 
         faces = torch.tensor(faces.astype(int), dtype = torch.int32, device = self.device)
         # Flip the triangles
