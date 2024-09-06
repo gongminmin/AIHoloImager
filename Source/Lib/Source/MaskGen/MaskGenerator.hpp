@@ -20,7 +20,7 @@ namespace AIHoloImager
 
         MaskGenerator& operator=(MaskGenerator&& other) noexcept;
 
-        Texture Generate(const Texture& input_image);
+        void Generate(Texture& image);
 
     private:
         class Impl;

@@ -9,8 +9,6 @@
 #define _USE_EIGEN
 #include <InterfaceMVS.h>
 
-#include "MaskGen/MaskGenerator.hpp"
-
 using namespace DirectX;
 
 namespace AIHoloImager
@@ -18,7 +16,7 @@ namespace AIHoloImager
     class MeshReconstruction::Impl
     {
     public:
-        Impl(const std::filesystem::path& exe_dir, PythonSystem& python_system) : exe_dir_(exe_dir), python_system_(python_system)
+        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
         {
         }
 
@@ -108,31 +106,31 @@ namespace AIHoloImager
                 MVS::Interface::Platform& platform = scene.platforms[image.platformID];
                 image.cameraID = 0;
 
+                const auto mask_path = image_path.parent_path() / (image_path.stem().string() + ".mask.png");
+                image.maskName = mask_path.string();
+
+                Texture image_part(view.image_mask.Width(), view.image_mask.Height(), 3);
+                Texture mask_part(view.image_mask.Width(), view.image_mask.Height(), 1);
+                const uint8_t* src = view.image_mask.Data();
+                uint8_t* image_dst = image_part.Data();
+                uint8_t* mask_dst = mask_part.Data();
+                for (uint32_t j = 0; j < view.image_mask.Width() * view.image_mask.Height(); ++j)
+                {
+                    image_dst[j * 3 + 0] = src[j * 4 + 0];
+                    image_dst[j * 3 + 1] = src[j * 4 + 1];
+                    image_dst[j * 3 + 2] = src[j * 4 + 2];
+                    mask_dst[j] = src[j * 4 + 3];
+                }
+
+                SaveTexture(image_part, image_path);
+                SaveTexture(mask_part, mask_path);
+
                 image.poseID = static_cast<uint32_t>(platform.poses.size());
                 image.ID = static_cast<uint32_t>(i);
 
                 auto& pose = platform.poses.emplace_back();
                 pose.R = view.rotation;
                 pose.C = view.center;
-            }
-
-            {
-                MaskGenerator mask_gen(python_system_);
-                for (size_t i = 0; i < sfm_input.views.size(); ++i)
-                {
-                    std::cout << "Generating mask images (" << (i + 1) << " / " << sfm_input.views.size() << ")\r";
-
-                    const auto& view = sfm_input.views[i];
-                    SaveTexture(view.image, scene.images[i].name);
-
-                    Texture mask_image = mask_gen.Generate(view.image);
-                    const std::filesystem::path image_path = scene.images[i].name;
-                    const auto mask_path = image_path.parent_path() / (image_path.stem().string() + ".mask.png");
-                    SaveTexture(mask_image, mask_path);
-
-                    scene.images[i].maskName = mask_path.string();
-                }
-                std::cout << "\n\n";
             }
 
             scene.vertices.reserve(sfm_input.structure.size());
@@ -241,12 +239,9 @@ namespace AIHoloImager
     private:
         const std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
-
-        PythonSystem& python_system_;
     };
 
-    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir, PythonSystem& python_system)
-        : impl_(std::make_unique<Impl>(exe_dir, python_system))
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
     }
 

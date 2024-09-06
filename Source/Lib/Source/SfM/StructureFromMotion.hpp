@@ -19,6 +19,7 @@
 
 #include "AIHoloImager/Texture.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -30,7 +31,7 @@ namespace AIHoloImager
     public:
         struct View
         {
-            Texture image;
+            Texture image_mask;
 
             uint32_t intrinsic_id;
 
@@ -68,7 +69,7 @@ namespace AIHoloImager
         };
 
     public:
-        StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system);
+        StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system);
         StructureFromMotion(StructureFromMotion&& other) noexcept;
         ~StructureFromMotion() noexcept;
 

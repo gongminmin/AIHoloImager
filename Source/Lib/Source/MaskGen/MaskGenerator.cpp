@@ -19,27 +19,31 @@ namespace AIHoloImager
             mask_generator_gen_method_ = python_system_.GetAttr(*mask_generator_, "Gen");
         }
 
-        Texture Generate(const Texture& input_image)
+        void Generate(Texture& image)
         {
             auto args = python_system_.MakeTuple(4);
             {
-                auto image = python_system_.MakeObject(
-                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
-                python_system_.SetTupleItem(*args, 0, std::move(image));
+                auto py_image = python_system_.MakeObject(
+                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
+                python_system_.SetTupleItem(*args, 0, std::move(py_image));
 
-                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(input_image.Width()));
-                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(input_image.Height()));
-                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(input_image.NumChannels()));
+                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(image.Width()));
+                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(image.Height()));
+                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(image.NumChannels()));
             }
+
+            Ensure4Channel(image);
 
             const auto mask_data = python_system_.CallObject(*mask_generator_gen_method_, *args);
 
-            Texture mask_image(input_image.Width(), input_image.Height(), 1);
             const auto mask_span = python_system_.ToBytes(*mask_data);
-            assert(mask_span.size() == mask_image.DataSize());
-            std::memcpy(mask_image.Data(), mask_span.data(), mask_span.size());
-
-            return mask_image;
+            assert(mask_span.size() == image.Width() * image.Height());
+            const uint8_t* src = reinterpret_cast<const uint8_t*>(mask_span.data());
+            uint8_t* dst = &image.Data()[3];
+            for (uint32_t i = 0; i < mask_span.size(); ++i)
+            {
+                dst[i * 4] = src[i];
+            }
         }
 
     private:
@@ -60,8 +64,8 @@ namespace AIHoloImager
     MaskGenerator::MaskGenerator(MaskGenerator&& other) noexcept = default;
     MaskGenerator& MaskGenerator::operator=(MaskGenerator&& other) noexcept = default;
 
-    Texture MaskGenerator::Generate(const Texture& input_image)
+    void MaskGenerator::Generate(Texture& image)
     {
-        return impl_->Generate(input_image);
+        impl_->Generate(image);
     }
 } // namespace AIHoloImager

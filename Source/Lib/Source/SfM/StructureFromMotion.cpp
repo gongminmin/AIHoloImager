@@ -57,6 +57,7 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "MaskGen/MaskGenerator.hpp"
 
 #include "CompiledShader/UndistortCs.h"
 
@@ -81,7 +82,8 @@ namespace AIHoloImager
         };
 
     public:
-        explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
+        explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
+            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system)
         {
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
 
@@ -438,34 +440,34 @@ namespace AIHoloImager
                     result_view.rotation = mvg_pose.rotation();
                     result_view.center = mvg_pose.center();
 
-                    result_view.image = LoadTexture(src_image);
+                    result_view.image_mask = LoadTexture(src_image);
 
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        Ensure4Channel(result_view.image);
+                        Ensure4Channel(result_view.image_mask);
 
-                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image.Width()) ||
-                            (distort_gpu_tex.Height(0) != result_view.image.Height()))
+                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
+                            (distort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
-                            distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image.Width(), result_view.image.Height(), 1, ColorFmt,
-                                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
+                            distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
+                                ColorFmt, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
                         }
-                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image.Width()) ||
-                            (undistort_gpu_tex.Height(0) != result_view.image.Height()))
+                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
+                            (undistort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
-                            undistort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image.Width(), result_view.image.Height(), 1,
-                                ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
+                            undistort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(),
+                                1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
                         }
 
                         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        distort_gpu_tex.Upload(gpu_system_, cmd_list, 0, result_view.image.Data());
+                        distort_gpu_tex.Upload(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image.Data());
+                        undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 
                         gpu_system_.Execute(std::move(cmd_list));
                         gpu_system_.WaitForGpu();
@@ -494,6 +496,16 @@ namespace AIHoloImager
                         result_observation.feat_id = mvg_observation.second.id_feat;
                     }
                 }
+            }
+
+            {
+                MaskGenerator mask_gen(python_system_);
+                for (size_t i = 0; i < ret.views.size(); ++i)
+                {
+                    std::cout << "Generating mask images (" << (i + 1) << " / " << ret.views.size() << ")\r";
+                    mask_gen.Generate(ret.views[i].image_mask);
+                }
+                std::cout << "\n\n";
             }
 
             return ret;
@@ -533,6 +545,7 @@ namespace AIHoloImager
         const std::filesystem::path exe_dir_;
 
         GpuSystem& gpu_system_;
+        PythonSystem& python_system_;
 
         struct UndistortConstantBuffer
         {
@@ -548,8 +561,8 @@ namespace AIHoloImager
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
     };
 
-    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
-        : impl_(std::make_unique<Impl>(exe_dir, gpu_system))
+    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
+        : impl_(std::make_unique<Impl>(exe_dir, gpu_system, python_system))
     {
     }
 
