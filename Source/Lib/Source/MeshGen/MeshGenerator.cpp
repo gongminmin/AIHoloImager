@@ -6,6 +6,7 @@
 #include <array>
 #include <cassert>
 #include <format>
+#include <iostream>
 #include <set>
 
 #include <directx/d3d12.h>
@@ -95,6 +96,80 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
+            std::cout << "Generating mesh from images...\n";
+
+            const Mesh pos_only_mesh = this->GenMeshFromImages(input_images);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(pos_only_mesh, output_dir / "AiMeshPosOnly.glb");
+#endif
+
+            std::cout << "Unwrapping UV...\n";
+
+            Mesh pos_uv_mesh = this->UnwrapUv(pos_only_mesh, texture_size);
+
+            std::cout << "Generating texture...\n";
+
+            GpuTexture2D pos_gpu_tex;
+            pos_uv_mesh = this->GenTextureFromPhotos(pos_only_mesh, pos_uv_mesh, recon_input, texture_size, pos_gpu_tex, tmp_dir);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(pos_uv_mesh, output_dir / "AiMeshTextured.glb");
+#endif
+
+            GpuReadbackBuffer counter_cpu_buff;
+            GpuReadbackBuffer uv_cpu_buff;
+            GpuReadbackBuffer pos_cpu_buff;
+            {
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                GpuBuffer counter_buff;
+                GpuBuffer uv_buff;
+                GpuBuffer pos_buff;
+                this->PosTexToList(cmd_list, pos_gpu_tex, counter_buff, uv_buff, pos_buff);
+
+                counter_cpu_buff = GpuReadbackBuffer(gpu_system_, counter_buff.Size(), L"counter_cpu_buff");
+                cmd_list.Copy(counter_cpu_buff, counter_buff);
+
+                uv_cpu_buff = GpuReadbackBuffer(gpu_system_, uv_buff.Size(), L"uv_cpu_buff");
+                cmd_list.Copy(uv_cpu_buff, uv_buff);
+
+                pos_cpu_buff = GpuReadbackBuffer(gpu_system_, pos_buff.Size(), L"pos_cpu_buff");
+                cmd_list.Copy(pos_cpu_buff, pos_buff);
+
+                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.WaitForGpu();
+            }
+
+            Texture& merged_tex = pos_uv_mesh.AlbedoTexture();
+            this->MergeTexture(counter_cpu_buff, uv_cpu_buff, pos_cpu_buff, merged_tex);
+
+            {
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                GpuTexture2D merged_gpu_tex(gpu_system_, merged_tex.Width(), merged_tex.Height(), 1, ColorFmt,
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"merged_gpu_tex");
+                merged_gpu_tex.Upload(gpu_system_, cmd_list, 0, merged_tex.Data());
+
+                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, merged_tex.Width(), merged_tex.Height(), 1, ColorFmt,
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"dilated_tmp_tex");
+
+                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, merged_gpu_tex, dilated_tmp_gpu_tex);
+
+                dilated_gpu_tex->Readback(gpu_system_, cmd_list, 0, merged_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
+            }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(pos_uv_mesh, output_dir / "AiMesh.glb");
+#endif
+
+            return pos_uv_mesh;
+        }
+
+    private:
+        Mesh GenMeshFromImages(std::span<const Texture> input_images)
+        {
             auto args = python_system_.MakeTuple(1);
             {
                 const uint32_t num_images = static_cast<uint32_t>(input_images.size());
@@ -122,72 +197,11 @@ namespace AIHoloImager
                 const auto indices = python_system_.ToSpan<const uint32_t>(*faces);
 
                 pos_only_mesh = this->CleanMesh(positions, indices);
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(pos_only_mesh, output_dir / "AiMeshPosOnly.glb");
-#endif
             }
 
-            Mesh pos_uv_mesh = this->UnwrapUv(pos_only_mesh, texture_size);
-
-            GpuTexture2D pos_gpu_tex;
-            Mesh textured_mesh = this->GenTextureFromPhotos(pos_only_mesh, pos_uv_mesh, recon_input, texture_size, pos_gpu_tex, tmp_dir);
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(textured_mesh, output_dir / "AiMeshTextured.glb");
-#endif
-
-            GpuReadbackBuffer counter_cpu_buff;
-            GpuReadbackBuffer uv_cpu_buff;
-            GpuReadbackBuffer pos_cpu_buff;
-            {
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-                GpuBuffer counter_buff;
-                GpuBuffer uv_buff;
-                GpuBuffer pos_buff;
-                this->PosTexToList(cmd_list, pos_gpu_tex, counter_buff, uv_buff, pos_buff);
-
-                counter_cpu_buff = GpuReadbackBuffer(gpu_system_, counter_buff.Size(), L"counter_cpu_buff");
-                cmd_list.Copy(counter_cpu_buff, counter_buff);
-
-                uv_cpu_buff = GpuReadbackBuffer(gpu_system_, uv_buff.Size(), L"uv_cpu_buff");
-                cmd_list.Copy(uv_cpu_buff, uv_buff);
-
-                pos_cpu_buff = GpuReadbackBuffer(gpu_system_, pos_buff.Size(), L"pos_cpu_buff");
-                cmd_list.Copy(pos_cpu_buff, pos_buff);
-
-                gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
-            }
-
-            Texture& blended_tex = textured_mesh.AlbedoTexture();
-            this->GenTexture(counter_cpu_buff, uv_cpu_buff, pos_cpu_buff, blended_tex);
-
-            {
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-                GpuTexture2D blended_gpu_tex(gpu_system_, blended_tex.Width(), blended_tex.Height(), 1, ColorFmt,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON);
-                blended_gpu_tex.Upload(gpu_system_, cmd_list, 0, blended_tex.Data());
-
-                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, blended_tex.Width(), blended_tex.Height(), 1, ColorFmt,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"dilated_tmp_tex");
-
-                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, blended_gpu_tex, dilated_tmp_gpu_tex);
-
-                dilated_gpu_tex->Readback(gpu_system_, cmd_list, 0, blended_tex.Data());
-                gpu_system_.Execute(std::move(cmd_list));
-            }
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(textured_mesh, output_dir / "AiMesh.glb");
-#endif
-
-            return textured_mesh;
+            return pos_only_mesh;
         }
 
-    private:
         Mesh CleanMesh(std::span<const XMFLOAT3> positions, std::span<const uint32_t> indices)
         {
             constexpr float Scale = 1e5f;
@@ -521,7 +535,7 @@ namespace AIHoloImager
                 get_pos_list_pipeline_, DivUp(pos_tex.Width(0), BlockDim), DivUp(pos_tex.Height(0), BlockDim), 1, shader_binding);
         }
 
-        void GenTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuReadbackBuffer& uv_cpu_buff,
+        void MergeTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuReadbackBuffer& uv_cpu_buff,
             const GpuReadbackBuffer& pos_cpu_buff, Texture& texture)
         {
             const uint32_t count = *counter_cpu_buff.MappedData<uint32_t>();
@@ -551,34 +565,37 @@ namespace AIHoloImager
             }
         }
 
-        Mesh GenTextureFromPhotos(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const MeshReconstruction::Result& recon_input,
-            uint32_t texture_size, GpuTexture2D& pos_gpu_tex, const std::filesystem::path& tmp_dir)
+        XMMATRIX CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input)
         {
-            XMMATRIX transform_mtx = XMLoadFloat4x4(&recon_input.transform);
-            transform_mtx *= XMMatrixScaling(1, 1, -1);        // RH to LH
-            std::swap(transform_mtx.r[1], transform_mtx.r[2]); // Swap Y and Z
+            XMMATRIX model_mtx = XMLoadFloat4x4(&recon_input.transform);
+            model_mtx *= XMMatrixScaling(1, 1, -1);    // RH to LH
+            std::swap(model_mtx.r[1], model_mtx.r[2]); // Swap Y and Z
 
             DirectX::BoundingOrientedBox ai_obb;
-            BoundingOrientedBox::CreateFromPoints(
-                ai_obb, pos_only_mesh.Vertices().size(), &pos_only_mesh.Vertices()[0].pos, sizeof(pos_only_mesh.Vertices()[0]));
+            BoundingOrientedBox::CreateFromPoints(ai_obb, mesh.Vertices().size(), &mesh.Vertices()[0].pos, sizeof(mesh.Vertices()[0]));
 
-            ai_obb.Transform(ai_obb, transform_mtx);
+            ai_obb.Transform(ai_obb, model_mtx);
 
             const float scale_x = ai_obb.Extents.x / recon_input.obb.Extents.x;
             const float scale_y = ai_obb.Extents.y / recon_input.obb.Extents.y;
             const float scale_z = ai_obb.Extents.z / recon_input.obb.Extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
-            Mesh transformed_mesh(
-                static_cast<uint32_t>(pos_uv_mesh.Vertices().size()), static_cast<uint32_t>(pos_uv_mesh.Indices().size()));
+            return XMMatrixScaling(scale, scale, scale) * model_mtx;
+        }
 
-            transform_mtx = XMMatrixScaling(scale, scale, scale) * transform_mtx;
-            for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
+        Mesh GenTextureFromPhotos(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const MeshReconstruction::Result& recon_input,
+            uint32_t texture_size, GpuTexture2D& pos_gpu_tex, const std::filesystem::path& tmp_dir)
+        {
+            const XMMATRIX model_mtx = this->CalcModelMatrix(pos_only_mesh, recon_input);
+
+            Mesh world_mesh(static_cast<uint32_t>(pos_uv_mesh.Vertices().size()), static_cast<uint32_t>(pos_uv_mesh.Indices().size()));
+            for (uint32_t i = 0; i < static_cast<uint32_t>(world_mesh.Vertices().size()); ++i)
             {
-                auto& vertex = transformed_mesh.Vertex(i);
+                auto& vertex = world_mesh.Vertex(i);
 
                 const auto& pos = pos_uv_mesh.Vertex(i).pos;
-                XMStoreFloat3(&vertex.pos, XMVector3TransformCoord(XMLoadFloat3(&pos), transform_mtx));
+                XMStoreFloat3(&vertex.pos, XMVector3TransformCoord(XMLoadFloat3(&pos), model_mtx));
 
                 vertex.texcoord = XMFLOAT2(0, 0); // TextureMesh can't handle mesh with texture coordinate. Clear it.
             }
@@ -586,16 +603,16 @@ namespace AIHoloImager
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Indices().size()); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(world_mesh.Indices().size()); ++i)
             {
-                transformed_mesh.Index(i) = pos_uv_mesh.Index(i);
+                world_mesh.Index(i) = pos_uv_mesh.Index(i);
             }
 
             const auto working_dir = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir);
 
             const std::string mesh_name = "Temp_Ai";
-            SaveMesh(transformed_mesh, working_dir / (mesh_name + ".glb"));
+            SaveMesh(world_mesh, working_dir / (mesh_name + ".glb"));
 
             const std::string output_mesh_name = mesh_name + "_Texture";
 
@@ -613,11 +630,11 @@ namespace AIHoloImager
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(world_mesh.Vertices().size()); ++i)
             {
-                transformed_mesh.Vertex(i).texcoord = pos_uv_mesh.Vertex(i).texcoord;
+                world_mesh.Vertex(i).texcoord = pos_uv_mesh.Vertex(i).texcoord;
             }
-            this->RefillTexture(transformed_mesh, pos_uv_mesh, textured_mesh, texture_size, pos_gpu_tex);
+            this->RefillTexture(world_mesh, pos_uv_mesh, textured_mesh, texture_size, pos_gpu_tex);
 
             const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
@@ -627,13 +644,13 @@ namespace AIHoloImager
 
             const XMMATRIX adjust_mtx = handedness * pre_trans * pre_rotate * handedness;
 
-            for (uint32_t i = 0; i < static_cast<uint32_t>(transformed_mesh.Vertices().size()); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(world_mesh.Vertices().size()); ++i)
             {
-                auto& pos = transformed_mesh.Vertex(i).pos;
+                auto& pos = world_mesh.Vertex(i).pos;
                 XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), adjust_mtx));
             }
 
-            return transformed_mesh;
+            return world_mesh;
         }
 
         struct TextureTransferVertexFormat

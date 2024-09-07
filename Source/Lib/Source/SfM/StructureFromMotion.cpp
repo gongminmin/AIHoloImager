@@ -114,7 +114,7 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return ExportResult(processed_sfm_data);
+            return this->ExportResult(processed_sfm_data);
         }
 
     private:
