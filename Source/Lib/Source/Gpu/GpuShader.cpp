@@ -106,8 +106,8 @@ namespace AIHoloImager
         HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
         if (FAILED(hr))
         {
-            ::OutputDebugStringW(
-                std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer())).c_str());
+            ::OutputDebugStringA(
+                std::format("D3D12SerializeRootSignature failed: {}\n", static_cast<const char*>(error->GetBufferPointer())).c_str());
             TIFHR(hr);
         }
 
@@ -264,8 +264,8 @@ namespace AIHoloImager
         HRESULT hr = ::D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, blob.Put(), error.Put());
         if (FAILED(hr))
         {
-            ::OutputDebugStringW(
-                std::format(L"D3D12SerializeRootSignature failed: {}\n", static_cast<const wchar_t*>(error->GetBufferPointer())).c_str());
+            ::OutputDebugStringA(
+                std::format("D3D12SerializeRootSignature failed: {}\n", static_cast<const char*>(error->GetBufferPointer())).c_str());
             TIFHR(hr);
         }
 
