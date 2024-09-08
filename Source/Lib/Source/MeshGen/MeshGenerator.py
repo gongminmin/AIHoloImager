@@ -18,8 +18,6 @@ class MeshGenerator:
 
         seed_everything(42)
 
-        radius = 4
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = Lrm(self.device, encoder_feat_dim = 768, transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16,
@@ -42,8 +40,6 @@ class MeshGenerator:
         self.model = self.model.to(self.device)
         self.model.eval()
 
-        self.input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = radius).to(self.device).squeeze(0)
-
     def GenNeRF(self, images):
         with torch.no_grad():
             mv_images = torch.empty(6, 3, 320, 320) # views, channels, height, width
@@ -56,7 +52,8 @@ class MeshGenerator:
             mv_images /= 255.0
             mv_images = mv_images.clamp(0, 1)
 
-            self.model.GenNeRF(mv_images, self.input_cameras)
+            input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = 4).to(self.device).squeeze(0)
+            self.model.GenNeRF(mv_images, input_cameras)
 
     def GenPosMesh(self):
         with torch.no_grad():

@@ -363,6 +363,7 @@ namespace AIHoloImager
         }
 
         src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
 
         d3d12_cmd_list->CopyResource(dest.NativeBuffer(), src.NativeBuffer());
     }
@@ -380,6 +381,9 @@ namespace AIHoloImager
         default:
             throw std::runtime_error("This type of command list can't Copy.");
         }
+
+        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
 
         d3d12_cmd_list->CopyResource(dest.NativeTexture(), src.NativeTexture());
     }

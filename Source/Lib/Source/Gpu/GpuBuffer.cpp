@@ -166,7 +166,10 @@ namespace AIHoloImager
 
     GpuUploadBuffer::~GpuUploadBuffer() noexcept
     {
-        this->Reset();
+        if (resource_)
+        {
+            this->Unmap();
+        }
     }
 
     GpuUploadBuffer::GpuUploadBuffer(GpuUploadBuffer&& other) noexcept = default;
@@ -215,7 +218,10 @@ namespace AIHoloImager
 
     GpuReadbackBuffer::~GpuReadbackBuffer() noexcept
     {
-        this->Reset();
+        if (resource_)
+        {
+            this->Unmap();
+        }
     }
 
     GpuReadbackBuffer::GpuReadbackBuffer(GpuReadbackBuffer&& other) noexcept = default;

@@ -3,20 +3,33 @@
 
 #include "Util.hlslh"
 
+cbuffer param_cb : register(b0)
+{
+    uint texture_size;
+};
+
 Texture2D photo_tex : register(t0);
 
 SamplerState bilinear_sampler : register(s0);
 
-void main(float3 pos_os : TEXCOORD0,
-    float2 photo_tc : TEXCOORD1,
-    out float4 color_rt : SV_Target0,
-    out float4 pos_rt : SV_Target1)
-{
-    color_rt = photo_tex.Sample(bilinear_sampler, photo_tc);
-    pos_rt = 0;
+RWBuffer<uint> counter_buff : register(u0);
+RWBuffer<uint> uv_buff : register(u1);
+RWBuffer<float> pos_buff : register(u2);
 
-    if (IsEmpty(color_rt.rgb))
+float4 main(float3 pos_os : TEXCOORD0, float4 tc : TEXCOORD1) : SV_Target0
+{
+    float4 color = photo_tex.Sample(bilinear_sampler, tc.xy);
+    if (IsEmpty(color.rgb))
     {
-        pos_rt = float4(pos_os, 1);
+        uint addr;
+        InterlockedAdd(counter_buff[0], 1, addr);
+
+        uint2 uv = uint2(tc.zw * texture_size);
+        uv_buff[addr] = (uv.y << 16) | uv.x;
+        pos_buff[addr * 3 + 0] = pos_os.x;
+        pos_buff[addr * 3 + 1] = pos_os.y;
+        pos_buff[addr * 3 + 2] = pos_os.z;
     }
+
+    return color;
 }

@@ -208,8 +208,11 @@ namespace AIHoloImager
 #endif
 
                 Ensure3Channel(init_view_cpu_tex);
-                MultiViewDiffusion mv_diffusion(python_system_);
-                Texture mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
+                Texture mv_diffusion_tex;
+                {
+                    MultiViewDiffusion mv_diffusion(python_system_);
+                    mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
+                }
                 Ensure4Channel(mv_diffusion_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
