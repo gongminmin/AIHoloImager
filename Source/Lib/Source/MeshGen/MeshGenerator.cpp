@@ -18,6 +18,7 @@
 #include "Gpu/GpuTexture.hpp"
 
 #include "CompiledShader/DilateCs.h"
+#include "CompiledShader/MergeTextureCs.h"
 #include "CompiledShader/TransferTexturePs.h"
 #include "CompiledShader/TransferTextureVs.h"
 
@@ -77,6 +78,12 @@ namespace AIHoloImager
                     GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&bilinear_sampler_desc, 1), states);
             }
             {
+                merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
+
+                const ShaderInfo shader = {MergeTextureCs_shader, 1, 2, 1};
+                merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
                 const ShaderInfo shader = {DilateCs_shader, 0, 1, 1};
                 dilate_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
@@ -110,26 +117,23 @@ namespace AIHoloImager
             std::cout << "Generating texture...\n";
 
             GpuReadbackBuffer counter_cpu_buff;
-            GpuReadbackBuffer uv_cpu_buff;
             GpuReadbackBuffer pos_cpu_buff;
+            GpuBuffer uv_buff;
+            GpuTexture2D color_gpu_tex;
             {
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
                 GpuBuffer counter_buff;
-                GpuBuffer uv_buff;
                 GpuBuffer pos_buff;
-                pos_uv_mesh = this->GenTextureFromPhotos(
-                    pos_only_mesh, pos_uv_mesh, recon_input, texture_size, counter_buff, uv_buff, pos_buff, tmp_dir);
+                pos_uv_mesh = this->GenTextureFromPhotos(cmd_list, pos_only_mesh, pos_uv_mesh, recon_input, texture_size, counter_buff,
+                    uv_buff, pos_buff, color_gpu_tex, tmp_dir);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveMesh(pos_uv_mesh, output_dir / "AiMeshTextured.glb");
 #endif
 
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
                 counter_cpu_buff = GpuReadbackBuffer(gpu_system_, counter_buff.Size(), L"counter_cpu_buff");
                 cmd_list.Copy(counter_cpu_buff, counter_buff);
-
-                uv_cpu_buff = GpuReadbackBuffer(gpu_system_, uv_buff.Size(), L"uv_cpu_buff");
-                cmd_list.Copy(uv_cpu_buff, uv_buff);
 
                 pos_cpu_buff = GpuReadbackBuffer(gpu_system_, pos_buff.Size(), L"pos_cpu_buff");
                 cmd_list.Copy(pos_cpu_buff, pos_buff);
@@ -138,24 +142,22 @@ namespace AIHoloImager
             }
             gpu_system_.WaitForGpu();
 
-            Texture& merged_tex = pos_uv_mesh.AlbedoTexture();
-            this->MergeTexture(counter_cpu_buff, uv_cpu_buff, pos_cpu_buff, merged_tex);
+            this->MergeTexture(counter_cpu_buff, uv_buff, pos_cpu_buff, color_gpu_tex);
 
+            Texture merged_tex(texture_size, texture_size, 4);
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                GpuTexture2D merged_gpu_tex(gpu_system_, merged_tex.Width(), merged_tex.Height(), 1, ColorFmt,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"merged_gpu_tex");
-                merged_gpu_tex.Upload(gpu_system_, cmd_list, 0, merged_tex.Data());
-
-                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, merged_tex.Width(), merged_tex.Height(), 1, ColorFmt,
+                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, color_gpu_tex.Width(0), color_gpu_tex.Height(0), 1, ColorFmt,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"dilated_tmp_tex");
 
-                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, merged_gpu_tex, dilated_tmp_gpu_tex);
+                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, color_gpu_tex, dilated_tmp_gpu_tex);
 
                 dilated_gpu_tex->Readback(gpu_system_, cmd_list, 0, merged_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }
+
+            pos_uv_mesh.AlbedoTexture() = std::move(merged_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(pos_uv_mesh, output_dir / "AiMesh.glb");
@@ -506,33 +508,47 @@ namespace AIHoloImager
             return ret_mesh;
         }
 
-        void MergeTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuReadbackBuffer& uv_cpu_buff,
-            const GpuReadbackBuffer& pos_cpu_buff, Texture& texture)
+        void MergeTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuBuffer& uv_buff, const GpuReadbackBuffer& pos_cpu_buff,
+            GpuTexture2D& color_gpu_tex)
         {
             const uint32_t count = *counter_cpu_buff.MappedData<uint32_t>();
-
-            const XMUSHORT2* uv = uv_cpu_buff.MappedData<XMUSHORT2>();
-            const XMFLOAT3* pos = pos_cpu_buff.MappedData<XMFLOAT3>();
-
-            auto query_colors_args = python_system_.MakeTuple(2);
+            if (count > 0)
             {
-                auto pos_py = python_system_.MakeObject(
-                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(pos), count * sizeof(XMFLOAT3)));
-                python_system_.SetTupleItem(*query_colors_args, 0, std::move(pos_py));
-                python_system_.SetTupleItem(*query_colors_args, 1, python_system_.MakeObject(count));
-            }
+                const XMFLOAT3* pos = pos_cpu_buff.MappedData<XMFLOAT3>();
 
-            auto colors_data = python_system_.CallObject(*mesh_generator_query_colors_method_, *query_colors_args);
-            const auto colors = python_system_.ToSpan<const uint32_t>(*colors_data);
+                auto query_colors_args = python_system_.MakeTuple(2);
+                {
+                    auto pos_py = python_system_.MakeObject(
+                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(pos), count * sizeof(XMFLOAT3)));
+                    python_system_.SetTupleItem(*query_colors_args, 0, std::move(pos_py));
+                    python_system_.SetTupleItem(*query_colors_args, 1, python_system_.MakeObject(count));
+                }
 
-            uint32_t* tex_data = reinterpret_cast<uint32_t*>(texture.Data());
-            const uint32_t texture_size = texture.Width();
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                tex_data[uv[i].y * texture_size + uv[i].x] = colors[i];
+                auto colors_data = python_system_.CallObject(*mesh_generator_query_colors_method_, *query_colors_args);
+                const auto colors = python_system_.ToSpan<const uint32_t>(*colors_data);
+
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                GpuUnorderedAccessView merged_uav(gpu_system_, color_gpu_tex);
+
+                merge_texture_cb_->size = count;
+                merge_texture_cb_.UploadToGpu();
+
+                GpuShaderResourceView uv_srv(gpu_system_, uv_buff, DXGI_FORMAT_R32_UINT);
+
+                GpuUploadBuffer color_buff(gpu_system_, colors.data(), count * sizeof(uint32_t), L"color_buff");
+                GpuShaderResourceView color_srv(gpu_system_, color_buff, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+                constexpr uint32_t BlockDim = 256;
+
+                const GeneralConstantBuffer* cbs[] = {&merge_texture_cb_};
+                const GpuShaderResourceView* srvs[] = {&uv_srv, &color_srv};
+                GpuUnorderedAccessView* uavs[] = {&merged_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(merge_texture_pipeline_, DivUp(count, BlockDim), 1, 1, shader_binding);
+
+                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.WaitForGpu();
             }
         }
 
@@ -555,8 +571,9 @@ namespace AIHoloImager
             return XMMatrixScaling(scale, scale, scale) * model_mtx;
         }
 
-        Mesh GenTextureFromPhotos(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const MeshReconstruction::Result& recon_input,
-            uint32_t texture_size, GpuBuffer& counter_buff, GpuBuffer& uv_buff, GpuBuffer& pos_buff, const std::filesystem::path& tmp_dir)
+        Mesh GenTextureFromPhotos(GpuCommandList& cmd_list, const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh,
+            const MeshReconstruction::Result& recon_input, uint32_t texture_size, GpuBuffer& counter_buff, GpuBuffer& uv_buff,
+            GpuBuffer& pos_buff, GpuTexture2D& color_gpu_tex, const std::filesystem::path& tmp_dir)
         {
             const XMMATRIX model_mtx = this->CalcModelMatrix(pos_only_mesh, recon_input);
 
@@ -605,7 +622,8 @@ namespace AIHoloImager
             {
                 world_mesh.Vertex(i).texcoord = pos_uv_mesh.Vertex(i).texcoord;
             }
-            this->RefillTexture(world_mesh, pos_uv_mesh, textured_mesh, texture_size, counter_buff, uv_buff, pos_buff);
+            this->RefillTexture(
+                cmd_list, world_mesh, pos_uv_mesh, textured_mesh, texture_size, counter_buff, uv_buff, pos_buff, color_gpu_tex);
 
             const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
@@ -632,8 +650,8 @@ namespace AIHoloImager
         };
         static_assert(sizeof(TextureTransferVertexFormat) == sizeof(float) * 7);
 
-        void RefillTexture(Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh, uint32_t texture_size,
-            GpuBuffer& counter_buff, GpuBuffer& uv_buff, GpuBuffer& pos_buff)
+        void RefillTexture(GpuCommandList& cmd_list, Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh,
+            uint32_t texture_size, GpuBuffer& counter_buff, GpuBuffer& uv_buff, GpuBuffer& pos_buff, GpuTexture2D& color_gpu_tex)
         {
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(textured_mesh.Indices().size() * sizeof(TextureTransferVertexFormat)),
                 D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
@@ -644,20 +662,11 @@ namespace AIHoloImager
             Texture photo_texture = textured_mesh.AlbedoTexture();
             Ensure4Channel(photo_texture);
 
-            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
             GpuTexture2D photo_gpu_tex(gpu_system_, photo_texture.Width(), photo_texture.Height(), 1, ColorFmt, D3D12_RESOURCE_FLAG_NONE,
                 D3D12_RESOURCE_STATE_COMMON);
             photo_gpu_tex.Upload(gpu_system_, cmd_list, 0, photo_texture.Data());
 
-            GpuTexture2D color_gpu_tex;
             this->TransferTexture(cmd_list, vb, photo_gpu_tex, texture_size, color_gpu_tex, counter_buff, uv_buff, pos_buff);
-
-            Texture color_texture(color_gpu_tex.Width(0), color_gpu_tex.Height(0), FormatSize(color_gpu_tex.Format()));
-            color_gpu_tex.Readback(gpu_system_, cmd_list, 0, color_texture.Data());
-            gpu_system_.Execute(std::move(cmd_list));
-
-            target_mesh.AlbedoTexture() = std::move(color_texture);
         }
 
         void GenTextureTransferVertices(const Mesh& target_mesh, const Mesh& pos_uv_mesh, const Mesh& textured_mesh,
@@ -757,8 +766,9 @@ namespace AIHoloImager
         {
             auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-            color_gpu_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-                D3D12_RESOURCE_STATE_COMMON, L"color_gpu_tex");
+            color_gpu_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, ColorFmt,
+                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
+                L"color_gpu_tex");
             GpuRenderTargetView color_rtv(gpu_system_, color_gpu_tex);
 
             counter_buff = GpuBuffer(gpu_system_, sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
@@ -865,6 +875,14 @@ namespace AIHoloImager
         };
         ConstantBuffer<TranserTextureConstantBuffer> transfer_texture_cb_;
         GpuRenderPipeline transfer_texture_pipeline_;
+
+        struct MergeTextureConstantBuffer
+        {
+            uint32_t size;
+            uint32_t padding[3];
+        };
+        ConstantBuffer<MergeTextureConstantBuffer> merge_texture_cb_;
+        GpuComputePipeline merge_texture_pipeline_;
 
         GpuComputePipeline dilate_pipeline_;
 

@@ -52,6 +52,29 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture(), &srv_desc, cpu_handle_);
     }
 
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, DXGI_FORMAT format)
+        : GpuShaderResourceView(gpu_system, buffer, 0, buffer.Size() / FormatSize(format), format)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(
+        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), buffer_(&buffer)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+        srv_desc.Format = format;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv_desc.Buffer.FirstElement = first_element;
+        srv_desc.Buffer.NumElements = num_elements;
+        srv_desc.Buffer.StructureByteStride = 0;
+        srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        gpu_system.NativeDevice()->CreateShaderResourceView(buffer.NativeBuffer(), &srv_desc, cpu_handle_);
+    }
+
     GpuShaderResourceView::~GpuShaderResourceView()
     {
         this->Reset();
@@ -71,7 +94,14 @@ namespace AIHoloImager
 
     void GpuShaderResourceView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        if (texture_ != nullptr)
+        {
+            texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
+        else if (buffer_ != nullptr)
+        {
+            buffer_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
     }
 
     void GpuShaderResourceView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept

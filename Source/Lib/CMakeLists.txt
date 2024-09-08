@@ -41,6 +41,7 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/MeshGen/Shader/DilateCs.hlsl
+    Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/TransferTextureVs.hlsl
     Source/MeshGen/Shader/TransferTexturePs.hlsl
     Source/MaskGen/MaskGenerator.cpp
@@ -101,6 +102,7 @@ macro(AddShaderFile file_name shader_type entry_point)
 endmacro()
 
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/TransferTextureVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/TransferTexturePs.hlsl "ps" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")

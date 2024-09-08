@@ -27,6 +27,9 @@ namespace AIHoloImager
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, DXGI_FORMAT format);
+        GpuShaderResourceView(
+            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format);
         ~GpuShaderResourceView();
 
         GpuShaderResourceView(GpuShaderResourceView&& other) noexcept;
@@ -41,6 +44,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         const GpuTexture2D* texture_ = nullptr;
+        const GpuBuffer* buffer_ = nullptr;
         GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
