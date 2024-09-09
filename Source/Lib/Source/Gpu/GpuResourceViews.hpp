@@ -129,6 +129,8 @@ namespace AIHoloImager
 
         void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
 
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuTexture2D* texture_ = nullptr;

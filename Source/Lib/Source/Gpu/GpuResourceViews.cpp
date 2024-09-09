@@ -296,4 +296,9 @@ namespace AIHoloImager
     {
         gpu_system_->NativeDevice()->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GpuUnorderedAccessView::CpuHandle() const noexcept
+    {
+        return cpu_handle_;
+    }
 } // namespace AIHoloImager

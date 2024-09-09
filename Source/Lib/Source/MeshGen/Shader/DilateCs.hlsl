@@ -3,6 +3,11 @@
 
 #define BLOCK_DIM 16
 
+cbuffer param_cb : register(b0)
+{
+    uint texture_size;
+};
+
 Texture2D blended_tex : register(t0);
 
 RWTexture2D<unorm float4> dilated_tex : register(u0);
@@ -10,6 +15,12 @@ RWTexture2D<unorm float4> dilated_tex : register(u0);
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
 {
+    [branch]
+    if (any(dtid.xy >= texture_size))
+    {
+        return;
+    }
+
     float4 curr = blended_tex.Load(uint3(dtid.xy, 0));
 
     [branch]

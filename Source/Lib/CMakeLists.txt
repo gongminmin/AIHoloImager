@@ -41,9 +41,12 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/MeshGen/Shader/DilateCs.hlsl
+    Source/MeshGen/Shader/FlattenVs.hlsl
+    Source/MeshGen/Shader/FlattenPs.hlsl
+    Source/MeshGen/Shader/GenShadowMapVs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
-    Source/MeshGen/Shader/TransferTextureVs.hlsl
-    Source/MeshGen/Shader/TransferTexturePs.hlsl
+    Source/MeshGen/Shader/ProjectTextureCs.hlsl
+    Source/MeshGen/Shader/ResolveTextureCs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
@@ -102,9 +105,12 @@ macro(AddShaderFile file_name shader_type entry_point)
 endmacro()
 
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/FlattenVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/FlattenPs.hlsl "ps" "main")
+AddShaderFile(Source/MeshGen/Shader/GenShadowMapVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/TransferTextureVs.hlsl "vs" "main")
-AddShaderFile(Source/MeshGen/Shader/TransferTexturePs.hlsl "ps" "main")
+AddShaderFile(Source/MeshGen/Shader/ProjectTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ResolveTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")

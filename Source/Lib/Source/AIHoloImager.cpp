@@ -62,7 +62,7 @@ namespace AIHoloImager
             Mesh result_mesh;
             {
                 MeshGenerator mesh_gen(exe_dir_, gpu_system_, python_system_);
-                result_mesh = mesh_gen.Generate(mv_renderer_result.multi_view_images, 2048, mesh_recon_result, tmp_dir_);
+                result_mesh = mesh_gen.Generate(mv_renderer_result.multi_view_images, 2048, sfm_result, mesh_recon_result, tmp_dir_);
             }
 
             return result_mesh;

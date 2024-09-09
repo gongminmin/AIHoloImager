@@ -5,7 +5,7 @@
 
 cbuffer param_cb : register(b0)
 {
-    uint size;
+    uint buffer_size;
 };
 
 Buffer<uint> uv_buff : register(t0);
@@ -17,7 +17,7 @@ RWTexture2D<unorm float4> merged_tex : register(u0);
 void main(uint3 dtid : SV_DispatchThreadID)
 {
     [branch]
-    if (dtid.x >= size)
+    if (dtid.x >= buffer_size)
     {
         return;
     }

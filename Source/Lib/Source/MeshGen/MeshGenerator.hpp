@@ -11,6 +11,7 @@
 #include "Gpu/GpuSystem.hpp"
 #include "MeshRecon/MeshReconstruction.hpp"
 #include "Python/PythonSystem.hpp"
+#include "SfM/StructureFromMotion.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -26,8 +27,8 @@ namespace AIHoloImager
 
         MeshGenerator& operator=(MeshGenerator&& other) noexcept;
 
-        Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const MeshReconstruction::Result& recon_input,
-            const std::filesystem::path& tmp_dir);
+        Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const StructureFromMotion::Result& sfm_input,
+            const MeshReconstruction::Result& recon_input, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;
