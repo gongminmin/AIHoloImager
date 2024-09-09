@@ -954,6 +954,7 @@ namespace AIHoloImager
             constexpr uint32_t BlockDim = 16;
 
             XMStoreFloat4x4(&project_tex_cb_->camera_view_proj, XMMatrixTranspose(view_mtx * proj_mtx));
+            XMStoreFloat4x4(&project_tex_cb_->camera_view, XMMatrixTranspose(view_mtx));
             XMStoreFloat4x4(&project_tex_cb_->camera_view_it, XMMatrixInverse(nullptr, view_mtx));
             project_tex_cb_->offset = XMFLOAT2(offset.x / intrinsic.width, offset.y / intrinsic.height);
             project_tex_cb_->texture_size = texture_size;
@@ -1082,6 +1083,7 @@ namespace AIHoloImager
         struct ProjectTextureConstantBuffer
         {
             DirectX::XMFLOAT4X4 camera_view_proj;
+            DirectX::XMFLOAT4X4 camera_view;
             DirectX::XMFLOAT4X4 camera_view_it;
             DirectX::XMFLOAT2 offset;
             uint32_t texture_size;
