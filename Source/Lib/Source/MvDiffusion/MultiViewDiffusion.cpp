@@ -18,6 +18,12 @@ namespace AIHoloImager
             mv_diffusion_gen_method_ = python_system_.GetAttr(*mv_diffusion_, "Gen");
         }
 
+        ~Impl()
+        {
+            auto mv_diffusion_destroy_method = python_system_.GetAttr(*mv_diffusion_, "Destroy");
+            python_system_.CallObject(*mv_diffusion_destroy_method);
+        }
+
         Texture Generate(const Texture& input_image, uint32_t num_steps)
         {
             auto args = python_system_.MakeTuple(5);

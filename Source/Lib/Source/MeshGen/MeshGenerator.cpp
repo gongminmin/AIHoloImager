@@ -139,6 +139,12 @@ namespace AIHoloImager
             }
         }
 
+        ~Impl()
+        {
+            auto mesh_generator_destroy_method = python_system_.GetAttr(*mesh_generator_, "Destroy");
+            python_system_.CallObject(*mesh_generator_destroy_method);
+        }
+
         Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const StructureFromMotion::Result& sfm_input,
             const MeshReconstruction::Result& recon_input, const std::filesystem::path& tmp_dir)
         {

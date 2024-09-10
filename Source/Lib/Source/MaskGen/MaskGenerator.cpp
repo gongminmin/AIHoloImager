@@ -19,6 +19,12 @@ namespace AIHoloImager
             mask_generator_gen_method_ = python_system_.GetAttr(*mask_generator_, "Gen");
         }
 
+        ~Impl()
+        {
+            auto mask_generator_destroy_method = python_system_.GetAttr(*mask_generator_, "Destroy");
+            python_system_.CallObject(*mask_generator_destroy_method);
+        }
+
         void Generate(Texture& image)
         {
             auto args = python_system_.MakeTuple(4);

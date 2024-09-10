@@ -40,6 +40,11 @@ class MeshGenerator:
         self.model = self.model.to(self.device)
         self.model.eval()
 
+    def Destroy(self):
+        del self.model
+        del self.device
+        torch.cuda.empty_cache()
+
     def GenNeRF(self, images):
         with torch.no_grad():
             mv_images = torch.empty(6, 3, 320, 320) # views, channels, height, width

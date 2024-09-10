@@ -35,6 +35,13 @@ class MaskGenerator:
 
         self.blurer = transforms.GaussianBlur(kernel_size = (5, 5), sigma = 2.0).to(self.device)
 
+    def Destroy(self):
+        del self.u2net
+        del self.kernel
+        del self.blurer
+        del self.device
+        torch.cuda.empty_cache()
+
     def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:
         with torch.no_grad():
             img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)

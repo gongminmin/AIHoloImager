@@ -59,6 +59,10 @@ class MultiViewDiffusion:
 
         self.pipeline = self.pipeline.to(device)
 
+    def Destroy(self):
+        del self.pipeline
+        torch.cuda.empty_cache()
+
     def Gen(self, input_image_data : bytes, width : int, height : int, num_channels : int, num_steps : int):
         if num_channels == 1:
             mode = "L"
