@@ -14,22 +14,22 @@ namespace AIHoloImager
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags,
         D3D12_RESOURCE_STATES init_state, std::wstring_view name)
-        : gpu_system_(&gpu_system), heap_type_(heap_type), curr_state_(init_state)
+        : resource_(gpu_system, nullptr), heap_type_(heap_type), curr_state_(init_state)
     {
         const D3D12_HEAP_PROPERTIES heap_prop = {heap_type, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
 
         desc_ = {D3D12_RESOURCE_DIMENSION_BUFFER, 0, static_cast<uint64_t>(size), 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0},
             D3D12_TEXTURE_LAYOUT_ROW_MAJOR, flags};
         TIFHR(gpu_system.NativeDevice()->CreateCommittedResource(
-            &heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, init_state, nullptr, UuidOf<ID3D12Resource>(), resource_.PutVoid()));
+            &heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, init_state, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         if (!name.empty())
         {
             resource_->SetName(std::wstring(std::move(name)).c_str());
         }
     }
 
-    GpuBuffer::GpuBuffer(ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name)
-        : resource_(native_resource, false), curr_state_(curr_state)
+    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name)
+        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false)), curr_state_(curr_state)
     {
         if (resource_)
         {
@@ -45,13 +45,7 @@ namespace AIHoloImager
         }
     }
 
-    GpuBuffer::~GpuBuffer()
-    {
-        if (resource_)
-        {
-            gpu_system_->Recycle(std::move(resource_));
-        }
-    }
+    GpuBuffer::~GpuBuffer() = default;
 
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
@@ -59,7 +53,7 @@ namespace AIHoloImager
     GpuBuffer GpuBuffer::Share() const
     {
         GpuBuffer buffer;
-        buffer.resource_ = resource_;
+        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;
@@ -73,7 +67,7 @@ namespace AIHoloImager
 
     ID3D12Resource* GpuBuffer::NativeBuffer() const noexcept
     {
-        return resource_.Get();
+        return resource_.Object().Get();
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS GpuBuffer::GpuVirtualAddress() const noexcept
@@ -113,7 +107,7 @@ namespace AIHoloImager
 
     void GpuBuffer::Reset() noexcept
     {
-        resource_ = nullptr;
+        resource_.Object() = nullptr;
         desc_ = {};
         heap_type_ = {};
         curr_state_ = {};
@@ -131,7 +125,7 @@ namespace AIHoloImager
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = resource_.Get();
+            barrier.Transition.pResource = resource_.Object().Get();
             barrier.Transition.StateBefore = curr_state_;
             barrier.Transition.StateAfter = target_state;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
@@ -142,7 +136,7 @@ namespace AIHoloImager
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = resource_.Get();
+            barrier.UAV.pResource = resource_.Object().Get();
             cmd_list.Transition(std::span(&barrier, 1));
         }
 
@@ -178,7 +172,7 @@ namespace AIHoloImager
     GpuUploadBuffer GpuUploadBuffer::Share() const
     {
         GpuUploadBuffer buffer;
-        buffer.resource_ = resource_;
+        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;
@@ -230,7 +224,7 @@ namespace AIHoloImager
     GpuReadbackBuffer GpuReadbackBuffer::Share() const
     {
         GpuReadbackBuffer buffer;
-        buffer.resource_ = resource_;
+        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;

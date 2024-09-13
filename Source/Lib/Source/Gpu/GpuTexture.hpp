@@ -18,7 +18,7 @@
 #include <directx/d3d12.h>
 #include <directx/dxgiformat.h>
 
-#include "AIHoloImager/Texture.hpp"
+#include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -35,7 +35,8 @@ namespace AIHoloImager
         GpuTexture2D();
         GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, DXGI_FORMAT format,
             D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES init_state, std::wstring_view name = L"");
-        GpuTexture2D(ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"") noexcept;
+        GpuTexture2D(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state,
+            std::wstring_view name = L"") noexcept;
         ~GpuTexture2D() noexcept;
 
         GpuTexture2D(GpuTexture2D&& other) noexcept;
@@ -66,9 +67,7 @@ namespace AIHoloImager
             uint32_t dst_y, const D3D12_BOX& src_box);
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-
-        ComPtr<ID3D12Resource> resource_;
+        GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
         D3D12_RESOURCE_DESC desc_{};
         mutable std::vector<D3D12_RESOURCE_STATES> curr_states_;
     };

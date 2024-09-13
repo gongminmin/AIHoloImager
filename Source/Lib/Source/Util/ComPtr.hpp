@@ -204,6 +204,20 @@ namespace AIHoloImager
             to = this->As<U>();
         }
 
+        bool Unique() const noexcept
+        {
+            if (ptr_ != nullptr)
+            {
+                const uint32_t ref_count = ptr_->AddRef();
+                ptr_->Release();
+                return (ref_count == 2);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
     private:
         void InternalAddRef() noexcept
         {

@@ -67,7 +67,7 @@ namespace AIHoloImager
 
     GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, DXGI_FORMAT format,
         D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES init_state, std::wstring_view name)
-        : gpu_system_(&gpu_system), curr_states_(mip_levels * NumPlanes(format), init_state)
+        : resource_(gpu_system, nullptr), curr_states_(mip_levels * NumPlanes(format), init_state)
     {
         const D3D12_HEAP_PROPERTIES default_heap_prop = {
             D3D12_HEAP_TYPE_DEFAULT, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
@@ -75,15 +75,16 @@ namespace AIHoloImager
         desc_ = {D3D12_RESOURCE_DIMENSION_TEXTURE2D, 0, static_cast<uint64_t>(width), height, 1, static_cast<uint16_t>(mip_levels), format,
             {1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN, flags};
         TIFHR(gpu_system.NativeDevice()->CreateCommittedResource(
-            &default_heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, init_state, nullptr, UuidOf<ID3D12Resource>(), resource_.PutVoid()));
+            &default_heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, init_state, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         if (!name.empty())
         {
             resource_->SetName(std::wstring(name).c_str());
         }
     }
 
-    GpuTexture2D::GpuTexture2D(ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name) noexcept
-        : resource_(native_resource, false)
+    GpuTexture2D::GpuTexture2D(
+        GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name) noexcept
+        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false))
     {
         if (resource_)
         {
@@ -97,13 +98,7 @@ namespace AIHoloImager
         }
     }
 
-    GpuTexture2D::~GpuTexture2D()
-    {
-        if (resource_)
-        {
-            gpu_system_->Recycle(std::move(resource_));
-        }
-    }
+    GpuTexture2D::~GpuTexture2D() = default;
 
     GpuTexture2D::GpuTexture2D(GpuTexture2D&& other) noexcept = default;
     GpuTexture2D& GpuTexture2D::operator=(GpuTexture2D&& other) noexcept = default;
@@ -111,7 +106,7 @@ namespace AIHoloImager
     GpuTexture2D GpuTexture2D::Share() const
     {
         GpuTexture2D texture;
-        texture.resource_ = resource_;
+        texture.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
         texture.desc_ = desc_;
         texture.curr_states_ = curr_states_;
         return texture;
@@ -124,7 +119,7 @@ namespace AIHoloImager
 
     ID3D12Resource* GpuTexture2D::NativeTexture() const noexcept
     {
-        return resource_.Get();
+        return resource_.Object().Get();
     }
 
     uint32_t GpuTexture2D::Width(uint32_t mip) const noexcept
@@ -159,7 +154,7 @@ namespace AIHoloImager
 
     void GpuTexture2D::Reset() noexcept
     {
-        resource_ = nullptr;
+        resource_.Object() = nullptr;
         desc_ = {};
         curr_states_.clear();
     }
@@ -176,7 +171,7 @@ namespace AIHoloImager
             D3D12_RESOURCE_BARRIER barrier;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = resource_.Get();
+            barrier.Transition.pResource = resource_.Object().Get();
             barrier.Transition.StateBefore = curr_states_[sub_resource];
             barrier.Transition.StateAfter = target_state;
             barrier.Transition.Subresource = sub_resource;
@@ -194,7 +189,7 @@ namespace AIHoloImager
             D3D12_RESOURCE_BARRIER barrier;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = resource_.Get();
+            barrier.UAV.pResource = resource_.Object().Get();
             cmd_list.Transition(std::span(&barrier, 1));
         }
         else
@@ -216,7 +211,7 @@ namespace AIHoloImager
                     D3D12_RESOURCE_BARRIER barrier;
                     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                    barrier.Transition.pResource = resource_.Get();
+                    barrier.Transition.pResource = resource_.Object().Get();
                     barrier.Transition.StateBefore = curr_states_[0];
                     barrier.Transition.StateAfter = target_state;
                     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
@@ -233,7 +228,7 @@ namespace AIHoloImager
                         auto& barrier = barriers.emplace_back();
                         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                        barrier.Transition.pResource = resource_.Get();
+                        barrier.Transition.pResource = resource_.Object().Get();
                         barrier.Transition.StateBefore = curr_states_[i];
                         barrier.Transition.StateAfter = target_state;
                         barrier.Transition.Subresource = static_cast<uint32_t>(i);
@@ -278,7 +273,7 @@ namespace AIHoloImager
         src.PlacedFootprint = layout;
 
         D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = resource_.Get();
+        dst.pResource = resource_.Object().Get();
         dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         dst.SubresourceIndex = sub_resource;
 
@@ -317,7 +312,7 @@ namespace AIHoloImager
             gpu_system.AllocReadbackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
 
         D3D12_TEXTURE_COPY_LOCATION src;
-        src.pResource = resource_.Get();
+        src.pResource = resource_.Object().Get();
         src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         src.SubresourceIndex = sub_resource;
 
@@ -361,12 +356,12 @@ namespace AIHoloImager
         uint32_t dst_x, uint32_t dst_y, const D3D12_BOX& src_box)
     {
         D3D12_TEXTURE_COPY_LOCATION src;
-        src.pResource = other.resource_.Get();
+        src.pResource = other.resource_.Object().Get();
         src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         src.SubresourceIndex = sub_resource;
 
         D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = resource_.Get();
+        dst.pResource = resource_.Object().Get();
         dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         dst.SubresourceIndex = sub_resource;
 

@@ -40,6 +40,7 @@ set(aihi_files
     Source/Gpu/GpuSystem.hpp
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
+    Source/Gpu/GpuUtil.hpp
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/FlattenVs.hlsl
     Source/MeshGen/Shader/FlattenPs.hlsl

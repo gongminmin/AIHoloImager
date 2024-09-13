@@ -9,6 +9,7 @@
 #include <directx/d3d12.h>
 
 #include "GpuSystem.hpp"
+#include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -67,10 +68,8 @@ namespace AIHoloImager
         ID3D12PipelineState* NativePipelineState() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-
-        ComPtr<ID3D12RootSignature> root_sig_;
-        ComPtr<ID3D12PipelineState> pso_;
+        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
+        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
     };
 
     class GpuComputePipeline
@@ -89,9 +88,7 @@ namespace AIHoloImager
         ID3D12PipelineState* NativePipelineState() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-
-        ComPtr<ID3D12RootSignature> root_sig_;
-        ComPtr<ID3D12PipelineState> pso_;
+        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
+        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
     };
 } // namespace AIHoloImager

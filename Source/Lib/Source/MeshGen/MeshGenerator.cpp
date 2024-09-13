@@ -201,6 +201,9 @@ namespace AIHoloImager
                 color_gpu_tex = this->GenTextureFromPhotos(pos_uv_mesh, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex,
                     sfm_input, texture_size, counter_buff, uv_buff, pos_buff, tmp_dir);
 
+                flatten_pos_tex = GpuTexture2D();
+                flatten_normal_tex = GpuTexture2D();
+
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -215,9 +218,11 @@ namespace AIHoloImager
 
                 counter_cpu_buff = GpuReadbackBuffer(gpu_system_, counter_buff.Size(), L"counter_cpu_buff");
                 cmd_list.Copy(counter_cpu_buff, counter_buff);
+                counter_buff = GpuBuffer();
 
                 pos_cpu_buff = GpuReadbackBuffer(gpu_system_, pos_buff.Size(), L"pos_cpu_buff");
                 cmd_list.Copy(pos_cpu_buff, pos_buff);
+                pos_buff = GpuBuffer();
 
                 gpu_system_.Execute(std::move(cmd_list));
             }

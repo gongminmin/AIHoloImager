@@ -479,6 +479,9 @@ namespace AIHoloImager
                 }
             }
 
+            distort_gpu_tex = GpuTexture2D();
+            undistort_gpu_tex = GpuTexture2D();
+
             ret.structure.reserve(sfm_data.GetLandmarks().size());
             for (const auto& mvg_vertex : sfm_data.GetLandmarks())
             {

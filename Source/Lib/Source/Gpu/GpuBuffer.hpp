@@ -7,6 +7,7 @@
 
 #include <directx/d3d12.h>
 
+#include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -23,7 +24,7 @@ namespace AIHoloImager
         GpuBuffer() noexcept;
         GpuBuffer(GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags,
             D3D12_RESOURCE_STATES init_state, std::wstring_view name = L"");
-        GpuBuffer(ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"");
+        GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"");
         virtual ~GpuBuffer();
 
         GpuBuffer(GpuBuffer&& other) noexcept;
@@ -49,9 +50,7 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const;
 
     protected:
-        GpuSystem* gpu_system_ = nullptr;
-
-        ComPtr<ID3D12Resource> resource_;
+        GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
         D3D12_RESOURCE_DESC desc_{};
         D3D12_HEAP_TYPE heap_type_{};
         mutable D3D12_RESOURCE_STATES curr_state_{};

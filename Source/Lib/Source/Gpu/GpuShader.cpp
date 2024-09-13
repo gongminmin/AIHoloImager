@@ -13,7 +13,7 @@ namespace AIHoloImager
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
         std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states)
-        : gpu_system_(&gpu_system)
+        : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         uint32_t num_desc_ranges = 0;
         for (uint32_t s = 0; s < NumShaderStages; ++s)
@@ -114,10 +114,10 @@ namespace AIHoloImager
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
 
         TIFHR(d3d12_device->CreateRootSignature(
-            1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.PutVoid()));
+            1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
-        pso_desc.pRootSignature = root_sig_.Get();
+        pso_desc.pRootSignature = root_sig_.Object().Get();
         for (uint32_t s = 0; s < NumShaderStages; ++s)
         {
             const auto& shader = shaders[s];
@@ -183,38 +183,29 @@ namespace AIHoloImager
         pso_desc.SampleDesc.Quality = 0;
         pso_desc.NodeMask = 0;
         pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-        TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
+        TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.Object().PutVoid()));
     }
 
-    GpuRenderPipeline::~GpuRenderPipeline()
-    {
-        if (root_sig_)
-        {
-            gpu_system_->Recycle(std::move(root_sig_));
-
-            assert(pso_);
-            gpu_system_->Recycle(std::move(pso_));
-        }
-    }
+    GpuRenderPipeline::~GpuRenderPipeline() = default;
 
     GpuRenderPipeline::GpuRenderPipeline(GpuRenderPipeline&& other) noexcept = default;
     GpuRenderPipeline& GpuRenderPipeline::operator=(GpuRenderPipeline&& other) noexcept = default;
 
     ID3D12RootSignature* GpuRenderPipeline::NativeRootSignature() const noexcept
     {
-        return root_sig_.Get();
+        return root_sig_.Object().Get();
     }
 
     ID3D12PipelineState* GpuRenderPipeline::NativePipelineState() const noexcept
     {
-        return pso_.Get();
+        return pso_.Object().Get();
     }
 
 
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
     GpuComputePipeline::GpuComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
-        : gpu_system_(&gpu_system)
+        : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
@@ -272,37 +263,28 @@ namespace AIHoloImager
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
 
         TIFHR(d3d12_device->CreateRootSignature(
-            1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.PutVoid()));
+            1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{};
-        pso_desc.pRootSignature = root_sig_.Get();
+        pso_desc.pRootSignature = root_sig_.Object().Get();
         pso_desc.CS.pShaderBytecode = shader.bytecode.data();
         pso_desc.CS.BytecodeLength = shader.bytecode.size();
         pso_desc.NodeMask = 0;
-        TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.PutVoid()));
+        TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.Object().PutVoid()));
     }
 
-    GpuComputePipeline::~GpuComputePipeline()
-    {
-        if (root_sig_)
-        {
-            gpu_system_->Recycle(std::move(root_sig_));
-
-            assert(pso_);
-            gpu_system_->Recycle(std::move(pso_));
-        }
-    }
+    GpuComputePipeline::~GpuComputePipeline() = default;
 
     GpuComputePipeline::GpuComputePipeline(GpuComputePipeline&& other) noexcept = default;
     GpuComputePipeline& GpuComputePipeline::operator=(GpuComputePipeline&& other) noexcept = default;
 
     ID3D12RootSignature* GpuComputePipeline::NativeRootSignature() const noexcept
     {
-        return root_sig_.Get();
+        return root_sig_.Object().Get();
     }
 
     ID3D12PipelineState* GpuComputePipeline::NativePipelineState() const noexcept
     {
-        return pso_.Get();
+        return pso_.Object().Get();
     }
 } // namespace AIHoloImager
