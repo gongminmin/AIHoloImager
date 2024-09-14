@@ -11,7 +11,6 @@
 
 #include <DirectXPackedVector.h>
 #include <directx/d3d12.h>
-#include <xatlas/xatlas.h>
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -171,8 +170,10 @@ namespace AIHoloImager
 
             std::cout << "Unwrapping UV...\n";
 
-            std::vector<uint32_t> vertex_mapping;
-            Mesh pos_uv_mesh = this->UnwrapUv(pos_only_mesh, texture_size, vertex_mapping);
+            std::vector<uint32_t> vertex_referencing;
+            Mesh pos_uv_mesh = UnwrapUv(pos_only_mesh, texture_size, 2, vertex_referencing);
+
+            std::cout << "Generating texture...\n";
 
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Vertices().size() * sizeof(Mesh::VertexFormat)),
                 D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
@@ -184,12 +185,10 @@ namespace AIHoloImager
             memcpy(mesh_ib.Map(), pos_uv_mesh.Indices().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
-            std::cout << "Generating texture...\n";
-
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
             this->FlattenMesh(
-                pos_only_mesh, vertex_mapping, mesh_vb, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
+                pos_only_mesh, vertex_referencing, mesh_vb, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -562,68 +561,6 @@ namespace AIHoloImager
             }
         }
 
-        Mesh UnwrapUv(const Mesh& input_mesh, uint32_t texture_size, std::vector<uint32_t>& vertex_mapping)
-        {
-            Mesh ret_mesh;
-
-            xatlas::Atlas* atlas = xatlas::Create();
-
-            xatlas::MeshDecl mesh_decl;
-            mesh_decl.vertexCount = static_cast<uint32_t>(input_mesh.Vertices().size());
-            mesh_decl.vertexPositionData = input_mesh.Vertices().data();
-            mesh_decl.vertexPositionStride = sizeof(input_mesh.Vertices()[0]);
-            mesh_decl.indexCount = static_cast<uint32_t>(input_mesh.Indices().size());
-            mesh_decl.indexData = input_mesh.Indices().data();
-            mesh_decl.indexFormat = xatlas::IndexFormat::UInt32;
-
-            xatlas::AddMeshError error = xatlas::AddMesh(atlas, mesh_decl, 1);
-            if (error == xatlas::AddMeshError::Success)
-            {
-                xatlas::ChartOptions chart_options;
-
-                xatlas::PackOptions pack_options;
-                pack_options.padding = 2;
-                pack_options.texelsPerUnit = 0;
-                pack_options.resolution = texture_size;
-
-                xatlas::Generate(atlas, chart_options, pack_options);
-
-                ret_mesh = Mesh(0, 0);
-                for (uint32_t mi = 0; mi < atlas->meshCount; ++mi)
-                {
-                    const uint32_t base_vertex = static_cast<uint32_t>(ret_mesh.Vertices().size());
-
-                    const xatlas::Mesh& mesh = atlas->meshes[mi];
-                    ret_mesh.ResizeVertices(static_cast<uint32_t>(ret_mesh.Vertices().size() + mesh.vertexCount));
-                    vertex_mapping.resize(ret_mesh.Vertices().size());
-                    for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
-                    {
-                        const auto& vertex = mesh.vertexArray[vi];
-                        const auto& pos = input_mesh.Vertex(vertex.xref).pos;
-                        const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
-                        ret_mesh.Vertex(base_vertex + vi) = {pos, uv};
-
-                        vertex_mapping[base_vertex + vi] = vertex.xref;
-                    }
-
-                    ret_mesh.ResizeIndices(static_cast<uint32_t>(ret_mesh.Indices().size() + mesh.indexCount));
-                    for (uint32_t i = 0; i < mesh.indexCount; ++i)
-                    {
-                        ret_mesh.Index(i) = base_vertex + mesh.indexArray[i];
-                    }
-                }
-            }
-
-            xatlas::Destroy(atlas);
-
-            if (error != xatlas::AddMeshError::Success)
-            {
-                throw std::runtime_error(std::format("UV unwrapping failed {}", static_cast<uint32_t>(error)));
-            }
-
-            return ret_mesh;
-        }
-
         void MergeTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuBuffer& uv_buff, const GpuReadbackBuffer& pos_cpu_buff,
             GpuTexture2D& color_gpu_tex)
         {
@@ -691,7 +628,7 @@ namespace AIHoloImager
             return model_mtx * XMMatrixScaling(1, 1, -1);
         }
 
-        void FlattenMesh(const Mesh& pos_only_mesh, const std::vector<uint32_t>& vertex_mapping, const GpuBuffer& mesh_vb,
+        void FlattenMesh(const Mesh& pos_only_mesh, const std::vector<uint32_t>& vertex_referencing, const GpuBuffer& mesh_vb,
             const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex,
             GpuTexture2D& flatten_normal_tex)
         {
@@ -729,7 +666,7 @@ namespace AIHoloImager
                 XMFLOAT3* normal_vb_ptr = reinterpret_cast<XMFLOAT3*>(normal_vb.Map());
                 for (uint32_t i = 0; i < num_vertices; ++i)
                 {
-                    normal_vb_ptr[i] = normals[vertex_mapping[i]];
+                    normal_vb_ptr[i] = normals[vertex_referencing[i]];
                 }
                 normal_vb.Unmap(D3D12_RANGE{0, normal_vb.Size()});
             }

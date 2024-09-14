@@ -8,6 +8,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/material.h>
 #include <assimp/scene.h>
+#include <xatlas/xatlas.h>
 
 using namespace DirectX;
 
@@ -342,5 +343,67 @@ namespace AIHoloImager
 
         Assimp::Exporter exporter;
         exporter.Export(&ai_scene, format_id.c_str(), path.string().c_str(), 0);
+    }
+
+    Mesh UnwrapUv(const Mesh& input_mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>& vertex_referencing)
+    {
+        Mesh ret_mesh;
+
+        xatlas::Atlas* atlas = xatlas::Create();
+
+        xatlas::MeshDecl mesh_decl;
+        mesh_decl.vertexCount = static_cast<uint32_t>(input_mesh.Vertices().size());
+        mesh_decl.vertexPositionData = input_mesh.Vertices().data();
+        mesh_decl.vertexPositionStride = sizeof(input_mesh.Vertices()[0]);
+        mesh_decl.indexCount = static_cast<uint32_t>(input_mesh.Indices().size());
+        mesh_decl.indexData = input_mesh.Indices().data();
+        mesh_decl.indexFormat = xatlas::IndexFormat::UInt32;
+
+        xatlas::AddMeshError error = xatlas::AddMesh(atlas, mesh_decl, 1);
+        if (error == xatlas::AddMeshError::Success)
+        {
+            xatlas::ChartOptions chart_options;
+
+            xatlas::PackOptions pack_options;
+            pack_options.padding = padding;
+            pack_options.texelsPerUnit = 0;
+            pack_options.resolution = texture_size;
+
+            xatlas::Generate(atlas, chart_options, pack_options);
+
+            ret_mesh = Mesh(0, 0);
+            for (uint32_t mi = 0; mi < atlas->meshCount; ++mi)
+            {
+                const uint32_t base_vertex = static_cast<uint32_t>(ret_mesh.Vertices().size());
+
+                const xatlas::Mesh& mesh = atlas->meshes[mi];
+                ret_mesh.ResizeVertices(static_cast<uint32_t>(ret_mesh.Vertices().size() + mesh.vertexCount));
+                vertex_referencing.resize(ret_mesh.Vertices().size());
+                for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
+                {
+                    const auto& vertex = mesh.vertexArray[vi];
+                    const auto& pos = input_mesh.Vertex(vertex.xref).pos;
+                    const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
+                    ret_mesh.Vertex(base_vertex + vi) = {pos, uv};
+
+                    vertex_referencing[base_vertex + vi] = vertex.xref;
+                }
+
+                ret_mesh.ResizeIndices(static_cast<uint32_t>(ret_mesh.Indices().size() + mesh.indexCount));
+                for (uint32_t i = 0; i < mesh.indexCount; ++i)
+                {
+                    ret_mesh.Index(i) = base_vertex + mesh.indexArray[i];
+                }
+            }
+        }
+
+        xatlas::Destroy(atlas);
+
+        if (error != xatlas::AddMeshError::Success)
+        {
+            throw std::runtime_error(std::format("UV unwrapping failed {}", static_cast<uint32_t>(error)));
+        }
+
+        return ret_mesh;
     }
 } // namespace AIHoloImager

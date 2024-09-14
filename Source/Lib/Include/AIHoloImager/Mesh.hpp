@@ -56,4 +56,6 @@ namespace AIHoloImager
 
     Mesh LoadMesh(const std::filesystem::path& path);
     void SaveMesh(const Mesh& mesh, const std::filesystem::path& path);
+
+    Mesh UnwrapUv(const Mesh& mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>& vertex_referencing);
 } // namespace AIHoloImager
