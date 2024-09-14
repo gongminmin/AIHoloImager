@@ -65,6 +65,39 @@ namespace AIHoloImager
         return cmd_list_ ? true : false;
     }
 
+    template <>
+    ID3D12GraphicsCommandList* GpuCommandList::NativeCommandList<ID3D12GraphicsCommandList>() const
+    {
+        ID3D12GraphicsCommandList* d3d12_cmd_list;
+        switch (type_)
+        {
+        case GpuSystem::CmdQueueType::Render:
+        case GpuSystem::CmdQueueType::Compute:
+            d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get());
+            break;
+
+        default:
+            throw std::runtime_error("This type of command list doesn't have a ID3D12GraphicsCommandList.");
+        }
+        return d3d12_cmd_list;
+    }
+
+    template <>
+    ID3D12VideoEncodeCommandList* GpuCommandList::NativeCommandList<ID3D12VideoEncodeCommandList>() const
+    {
+        ID3D12VideoEncodeCommandList* d3d12_cmd_list;
+        switch (type_)
+        {
+        case GpuSystem::CmdQueueType::VideoEncode:
+            d3d12_cmd_list = static_cast<ID3D12VideoEncodeCommandList*>(cmd_list_.Get());
+            break;
+
+        default:
+            throw std::runtime_error("This type of command list doesn't have a ID3D12VideoEncodeCommandList.");
+        }
+        return d3d12_cmd_list;
+    }
+
     void GpuCommandList::Transition(std::span<const D3D12_RESOURCE_BARRIER> barriers) const noexcept
     {
         switch (type_)
@@ -85,21 +118,76 @@ namespace AIHoloImager
         }
     }
 
+    void GpuCommandList::Clear(GpuRenderTargetView& rtv, const float color[4])
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        rtv.Transition(*this);
+        d3d12_cmd_list->ClearRenderTargetView(rtv.CpuHandle(), color, 0, nullptr);
+    }
+
+    void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const float color[4])
+    {
+        ID3D12Resource* resource = nullptr;
+        if (auto* tex = uav.Texture())
+        {
+            resource = tex->NativeTexture();
+        }
+        else if (auto* buff = uav.Buffer())
+        {
+            resource = buff->NativeBuffer();
+        }
+
+        if (!resource)
+        {
+            return;
+        }
+
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        uav.Transition(*this);
+
+        GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
+        uav.CopyTo(uav_desc_block.CpuHandle());
+
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
+        d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+
+        d3d12_cmd_list->ClearUnorderedAccessViewFloat(uav_desc_block.GpuHandle(), uav.CpuHandle(), resource, color, 0, nullptr);
+
+        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
+    }
+
+    void GpuCommandList::ClearDepth(GpuDepthStencilView& dsv, float depth)
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        dsv.Transition(*this);
+        d3d12_cmd_list->ClearDepthStencilView(dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
+    }
+
+    void GpuCommandList::ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil)
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        dsv.Transition(*this);
+        d3d12_cmd_list->ClearDepthStencilView(dsv.CpuHandle(), D3D12_CLEAR_FLAG_STENCIL, 0, stencil, 0, nullptr);
+    }
+
+    void GpuCommandList::ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil)
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        dsv.Transition(*this);
+        d3d12_cmd_list->ClearDepthStencilView(
+            dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+    }
+
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
         uint32_t num, const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
         const GpuDepthStencilView* dsv, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects)
     {
-        ID3D12GraphicsCommandList* d3d12_cmd_list;
-        switch (type_)
-        {
-        case GpuSystem::CmdQueueType::Render:
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            break;
-
-        default:
-            throw std::runtime_error("This type of command list can't Compute.");
-        }
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         if (!vbs.empty())
         {
@@ -268,17 +356,7 @@ namespace AIHoloImager
     {
         assert(gpu_system_ != nullptr);
 
-        ID3D12GraphicsCommandList* d3d12_cmd_list;
-        switch (type_)
-        {
-        case GpuSystem::CmdQueueType::Render:
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            break;
-
-        default:
-            throw std::runtime_error("This type of command list can't Compute.");
-        }
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
         d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
@@ -350,17 +428,7 @@ namespace AIHoloImager
 
     void GpuCommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
     {
-        ID3D12GraphicsCommandList* d3d12_cmd_list;
-        switch (type_)
-        {
-        case GpuSystem::CmdQueueType::Render:
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            break;
-
-        default:
-            throw std::runtime_error("This type of command list can't Copy.");
-        }
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
         dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -370,17 +438,7 @@ namespace AIHoloImager
 
     void GpuCommandList::Copy(GpuTexture2D& dest, const GpuTexture2D& src)
     {
-        ID3D12GraphicsCommandList* d3d12_cmd_list;
-        switch (type_)
-        {
-        case GpuSystem::CmdQueueType::Render:
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            break;
-
-        default:
-            throw std::runtime_error("This type of command list can't Copy.");
-        }
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
         dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);

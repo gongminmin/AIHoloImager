@@ -131,6 +131,15 @@ namespace AIHoloImager
 
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
+        GpuTexture2D* Texture() const noexcept
+        {
+            return texture_;
+        }
+        GpuBuffer* Buffer() const noexcept
+        {
+            return buffer_;
+        }
+
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuTexture2D* texture_ = nullptr;

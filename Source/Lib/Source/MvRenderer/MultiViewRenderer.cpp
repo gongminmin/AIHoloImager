@@ -254,8 +254,6 @@ namespace AIHoloImager
         void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices,
             const GpuShaderResourceView& albedo_srv, float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
         {
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
             const XMVECTOR camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
             const XMVECTOR camera_dir = -XMVector3Normalize(camera_pos);
             XMVECTOR up_vec;
@@ -273,12 +271,9 @@ namespace AIHoloImager
             XMStoreFloat4x4(&render_cb_->mvp, XMMatrixTranspose(view_mtx * proj_mtx_));
             render_cb_.UploadToGpu();
 
-            ssaa_rt_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
-            ssaa_ds_tex_.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
             const float clear_clr[] = {0, 0, 0, 0};
-            d3d12_cmd_list->ClearRenderTargetView(ssaa_rtv_.CpuHandle(), clear_clr, 0, nullptr);
-            d3d12_cmd_list->ClearDepthStencilView(ssaa_dsv_.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1, 0, 0, nullptr);
+            cmd_list.Clear(ssaa_rtv_, clear_clr);
+            cmd_list.ClearDepth(ssaa_dsv_, 1);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(Mesh::VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};

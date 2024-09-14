@@ -744,18 +744,13 @@ namespace AIHoloImager
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
             XMStoreFloat4x4(&flatten_cb_->model_mtx, XMMatrixTranspose(model_mtx));
             XMStoreFloat4x4(&flatten_cb_->model_it_mtx, XMMatrixInverse(nullptr, model_mtx));
             flatten_cb_.UploadToGpu();
 
-            flatten_pos_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
-            flatten_normal_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
             const float clear_clr[] = {0, 0, 0, 0};
-            d3d12_cmd_list->ClearRenderTargetView(pos_rtv.CpuHandle(), clear_clr, 0, nullptr);
-            d3d12_cmd_list->ClearRenderTargetView(normal_rtv.CpuHandle(), clear_clr, 0, nullptr);
+            cmd_list.Clear(pos_rtv, clear_clr);
+            cmd_list.Clear(normal_rtv, clear_clr);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {
                 {&mesh_vb, 0, sizeof(Mesh::VertexFormat)},
@@ -797,23 +792,9 @@ namespace AIHoloImager
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
-                accum_color_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-                GpuDescriptorBlock uav_desc_block = gpu_system_.AllocShaderVisibleCbvSrvUavDescBlock(1);
-                accum_color_uav.CopyTo(uav_desc_block.CpuHandle());
-
-                ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
-                d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-
                 const float black[] = {0, 0, 0, 0};
-                d3d12_cmd_list->ClearUnorderedAccessViewFloat(
-                    uav_desc_block.GpuHandle(), accum_color_uav.CpuHandle(), accum_color_tex.NativeTexture(), black, 0, nullptr);
-
+                cmd_list.Clear(accum_color_uav, black);
                 gpu_system_.Execute(std::move(cmd_list));
-
-                gpu_system_.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
             }
 
             GpuShaderResourceView flatten_pos_srv(gpu_system_, flatten_pos_tex, 0);
@@ -927,8 +908,7 @@ namespace AIHoloImager
         void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, const XMFLOAT2& offset,
             const StructureFromMotion::PinholeIntrinsic& intrinsic, GpuDepthStencilView& shadow_map_dsv)
         {
-            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-            d3d12_cmd_list->ClearDepthStencilView(shadow_map_dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1, 0, 0, nullptr);
+            cmd_list.ClearDepth(shadow_map_dsv, 1);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(Mesh::VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};

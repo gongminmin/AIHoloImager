@@ -57,12 +57,15 @@ namespace AIHoloImager
             return cmd_list_.Get();
         }
         template <typename T>
-        T* NativeCommandList() const noexcept
-        {
-            return static_cast<T*>(NativeCommandListBase());
-        }
+        T* NativeCommandList() const;
 
         void Transition(std::span<const D3D12_RESOURCE_BARRIER> barriers) const noexcept;
+
+        void Clear(GpuRenderTargetView& rtv, const float color[4]);
+        void Clear(GpuUnorderedAccessView& uav, const float color[4]);
+        void ClearDepth(GpuDepthStencilView& dsv, float depth);
+        void ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil);
+        void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
 
         void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
             const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
