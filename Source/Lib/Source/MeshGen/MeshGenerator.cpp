@@ -62,8 +62,8 @@ namespace AIHoloImager
 
                 const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
                     {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+                    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
                 };
 
                 flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, {}, states);
@@ -174,11 +174,22 @@ namespace AIHoloImager
             std::vector<uint32_t> vertex_mapping;
             Mesh pos_uv_mesh = this->UnwrapUv(pos_only_mesh, texture_size, vertex_mapping);
 
+            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Vertices().size() * sizeof(Mesh::VertexFormat)),
+                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
+            memcpy(mesh_vb.Map(), pos_uv_mesh.Vertices().data(), mesh_vb.Size());
+            mesh_vb.Unmap(D3D12_RANGE{0, mesh_vb.Size()});
+
+            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_ib");
+            memcpy(mesh_ib.Map(), pos_uv_mesh.Indices().data(), mesh_ib.Size());
+            mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
+
             std::cout << "Generating texture...\n";
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
-            this->FlattenMesh(pos_only_mesh, pos_uv_mesh, vertex_mapping, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
+            this->FlattenMesh(
+                pos_only_mesh, vertex_mapping, mesh_vb, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -198,7 +209,7 @@ namespace AIHoloImager
             {
                 GpuBuffer counter_buff;
                 GpuBuffer pos_buff;
-                color_gpu_tex = this->GenTextureFromPhotos(pos_uv_mesh, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex,
+                color_gpu_tex = this->GenTextureFromPhotos(mesh_vb, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex,
                     sfm_input, texture_size, counter_buff, uv_buff, pos_buff, tmp_dir);
 
                 flatten_pos_tex = GpuTexture2D();
@@ -680,8 +691,9 @@ namespace AIHoloImager
             return model_mtx * XMMatrixScaling(1, 1, -1);
         }
 
-        void FlattenMesh(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const std::vector<uint32_t>& vertex_mapping,
-            const XMMATRIX& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
+        void FlattenMesh(const Mesh& pos_only_mesh, const std::vector<uint32_t>& vertex_mapping, const GpuBuffer& mesh_vb,
+            const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex,
+            GpuTexture2D& flatten_normal_tex)
         {
             std::vector<XMFLOAT3> normals(pos_only_mesh.Vertices().size(), XMFLOAT3(0, 0, 0));
             for (uint32_t i = 0; i < static_cast<uint32_t>(pos_only_mesh.Indices().size()); i += 3)
@@ -708,34 +720,19 @@ namespace AIHoloImager
                 XMStoreFloat3(&normal3, normal);
             }
 
-            struct VertexNormalFormat
-            {
-                DirectX::XMFLOAT3 pos;
-                DirectX::XMFLOAT3 normal;
-                DirectX::XMFLOAT2 texcoord;
-            };
+            const uint32_t num_vertices = static_cast<uint32_t>(mesh_vb.Size() / sizeof(Mesh::VertexFormat));
+            const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            std::vector<VertexNormalFormat> vertices(pos_uv_mesh.Vertices().size());
-            for (uint32_t i = 0; i < static_cast<uint32_t>(pos_uv_mesh.Vertices().size()); ++i)
+            GpuBuffer normal_vb(gpu_system_, num_vertices * sizeof(XMFLOAT3), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON, L"normal_vb");
             {
-                const auto& vertex = pos_uv_mesh.Vertex(i);
-                vertices[i].pos = vertex.pos;
-                vertices[i].texcoord = vertex.texcoord;
-
-                vertices[i].normal = normals[vertex_mapping[i]];
+                XMFLOAT3* normal_vb_ptr = reinterpret_cast<XMFLOAT3*>(normal_vb.Map());
+                for (uint32_t i = 0; i < num_vertices; ++i)
+                {
+                    normal_vb_ptr[i] = normals[vertex_mapping[i]];
+                }
+                normal_vb.Unmap(D3D12_RANGE{0, normal_vb.Size()});
             }
-
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(vertices.size() * sizeof(VertexNormalFormat)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
-            memcpy(vb.Map(), vertices.data(), vb.Size());
-            vb.Unmap(D3D12_RANGE{0, vb.Size()});
-
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"ib");
-            memcpy(ib.Map(), pos_uv_mesh.Indices().data(), ib.Size());
-            ib.Unmap(D3D12_RANGE{0, ib.Size()});
-
-            const uint32_t num_indices = static_cast<uint32_t>(pos_uv_mesh.Indices().size());
 
             flatten_pos_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
                 D3D12_RESOURCE_STATE_COMMON, L"flatten_pos_tex");
@@ -760,8 +757,11 @@ namespace AIHoloImager
             d3d12_cmd_list->ClearRenderTargetView(pos_rtv.CpuHandle(), clear_clr, 0, nullptr);
             d3d12_cmd_list->ClearRenderTargetView(normal_rtv.CpuHandle(), clear_clr, 0, nullptr);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexNormalFormat)}};
-            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {
+                {&mesh_vb, 0, sizeof(Mesh::VertexFormat)},
+                {&normal_vb, 0, sizeof(XMFLOAT3)},
+            };
+            const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, DXGI_FORMAT_R32_UINT};
 
             const GeneralConstantBuffer* cbs[] = {&flatten_cb_};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
@@ -784,22 +784,12 @@ namespace AIHoloImager
             gpu_system_.WaitForGpu();
         }
 
-        GpuTexture2D GenTextureFromPhotos(const Mesh& pos_uv_mesh, const XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
-            const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex, const StructureFromMotion::Result& sfm_input,
-            uint32_t texture_size, GpuBuffer& counter_buff, GpuBuffer& uv_buff, GpuBuffer& pos_buff,
-            [[maybe_unused]] const std::filesystem::path& tmp_dir)
+        GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx,
+            const DirectX::BoundingOrientedBox& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, GpuBuffer& counter_buff, GpuBuffer& uv_buff,
+            GpuBuffer& pos_buff, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Vertices().size() * sizeof(Mesh::VertexFormat)),
-                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
-            memcpy(vb.Map(), pos_uv_mesh.Vertices().data(), vb.Size());
-            vb.Unmap(D3D12_RANGE{0, vb.Size()});
-
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"ib");
-            memcpy(ib.Map(), pos_uv_mesh.Indices().data(), ib.Size());
-            ib.Unmap(D3D12_RANGE{0, ib.Size()});
-
-            const uint32_t num_indices = static_cast<uint32_t>(pos_uv_mesh.Indices().size());
+            const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, DXGI_FORMAT_R8G8B8A8_UNORM,
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"accum_color_tex");
@@ -908,7 +898,7 @@ namespace AIHoloImager
 
                 shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-                this->GenShadowMap(cmd_list, vb, ib, num_indices, offset, intrinsic, shadow_map_dsv);
+                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, offset, intrinsic, shadow_map_dsv);
 
                 shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
                 accum_color_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
