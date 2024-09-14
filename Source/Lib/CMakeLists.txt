@@ -152,6 +152,11 @@ if(ai_holo_imager_compiler_msvc)
     )
 endif()
 
+target_precompile_headers(AIHoloImagerLib
+    PRIVATE
+        Source/pch.hpp
+)
+
 target_link_libraries(AIHoloImagerLib
     PRIVATE
         assimp
