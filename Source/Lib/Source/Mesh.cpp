@@ -197,7 +197,16 @@ namespace AIHoloImager
             std::span<const Mesh::VertexFormat> vertices = mesh.Vertices();
             for (unsigned int vi = 0; vi < ai_mesh->mNumVertices; ++vi)
             {
-                mesh.Vertex(vi) = {XMFLOAT3(&ai_mesh->mVertices[vi].x), XMFLOAT2(&ai_mesh->mTextureCoords[0][vi].x)};
+                auto& vertex = mesh.Vertex(vi);
+                vertex.pos = XMFLOAT3(&ai_mesh->mVertices[vi].x);
+                if (ai_mesh->mTextureCoords[0])
+                {
+                    vertex.texcoord = XMFLOAT2(&ai_mesh->mTextureCoords[0][vi].x);
+                }
+                else
+                {
+                    vertex.texcoord = XMFLOAT2(0, 0);
+                }
             }
 
             for (unsigned int fi = 0; fi < ai_mesh->mNumFaces; ++fi)
