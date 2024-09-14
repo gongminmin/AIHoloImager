@@ -42,12 +42,7 @@ set(aihi_files
     Source/Gpu/GpuTexture.hpp
     Source/Gpu/GpuUtil.hpp
     Source/MeshGen/Shader/DilateCs.hlsl
-    Source/MeshGen/Shader/FlattenVs.hlsl
-    Source/MeshGen/Shader/FlattenPs.hlsl
-    Source/MeshGen/Shader/GenShadowMapVs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
-    Source/MeshGen/Shader/ProjectTextureCs.hlsl
-    Source/MeshGen/Shader/ResolveTextureCs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
@@ -73,6 +68,14 @@ set(aihi_files
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
+    Source/TextureRecon/Shader/FlattenVs.hlsl
+    Source/TextureRecon/Shader/FlattenPs.hlsl
+    Source/TextureRecon/Shader/GenShadowMapVs.hlsl
+    Source/TextureRecon/Shader/ProjectTextureCs.hlsl
+    Source/TextureRecon/Shader/ResolveTextureCs.hlsl
+    Source/TextureRecon/Shader/ResolveTextureWoEmptyCs.hlsl
+    Source/TextureRecon/TextureReconstruction.cpp
+    Source/TextureRecon/TextureReconstruction.hpp
     Source/Util/Shader/Util.hlslh
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
@@ -106,12 +109,7 @@ macro(AddShaderFile file_name shader_type entry_point)
 endmacro()
 
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/FlattenVs.hlsl "vs" "main")
-AddShaderFile(Source/MeshGen/Shader/FlattenPs.hlsl "ps" "main")
-AddShaderFile(Source/MeshGen/Shader/GenShadowMapVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ProjectTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ResolveTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
@@ -119,6 +117,12 @@ AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
 AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
+AddShaderFile(Source/TextureRecon/Shader/FlattenVs.hlsl "vs" "main")
+AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
+AddShaderFile(Source/TextureRecon/Shader/GenShadowMapVs.hlsl "vs" "main")
+AddShaderFile(Source/TextureRecon/Shader/ProjectTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/TextureRecon/Shader/ResolveTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/TextureRecon/Shader/ResolveTextureWoEmptyCs.hlsl "cs" "main")
 
 target_include_directories(AIHoloImagerLib
     PUBLIC
