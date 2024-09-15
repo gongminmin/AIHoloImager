@@ -30,6 +30,12 @@ namespace AIHoloImager
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
+            const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
+                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+                {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+                {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            };
+
             {
                 flatten_cb_ = ConstantBuffer<FlattenConstantBuffer>(gpu_system_, 1, L"flatten_cb_");
 
@@ -47,12 +53,6 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
                 states.dsv_format = DXGI_FORMAT_UNKNOWN;
 
-                const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
-                    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                };
-
                 flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, {}, states);
             }
             {
@@ -68,11 +68,6 @@ namespace AIHoloImager
                 states.depth_enable = true;
                 states.rtv_formats = {};
                 states.dsv_format = DepthFmt;
-
-                const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
-                    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                };
 
                 gen_shadow_map_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, {}, states);
             }
@@ -121,23 +116,24 @@ namespace AIHoloImager
             }
         }
 
-        TextureReconstruction::Result Process(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh,
-            const std::vector<uint32_t>& vertex_referencing, const XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
+        TextureReconstruction::Result Process(const Mesh& mesh, const XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir)
         {
+            assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
+
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "Texture";
             std::filesystem::create_directories(output_dir);
 #endif
 
-            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Vertices().size() * sizeof(Mesh::VertexFormat)),
-                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
-            memcpy(mesh_vb.Map(), pos_uv_mesh.Vertices().data(), mesh_vb.Size());
+            GpuBuffer mesh_vb(gpu_system_, mesh.NumVertices() * sizeof(VertexFormat), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
+            memcpy(mesh_vb.Map(), mesh.VertexBuffer(), mesh_vb.Size());
             mesh_vb.Unmap(D3D12_RANGE{0, mesh_vb.Size()});
 
-            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(pos_uv_mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
+            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_ib");
-            memcpy(mesh_ib.Map(), pos_uv_mesh.Indices().data(), mesh_ib.Size());
+            memcpy(mesh_ib.Map(), mesh.Indices().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
             const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
@@ -145,8 +141,7 @@ namespace AIHoloImager
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
-            this->FlattenMesh(
-                pos_only_mesh, vertex_referencing, mesh_vb, mesh_ib, model_mtx_lh, texture_size, flatten_pos_tex, flatten_normal_tex);
+            this->FlattenMesh(mesh_vb, mesh_ib, model_mtx_lh, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -165,7 +160,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                SaveMesh(pos_uv_mesh, output_dir / "MeshTextured.glb");
+                SaveMesh(mesh, output_dir / "MeshTextured.glb");
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 Texture projective_tex(texture_size, texture_size, 4);
@@ -180,48 +175,10 @@ namespace AIHoloImager
         }
 
     private:
-        void FlattenMesh(const Mesh& pos_only_mesh, const std::vector<uint32_t>& vertex_referencing, const GpuBuffer& mesh_vb,
-            const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex,
-            GpuTexture2D& flatten_normal_tex)
+        void FlattenMesh(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx, uint32_t texture_size,
+            GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
         {
-            std::vector<XMFLOAT3> normals(pos_only_mesh.Vertices().size(), XMFLOAT3(0, 0, 0));
-            for (uint32_t i = 0; i < static_cast<uint32_t>(pos_only_mesh.Indices().size()); i += 3)
-            {
-                const uint32_t ind[] = {pos_only_mesh.Index(i + 0), pos_only_mesh.Index(i + 1), pos_only_mesh.Index(i + 2)};
-                const XMVECTOR pos[] = {XMLoadFloat3(&pos_only_mesh.Vertex(ind[0]).pos), XMLoadFloat3(&pos_only_mesh.Vertex(ind[1]).pos),
-                    XMLoadFloat3(&pos_only_mesh.Vertex(ind[2]).pos)};
-                const XMVECTOR edge[] = {pos[1] - pos[0], pos[2] - pos[0]};
-                const XMVECTOR face_normal = XMVector3Cross(edge[0], edge[1]);
-                for (uint32_t j = 0; j < 3; ++j)
-                {
-                    XMFLOAT3& normal3 = normals[ind[j]];
-                    XMVECTOR normal = XMLoadFloat3(&normal3);
-                    normal += face_normal;
-                    XMStoreFloat3(&normal3, normal);
-                }
-            }
-
-            for (size_t i = 0; i < normals.size(); ++i)
-            {
-                XMFLOAT3& normal3 = normals[i];
-                XMVECTOR normal = XMLoadFloat3(&normal3);
-                normal = XMVector3Normalize(normal);
-                XMStoreFloat3(&normal3, normal);
-            }
-
-            const uint32_t num_vertices = static_cast<uint32_t>(mesh_vb.Size() / sizeof(Mesh::VertexFormat));
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
-
-            GpuBuffer normal_vb(gpu_system_, num_vertices * sizeof(XMFLOAT3), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
-                D3D12_RESOURCE_STATE_COMMON, L"normal_vb");
-            {
-                XMFLOAT3* normal_vb_ptr = reinterpret_cast<XMFLOAT3*>(normal_vb.Map());
-                for (uint32_t i = 0; i < num_vertices; ++i)
-                {
-                    normal_vb_ptr[i] = normals[vertex_referencing[i]];
-                }
-                normal_vb.Unmap(D3D12_RANGE{0, normal_vb.Size()});
-            }
 
             flatten_pos_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
                 D3D12_RESOURCE_STATE_COMMON, L"flatten_pos_tex");
@@ -241,10 +198,7 @@ namespace AIHoloImager
             cmd_list.Clear(pos_rtv, clear_clr);
             cmd_list.Clear(normal_rtv, clear_clr);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {
-                {&mesh_vb, 0, sizeof(Mesh::VertexFormat)},
-                {&normal_vb, 0, sizeof(XMFLOAT3)},
-            };
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&mesh_vb, 0, sizeof(VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, DXGI_FORMAT_R32_UINT};
 
             const GeneralConstantBuffer* cbs[] = {&flatten_cb_};
@@ -400,7 +354,7 @@ namespace AIHoloImager
         {
             cmd_list.ClearDepth(shadow_map_dsv, 1);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(Mesh::VertexFormat)}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
 
             const GeneralConstantBuffer* cbs[] = {&gen_shadow_map_cb_};
@@ -507,6 +461,13 @@ namespace AIHoloImager
 
         GpuSystem& gpu_system_;
 
+        struct VertexFormat
+        {
+            XMFLOAT3 pos;
+            XMFLOAT3 normal;
+            XMFLOAT2 texcoord;
+        };
+
         struct FlattenConstantBuffer
         {
             XMFLOAT4X4 model_mtx;
@@ -567,11 +528,10 @@ namespace AIHoloImager
     TextureReconstruction::TextureReconstruction(TextureReconstruction&& other) noexcept = default;
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
-    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh,
-        const std::vector<uint32_t>& vertex_referencing, const XMMATRIX& model_mtx, const BoundingOrientedBox& world_obb,
-        const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir)
+    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const XMMATRIX& model_mtx,
+        const BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos,
+        const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(
-            pos_only_mesh, pos_uv_mesh, vertex_referencing, model_mtx, world_obb, sfm_input, texture_size, empty_pos, tmp_dir);
+        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size, empty_pos, tmp_dir);
     }
 } // namespace AIHoloImager

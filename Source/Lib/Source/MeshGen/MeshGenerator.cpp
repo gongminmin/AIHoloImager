@@ -70,24 +70,29 @@ namespace AIHoloImager
 
             std::cout << "Generating mesh from images...\n";
 
-            const Mesh pos_only_mesh = this->GenMeshFromImages(input_images);
+            Mesh mesh = this->GenMeshFromImages(input_images);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(pos_only_mesh, output_dir / "AiMeshPosOnly.glb");
+            SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
 #endif
 
             BoundingOrientedBox world_obb;
-            const XMMATRIX model_mtx = this->CalcModelMatrix(pos_only_mesh, recon_input, world_obb);
+            const XMMATRIX model_mtx = this->CalcModelMatrix(mesh, recon_input, world_obb);
+
+            mesh.ComputeNormals();
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(mesh, output_dir / "AiMeshPosNormal.glb");
+#endif
 
             std::cout << "Unwrapping UV...\n";
 
             std::vector<uint32_t> vertex_referencing;
-            Mesh pos_uv_mesh = UnwrapUv(pos_only_mesh, texture_size, 2, vertex_referencing);
+            mesh = UnwrapUv(mesh, texture_size, 2, vertex_referencing);
 
             std::cout << "Generating texture...\n";
 
-            auto texture_result = texture_recon_.Process(
-                pos_only_mesh, pos_uv_mesh, vertex_referencing, model_mtx, world_obb, sfm_input, texture_size, true, tmp_dir);
+            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, true, tmp_dir);
 
             GpuReadbackBuffer counter_cpu_buff;
             GpuReadbackBuffer pos_cpu_buff;
@@ -96,7 +101,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    SaveMesh(pos_uv_mesh, output_dir / "AiMeshTextured.glb");
+                    SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
 
                     Texture projective_tex(texture_size, texture_size, 4);
                     texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, projective_tex.Data());
@@ -124,9 +129,10 @@ namespace AIHoloImager
 
                 const XMMATRIX adjust_mtx = model_mtx * handedness * pre_trans * pre_rotate * handedness;
 
-                for (uint32_t i = 0; i < static_cast<uint32_t>(pos_uv_mesh.Vertices().size()); ++i)
+                const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+                for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
                 {
-                    auto& pos = pos_uv_mesh.Vertex(i).pos;
+                    auto& pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
                     XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), adjust_mtx));
                 }
             }
@@ -148,13 +154,13 @@ namespace AIHoloImager
                 gpu_system_.Execute(std::move(cmd_list));
             }
 
-            pos_uv_mesh.AlbedoTexture() = std::move(merged_tex);
+            mesh.AlbedoTexture() = std::move(merged_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(pos_uv_mesh, output_dir / "AiMesh.glb");
+            SaveMesh(mesh, output_dir / "AiMesh.glb");
 #endif
 
-            return pos_uv_mesh;
+            return mesh;
         }
 
     private:
@@ -205,8 +211,13 @@ namespace AIHoloImager
                 unique_int_pos.emplace(std::move(int_pos));
             }
 
-            Mesh ret_mesh(static_cast<uint32_t>(unique_int_pos.size()), static_cast<uint32_t>(indices.size()));
+            const VertexAttrib pos_only_vertex_attribs[] = {
+                {VertexAttrib::Semantic::Position, 0, 3},
+            };
+            Mesh ret_mesh(
+                VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(unique_int_pos.size()), static_cast<uint32_t>(indices.size()));
 
+            const uint32_t pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
             std::vector<uint32_t> vertex_mapping(positions.size());
 #ifdef _OPENMP
@@ -222,10 +233,7 @@ namespace AIHoloImager
                 assert(*iter == int_pos);
 
                 vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
-
-                auto& pos_only_vert = ret_mesh.Vertex(vertex_mapping[i]);
-                pos_only_vert.pos = pos;
-                pos_only_vert.texcoord = XMFLOAT2(0, 0);
+                ret_mesh.VertexData<XMFLOAT3>(vertex_mapping[i], pos_attrib_index) = pos;
             }
 
             uint32_t num_faces = 0;
@@ -265,7 +273,9 @@ namespace AIHoloImager
 
         void RemoveSmallComponents(Mesh& mesh)
         {
-            std::vector<uint32_t> num_neighboring_faces(mesh.Vertices().size(), 0);
+            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+
+            std::vector<uint32_t> num_neighboring_faces(mesh.NumVertices(), 0);
             std::vector<uint32_t> neighboring_face_indices(mesh.Indices().size());
             const auto mesh_indices = mesh.Indices();
             for (uint32_t i = 0; i < static_cast<uint32_t>(mesh.Indices().size() / 3); ++i)
@@ -292,9 +302,9 @@ namespace AIHoloImager
                 }
             }
 
-            std::vector<uint32_t> base_neighboring_faces(mesh.Vertices().size() + 1);
+            std::vector<uint32_t> base_neighboring_faces(mesh.NumVertices() + 1);
             base_neighboring_faces[0] = 0;
-            for (size_t i = 1; i < mesh.Vertices().size() + 1; ++i)
+            for (size_t i = 1; i < mesh.NumVertices() + 1; ++i)
             {
                 base_neighboring_faces[i] = base_neighboring_faces[i - 1] + num_neighboring_faces[i - 1];
             }
@@ -326,7 +336,7 @@ namespace AIHoloImager
                 }
             }
 
-            std::vector<bool> vertex_occupied(mesh.Vertices().size(), false);
+            std::vector<bool> vertex_occupied(mesh.NumVertices(), false);
             std::vector<uint32_t> largest_comp_face_indices;
             float largest_bb_extent_sq = 0;
             uint32_t num_comps = 0;
@@ -381,8 +391,8 @@ namespace AIHoloImager
                 XMVECTOR bb_max = XMVectorSplatX(XMVectorSetX(XMVectorZero(), std::numeric_limits<float>::lowest()));
                 for (const uint32_t vi : new_component_vertices)
                 {
-                    const auto& vert = mesh.Vertex(vi);
-                    const XMVECTOR pos = XMLoadFloat3(&vert.pos);
+                    const auto& vert = mesh.VertexData<XMFLOAT3>(vi, pos_attrib_index);
+                    const XMVECTOR pos = XMLoadFloat3(&vert);
                     bb_min = XMVectorMin(bb_min, pos);
                     bb_max = XMVectorMax(bb_max, pos);
                 }
@@ -409,7 +419,7 @@ namespace AIHoloImager
                     }
                 }
 
-                std::vector<uint32_t> vert_mapping(mesh.Vertices().size(), ~0U);
+                std::vector<uint32_t> vert_mapping(mesh.NumVertices(), ~0U);
                 uint32_t new_index = 0;
                 for (const uint32_t vi : comp_vertex_indices)
                 {
@@ -417,14 +427,13 @@ namespace AIHoloImager
                     ++new_index;
                 }
 
-                Mesh cleaned_mesh(
-                    static_cast<uint32_t>(comp_vertex_indices.size()), static_cast<uint32_t>(largest_comp_face_indices.size() * 3));
+                Mesh cleaned_mesh(mesh.MeshVertexDesc(), static_cast<uint32_t>(comp_vertex_indices.size()),
+                    static_cast<uint32_t>(largest_comp_face_indices.size() * 3));
 
-                const auto vertices = mesh.Vertices();
                 new_index = 0;
                 for (const uint32_t vi : comp_vertex_indices)
                 {
-                    cleaned_mesh.Vertex(new_index) = vertices[vi];
+                    cleaned_mesh.VertexData<XMFLOAT3>(new_index, 0) = mesh.VertexData<XMFLOAT3>(vi, 0);
                     ++new_index;
                 }
 
@@ -490,8 +499,11 @@ namespace AIHoloImager
             model_mtx *= XMMatrixScaling(1, 1, -1);    // RH to LH
             std::swap(model_mtx.r[1], model_mtx.r[2]); // Swap Y and Z
 
+            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+
             BoundingOrientedBox ai_obb;
-            BoundingOrientedBox::CreateFromPoints(ai_obb, mesh.Vertices().size(), &mesh.Vertices()[0].pos, sizeof(mesh.Vertices()[0]));
+            BoundingOrientedBox::CreateFromPoints(
+                ai_obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
 
             BoundingOrientedBox transformed_ai_obb;
             ai_obb.Transform(transformed_ai_obb, model_mtx);

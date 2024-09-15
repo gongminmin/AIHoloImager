@@ -41,10 +41,11 @@ namespace AIHoloImager
             auto& mesh = ret.mesh;
             mesh = LoadMesh(working_dir_ / (mesh_name + ".glb"));
 
-            std::vector<XMFLOAT3> positions(mesh.Vertices().size());
-            for (size_t i = 0; i < mesh.Vertices().size(); ++i)
+            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+            std::vector<XMFLOAT3> positions(mesh.NumVertices());
+            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                positions[i] = mesh.Vertex(static_cast<uint32_t>(i)).pos;
+                positions[i] = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
                 positions[i].z = -positions[i].z; // RH to LH
             }
 
@@ -63,9 +64,9 @@ namespace AIHoloImager
             XMStoreFloat4x4(&ret.transform, XMMatrixInverse(nullptr, model_mtx));
 
             model_mtx *= XMMatrixScaling(1, 1, -1); // LH to RH
-            for (size_t i = 0; i < mesh.Vertices().size(); ++i)
+            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                auto& transformed_pos = mesh.Vertex(static_cast<uint32_t>(i)).pos;
+                auto& transformed_pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
                 XMStoreFloat3(&transformed_pos, XMVector3TransformCoord(XMLoadFloat3(&positions[i]), model_mtx));
             }
 

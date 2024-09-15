@@ -14,32 +14,176 @@ using namespace DirectX;
 
 namespace AIHoloImager
 {
+    bool VertexAttrib::operator==(const VertexAttrib& rhs) const
+    {
+        return std::memcmp(this, &rhs, sizeof(rhs)) == 0;
+    }
+
+    class VertexDesc::Impl
+    {
+    public:
+        explicit Impl(std::span<const VertexAttrib> attribs) : attribs_(attribs.begin(), attribs.end())
+        {
+            for (size_t i = 0; i < attribs_.size(); ++i)
+            {
+                if (attribs_[i].offset == VertexAttrib::AppendOffset)
+                {
+                    if (i == 0)
+                    {
+                        attribs_[i].offset = 0;
+                    }
+                    else
+                    {
+                        attribs_[i].offset = attribs_[i - 1].offset + attribs_[i - 1].channels * sizeof(float);
+                    }
+                }
+            }
+
+            stride_ = 0;
+            for (size_t i = 0; i < attribs_.size(); ++i)
+            {
+                stride_ = std::max(stride_, static_cast<uint32_t>(attribs_[i].offset + attribs_[i].channels * sizeof(float)));
+            }
+        }
+
+        uint32_t Stride() const noexcept
+        {
+            return stride_;
+        }
+
+        std::span<const VertexAttrib> Attribs() const
+        {
+            return std::span(attribs_);
+        }
+
+        uint32_t FindAttrib(VertexAttrib::Semantic semantic, uint32_t index) const
+        {
+            for (size_t i = 0; i < attribs_.size(); ++i)
+            {
+                if ((attribs_[i].semantic == semantic) && (attribs_[i].index == index))
+                {
+                    return static_cast<uint32_t>(i);
+                }
+            }
+
+            return InvalidIndex;
+        }
+
+        bool operator==(const Impl& rhs) const
+        {
+            return attribs_ == rhs.attribs_;
+        }
+
+    private:
+        std::vector<VertexAttrib> attribs_;
+        uint32_t stride_;
+    };
+
+    VertexDesc::VertexDesc() = default;
+    VertexDesc::VertexDesc(std::span<const VertexAttrib> attribs) : impl_(std::make_unique<Impl>(std::move(attribs)))
+    {
+    }
+    VertexDesc::VertexDesc(const VertexDesc& rhs) : impl_(rhs.impl_ ? std::make_unique<Impl>(*rhs.impl_) : nullptr)
+    {
+    }
+    VertexDesc::VertexDesc(VertexDesc&& rhs) noexcept = default;
+    VertexDesc::~VertexDesc() noexcept = default;
+
+    VertexDesc& VertexDesc::operator=(const VertexDesc& rhs)
+    {
+        if (this != &rhs)
+        {
+            if (rhs.impl_)
+            {
+                if (impl_)
+                {
+                    *impl_ = *rhs.impl_;
+                }
+                else
+                {
+                    impl_ = std::make_unique<Impl>(*rhs.impl_);
+                }
+            }
+            else
+            {
+                impl_.reset();
+            }
+        }
+        return *this;
+    }
+    VertexDesc& VertexDesc::operator=(VertexDesc&& rhs) noexcept = default;
+
+    uint32_t VertexDesc::Stride() const noexcept
+    {
+        return impl_->Stride();
+    }
+
+    bool VertexDesc::operator==(const VertexDesc& rhs) const
+    {
+        return *impl_ == *rhs.impl_;
+    }
+
+    std::span<const VertexAttrib> VertexDesc::Attribs() const
+    {
+        return impl_->Attribs();
+    }
+
+    uint32_t VertexDesc::FindAttrib(VertexAttrib::Semantic semantic, uint32_t index) const
+    {
+        return impl_->FindAttrib(semantic, index);
+    }
+
     class Mesh::Impl
     {
     public:
-        Impl(uint32_t num_verts, uint32_t num_indices) : vertices_(num_verts), indices_(num_indices)
+        Impl(VertexDesc vertex_desc, uint32_t num_verts, uint32_t num_indices) : vertex_desc_(std::move(vertex_desc)), indices_(num_indices)
         {
+            this->ResizeVertices(num_verts);
         }
 
-        std::span<const VertexFormat> Vertices() const noexcept
+        const VertexDesc& MeshVertexDesc() const noexcept
         {
-            return std::span<const VertexFormat>(vertices_.begin(), vertices_.end());
+            return vertex_desc_;
         }
-        void Vertices(std::span<const VertexFormat> verts)
+
+        uint32_t NumVertices() const noexcept
         {
-            vertices_.assign(verts.begin(), verts.end());
+            return num_vertices_;
         }
         void ResizeVertices(uint32_t num)
         {
-            vertices_.resize(num);
+            num_vertices_ = num;
+            vertices_.resize(num * vertex_desc_.Stride());
         }
-        const VertexFormat& Vertex(uint32_t index) const
+
+        const float* VertexBuffer() const noexcept
         {
-            return vertices_[index];
+            return vertices_.data();
         }
-        VertexFormat& Vertex(uint32_t index)
+        void VertexBuffer(const float* data)
         {
-            return vertices_[index];
+            std::memcpy(vertices_.data(), data, num_vertices_ * vertex_desc_.Stride());
+        }
+        const float* VertexDataPtr(uint32_t index, uint32_t attrib_index) const
+        {
+            return const_cast<Impl*>(this)->VertexDataPtr(index, attrib_index);
+        }
+        float* VertexDataPtr(uint32_t index, uint32_t attrib_index)
+        {
+            const auto& vertex_attrib = vertex_desc_.Attribs()[attrib_index];
+            const uint32_t offset = vertex_attrib.offset / sizeof(float);
+            return &vertices_[index * (vertex_desc_.Stride() / sizeof(float)) + offset];
+        }
+
+        template <typename T>
+        const T& VertexData(uint32_t index, uint32_t attrib_index) const
+        {
+            return *reinterpret_cast<const T*>(this->VertexDataPtr(index, attrib_index));
+        }
+        template <typename T>
+        T& VertexData(uint32_t index, uint32_t attrib_index)
+        {
+            return *reinterpret_cast<T*>(this->VertexDataPtr(index, attrib_index));
         }
 
         std::span<const uint32_t> Indices() const noexcept
@@ -72,15 +216,121 @@ namespace AIHoloImager
             return albedo_tex_;
         }
 
+        void ResetVertexDesc(VertexDesc new_vertex_desc)
+        {
+            if (vertex_desc_ == new_vertex_desc)
+            {
+                return;
+            }
+
+            const auto old_vertex_attribs = vertex_desc_.Attribs();
+            const auto new_vertex_attribs = new_vertex_desc.Attribs();
+            const uint32_t old_stride = vertex_desc_.Stride();
+            const uint32_t new_stride = new_vertex_desc.Stride();
+
+            std::vector<float> new_vertices(num_vertices_ * new_stride / sizeof(float));
+
+            const std::byte* old_vertex_data = reinterpret_cast<const std::byte*>(this->VertexDataPtr(0, 0));
+            std::byte* new_vertex_data = reinterpret_cast<std::byte*>(new_vertices.data());
+            if ((new_vertex_attribs.size() > old_vertex_attribs.size()) &&
+                std::equal(new_vertex_attribs.begin(), new_vertex_attribs.begin() + old_vertex_attribs.size(), old_vertex_attribs.begin()))
+            {
+                for (uint32_t vi = 0; vi < num_vertices_; ++vi)
+                {
+                    std::memcpy(new_vertex_data, old_vertex_data, old_stride);
+                    std::memset(new_vertex_data + old_stride, 0, new_stride - old_stride);
+
+                    old_vertex_data += old_stride;
+                    new_vertex_data += new_stride;
+                }
+            }
+            else
+            {
+                for (uint32_t vi = 0; vi < num_vertices_; ++vi)
+                {
+                    for (const auto& new_va : new_vertex_attribs)
+                    {
+                        bool found = false;
+                        for (const auto& old_va : old_vertex_attribs)
+                        {
+                            if ((new_va.semantic == old_va.semantic) && (new_va.index == old_va.index))
+                            {
+                                std::memcpy(new_vertex_data + new_va.offset, old_vertex_data + old_va.offset,
+                                    std::min(new_va.channels, old_va.channels) * sizeof(float));
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found)
+                        {
+                            std::memset(new_vertex_data + new_va.offset, 0, new_va.channels * sizeof(float));
+                        }
+                    }
+
+                    old_vertex_data += old_stride;
+                    new_vertex_data += new_stride;
+                }
+            }
+
+            vertices_ = std::move(new_vertices);
+            vertex_desc_ = std::move(new_vertex_desc);
+        }
+
+        void ComputeNormals()
+        {
+            uint32_t normal_attrib_index = vertex_desc_.FindAttrib(VertexAttrib::Semantic::Normal, 0);
+            if (normal_attrib_index == VertexDesc::InvalidIndex)
+            {
+                const auto old_vertex_attrib = vertex_desc_.Attribs();
+                std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
+                normal_attrib_index = static_cast<uint32_t>(new_vertex_attribs.size());
+                new_vertex_attribs.push_back({VertexAttrib::Semantic::Normal, 0, 3});
+
+                this->ResetVertexDesc(VertexDesc(new_vertex_attribs));
+            }
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(indices_.size()); i += 3)
+            {
+                const uint32_t ind[] = {indices_[i + 0], indices_[i + 1], indices_[i + 2]};
+                const XMVECTOR pos[] = {
+                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[0], 0)),
+                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[1], 0)),
+                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[2], 0)),
+                };
+                const XMVECTOR edge[] = {pos[1] - pos[0], pos[2] - pos[0]};
+                const XMVECTOR face_normal = XMVector3Cross(edge[0], edge[1]);
+                for (uint32_t j = 0; j < 3; ++j)
+                {
+                    XMFLOAT3& normal3 = this->VertexData<XMFLOAT3>(ind[j], normal_attrib_index);
+                    XMVECTOR normal = XMLoadFloat3(&normal3);
+                    normal += face_normal;
+                    XMStoreFloat3(&normal3, normal);
+                }
+            }
+
+            for (uint32_t vi = 0; vi < num_vertices_; ++vi)
+            {
+                XMFLOAT3& normal3 = this->VertexData<XMFLOAT3>(vi, normal_attrib_index);
+                XMVECTOR normal = XMLoadFloat3(&normal3);
+                normal = XMVector3Normalize(normal);
+                XMStoreFloat3(&normal3, normal);
+            }
+        }
+
     private:
-        std::vector<VertexFormat> vertices_;
+        VertexDesc vertex_desc_;
+        std::vector<float> vertices_;
+        uint32_t num_vertices_ = 0;
+
         std::vector<uint32_t> indices_;
 
         Texture albedo_tex_;
     };
 
     Mesh::Mesh() = default;
-    Mesh::Mesh(uint32_t num_verts, uint32_t num_indices) : impl_(std::make_unique<Impl>(num_verts, num_indices))
+    Mesh::Mesh(VertexDesc vertex_desc, uint32_t num_verts, uint32_t num_indices)
+        : impl_(std::make_unique<Impl>(std::move(vertex_desc), num_verts, num_indices))
     {
     }
     Mesh::Mesh(const Mesh& rhs) : impl_(rhs.impl_ ? std::make_unique<Impl>(*rhs.impl_) : nullptr)
@@ -118,25 +368,34 @@ namespace AIHoloImager
         return static_cast<bool>(impl_);
     }
 
-    std::span<const Mesh::VertexFormat> Mesh::Vertices() const noexcept
+    const VertexDesc& Mesh::MeshVertexDesc() const noexcept
     {
-        return impl_->Vertices();
+        return impl_->MeshVertexDesc();
     }
-    void Mesh::Vertices(std::span<const Mesh::VertexFormat> verts)
+    uint32_t Mesh::NumVertices() const noexcept
     {
-        impl_->Vertices(std::move(verts));
+        return impl_->NumVertices();
     }
     void Mesh::ResizeVertices(uint32_t num)
     {
         impl_->ResizeVertices(num);
     }
-    const Mesh::VertexFormat& Mesh::Vertex(uint32_t index) const
+
+    const float* Mesh::VertexBuffer() const noexcept
     {
-        return impl_->Vertex(index);
+        return impl_->VertexBuffer();
     }
-    Mesh::VertexFormat& Mesh::Vertex(uint32_t index)
+    void Mesh::VertexBuffer(const float* data)
     {
-        return impl_->Vertex(index);
+        impl_->VertexBuffer(data);
+    }
+    const float* Mesh::VertexDataPtr(uint32_t index, uint32_t attrib_index) const
+    {
+        return impl_->VertexDataPtr(index, attrib_index);
+    }
+    float* Mesh::VertexDataPtr(uint32_t index, uint32_t attrib_index)
+    {
+        return impl_->VertexDataPtr(index, attrib_index);
     }
 
     std::span<const uint32_t> Mesh::Indices() const noexcept
@@ -169,6 +428,16 @@ namespace AIHoloImager
         return impl_->AlbedoTexture();
     }
 
+    void Mesh::ResetVertexDesc(VertexDesc new_vertex_desc)
+    {
+        impl_->ResetVertexDesc(std::move(new_vertex_desc));
+    }
+
+    void Mesh::ComputeNormals()
+    {
+        return impl_->ComputeNormals();
+    }
+
     Mesh LoadMesh(const std::filesystem::path& path)
     {
         Assimp::Importer importer;
@@ -183,7 +452,19 @@ namespace AIHoloImager
         if (ai_scene)
         {
             const aiMesh* ai_mesh = ai_scene->mMeshes[0];
-            mesh = Mesh(ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
+
+            std::vector<VertexAttrib> vertex_attribs;
+            vertex_attribs.push_back({VertexAttrib::Semantic::Position, 0, 3});
+            if (ai_mesh->HasNormals())
+            {
+                vertex_attribs.push_back({VertexAttrib::Semantic::Normal, 0, 3});
+            }
+            for (uint32_t i = 0; i < ai_mesh->GetNumUVChannels(); ++i)
+            {
+                vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, i, ai_mesh->mNumUVComponents[i]});
+            }
+
+            mesh = Mesh(VertexDesc(vertex_attribs), ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
 
             const aiMaterial* mtl = ai_scene->mMaterials[ai_mesh->mMaterialIndex];
             unsigned int count = aiGetMaterialTextureCount(mtl, aiTextureType_DIFFUSE);
@@ -194,18 +475,28 @@ namespace AIHoloImager
                 mesh.AlbedoTexture() = LoadTexture(path.parent_path() / str.C_Str());
             }
 
-            std::span<const Mesh::VertexFormat> vertices = mesh.Vertices();
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+            const uint32_t normal_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
+            std::vector<uint32_t> texcoord_attrib_indices(ai_mesh->GetNumUVChannels());
+            for (uint32_t i = 0; i < ai_mesh->GetNumUVChannels(); ++i)
+            {
+                texcoord_attrib_indices[i] = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, i);
+            }
             for (unsigned int vi = 0; vi < ai_mesh->mNumVertices; ++vi)
             {
-                auto& vertex = mesh.Vertex(vi);
-                vertex.pos = XMFLOAT3(&ai_mesh->mVertices[vi].x);
-                if (ai_mesh->mTextureCoords[0])
+                if (pos_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    vertex.texcoord = XMFLOAT2(&ai_mesh->mTextureCoords[0][vi].x);
+                    mesh.VertexData<XMFLOAT3>(vi, pos_attrib_index) = XMFLOAT3(&ai_mesh->mVertices[vi].x);
                 }
-                else
+                if (normal_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    vertex.texcoord = XMFLOAT2(0, 0);
+                    mesh.VertexData<XMFLOAT3>(vi, normal_attrib_index) = XMFLOAT3(&ai_mesh->mNormals[vi].x);
+                }
+                for (size_t j = 0; j < texcoord_attrib_indices.size(); ++j)
+                {
+                    std::memcpy(mesh.VertexDataPtr(vi, texcoord_attrib_indices[j]), &ai_mesh->mTextureCoords[j][vi].x,
+                        ai_mesh->mNumUVComponents[j] * sizeof(float));
                 }
             }
 
@@ -293,17 +584,63 @@ namespace AIHoloImager
 
         ai_mesh.mName.Set(path.stem().string().c_str());
 
-        ai_mesh.mNumVertices = static_cast<uint32_t>(mesh.Vertices().size());
+        ai_mesh.mNumVertices = static_cast<uint32_t>(mesh.NumVertices());
 
-        ai_mesh.mVertices = new aiVector3D[ai_mesh.mNumVertices];
-        ai_mesh.mTextureCoords[0] = new aiVector3D[ai_mesh.mNumVertices];
-        ai_mesh.mNumUVComponents[0] = 2;
+        const auto& vertex_desc = mesh.MeshVertexDesc();
+        const uint32_t pos_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+        const uint32_t normal_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
+        std::vector<uint32_t> texcoord_attribs;
+        for (uint32_t i = 0; i < 8; ++i)
+        {
+            const uint32_t texcoord_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, i);
+            if (texcoord_attrib == VertexDesc::InvalidIndex)
+            {
+                break;
+            }
+
+            texcoord_attribs.push_back(texcoord_attrib);
+        }
+
+        if (pos_attrib != VertexDesc::InvalidIndex)
+        {
+            ai_mesh.mVertices = new aiVector3D[ai_mesh.mNumVertices];
+        }
+        if (normal_attrib != VertexDesc::InvalidIndex)
+        {
+            ai_mesh.mNormals = new aiVector3D[ai_mesh.mNumVertices];
+        }
+        for (uint32_t i = 0; i < texcoord_attribs.size(); ++i)
+        {
+            if (texcoord_attribs[i] != VertexDesc::InvalidIndex)
+            {
+                ai_mesh.mTextureCoords[i] = new aiVector3D[ai_mesh.mNumVertices];
+                ai_mesh.mNumUVComponents[i] = vertex_desc.Attribs()[texcoord_attribs[i]].channels;
+            }
+        }
 
         for (uint32_t i = 0; i < ai_mesh.mNumVertices; ++i)
         {
-            const auto& vertex = mesh.Vertex(i);
-            ai_mesh.mVertices[i] = aiVector3D(vertex.pos.x, vertex.pos.y, vertex.pos.z);
-            ai_mesh.mTextureCoords[0][i] = aiVector3D(vertex.texcoord.x, vertex.texcoord.y, 0);
+            if (pos_attrib != VertexDesc::InvalidIndex)
+            {
+                ai_mesh.mVertices[i] = mesh.VertexData<aiVector3D>(i, pos_attrib);
+            }
+            if (normal_attrib != VertexDesc::InvalidIndex)
+            {
+                ai_mesh.mNormals[i] = mesh.VertexData<aiVector3D>(i, normal_attrib);
+            }
+            for (uint32_t j = 0; j < texcoord_attribs.size(); ++j)
+            {
+                if (texcoord_attribs[j] != VertexDesc::InvalidIndex)
+                {
+                    const float* texcoord = mesh.VertexDataPtr(i, texcoord_attribs[j]);
+                    float* dst = &ai_mesh.mTextureCoords[j][i].x;
+                    std::memcpy(dst, texcoord, std::min(ai_mesh.mNumUVComponents[j], 3U) * sizeof(float));
+                    if (ai_mesh.mNumUVComponents[j] < 3)
+                    {
+                        std::memset(dst + ai_mesh.mNumUVComponents[j], 0, (3 - ai_mesh.mNumUVComponents[j]) * sizeof(float));
+                    }
+                }
+            }
         }
 
         ai_mesh.mNumFaces = static_cast<uint32_t>(mesh.Indices().size() / 3);
@@ -360,10 +697,13 @@ namespace AIHoloImager
 
         xatlas::Atlas* atlas = xatlas::Create();
 
+        const auto& vertex_desc = input_mesh.MeshVertexDesc();
+        const uint32_t pos_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+
         xatlas::MeshDecl mesh_decl;
-        mesh_decl.vertexCount = static_cast<uint32_t>(input_mesh.Vertices().size());
-        mesh_decl.vertexPositionData = input_mesh.Vertices().data();
-        mesh_decl.vertexPositionStride = sizeof(input_mesh.Vertices()[0]);
+        mesh_decl.vertexCount = input_mesh.NumVertices();
+        mesh_decl.vertexPositionData = input_mesh.VertexDataPtr(0, pos_attrib);
+        mesh_decl.vertexPositionStride = vertex_desc.Stride();
         mesh_decl.indexCount = static_cast<uint32_t>(input_mesh.Indices().size());
         mesh_decl.indexData = input_mesh.Indices().data();
         mesh_decl.indexFormat = xatlas::IndexFormat::UInt32;
@@ -380,20 +720,58 @@ namespace AIHoloImager
 
             xatlas::Generate(atlas, chart_options, pack_options);
 
-            ret_mesh = Mesh(0, 0);
+            {
+                VertexDesc new_vertex_desc;
+                const uint32_t texcoord_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+                if (texcoord_attrib == VertexDesc::InvalidIndex)
+                {
+                    const auto old_vertex_attrib = vertex_desc.Attribs();
+                    std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
+                    new_vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, 0, 2});
+                    new_vertex_desc = VertexDesc(new_vertex_attribs);
+                }
+                else
+                {
+                    new_vertex_desc = vertex_desc;
+                }
+
+                ret_mesh = Mesh(std::move(new_vertex_desc), 0, 0);
+            }
+
+            const auto old_vertex_attribs = input_mesh.MeshVertexDesc().Attribs();
+            const auto new_vertex_attribs = ret_mesh.MeshVertexDesc().Attribs();
             for (uint32_t mi = 0; mi < atlas->meshCount; ++mi)
             {
-                const uint32_t base_vertex = static_cast<uint32_t>(ret_mesh.Vertices().size());
+                const uint32_t base_vertex = ret_mesh.NumVertices();
 
                 const xatlas::Mesh& mesh = atlas->meshes[mi];
-                ret_mesh.ResizeVertices(static_cast<uint32_t>(ret_mesh.Vertices().size() + mesh.vertexCount));
-                vertex_referencing.resize(ret_mesh.Vertices().size());
+                ret_mesh.ResizeVertices(base_vertex + mesh.vertexCount);
+                vertex_referencing.resize(ret_mesh.NumVertices());
                 for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
                 {
                     const auto& vertex = mesh.vertexArray[vi];
-                    const auto& pos = input_mesh.Vertex(vertex.xref).pos;
                     const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
-                    ret_mesh.Vertex(base_vertex + vi) = {pos, uv};
+
+                    for (uint32_t ai = 0; ai < new_vertex_attribs.size(); ++ai)
+                    {
+                        if ((new_vertex_attribs[ai].semantic == VertexAttrib::Semantic::TexCoord) && (new_vertex_attribs[ai].index == 0))
+                        {
+                            ret_mesh.VertexData<XMFLOAT2>(base_vertex + vi, ai) = uv;
+                        }
+                        else
+                        {
+                            for (uint32_t aj = 0; aj < old_vertex_attribs.size(); ++aj)
+                            {
+                                if ((new_vertex_attribs[ai].semantic == old_vertex_attribs[aj].semantic) &&
+                                    (new_vertex_attribs[ai].index == old_vertex_attribs[aj].index))
+                                {
+                                    std::memcpy(ret_mesh.VertexDataPtr(base_vertex + vi, ai), input_mesh.VertexDataPtr(vertex.xref, aj),
+                                        new_vertex_attribs[ai].channels * sizeof(float));
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
                     vertex_referencing[base_vertex + vi] = vertex.xref;
                 }

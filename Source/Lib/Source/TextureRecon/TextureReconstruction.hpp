@@ -37,9 +37,8 @@ namespace AIHoloImager
 
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
-        Result Process(const Mesh& pos_only_mesh, const Mesh& pos_uv_mesh, const std::vector<uint32_t>& vertex_referencing,
-            const DirectX::XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input,
-            uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir);
+        Result Process(const Mesh& mesh, const DirectX::XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

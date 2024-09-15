@@ -159,9 +159,11 @@ namespace AIHoloImager
 
         Result Render(const Mesh& mesh, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.Vertices().size() * sizeof(Mesh::VertexFormat)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
-            memcpy(vb.Map(), mesh.Vertices().data(), vb.Size());
+            assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
+
+            GpuBuffer vb(gpu_system_, mesh.NumVertices() * sizeof(VertexFormat), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON, L"vb");
+            memcpy(vb.Map(), mesh.VertexBuffer(), vb.Size());
             vb.Unmap(D3D12_RANGE{0, vb.Size()});
 
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
@@ -275,7 +277,7 @@ namespace AIHoloImager
             cmd_list.Clear(ssaa_rtv_, clear_clr);
             cmd_list.ClearDepth(ssaa_dsv_, 1);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(Mesh::VertexFormat)}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexFormat)}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
 
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
@@ -390,6 +392,11 @@ namespace AIHoloImager
 
         XMMATRIX proj_mtx_;
 
+        struct VertexFormat
+        {
+            XMFLOAT3 pos;
+            XMFLOAT2 texcoord;
+        };
         struct RenderConstantBuffer
         {
             DirectX::XMFLOAT4X4 mvp;
