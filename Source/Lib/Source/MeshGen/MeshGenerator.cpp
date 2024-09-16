@@ -87,8 +87,7 @@ namespace AIHoloImager
 
             std::cout << "Unwrapping UV...\n";
 
-            std::vector<uint32_t> vertex_referencing;
-            mesh = UnwrapUv(mesh, texture_size, 2, vertex_referencing);
+            mesh = UnwrapUv(mesh, texture_size, 2);
 
             std::cout << "Generating texture...\n";
 
@@ -128,12 +127,17 @@ namespace AIHoloImager
                 const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
 
                 const XMMATRIX adjust_mtx = model_mtx * handedness * pre_trans * pre_rotate * handedness;
+                const XMMATRIX adjust_it_mtx = XMMatrixTranspose(XMMatrixInverse(nullptr, adjust_mtx));
 
                 const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+                const uint32_t normal_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Normal, 0);
                 for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
                 {
                     auto& pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
                     XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), adjust_mtx));
+
+                    auto& normal = mesh.VertexData<XMFLOAT3>(i, normal_attrib_index);
+                    XMStoreFloat3(&normal, XMVector3TransformNormal(XMLoadFloat3(&normal), adjust_it_mtx));
                 }
             }
             gpu_system_.WaitForGpu();

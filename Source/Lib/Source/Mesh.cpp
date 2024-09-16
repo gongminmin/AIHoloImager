@@ -691,7 +691,7 @@ namespace AIHoloImager
         exporter.Export(&ai_scene, format_id.c_str(), path.string().c_str(), 0);
     }
 
-    Mesh UnwrapUv(const Mesh& input_mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>& vertex_referencing)
+    Mesh UnwrapUv(const Mesh& input_mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing)
     {
         Mesh ret_mesh;
 
@@ -746,7 +746,10 @@ namespace AIHoloImager
 
                 const xatlas::Mesh& mesh = atlas->meshes[mi];
                 ret_mesh.ResizeVertices(base_vertex + mesh.vertexCount);
-                vertex_referencing.resize(ret_mesh.NumVertices());
+                if (vertex_referencing)
+                {
+                    vertex_referencing->resize(ret_mesh.NumVertices());
+                }
                 for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
                 {
                     const auto& vertex = mesh.vertexArray[vi];
@@ -773,7 +776,10 @@ namespace AIHoloImager
                         }
                     }
 
-                    vertex_referencing[base_vertex + vi] = vertex.xref;
+                    if (vertex_referencing)
+                    {
+                        (*vertex_referencing)[base_vertex + vi] = vertex.xref;
+                    }
                 }
 
                 ret_mesh.ResizeIndices(static_cast<uint32_t>(ret_mesh.Indices().size() + mesh.indexCount));
