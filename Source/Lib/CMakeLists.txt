@@ -52,6 +52,8 @@ set(aihi_files
     Source/MeshGen/Lrm.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
+    Source/MeshSimp/MeshSimplification.cpp
+    Source/MeshSimp/MeshSimplification.hpp
     Source/MvDiffusion/MultiViewDiffusion.cpp
     Source/MvDiffusion/MultiViewDiffusion.hpp
     Source/MvDiffusion/MultiViewDiffusion.py

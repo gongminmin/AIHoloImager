@@ -13,6 +13,7 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 
 #include "CompiledShader/DilateCs.h"
@@ -74,6 +75,15 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
+#endif
+
+            std::cout << "Simplifying mesh...\n";
+
+            MeshSimplification mesh_simp;
+            mesh = mesh_simp.Process(mesh, 0.5f);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
             BoundingOrientedBox world_obb;
