@@ -1,8 +1,6 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
-#include "Util.hlslh"
-
 #define BLOCK_DIM 16
 
 cbuffer param_cb : register(b0)
@@ -25,7 +23,7 @@ void main(uint3 dtid : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
     const float ValidThreshold = 237 / 255.0f;
 
     float4 rendered_color = rendered_tex[dtid.xy];
-    if ((rendered_color.a == 0) || IsEmpty(rendered_color.rgb))
+    if (rendered_color.a == 0)
     {
         uint2 rendered_min = uint2(bb_tex.Load(uint3(0, 0, 0)), bb_tex.Load(uint3(1, 0, 0)));
         uint2 rendered_max = uint2(bb_tex.Load(uint3(2, 0, 0)), bb_tex.Load(uint3(3, 0, 0)));

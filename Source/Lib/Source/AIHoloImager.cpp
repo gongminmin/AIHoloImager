@@ -49,8 +49,8 @@ namespace AIHoloImager
 
             MeshReconstruction::Result mesh_recon_result;
             {
-                MeshReconstruction mesh_recon(exe_dir_);
-                mesh_recon_result = mesh_recon.Process(sfm_result, true, 2048, tmp_dir_);
+                MeshReconstruction mesh_recon(exe_dir_, gpu_system_);
+                mesh_recon_result = mesh_recon.Process(sfm_result, true, 512, tmp_dir_);
             }
 
             MultiViewRenderer::Result mv_renderer_result;

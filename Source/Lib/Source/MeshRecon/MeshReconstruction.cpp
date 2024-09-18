@@ -6,8 +6,14 @@
 #include <format>
 #include <iostream>
 
+#include <DirectXMath.h>
+
 #define _USE_EIGEN
 #include <InterfaceMVS.h>
+
+#include "Gpu/GpuCommandList.hpp"
+#include "MeshSimp/MeshSimplification.hpp"
+#include "TextureRecon/TextureReconstruction.hpp"
 
 using namespace DirectX;
 
@@ -16,12 +22,13 @@ namespace AIHoloImager
     class MeshReconstruction::Impl
     {
     public:
-        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
+        Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
+            : exe_dir_(exe_dir), gpu_system_(gpu_system), texture_recon_(exe_dir_, gpu_system)
         {
         }
 
         Result Process(
-            const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
+            const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir_);
@@ -34,23 +41,54 @@ namespace AIHoloImager
             {
                 mesh_name = this->MeshRefinement(mvs_name, mesh_name);
             }
-            mesh_name = this->MeshTexturing(mvs_name, mesh_name, max_texture_size);
 
             Result ret;
 
             auto& mesh = ret.mesh;
-            mesh = LoadMesh(working_dir_ / (mesh_name + ".glb"));
+
+            mesh = LoadMesh(working_dir_ / std::format("{}.ply", mesh_name));
+
+            MeshSimplification mesh_simp;
+            mesh = mesh_simp.Process(mesh, 0.5f);
 
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
-            std::vector<XMFLOAT3> positions(mesh.NumVertices());
-            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
-            {
-                positions[i] = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
-                positions[i].z = -positions[i].z; // RH to LH
-            }
 
             auto& obb = ret.obb;
-            BoundingOrientedBox::CreateFromPoints(obb, positions.size(), positions.data(), sizeof(positions[0]));
+            BoundingOrientedBox::CreateFromPoints(
+                obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+
+            mesh.ComputeNormals();
+
+            mesh = UnwrapUv(mesh, texture_size, 0);
+
+            auto texture_result = texture_recon_.Process(mesh, XMMatrixIdentity(), obb, sfm_input, texture_size, false, tmp_dir);
+
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            Texture tex(texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 4);
+            texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, tex.Data());
+            gpu_system_.Execute(std::move(cmd_list));
+
+            mesh.AlbedoTexture() = std::move(tex);
+
+            const VertexAttrib pos_uv_vertex_attribs[] = {
+                {VertexAttrib::Semantic::Position, 0, 3},
+                {VertexAttrib::Semantic::TexCoord, 0, 2},
+            };
+            mesh.ResetVertexDesc(VertexDesc(pos_uv_vertex_attribs));
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(mesh, working_dir_ / "PosUV.glb");
+#endif
+
+            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
+            {
+                auto& pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
+                pos.z = -pos.z; // RH to LH
+            }
+
+            BoundingOrientedBox::CreateFromPoints(
+                obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
 
             const XMVECTOR center = XMLoadFloat3(&obb.Center);
             const float inv_max_dim = 1 / std::max({obb.Extents.x, obb.Extents.y, obb.Extents.z});
@@ -67,7 +105,7 @@ namespace AIHoloImager
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
                 auto& transformed_pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
-                XMStoreFloat3(&transformed_pos, XMVector3TransformCoord(XMLoadFloat3(&positions[i]), model_mtx));
+                XMStoreFloat3(&transformed_pos, XMVector3TransformCoord(XMLoadFloat3(&transformed_pos), model_mtx));
             }
 
             return ret;
@@ -221,28 +259,17 @@ namespace AIHoloImager
             return output_mesh_name;
         }
 
-        std::string MeshTexturing(const std::string& mvs_name, const std::string& mesh_name, uint32_t max_texture_size)
-        {
-            const std::string output_mesh_name = mesh_name + "_Texture";
-
-            const std::string cmd = std::format("{} {}.mvs -m {}.ply -o {}.glb --export-type glb --decimate 0.5 --ignore-mask-label 0 "
-                                                "--max-texture-size {} --process-priority 0 -w {}",
-                (exe_dir_ / "TextureMesh").string(), mvs_name, mesh_name, output_mesh_name, max_texture_size, working_dir_.string());
-            const int ret = std::system(cmd.c_str());
-            if (ret != 0)
-            {
-                throw std::runtime_error(std::format("TextureMesh fails with {}", ret));
-            }
-
-            return output_mesh_name;
-        }
-
     private:
         const std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
+
+        GpuSystem& gpu_system_;
+
+        TextureReconstruction texture_recon_;
     };
 
-    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
+        : impl_(std::make_unique<Impl>(exe_dir, gpu_system))
     {
     }
 

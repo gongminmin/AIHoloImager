@@ -78,7 +78,6 @@ set(aihi_files
     Source/TextureRecon/Shader/ResolveTextureWoEmptyCs.hlsl
     Source/TextureRecon/TextureReconstruction.cpp
     Source/TextureRecon/TextureReconstruction.hpp
-    Source/Util/Shader/Util.hlslh
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
     Source/Util/ErrorHandling.hpp

@@ -7,5 +7,5 @@ SamplerState point_sampler : register(s0);
 
 float4 main(float2 texcoord0 : TEXCOORD0) : SV_Target0
 {
-    return float4(diffuse_tex.Sample(point_sampler, texcoord0).rgb, 1);
+    return diffuse_tex.Sample(point_sampler, texcoord0);
 }
