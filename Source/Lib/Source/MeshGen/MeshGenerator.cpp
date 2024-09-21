@@ -233,7 +233,7 @@ namespace AIHoloImager
 
             const uint32_t pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
-            std::vector<uint32_t> vertex_mapping(positions.size());
+            std::vector<uint32_t> vertex_mapping(positions.size(), ~0U);
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
@@ -246,8 +246,11 @@ namespace AIHoloImager
                 const auto iter = std::lower_bound(unique_int_pos_vec.begin(), unique_int_pos_vec.end(), int_pos);
                 assert(*iter == int_pos);
 
-                vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
-                ret_mesh.VertexData<XMFLOAT3>(vertex_mapping[i], pos_attrib_index) = pos;
+                if (vertex_mapping[i] == ~0U)
+                {
+                    vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
+                    ret_mesh.VertexData<XMFLOAT3>(vertex_mapping[i], pos_attrib_index) = pos;
+                }
             }
 
             uint32_t num_faces = 0;
@@ -424,42 +427,16 @@ namespace AIHoloImager
             if (num_comps > 1)
             {
                 const auto indices = mesh.Indices();
-                std::set<uint32_t> comp_vertex_indices;
+                std::vector<uint32_t> extract_indices(largest_comp_face_indices.size() * 3);
                 for (uint32_t i = 0; i < largest_comp_face_indices.size(); ++i)
                 {
                     for (uint32_t j = 0; j < 3; ++j)
                     {
-                        comp_vertex_indices.insert(indices[largest_comp_face_indices[i] * 3 + j]);
+                        extract_indices[i * 3 + j] = indices[largest_comp_face_indices[i] * 3 + j];
                     }
                 }
 
-                std::vector<uint32_t> vert_mapping(mesh.NumVertices(), ~0U);
-                uint32_t new_index = 0;
-                for (const uint32_t vi : comp_vertex_indices)
-                {
-                    vert_mapping[vi] = new_index;
-                    ++new_index;
-                }
-
-                Mesh cleaned_mesh(mesh.MeshVertexDesc(), static_cast<uint32_t>(comp_vertex_indices.size()),
-                    static_cast<uint32_t>(largest_comp_face_indices.size() * 3));
-
-                new_index = 0;
-                for (const uint32_t vi : comp_vertex_indices)
-                {
-                    cleaned_mesh.VertexData<XMFLOAT3>(new_index, 0) = mesh.VertexData<XMFLOAT3>(vi, 0);
-                    ++new_index;
-                }
-
-                for (uint32_t i = 0; i < largest_comp_face_indices.size(); ++i)
-                {
-                    for (uint32_t j = 0; j < 3; ++j)
-                    {
-                        cleaned_mesh.Index(i * 3 + j) = vert_mapping[indices[largest_comp_face_indices[i] * 3 + j]];
-                    }
-                }
-
-                mesh = std::move(cleaned_mesh);
+                mesh = mesh.ExtractMesh(mesh.MeshVertexDesc(), extract_indices);
             }
         }
 

@@ -114,6 +114,10 @@ namespace AIHoloImager
 
         void ComputeNormals();
 
+        Mesh ExtractMesh(VertexDesc new_vertex_desc, std::span<const uint32_t> extract_indices) const;
+        Mesh ExtractMesh(
+            VertexDesc new_vertex_desc, std::span<const uint32_t> new_vertex_reference, std::span<const uint32_t> new_indices) const;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

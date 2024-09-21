@@ -3,6 +3,8 @@
 
 #include "AIHoloImager/Mesh.hpp"
 
+#include <set>
+
 #include <assimp/Exporter.hpp>
 #include <assimp/GltfMaterial.h>
 #include <assimp/Importer.hpp>
@@ -318,6 +320,76 @@ namespace AIHoloImager
             }
         }
 
+        Mesh ExtractMesh(VertexDesc new_vertex_desc, std::span<const uint32_t> extract_indices) const
+        {
+            std::set<uint32_t> unique_indices(extract_indices.begin(), extract_indices.end());
+
+            std::vector<uint32_t> vert_mapping(num_vertices_, ~0U);
+            std::vector<uint32_t> new_vertex_references(unique_indices.size());
+            uint32_t new_index = 0;
+            for (const uint32_t vi : unique_indices)
+            {
+                vert_mapping[vi] = new_index;
+                new_vertex_references[new_index] = vi;
+                ++new_index;
+            }
+
+            std::vector<uint32_t> new_indices(extract_indices.size());
+            for (size_t i = 0; i < extract_indices.size(); ++i)
+            {
+                new_indices[i] = vert_mapping[extract_indices[i]];
+                assert(new_indices[i] != ~0U);
+            }
+
+            return this->ExtractMesh(std::move(new_vertex_desc), new_vertex_references, new_indices);
+        }
+
+        Mesh ExtractMesh(
+            VertexDesc new_vertex_desc, std::span<const uint32_t> new_vertex_references, std::span<const uint32_t> new_indices) const
+        {
+            const uint32_t new_num_vertices = static_cast<uint32_t>(new_vertex_references.size());
+            Mesh ret(std::move(new_vertex_desc), new_num_vertices, static_cast<uint32_t>(new_indices.size()));
+
+            if (vertex_desc_ == ret.MeshVertexDesc())
+            {
+                const uint32_t vertex_size = ret.MeshVertexDesc().Stride();
+                for (uint32_t vi = 0; vi < new_num_vertices; ++vi)
+                {
+                    std::memcpy(ret.VertexDataPtr(vi, 0), this->VertexDataPtr(new_vertex_references[vi], 0), vertex_size);
+                }
+            }
+            else
+            {
+                const auto old_vertex_attribs = vertex_desc_.Attribs();
+                const auto new_vertex_attribs = ret.MeshVertexDesc().Attribs();
+                for (uint32_t ai = 0; ai < new_vertex_attribs.size(); ++ai)
+                {
+                    const uint32_t old_ai = vertex_desc_.FindAttrib(new_vertex_attribs[ai].semantic, new_vertex_attribs[ai].index);
+                    if (old_ai != VertexDesc::InvalidIndex)
+                    {
+                        const uint32_t attrib_size =
+                            std::min(new_vertex_attribs[ai].channels, old_vertex_attribs[old_ai].channels) * sizeof(float);
+                        for (uint32_t vi = 0; vi < new_num_vertices; ++vi)
+                        {
+                            std::memcpy(ret.VertexDataPtr(vi, ai), this->VertexDataPtr(new_vertex_references[vi], old_ai), attrib_size);
+                        }
+                    }
+                    else
+                    {
+                        const uint32_t attrib_size = new_vertex_attribs[ai].channels * sizeof(float);
+                        for (uint32_t vi = 0; vi < new_num_vertices; ++vi)
+                        {
+                            std::memset(ret.VertexDataPtr(vi, ai), 0, attrib_size);
+                        }
+                    }
+                }
+            }
+
+            ret.impl_->indices_.assign(new_indices.begin(), new_indices.end());
+            ret.impl_->albedo_tex_ = albedo_tex_;
+            return ret;
+        }
+
     private:
         VertexDesc vertex_desc_;
         std::vector<float> vertices_;
@@ -436,6 +508,17 @@ namespace AIHoloImager
     void Mesh::ComputeNormals()
     {
         return impl_->ComputeNormals();
+    }
+
+    Mesh Mesh::ExtractMesh(VertexDesc new_vertex_desc, std::span<const uint32_t> extract_indices) const
+    {
+        return impl_->ExtractMesh(std::move(new_vertex_desc), std::move(extract_indices));
+    }
+
+    Mesh Mesh::ExtractMesh(
+        VertexDesc new_vertex_desc, std::span<const uint32_t> new_vertex_references, std::span<const uint32_t> new_indices) const
+    {
+        return impl_->ExtractMesh(std::move(new_vertex_desc), std::move(new_vertex_references), std::move(new_indices));
     }
 
     Mesh LoadMesh(const std::filesystem::path& path)
@@ -720,73 +803,45 @@ namespace AIHoloImager
 
             xatlas::Generate(atlas, chart_options, pack_options);
 
-            {
-                VertexDesc new_vertex_desc;
-                const uint32_t texcoord_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
-                if (texcoord_attrib == VertexDesc::InvalidIndex)
-                {
-                    const auto old_vertex_attrib = vertex_desc.Attribs();
-                    std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
-                    new_vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, 0, 2});
-                    new_vertex_desc = VertexDesc(new_vertex_attribs);
-                }
-                else
-                {
-                    new_vertex_desc = vertex_desc;
-                }
+            assert(atlas->atlasCount == 1);
+            assert(atlas->meshCount == 1);
 
-                ret_mesh = Mesh(std::move(new_vertex_desc), 0, 0);
+            const xatlas::Mesh& mesh = atlas->meshes[0];
+
+            std::vector<uint32_t> new_vertex_referencing(mesh.vertexCount);
+            for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
+            {
+                const auto& vertex = mesh.vertexArray[vi];
+                new_vertex_referencing[vi] = vertex.xref;
             }
 
-            const auto old_vertex_attribs = input_mesh.MeshVertexDesc().Attribs();
-            const auto new_vertex_attribs = ret_mesh.MeshVertexDesc().Attribs();
-            for (uint32_t mi = 0; mi < atlas->meshCount; ++mi)
+            VertexDesc new_vertex_desc;
+            uint32_t texcoord_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+            if (texcoord_attrib == VertexDesc::InvalidIndex)
             {
-                const uint32_t base_vertex = ret_mesh.NumVertices();
+                const auto old_vertex_attrib = vertex_desc.Attribs();
+                std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
+                new_vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, 0, 2});
+                new_vertex_desc = VertexDesc(new_vertex_attribs);
+                texcoord_attrib = new_vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+            }
+            else
+            {
+                new_vertex_desc = vertex_desc;
+            }
 
-                const xatlas::Mesh& mesh = atlas->meshes[mi];
-                ret_mesh.ResizeVertices(base_vertex + mesh.vertexCount);
-                if (vertex_referencing)
-                {
-                    vertex_referencing->resize(ret_mesh.NumVertices());
-                }
-                for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
-                {
-                    const auto& vertex = mesh.vertexArray[vi];
-                    const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
+            ret_mesh =
+                input_mesh.ExtractMesh(std::move(new_vertex_desc), new_vertex_referencing, std::span(mesh.indexArray, mesh.indexCount));
+            for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
+            {
+                const auto& vertex = mesh.vertexArray[vi];
+                const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
+                ret_mesh.VertexData<XMFLOAT2>(vi, texcoord_attrib) = uv;
+            }
 
-                    for (uint32_t ai = 0; ai < new_vertex_attribs.size(); ++ai)
-                    {
-                        if ((new_vertex_attribs[ai].semantic == VertexAttrib::Semantic::TexCoord) && (new_vertex_attribs[ai].index == 0))
-                        {
-                            ret_mesh.VertexData<XMFLOAT2>(base_vertex + vi, ai) = uv;
-                        }
-                        else
-                        {
-                            for (uint32_t aj = 0; aj < old_vertex_attribs.size(); ++aj)
-                            {
-                                if ((new_vertex_attribs[ai].semantic == old_vertex_attribs[aj].semantic) &&
-                                    (new_vertex_attribs[ai].index == old_vertex_attribs[aj].index))
-                                {
-                                    std::memcpy(ret_mesh.VertexDataPtr(base_vertex + vi, ai), input_mesh.VertexDataPtr(vertex.xref, aj),
-                                        new_vertex_attribs[ai].channels * sizeof(float));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (vertex_referencing)
-                    {
-                        (*vertex_referencing)[base_vertex + vi] = vertex.xref;
-                    }
-                }
-
-                ret_mesh.ResizeIndices(static_cast<uint32_t>(ret_mesh.Indices().size() + mesh.indexCount));
-                for (uint32_t i = 0; i < mesh.indexCount; ++i)
-                {
-                    ret_mesh.Index(i) = base_vertex + mesh.indexArray[i];
-                }
+            if (vertex_referencing)
+            {
+                (*vertex_referencing) = std::move(new_vertex_referencing);
             }
         }
 
