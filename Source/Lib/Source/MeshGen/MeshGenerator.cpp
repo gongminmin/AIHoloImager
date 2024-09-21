@@ -97,7 +97,7 @@ namespace AIHoloImager
 
             std::cout << "Unwrapping UV...\n";
 
-            mesh = UnwrapUv(mesh, texture_size, 2);
+            mesh = mesh.UnwrapUv(texture_size, 2);
 
             std::cout << "Generating texture...\n";
 

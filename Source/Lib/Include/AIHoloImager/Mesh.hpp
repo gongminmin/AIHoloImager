@@ -118,6 +118,8 @@ namespace AIHoloImager
         Mesh ExtractMesh(
             VertexDesc new_vertex_desc, std::span<const uint32_t> new_vertex_reference, std::span<const uint32_t> new_indices) const;
 
+        Mesh UnwrapUv(uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing = nullptr);
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -125,6 +127,4 @@ namespace AIHoloImager
 
     Mesh LoadMesh(const std::filesystem::path& path);
     void SaveMesh(const Mesh& mesh, const std::filesystem::path& path);
-
-    Mesh UnwrapUv(const Mesh& mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing = nullptr);
 } // namespace AIHoloImager

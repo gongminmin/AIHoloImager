@@ -59,7 +59,7 @@ namespace AIHoloImager
 
             mesh.ComputeNormals();
 
-            mesh = UnwrapUv(mesh, texture_size, 0);
+            mesh = mesh.UnwrapUv(texture_size, 0);
 
             auto texture_result = texture_recon_.Process(mesh, XMMatrixIdentity(), obb, sfm_input, texture_size, false, tmp_dir);
 

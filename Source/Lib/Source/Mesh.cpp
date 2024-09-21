@@ -390,6 +390,86 @@ namespace AIHoloImager
             return ret;
         }
 
+        Mesh UnwrapUv(uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing)
+        {
+            Mesh ret_mesh;
+
+            xatlas::Atlas* atlas = xatlas::Create();
+
+            const uint32_t pos_attrib = vertex_desc_.FindAttrib(VertexAttrib::Semantic::Position, 0);
+
+            xatlas::MeshDecl mesh_decl;
+            mesh_decl.vertexCount = num_vertices_;
+            mesh_decl.vertexPositionData = this->VertexDataPtr(0, pos_attrib);
+            mesh_decl.vertexPositionStride = vertex_desc_.Stride();
+            mesh_decl.indexCount = static_cast<uint32_t>(indices_.size());
+            mesh_decl.indexData = indices_.data();
+            mesh_decl.indexFormat = xatlas::IndexFormat::UInt32;
+
+            xatlas::AddMeshError error = xatlas::AddMesh(atlas, mesh_decl, 1);
+            if (error == xatlas::AddMeshError::Success)
+            {
+                xatlas::ChartOptions chart_options;
+
+                xatlas::PackOptions pack_options;
+                pack_options.padding = padding;
+                pack_options.texelsPerUnit = 0;
+                pack_options.resolution = texture_size;
+
+                xatlas::Generate(atlas, chart_options, pack_options);
+
+                assert(atlas->atlasCount == 1);
+                assert(atlas->meshCount == 1);
+
+                const xatlas::Mesh& mesh = atlas->meshes[0];
+
+                std::vector<uint32_t> new_vertex_referencing(mesh.vertexCount);
+                for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
+                {
+                    const auto& vertex = mesh.vertexArray[vi];
+                    new_vertex_referencing[vi] = vertex.xref;
+                }
+
+                VertexDesc new_vertex_desc;
+                uint32_t texcoord_attrib = vertex_desc_.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+                if (texcoord_attrib == VertexDesc::InvalidIndex)
+                {
+                    const auto old_vertex_attrib = vertex_desc_.Attribs();
+                    std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
+                    new_vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, 0, 2});
+                    new_vertex_desc = VertexDesc(new_vertex_attribs);
+                    texcoord_attrib = new_vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+                }
+                else
+                {
+                    new_vertex_desc = vertex_desc_;
+                }
+
+                ret_mesh =
+                    this->ExtractMesh(std::move(new_vertex_desc), new_vertex_referencing, std::span(mesh.indexArray, mesh.indexCount));
+                for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
+                {
+                    const auto& vertex = mesh.vertexArray[vi];
+                    const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
+                    ret_mesh.VertexData<XMFLOAT2>(vi, texcoord_attrib) = uv;
+                }
+
+                if (vertex_referencing)
+                {
+                    (*vertex_referencing) = std::move(new_vertex_referencing);
+                }
+            }
+
+            xatlas::Destroy(atlas);
+
+            if (error != xatlas::AddMeshError::Success)
+            {
+                throw std::runtime_error(std::format("UV unwrapping failed {}", static_cast<uint32_t>(error)));
+            }
+
+            return ret_mesh;
+        }
+
     private:
         VertexDesc vertex_desc_;
         std::vector<float> vertices_;
@@ -519,6 +599,11 @@ namespace AIHoloImager
         VertexDesc new_vertex_desc, std::span<const uint32_t> new_vertex_references, std::span<const uint32_t> new_indices) const
     {
         return impl_->ExtractMesh(std::move(new_vertex_desc), std::move(new_vertex_references), std::move(new_indices));
+    }
+
+    Mesh Mesh::UnwrapUv(uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing)
+    {
+        return impl_->UnwrapUv(texture_size, padding, vertex_referencing);
     }
 
     Mesh LoadMesh(const std::filesystem::path& path)
@@ -772,86 +857,5 @@ namespace AIHoloImager
 
         Assimp::Exporter exporter;
         exporter.Export(&ai_scene, format_id.c_str(), path.string().c_str(), 0);
-    }
-
-    Mesh UnwrapUv(const Mesh& input_mesh, uint32_t texture_size, uint32_t padding, std::vector<uint32_t>* vertex_referencing)
-    {
-        Mesh ret_mesh;
-
-        xatlas::Atlas* atlas = xatlas::Create();
-
-        const auto& vertex_desc = input_mesh.MeshVertexDesc();
-        const uint32_t pos_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-
-        xatlas::MeshDecl mesh_decl;
-        mesh_decl.vertexCount = input_mesh.NumVertices();
-        mesh_decl.vertexPositionData = input_mesh.VertexDataPtr(0, pos_attrib);
-        mesh_decl.vertexPositionStride = vertex_desc.Stride();
-        mesh_decl.indexCount = static_cast<uint32_t>(input_mesh.Indices().size());
-        mesh_decl.indexData = input_mesh.Indices().data();
-        mesh_decl.indexFormat = xatlas::IndexFormat::UInt32;
-
-        xatlas::AddMeshError error = xatlas::AddMesh(atlas, mesh_decl, 1);
-        if (error == xatlas::AddMeshError::Success)
-        {
-            xatlas::ChartOptions chart_options;
-
-            xatlas::PackOptions pack_options;
-            pack_options.padding = padding;
-            pack_options.texelsPerUnit = 0;
-            pack_options.resolution = texture_size;
-
-            xatlas::Generate(atlas, chart_options, pack_options);
-
-            assert(atlas->atlasCount == 1);
-            assert(atlas->meshCount == 1);
-
-            const xatlas::Mesh& mesh = atlas->meshes[0];
-
-            std::vector<uint32_t> new_vertex_referencing(mesh.vertexCount);
-            for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
-            {
-                const auto& vertex = mesh.vertexArray[vi];
-                new_vertex_referencing[vi] = vertex.xref;
-            }
-
-            VertexDesc new_vertex_desc;
-            uint32_t texcoord_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
-            if (texcoord_attrib == VertexDesc::InvalidIndex)
-            {
-                const auto old_vertex_attrib = vertex_desc.Attribs();
-                std::vector<VertexAttrib> new_vertex_attribs(old_vertex_attrib.begin(), old_vertex_attrib.end());
-                new_vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, 0, 2});
-                new_vertex_desc = VertexDesc(new_vertex_attribs);
-                texcoord_attrib = new_vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
-            }
-            else
-            {
-                new_vertex_desc = vertex_desc;
-            }
-
-            ret_mesh =
-                input_mesh.ExtractMesh(std::move(new_vertex_desc), new_vertex_referencing, std::span(mesh.indexArray, mesh.indexCount));
-            for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
-            {
-                const auto& vertex = mesh.vertexArray[vi];
-                const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
-                ret_mesh.VertexData<XMFLOAT2>(vi, texcoord_attrib) = uv;
-            }
-
-            if (vertex_referencing)
-            {
-                (*vertex_referencing) = std::move(new_vertex_referencing);
-            }
-        }
-
-        xatlas::Destroy(atlas);
-
-        if (error != xatlas::AddMeshError::Success)
-        {
-            throw std::runtime_error(std::format("UV unwrapping failed {}", static_cast<uint32_t>(error)));
-        }
-
-        return ret_mesh;
     }
 } // namespace AIHoloImager
