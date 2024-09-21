@@ -159,7 +159,36 @@ namespace AIHoloImager
         Verify(fence_event_.get() != INVALID_HANDLE_VALUE);
     }
 
-    GpuSystem::~GpuSystem() noexcept = default;
+    GpuSystem::~GpuSystem()
+    {
+        this->WaitForGpu();
+
+        shader_visible_cbv_srv_uav_desc_allocator_.Clear();
+        cbv_srv_uav_desc_allocator_.Clear();
+        dsv_desc_allocator_.Clear();
+        rtv_desc_allocator_.Clear();
+
+        readback_mem_allocator_.Clear();
+        upload_mem_allocator_.Clear();
+
+        stall_resources_.clear();
+
+        fence_event_.reset();
+        fence_ = nullptr;
+
+        for (auto& cmd_queue : cmd_queues_)
+        {
+            cmd_queue.cmd_list_pool.clear();
+            for (auto& alloc : cmd_queue.cmd_allocators)
+            {
+                alloc = nullptr;
+            }
+            cmd_queue.cmd_queue = nullptr;
+        }
+
+        device_ = nullptr;
+    }
+
     GpuSystem::GpuSystem(GpuSystem&& other) noexcept = default;
     GpuSystem& GpuSystem::operator=(GpuSystem&& other) noexcept = default;
 
