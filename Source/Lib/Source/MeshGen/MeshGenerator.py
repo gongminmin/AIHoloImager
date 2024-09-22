@@ -31,10 +31,15 @@ class MeshGenerator:
             downloaded_model_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = model_ckpt_path.name, repo_type = "model")
             shutil.copyfile(downloaded_model_ckpt_path, model_ckpt_path)
 
-        state_dict = torch.load(model_ckpt_path, map_location = "cpu")["state_dict"]
+        loaded_state_dict = torch.load(model_ckpt_path, map_location = "cpu")["state_dict"]
+
+        # Remove the prefix from state_dict since we don't have a lrm_generator class wrapping the model
         prefix = "lrm_generator."
         len_prefix = len(prefix)
-        state_dict = {k[len_prefix : ] : v for k, v in state_dict.items() if k.startswith(prefix)}
+        state_dict = {}
+        for key, value in loaded_state_dict.items():
+            if key.startswith(prefix):
+                state_dict[key[len_prefix : ]] = value
         self.model.load_state_dict(state_dict, strict = True)
 
         self.model = self.model.to(self.device)

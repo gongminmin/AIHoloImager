@@ -129,8 +129,8 @@ class Lrm(nn.Module):
         self.planes = planes.squeeze(0)
 
     def PredictMesh(self):
-        # Step 1: first get the sdf and deformation value for each vertices in the grid.
-        sdf, deformation, weight = self.PredictSdfDeformation()
+        # Step 1: first get the sdf value for each vertices in the grid.
+        sdf = self.PredictSdf()
 
         # Step 2: Using marching cubes to obtain the mesh
         size = self.grid_res + 1
@@ -153,23 +153,17 @@ class Lrm(nn.Module):
         assert(colors.shape[0] == 1)
         return colors.squeeze(0)
 
-    def PredictSdfDeformation(self):
+    def PredictSdf(self):
         # Step 1: predict the SDF and deformation
         sdf, deformation, weight = self.synthesizer.get_geometry_prediction(
             self.planes.unsqueeze(0),
             self.cube_verts.unsqueeze(0),
             self.cube_indices
         )
-        assert((sdf.shape[0] == 1) and (deformation.shape[0] == 1) and (weight.shape[0] == 1))
+        assert(sdf.shape[0] == 1)
         sdf = sdf.squeeze(0)
-        deformation = deformation.squeeze(0)
-        weight = weight.squeeze(0)
 
-        # Step 2: Normalize the deformation to avoid the flipped triangles.
-        deformation_multiplier = 4.0
-        deformation = 1.0 / (self.grid_res * deformation_multiplier) * torch.tanh(deformation)
-
-        # Step 3: Fix some sdf if we observe empty shape (full positive or full negative)
+        # Step 2: Fix some sdf if we observe empty shape (full positive or full negative)
         size = self.grid_res + 1
         sdf_nxnxn = sdf.reshape(size, size, size)
         sdf_less_boundary = sdf_nxnxn[1 : -1, 1 : -1, 1 : -1].reshape(-1)
@@ -184,4 +178,4 @@ class Lrm(nn.Module):
             # Regulraization here is used to push the sdf to be a different sign (make it not fully positive or fully negative)
             sdf = torch.lerp(new_sdf, sdf, update_mask)
 
-        return sdf, deformation, weight
+        return sdf
