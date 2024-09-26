@@ -39,6 +39,11 @@ namespace AIHoloImager
             return *this;
         }
 
+        GpuRecyclableObject Share() const
+        {
+            return GpuRecyclableObject(const_cast<GpuSystem&>(*gpu_system_), object_);
+        }
+
         GpuSystem* GpuSys() noexcept
         {
             return gpu_system_;

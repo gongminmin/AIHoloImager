@@ -37,7 +37,7 @@ namespace AIHoloImager
         };
         static constexpr uint32_t NumShaderStages = static_cast<uint32_t>(ShaderStage::Num);
 
-        enum CullMode
+        enum class CullMode
         {
             None,
             ClockWise,

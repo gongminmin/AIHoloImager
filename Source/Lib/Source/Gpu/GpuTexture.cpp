@@ -106,7 +106,7 @@ namespace AIHoloImager
     GpuTexture2D GpuTexture2D::Share() const
     {
         GpuTexture2D texture;
-        texture.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
+        texture.resource_ = resource_.Share();
         texture.desc_ = desc_;
         texture.curr_states_ = curr_states_;
         return texture;

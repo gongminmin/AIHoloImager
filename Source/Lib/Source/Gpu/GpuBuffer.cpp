@@ -53,7 +53,7 @@ namespace AIHoloImager
     GpuBuffer GpuBuffer::Share() const
     {
         GpuBuffer buffer;
-        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
+        buffer.resource_ = resource_.Share();
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;
@@ -172,7 +172,7 @@ namespace AIHoloImager
     GpuUploadBuffer GpuUploadBuffer::Share() const
     {
         GpuUploadBuffer buffer;
-        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
+        buffer.resource_ = resource_.Share();
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;
@@ -224,7 +224,7 @@ namespace AIHoloImager
     GpuReadbackBuffer GpuReadbackBuffer::Share() const
     {
         GpuReadbackBuffer buffer;
-        buffer.resource_ = GpuRecyclableObject(const_cast<GpuSystem&>(*resource_.GpuSys()), resource_.Object());
+        buffer.resource_ = resource_.Share();
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
         buffer.curr_state_ = curr_state_;
