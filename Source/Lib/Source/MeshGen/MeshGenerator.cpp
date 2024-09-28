@@ -206,20 +206,30 @@ namespace AIHoloImager
                 const auto positions = python_system_.ToSpan<const XMFLOAT3>(*verts);
                 const auto indices = python_system_.ToSpan<const uint32_t>(*faces);
 
-                pos_only_mesh = this->CleanMesh(positions, indices);
+                const VertexAttrib pos_only_vertex_attribs[] = {
+                    {VertexAttrib::Semantic::Position, 0, 3},
+                };
+                pos_only_mesh = Mesh(
+                    VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(positions.size()), static_cast<uint32_t>(indices.size()));
+
+                pos_only_mesh.VertexBuffer(&positions[0].x);
+                pos_only_mesh.Indices(indices);
+
+                pos_only_mesh = this->CleanMesh(pos_only_mesh);
             }
 
             return pos_only_mesh;
         }
 
-        Mesh CleanMesh(std::span<const XMFLOAT3> positions, std::span<const uint32_t> indices)
+        Mesh CleanMesh(const Mesh& input_mesh)
         {
             constexpr float Scale = 1e5f;
 
+            uint32_t pos_attrib_index = input_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::set<std::array<int32_t, 3>> unique_int_pos;
-            for (uint32_t i = 0; i < positions.size(); ++i)
+            for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const XMFLOAT3& pos = positions[i];
+                const XMFLOAT3& pos = input_mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
                 std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f), static_cast<int32_t>(pos.y * Scale + 0.5f),
                     static_cast<int32_t>(pos.z * Scale + 0.5f)};
                 unique_int_pos.emplace(std::move(int_pos));
@@ -228,18 +238,18 @@ namespace AIHoloImager
             const VertexAttrib pos_only_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},
             };
-            Mesh ret_mesh(
-                VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(unique_int_pos.size()), static_cast<uint32_t>(indices.size()));
+            Mesh ret_mesh(VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(unique_int_pos.size()),
+                static_cast<uint32_t>(input_mesh.Indices().size()));
 
-            const uint32_t pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+            pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
-            std::vector<uint32_t> vertex_mapping(positions.size(), ~0U);
+            std::vector<uint32_t> vertex_mapping(input_mesh.NumVertices(), ~0U);
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < positions.size(); ++i)
+            for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const XMFLOAT3& pos = positions[i];
+                const XMFLOAT3& pos = input_mesh.VertexData<XMFLOAT3>(i, 0);
                 const std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f),
                     static_cast<int32_t>(pos.y * Scale + 0.5f), static_cast<int32_t>(pos.z * Scale + 0.5f)};
 
@@ -254,12 +264,12 @@ namespace AIHoloImager
             }
 
             uint32_t num_faces = 0;
-            for (size_t i = 0; i < indices.size(); i += 3)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(input_mesh.Indices().size()); i += 3)
             {
                 uint32_t face[3];
                 for (uint32_t j = 0; j < 3; ++j)
                 {
-                    face[j] = vertex_mapping[indices[i + j]];
+                    face[j] = vertex_mapping[input_mesh.Index(i + j)];
                 }
 
                 bool degenerated = false;
