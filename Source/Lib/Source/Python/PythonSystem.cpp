@@ -99,9 +99,19 @@ namespace AIHoloImager
         return MakePyObjectPtr(PyObject_CallObject(&object, &args));
     }
 
-    PyObjectPtr PythonSystem::MakeObject(long value)
+    PyObjectPtr PythonSystem::MakeObject(int32_t value)
     {
         return MakePyObjectPtr(PyLong_FromLong(value));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(uint32_t value)
+    {
+        return MakePyObjectPtr(PyLong_FromUnsignedLong(value));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(float value)
+    {
+        return MakePyObjectPtr(PyFloat_FromDouble(value));
     }
 
     PyObjectPtr PythonSystem::MakeObject(std::wstring_view str)

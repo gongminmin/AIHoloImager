@@ -13,6 +13,7 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "MarchingCubes.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 
@@ -31,9 +32,16 @@ namespace AIHoloImager
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
-            mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
+
+            auto args = python_system_.MakeTuple(2);
+            {
+                python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(GridRes));
+                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(GridScale));
+            }
+            mesh_generator_ = python_system_.CallObject(*mesh_generator_class_, *args);
+
             mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
-            mesh_generator_gen_pos_mesh_method_ = python_system_.GetAttr(*mesh_generator_, "GenPosMesh");
+            mesh_generator_query_sdf_method_ = python_system_.GetAttr(*mesh_generator_, "QuerySdf");
             mesh_generator_query_colors_method_ = python_system_.GetAttr(*mesh_generator_, "QueryColors");
 
             {
@@ -198,22 +206,18 @@ namespace AIHoloImager
 
             Mesh pos_only_mesh;
             {
-                const auto verts_faces = python_system_.CallObject(*mesh_generator_gen_pos_mesh_method_);
+                const auto py_sdf = python_system_.CallObject(*mesh_generator_query_sdf_method_);
 
-                const auto verts = python_system_.GetTupleItem(*verts_faces, 0);
-                const auto faces = python_system_.GetTupleItem(*verts_faces, 1);
+                const auto sdf = python_system_.ToSpan<const float>(*py_sdf);
 
-                const auto positions = python_system_.ToSpan<const XMFLOAT3>(*verts);
-                const auto indices = python_system_.ToSpan<const uint32_t>(*faces);
+                pos_only_mesh = MarchingCubes(sdf, GridRes, 0);
 
-                const VertexAttrib pos_only_vertex_attribs[] = {
-                    {VertexAttrib::Semantic::Position, 0, 3},
-                };
-                pos_only_mesh = Mesh(
-                    VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(positions.size()), static_cast<uint32_t>(indices.size()));
-
-                pos_only_mesh.VertexBuffer(&positions[0].x);
-                pos_only_mesh.Indices(indices);
+                const uint32_t pos_attrib_index = pos_only_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+                for (uint32_t i = 0; i < pos_only_mesh.NumVertices(); ++i)
+                {
+                    auto& pos = pos_only_mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
+                    XMStoreFloat3(&pos, (XMLoadFloat3(&pos) / GridRes - XMVectorSet(0.5f, 0.5f, 0.5f, 0)) * GridScale);
+                }
 
                 pos_only_mesh = this->CleanMesh(pos_only_mesh);
             }
@@ -568,7 +572,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_class_;
         PyObjectPtr mesh_generator_;
         PyObjectPtr mesh_generator_gen_nerf_method_;
-        PyObjectPtr mesh_generator_gen_pos_mesh_method_;
+        PyObjectPtr mesh_generator_query_sdf_method_;
         PyObjectPtr mesh_generator_query_colors_method_;
 
         TextureReconstruction texture_recon_;
@@ -590,6 +594,8 @@ namespace AIHoloImager
         GpuComputePipeline dilate_pipeline_;
 
         static constexpr uint32_t DilateTimes = 4;
+        static constexpr uint32_t GridRes = 128;
+        static constexpr float GridScale = 2.1f;
     };
 
     MeshGenerator::MeshGenerator(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)

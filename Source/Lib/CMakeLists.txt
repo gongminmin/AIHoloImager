@@ -46,6 +46,8 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
+    Source/MeshGen/MarchingCubes.cpp
+    Source/MeshGen/MarchingCubes.hpp
     Source/MeshGen/MeshGenerator.cpp
     Source/MeshGen/MeshGenerator.hpp
     Source/MeshGen/MeshGenerator.py

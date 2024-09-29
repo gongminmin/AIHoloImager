@@ -13,7 +13,7 @@ from src.utils.camera_util import get_zero123plus_input_cameras
 from Lrm import Lrm
 
 class MeshGenerator:
-    def __init__(self):
+    def __init__(self, grid_res : int, grid_scale : float):
         this_py_dir = Path(__file__).parent.resolve()
 
         seed_everything(42)
@@ -21,8 +21,8 @@ class MeshGenerator:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = Lrm(self.device, encoder_feat_dim = 768, transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16,
-            triplane_low_res = 32, triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = 128,
-            grid_scale = 2.1
+            triplane_low_res = 32, triplane_high_res = 64, triplane_dim = 80, rendering_samples_per_ray = 128, grid_res = grid_res,
+            grid_scale = grid_scale
         )
 
         model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")
@@ -65,11 +65,11 @@ class MeshGenerator:
             input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = 4).to(self.device).squeeze(0)
             self.model.GenNeRF(mv_images, input_cameras)
 
-    def GenPosMesh(self):
+    def QuerySdf(self):
         with torch.no_grad():
-            vertices, indices = self.model.PredictMesh()
+            sdf = self.model.QuerySdf()
 
-        return (vertices.cpu().numpy().tobytes(), indices.cpu().numpy().tobytes())
+        return sdf.cpu().numpy().tobytes()
 
     def QueryColors(self, positions : bytes, size : int):
         with torch.no_grad():

@@ -48,7 +48,9 @@ namespace AIHoloImager
         PyObjectPtr CallObject(PyObject& object);
         PyObjectPtr CallObject(PyObject& object, PyObject& args);
 
-        PyObjectPtr MakeObject(long value);
+        PyObjectPtr MakeObject(int32_t value);
+        PyObjectPtr MakeObject(uint32_t value);
+        PyObjectPtr MakeObject(float value);
         PyObjectPtr MakeObject(std::wstring_view str);
         PyObjectPtr MakeObject(std::span<const std::byte> mem);
 

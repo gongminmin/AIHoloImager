@@ -9,7 +9,6 @@
 
 from pathlib import Path
 
-import mcubes
 import numpy as np
 import torch
 import torch.nn as nn
@@ -101,8 +100,7 @@ class Lrm(nn.Module):
         assert(planes.shape[0] == 1)
         self.planes = planes.squeeze(0)
 
-    def PredictMesh(self):
-        # Step 1: first get the sdf value for each vertices in the grid.        
+    def QuerySdf(self):
         sdf, deformation, weight = self.synthesizer.get_geometry_prediction(
             self.planes.unsqueeze(0),
             self.cube_verts.unsqueeze(0),
@@ -111,21 +109,10 @@ class Lrm(nn.Module):
         assert(sdf.shape[0] == 1)
         sdf = sdf.squeeze(0)
 
-        # Step 2: Using marching cubes to obtain the mesh
         size = self.grid_res + 1
         sdf = sdf.squeeze(-1).reshape(size, size, size)
-        verts, faces = mcubes.marching_cubes(sdf.cpu().numpy(), 0)
 
-        verts = verts.astype(np.float32)
-        verts = torch.from_numpy(verts).to(self.device)
-        verts = (verts / self.grid_res - 0.5) * self.grid_scale
-
-        faces = faces.astype(np.int32)
-        faces = torch.from_numpy(faces).to(self.device)
-        # Flip the triangles
-        faces = torch.index_select(faces, 1, torch.tensor([0, 2, 1], dtype = torch.int32, device = self.device))
-
-        return verts, faces
+        return sdf
 
     def QueryColors(self, positions):
         colors = self.synthesizer.get_texture_prediction(self.planes.unsqueeze(0), positions.unsqueeze(0))
