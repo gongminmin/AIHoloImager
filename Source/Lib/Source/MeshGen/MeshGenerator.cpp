@@ -207,7 +207,6 @@ namespace AIHoloImager
             Mesh pos_only_mesh;
             {
                 const auto py_sdf = python_system_.CallObject(*mesh_generator_query_sdf_method_);
-
                 const auto sdf = python_system_.ToSpan<const float>(*py_sdf);
 
                 pos_only_mesh = MarchingCubes(sdf, GridRes, 0);
