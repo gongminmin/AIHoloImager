@@ -85,6 +85,8 @@ set(aihi_files
     Source/Util/ErrorHandling.hpp
     Source/Util/Noncopyable.hpp
     Source/Util/SmartPtrHelper.hpp
+    Source/Util/Timer.cpp
+    Source/Util/Timer.hpp
     Source/Util/Uuid.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
