@@ -242,7 +242,7 @@ namespace AIHoloImager
                 {VertexAttrib::Semantic::Position, 0, 3},
             };
             Mesh ret_mesh(VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(unique_int_pos.size()),
-                static_cast<uint32_t>(input_mesh.Indices().size()));
+                static_cast<uint32_t>(input_mesh.IndexBuffer().size()));
 
             pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
@@ -267,7 +267,7 @@ namespace AIHoloImager
             }
 
             uint32_t num_faces = 0;
-            for (uint32_t i = 0; i < static_cast<uint32_t>(input_mesh.Indices().size()); i += 3)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(input_mesh.IndexBuffer().size()); i += 3)
             {
                 uint32_t face[3];
                 for (uint32_t j = 0; j < 3; ++j)
@@ -306,9 +306,9 @@ namespace AIHoloImager
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             std::vector<uint32_t> num_neighboring_faces(mesh.NumVertices(), 0);
-            std::vector<uint32_t> neighboring_face_indices(mesh.Indices().size());
-            const auto mesh_indices = mesh.Indices();
-            for (uint32_t i = 0; i < static_cast<uint32_t>(mesh.Indices().size() / 3); ++i)
+            std::vector<uint32_t> neighboring_face_indices(mesh.IndexBuffer().size());
+            const auto mesh_indices = mesh.IndexBuffer();
+            for (uint32_t i = 0; i < static_cast<uint32_t>(mesh.IndexBuffer().size() / 3); ++i)
             {
                 const uint32_t base_index = i * 3;
                 for (uint32_t j = 0; j < 3; ++j)
@@ -343,7 +343,7 @@ namespace AIHoloImager
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-            for (uint32_t i = 0; i < static_cast<uint32_t>(mesh.Indices().size() / 3); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(mesh.IndexBuffer().size() / 3); ++i)
             {
                 const uint32_t base_index = i * 3;
                 for (uint32_t j = 0; j < 3; ++j)
@@ -439,7 +439,7 @@ namespace AIHoloImager
 
             if (num_comps > 1)
             {
-                const auto indices = mesh.Indices();
+                const auto indices = mesh.IndexBuffer();
                 std::vector<uint32_t> extract_indices(largest_comp_face_indices.size() * 3);
                 for (uint32_t i = 0; i < largest_comp_face_indices.size(); ++i)
                 {

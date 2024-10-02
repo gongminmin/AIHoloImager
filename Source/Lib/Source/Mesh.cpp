@@ -158,13 +158,17 @@ namespace AIHoloImager
             vertices_.resize(num * vertex_desc_.Stride());
         }
 
-        const float* VertexBuffer() const noexcept
+        std::span<const float> VertexBuffer() const noexcept
         {
-            return vertices_.data();
+            return vertices_;
         }
-        void VertexBuffer(const float* data)
+        std::span<float> VertexBuffer() noexcept
         {
-            std::memcpy(vertices_.data(), data, num_vertices_ * vertex_desc_.Stride());
+            return vertices_;
+        }
+        void VertexBuffer(std::span<const float> data)
+        {
+            vertices_.assign(data.begin(), data.end());
         }
         const float* VertexDataPtr(uint32_t index, uint32_t attrib_index) const
         {
@@ -188,13 +192,17 @@ namespace AIHoloImager
             return *reinterpret_cast<T*>(this->VertexDataPtr(index, attrib_index));
         }
 
-        std::span<const uint32_t> Indices() const noexcept
+        std::span<const uint32_t> IndexBuffer() const noexcept
         {
-            return std::span<const uint32_t>(indices_.begin(), indices_.end());
+            return indices_;
         }
-        void Indices(std::span<const uint32_t> inds)
+        std::span<uint32_t> IndexBuffer() noexcept
         {
-            indices_.assign(inds.begin(), inds.end());
+            return indices_;
+        }
+        void IndexBuffer(std::span<const uint32_t> data)
+        {
+            indices_.assign(data.begin(), data.end());
         }
         void ResizeIndices(uint32_t num)
         {
@@ -533,13 +541,17 @@ namespace AIHoloImager
         impl_->ResizeVertices(num);
     }
 
-    const float* Mesh::VertexBuffer() const noexcept
+    std::span<const float> Mesh::VertexBuffer() const noexcept
     {
         return impl_->VertexBuffer();
     }
-    void Mesh::VertexBuffer(const float* data)
+    std::span<float> Mesh::VertexBuffer() noexcept
     {
-        impl_->VertexBuffer(data);
+        return impl_->VertexBuffer();
+    }
+    void Mesh::VertexBuffer(std::span<const float> data)
+    {
+        impl_->VertexBuffer(std::move(data));
     }
     const float* Mesh::VertexDataPtr(uint32_t index, uint32_t attrib_index) const
     {
@@ -550,13 +562,17 @@ namespace AIHoloImager
         return impl_->VertexDataPtr(index, attrib_index);
     }
 
-    std::span<const uint32_t> Mesh::Indices() const noexcept
+    std::span<const uint32_t> Mesh::IndexBuffer() const noexcept
     {
-        return impl_->Indices();
+        return impl_->IndexBuffer();
     }
-    void Mesh::Indices(std::span<const uint32_t> inds)
+    std::span<uint32_t> Mesh::IndexBuffer() noexcept
     {
-        impl_->Indices(std::move(inds));
+        return impl_->IndexBuffer();
+    }
+    void Mesh::IndexBuffer(std::span<const uint32_t> data)
+    {
+        impl_->IndexBuffer(std::move(data));
     }
     void Mesh::ResizeIndices(uint32_t num)
     {
@@ -811,7 +827,7 @@ namespace AIHoloImager
             }
         }
 
-        ai_mesh.mNumFaces = static_cast<uint32_t>(mesh.Indices().size() / 3);
+        ai_mesh.mNumFaces = static_cast<uint32_t>(mesh.IndexBuffer().size() / 3);
         ai_mesh.mFaces = new aiFace[ai_mesh.mNumFaces];
         for (uint32_t j = 0; j < ai_mesh.mNumFaces; ++j)
         {

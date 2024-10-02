@@ -131,7 +131,7 @@ namespace AIHoloImager
                 vertices_[i].pos = Eigen::Vector3d(pos.x, pos.y, pos.z);
             }
 
-            triangles_.resize(input_mesh.Indices().size() / 3);
+            triangles_.resize(input_mesh.IndexBuffer().size() / 3);
             for (uint32_t i = 0; i < static_cast<uint32_t>(triangles_.size()); ++i)
             {
                 auto& tri = triangles_[i];

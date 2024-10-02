@@ -443,8 +443,11 @@ namespace AIHoloImager
             }
         }
 
-        std::vector<uint32_t> edges_offsets(num_non_empty_cubes);
-        const uint32_t num_non_empty_edges = PrefixSum(edges_offsets, non_empty_num_vertices);
+        std::vector<uint32_t> edge_offsets(num_non_empty_cubes);
+        const uint32_t num_non_empty_edges = PrefixSum(edge_offsets, non_empty_num_vertices);
+
+        std::vector<uint32_t> index_offsets(num_non_empty_cubes);
+        const uint32_t num_non_empty_indices = PrefixSum(index_offsets, non_empty_num_indices);
 
         std::vector<XMUINT2> non_empty_edges(num_non_empty_edges);
         for (uint32_t i = 0; i < num_non_empty_cubes; ++i)
@@ -454,7 +457,7 @@ namespace AIHoloImager
             const uint32_t cube_index = non_empty_cube_indices[i];
             const uint32_t edges = EdgeTable[cube_index];
 
-            uint32_t offset = edges_offsets[i];
+            uint32_t offset = edge_offsets[i];
             for (const uint32_t e : OwnedEdges)
             {
                 if (edges & (1U << e))
@@ -499,7 +502,12 @@ namespace AIHoloImager
             }
         }
 
-        std::vector<XMFLOAT3> mesh_vertices(num_non_empty_edges);
+        const VertexAttrib pos_only_vertex_attribs[] = {
+            {VertexAttrib::Semantic::Position, 0, 3},
+        };
+        Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_non_empty_edges, num_non_empty_indices);
+
+        auto mesh_vertices = mesh.VertexBuffer();
         for (uint32_t ei = 0; ei < num_non_empty_edges; ++ei)
         {
             const uint32_t cube_id = non_empty_cube_ids[non_empty_edges[ei].x];
@@ -524,7 +532,7 @@ namespace AIHoloImager
                 sdf[calc_offset(i + 0, j + 1, k + 1)],
             };
 
-            XMFLOAT3& inter_p = mesh_vertices[ei];
+            XMFLOAT3& inter_p = *reinterpret_cast<XMFLOAT3*>(&mesh_vertices[ei * 3]);
             switch (edge_id)
             {
             case 0:
@@ -568,10 +576,7 @@ namespace AIHoloImager
             }
         }
 
-        std::vector<uint32_t> index_offsets(num_non_empty_cubes);
-        const uint32_t num_non_empty_indices = PrefixSum(index_offsets, non_empty_num_indices);
-
-        std::vector<uint32_t> mesh_indices(num_non_empty_indices);
+        auto mesh_indices = mesh.IndexBuffer();
         for (uint32_t i = 0; i < num_non_empty_cubes; ++i)
         {
             const auto [x, y, z] = decompose_xyz(non_empty_cube_ids[i]);
@@ -580,7 +585,7 @@ namespace AIHoloImager
 
             uint32_t indices[12]{};
 
-            uint32_t vertex_index = edges_offsets[i];
+            uint32_t vertex_index = edge_offsets[i];
             for (const uint32_t e : OwnedEdges)
             {
                 if (edges & (1U << e))
@@ -611,7 +616,7 @@ namespace AIHoloImager
                     const uint32_t dx_cube_index = non_empty_cube_indices[dx_ci];
                     const uint32_t dx_edges = EdgeTable[dx_cube_index];
 
-                    uint32_t dx_vertex_index = edges_offsets[dx_ci];
+                    uint32_t dx_vertex_index = edge_offsets[dx_ci];
                     if (dx_edges & (1U << 0))
                     {
                         ++dx_vertex_index;
@@ -650,7 +655,7 @@ namespace AIHoloImager
                     const uint32_t dy_cube_index = non_empty_cube_indices[dy_ci];
                     const uint32_t dy_edges = EdgeTable[dy_cube_index];
 
-                    uint32_t dy_vertex_index = edges_offsets[dy_ci];
+                    uint32_t dy_vertex_index = edge_offsets[dy_ci];
                     if (dy_edges & (1U << 0))
                     {
                         indices[2] = dy_vertex_index;
@@ -689,7 +694,7 @@ namespace AIHoloImager
                     const uint32_t dz_cube_index = non_empty_cube_indices[dz_ci];
                     const uint32_t dz_edges = EdgeTable[dz_cube_index];
 
-                    uint32_t dz_vertex_index = edges_offsets[dz_ci];
+                    uint32_t dz_vertex_index = edge_offsets[dz_ci];
                     if (dz_edges & (1U << 0))
                     {
                         indices[4] = dz_vertex_index;
@@ -717,7 +722,7 @@ namespace AIHoloImager
                     const uint32_t dy_dz_edges = EdgeTable[dy_dz_cube_index];
                     if (dy_dz_edges & (1U << 0))
                     {
-                        indices[6] = edges_offsets[dy_dz_ci];
+                        indices[6] = edge_offsets[dy_dz_ci];
                     }
                 }
             }
@@ -731,7 +736,7 @@ namespace AIHoloImager
                     const uint32_t dx_dz_edges = EdgeTable[dx_dz_cube_index];
                     if (dx_dz_edges & (1U << 3))
                     {
-                        indices[5] = edges_offsets[dx_dz_ci] + ((dx_dz_edges & (1U << 0)) ? 1 : 0);
+                        indices[5] = edge_offsets[dx_dz_ci] + ((dx_dz_edges & (1U << 0)) ? 1 : 0);
                     }
                 }
             }
@@ -745,7 +750,7 @@ namespace AIHoloImager
                     const uint32_t dx_dy_edges = EdgeTable[dx_dy_cube_index];
                     if (dx_dy_edges & (1U << 8))
                     {
-                        indices[10] = edges_offsets[dx_dy_ci] + ((dx_dy_edges & (1U << 0)) ? 1 : 0) + ((dx_dy_edges & (1U << 3)) ? 1 : 0);
+                        indices[10] = edge_offsets[dx_dy_ci] + ((dx_dy_edges & (1U << 0)) ? 1 : 0) + ((dx_dy_edges & (1U << 3)) ? 1 : 0);
                     }
                 }
             }
@@ -757,14 +762,6 @@ namespace AIHoloImager
                 mesh_indices[offset + m] = indices[triangle_table_row[m]];
             }
         }
-
-        const VertexAttrib pos_only_vertex_attribs[] = {
-            {VertexAttrib::Semantic::Position, 0, 3},
-        };
-        Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_non_empty_edges, num_non_empty_indices);
-
-        mesh.VertexBuffer(&mesh_vertices[0].x);
-        mesh.Indices(mesh_indices);
 
         return mesh;
     }

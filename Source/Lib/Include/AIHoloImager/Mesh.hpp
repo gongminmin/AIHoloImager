@@ -85,8 +85,9 @@ namespace AIHoloImager
         uint32_t NumVertices() const noexcept;
         void ResizeVertices(uint32_t num);
 
-        const float* VertexBuffer() const noexcept;
-        void VertexBuffer(const float* data);
+        std::span<const float> VertexBuffer() const noexcept;
+        std::span<float> VertexBuffer() noexcept;
+        void VertexBuffer(std::span<const float> data);
         const float* VertexDataPtr(uint32_t index, uint32_t attrib_index) const;
         float* VertexDataPtr(uint32_t index, uint32_t attrib_index);
 
@@ -101,8 +102,9 @@ namespace AIHoloImager
             return *reinterpret_cast<T*>(this->VertexDataPtr(index, attrib_index));
         }
 
-        std::span<const uint32_t> Indices() const noexcept;
-        void Indices(std::span<const uint32_t> inds);
+        std::span<const uint32_t> IndexBuffer() const noexcept;
+        std::span<uint32_t> IndexBuffer() noexcept;
+        void IndexBuffer(std::span<const uint32_t> inds);
         void ResizeIndices(uint32_t num);
         uint32_t Index(uint32_t index) const;
         uint32_t& Index(uint32_t index);

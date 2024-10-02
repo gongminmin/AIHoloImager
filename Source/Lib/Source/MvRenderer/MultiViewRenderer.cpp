@@ -161,14 +161,14 @@ namespace AIHoloImager
         {
             assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
 
-            GpuBuffer vb(gpu_system_, mesh.NumVertices() * sizeof(VertexFormat), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
-                D3D12_RESOURCE_STATE_COMMON, L"vb");
-            memcpy(vb.Map(), mesh.VertexBuffer(), vb.Size());
+            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
+            memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
             vb.Unmap(D3D12_RANGE{0, vb.Size()});
 
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
+            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"ib");
-            memcpy(ib.Map(), mesh.Indices().data(), ib.Size());
+            memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
             ib.Unmap(D3D12_RANGE{0, ib.Size()});
 
             GpuTexture2D albedo_gpu_tex;
@@ -189,7 +189,7 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
-            const uint32_t num_indices = static_cast<uint32_t>(mesh.Indices().size());
+            const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);

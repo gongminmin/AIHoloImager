@@ -41,11 +41,11 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/Gpu/GpuUtil.hpp
-    Source/MeshGen/Shader/DilateCs.hlsl
-    Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
+    Source/MeshGen/Shader/DilateCs.hlsl
+    Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/MarchingCubes.cpp
     Source/MeshGen/MarchingCubes.hpp
     Source/MeshGen/MeshGenerator.cpp

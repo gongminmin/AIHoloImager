@@ -126,14 +126,14 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
-            GpuBuffer mesh_vb(gpu_system_, mesh.NumVertices() * sizeof(VertexFormat), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
-                D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
-            memcpy(mesh_vb.Map(), mesh.VertexBuffer(), mesh_vb.Size());
+            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
+            memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
             mesh_vb.Unmap(D3D12_RANGE{0, mesh_vb.Size()});
 
-            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.Indices().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
+            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_ib");
-            memcpy(mesh_ib.Map(), mesh.Indices().data(), mesh_ib.Size());
+            memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
             const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
