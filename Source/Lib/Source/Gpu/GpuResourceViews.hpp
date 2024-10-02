@@ -115,6 +115,10 @@ namespace AIHoloImager
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        // Typed buffer
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format);
+        // Structured buffer
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size);
         GpuUnorderedAccessView(
             GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);

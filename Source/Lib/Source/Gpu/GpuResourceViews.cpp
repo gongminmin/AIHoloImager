@@ -242,6 +242,27 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
     }
 
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, DXGI_FORMAT format)
+        : GpuUnorderedAccessView(gpu_system, buffer, 0, buffer.Size() / FormatSize(format), format)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(
+        GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), buffer_(&buffer)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
+        uav_desc.Format = format;
+        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uav_desc.Buffer.FirstElement = first_element;
+        uav_desc.Buffer.NumElements = num_elements;
+        uav_desc.Buffer.StructureByteStride = 0;
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(buffer.NativeBuffer(), nullptr, &uav_desc, cpu_handle_);
+    }
+
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)
         : GpuUnorderedAccessView(gpu_system, buffer, 0, buffer.Size() / element_size, element_size)
     {

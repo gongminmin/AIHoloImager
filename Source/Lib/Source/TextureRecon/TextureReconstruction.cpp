@@ -419,15 +419,15 @@ namespace AIHoloImager
                     *reinterpret_cast<uint32_t*>(counter_upload_buff.MappedData()) = 0;
                     cmd_list.Copy(counter_buff, counter_upload_buff);
                 }
-                GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, sizeof(uint32_t));
+                GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, DXGI_FORMAT_R32_UINT);
 
                 const uint32_t max_pos_size = texture_size * texture_size;
                 uv_buff = GpuBuffer(gpu_system_, max_pos_size * sizeof(XMUSHORT2), D3D12_HEAP_TYPE_DEFAULT,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"uv_buff");
-                GpuUnorderedAccessView uv_uav(gpu_system_, uv_buff, sizeof(XMUSHORT2));
+                GpuUnorderedAccessView uv_uav(gpu_system_, uv_buff, DXGI_FORMAT_R32_UINT);
                 pos_buff = GpuBuffer(gpu_system_, max_pos_size * sizeof(XMFLOAT3), D3D12_HEAP_TYPE_DEFAULT,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"pos_buff");
-                GpuUnorderedAccessView pos_uav(gpu_system_, pos_buff, sizeof(float));
+                GpuUnorderedAccessView pos_uav(gpu_system_, pos_buff, DXGI_FORMAT_R32_FLOAT);
 
                 const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
                 const GpuShaderResourceView* srvs[] = {&accum_color_srv, &flatten_pos_srv};
