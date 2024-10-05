@@ -63,6 +63,7 @@ namespace AIHoloImager
 
         void Clear(GpuRenderTargetView& rtv, const float color[4]);
         void Clear(GpuUnorderedAccessView& uav, const float color[4]);
+        void Clear(GpuUnorderedAccessView& uav, const uint32_t color[4]);
         void ClearDepth(GpuDepthStencilView& dsv, float depth);
         void ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil);
         void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
@@ -73,6 +74,7 @@ namespace AIHoloImager
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);
+        void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);
         void Copy(GpuTexture2D& dest, const GpuTexture2D& src);
 
         void Close();

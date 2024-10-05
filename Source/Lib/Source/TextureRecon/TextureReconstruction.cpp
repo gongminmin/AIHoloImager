@@ -414,11 +414,6 @@ namespace AIHoloImager
 
                 counter_buff = GpuBuffer(gpu_system_, sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                     D3D12_RESOURCE_STATE_COMMON, L"counter_buff");
-                {
-                    GpuUploadBuffer counter_upload_buff(gpu_system_, counter_buff.Size(), L"counter_upload_buff");
-                    *reinterpret_cast<uint32_t*>(counter_upload_buff.MappedData()) = 0;
-                    cmd_list.Copy(counter_buff, counter_upload_buff);
-                }
                 GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, DXGI_FORMAT_R32_UINT);
 
                 const uint32_t max_pos_size = texture_size * texture_size;
@@ -432,6 +427,9 @@ namespace AIHoloImager
                 const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
                 const GpuShaderResourceView* srvs[] = {&accum_color_srv, &flatten_pos_srv};
                 GpuUnorderedAccessView* uavs[] = {&color_uav, &counter_uav, &uv_uav, &pos_uav};
+
+                const uint32_t zeros[] = {0, 0, 0, 0};
+                cmd_list.Clear(counter_uav, zeros);
 
                 const GpuCommandList::ShaderBinding cs_shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(

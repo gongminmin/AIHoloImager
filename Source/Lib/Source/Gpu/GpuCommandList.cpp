@@ -158,6 +158,38 @@ namespace AIHoloImager
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
 
+    void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const uint32_t color[4])
+    {
+        ID3D12Resource* resource = nullptr;
+        if (auto* tex = uav.Texture())
+        {
+            resource = tex->NativeTexture();
+        }
+        else if (auto* buff = uav.Buffer())
+        {
+            resource = buff->NativeBuffer();
+        }
+
+        if (!resource)
+        {
+            return;
+        }
+
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        uav.Transition(*this);
+
+        GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
+        uav.CopyTo(uav_desc_block.CpuHandle());
+
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
+        d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+
+        d3d12_cmd_list->ClearUnorderedAccessViewUint(uav_desc_block.GpuHandle(), uav.CpuHandle(), resource, color, 0, nullptr);
+
+        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
+    }
+
     void GpuCommandList::ClearDepth(GpuDepthStencilView& dsv, float depth)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
@@ -434,6 +466,16 @@ namespace AIHoloImager
         dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
 
         d3d12_cmd_list->CopyResource(dest.NativeBuffer(), src.NativeBuffer());
+    }
+
+    void GpuCommandList::Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size)
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        d3d12_cmd_list->CopyBufferRegion(dest.NativeBuffer(), dst_offset, src.NativeBuffer(), src_offset, src_size);
     }
 
     void GpuCommandList::Copy(GpuTexture2D& dest, const GpuTexture2D& src)
