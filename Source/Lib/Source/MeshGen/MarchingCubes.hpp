@@ -6,8 +6,25 @@
 #include <span>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {
-    Mesh MarchingCubes(std::span<const float> sdf, uint32_t grid_res, float isovalue);
+    class MarchingCubes
+    {
+        DISALLOW_COPY_AND_ASSIGN(MarchingCubes);
+
+    public:
+        MarchingCubes();
+        MarchingCubes(MarchingCubes&& other) noexcept;
+        ~MarchingCubes() noexcept;
+
+        MarchingCubes& operator=(MarchingCubes&& other) noexcept;
+
+        Mesh Generate(std::span<const float> sdf, uint32_t grid_res, float isovalue);
+
+    private:
+        class Impl;
+        std::unique_ptr<Impl> impl_;
+    };
 } // namespace AIHoloImager

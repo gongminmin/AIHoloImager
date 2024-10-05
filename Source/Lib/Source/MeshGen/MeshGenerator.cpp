@@ -209,7 +209,7 @@ namespace AIHoloImager
                 const auto py_sdf = python_system_.CallObject(*mesh_generator_query_sdf_method_);
                 const auto sdf = python_system_.ToSpan<const float>(*py_sdf);
 
-                pos_only_mesh = MarchingCubes(sdf, GridRes, 0);
+                pos_only_mesh = marching_cubes_.Generate(sdf, GridRes, 0);
 
                 const uint32_t pos_attrib_index = pos_only_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
                 for (uint32_t i = 0; i < pos_only_mesh.NumVertices(); ++i)
@@ -574,6 +574,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_query_sdf_method_;
         PyObjectPtr mesh_generator_query_colors_method_;
 
+        MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
 
         struct MergeTextureConstantBuffer
