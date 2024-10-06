@@ -152,9 +152,9 @@ namespace AIHoloImager
         return desc_.Flags;
     }
 
-    void GpuTexture2D::Reset() noexcept
+    void GpuTexture2D::Reset()
     {
-        resource_.Object() = nullptr;
+        resource_.Reset();
         desc_ = {};
         curr_states_.clear();
     }

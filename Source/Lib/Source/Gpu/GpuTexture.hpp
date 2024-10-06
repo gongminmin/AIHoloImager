@@ -55,7 +55,7 @@ namespace AIHoloImager
         DXGI_FORMAT Format() const noexcept;
         D3D12_RESOURCE_FLAGS Flags() const noexcept;
 
-        void Reset() noexcept;
+        void Reset();
 
         D3D12_RESOURCE_STATES State(uint32_t sub_resource) const noexcept;
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, D3D12_RESOURCE_STATES target_state) const;

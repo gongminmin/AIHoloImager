@@ -44,7 +44,7 @@ namespace AIHoloImager
         void Unmap(const D3D12_RANGE& write_range);
         void Unmap();
 
-        virtual void Reset() noexcept;
+        virtual void Reset();
 
         D3D12_RESOURCE_STATES State() const noexcept;
         void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const;
@@ -69,7 +69,7 @@ namespace AIHoloImager
 
         GpuUploadBuffer Share() const;
 
-        void Reset() noexcept override;
+        void Reset() override;
 
         void* MappedData() noexcept;
 
@@ -96,7 +96,7 @@ namespace AIHoloImager
 
         GpuReadbackBuffer Share() const;
 
-        void Reset() noexcept override;
+        void Reset() override;
 
         void* MappedData() noexcept;
         const void* MappedData() const noexcept;

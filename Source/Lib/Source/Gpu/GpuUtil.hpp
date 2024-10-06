@@ -76,6 +76,13 @@ namespace AIHoloImager
             return object_.Get();
         }
 
+        void Reset()
+        {
+            this->Recycle();
+            gpu_system_ = nullptr;
+            object_ = nullptr;
+        }
+
     private:
         void Recycle()
         {

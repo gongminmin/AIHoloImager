@@ -105,9 +105,9 @@ namespace AIHoloImager
         this->Unmap(D3D12_RANGE{0, 0});
     }
 
-    void GpuBuffer::Reset() noexcept
+    void GpuBuffer::Reset()
     {
-        resource_.Object() = nullptr;
+        resource_.Reset();
         desc_ = {};
         heap_type_ = {};
         curr_state_ = {};
@@ -180,7 +180,7 @@ namespace AIHoloImager
         return buffer;
     }
 
-    void GpuUploadBuffer::Reset() noexcept
+    void GpuUploadBuffer::Reset()
     {
         if (resource_)
         {
@@ -232,7 +232,7 @@ namespace AIHoloImager
         return buffer;
     }
 
-    void GpuReadbackBuffer::Reset() noexcept
+    void GpuReadbackBuffer::Reset()
     {
         if (resource_)
         {
