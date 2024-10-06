@@ -176,7 +176,7 @@ namespace AIHoloImager
                 const auto& albedo_tex = mesh.AlbedoTexture();
                 albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
                     D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }
