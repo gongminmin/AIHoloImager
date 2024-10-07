@@ -4,12 +4,16 @@
 #include "MarchingCubes.hpp"
 
 #include <memory>
-#include <tuple>
-#include <vector>
 
-#include <DirectXMath.h>
+#include "Gpu/GpuBufferHelper.hpp"
+#include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuShader.hpp"
+#include "PrefixSumScanner.hpp"
 
-#include "Util/ErrorHandling.hpp"
+#include "CompiledShader/CalcCubeIndicesCs.h"
+#include "CompiledShader/GenVerticesIndicesCs.h"
+#include "CompiledShader/ProcessNonEmptyCubesCs.h"
 
 using namespace DirectX;
 
@@ -290,45 +294,6 @@ namespace
         {0},
     };
     static_assert(std::size(TriangleTable) == 256);
-
-    XMFLOAT3 InterpolateVertex(const XMFLOAT3& p0, const XMFLOAT3& p1, float v0, float v1, float isovalue)
-    {
-        const XMVECTOR vp0 = XMLoadFloat3(&p0);
-        const XMVECTOR vp1 = XMLoadFloat3(&p1);
-
-        XMVECTOR inter_p;
-        if (v1 == v0)
-        {
-            inter_p = (vp0 + vp1) / 2;
-        }
-        else
-        {
-            inter_p = XMVectorLerp(vp0, vp1, (isovalue - v0) / (v1 - v0));
-        }
-
-        XMFLOAT3 ret;
-        XMStoreFloat3(&ret, inter_p);
-
-        return ret;
-    }
-
-    void PrefixSum(std::span<uint32_t> output, std::span<const uint32_t> input)
-    {
-        output[0] = 0;
-        for (size_t i = 0; i < input.size(); ++i)
-        {
-            output[i + 1] = input[i] + output[i];
-        }
-    }
-    void PrefixSum(std::span<XMUINT2> output, std::span<const XMUINT2> input)
-    {
-        output[0] = XMUINT2(0, 0);
-        for (size_t i = 0; i < input.size(); ++i)
-        {
-            output[i + 1].x = input[i].x + output[i].x;
-            output[i + 1].y = input[i].y + output[i].y;
-        }
-    }
 } // namespace
 
 namespace AIHoloImager
@@ -336,6 +301,56 @@ namespace AIHoloImager
     class MarchingCubes::Impl
     {
     public:
+        Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system), prefix_sum_scanner_(gpu_system_)
+        {
+            edge_table_buff_ = GpuBuffer(gpu_system_, std::size(EdgeTable) * sizeof(uint32_t), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"edge_table_buff");
+            {
+                uint32_t* edge_table_buff_ptr = reinterpret_cast<uint32_t*>(edge_table_buff_.Map());
+                for (size_t i = 0; i < std::size(EdgeTable); ++i)
+                {
+                    edge_table_buff_ptr[i] = EdgeTable[i];
+                }
+                edge_table_buff_.Unmap(D3D12_RANGE{0, edge_table_buff_.Size()});
+            }
+            edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R32_UINT);
+
+            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint32_t), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"triangle_table_buff");
+            {
+                uint32_t* triangle_table_buff_ptr = reinterpret_cast<uint32_t*>(triangle_table_buff_.Map());
+                for (size_t i = 0; i < std::size(TriangleTable); ++i)
+                {
+                    for (uint32_t j = 0; j < 16; ++j)
+                    {
+                        triangle_table_buff_ptr[i * 16 + j] = TriangleTable[i][j];
+                    }
+                }
+                triangle_table_buff_.Unmap(D3D12_RANGE{0, triangle_table_buff_.Size()});
+            }
+            triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, DXGI_FORMAT_R32_UINT);
+
+            {
+                calc_cube_indices_cb_ = ConstantBuffer<CalcCubeIndicesConstantBuffer>(gpu_system_, 1, L"calc_cube_indices_cb_");
+
+                const ShaderInfo shader = {CalcCubeIndicesCs_shader, 1, 2, 1};
+                calc_cube_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
+                process_non_empty_cubes_cb_ =
+                    ConstantBuffer<ProcessNonEmptyCubesConstantBuffer>(gpu_system_, 1, L"process_non_empty_cubes_cb_");
+
+                const ShaderInfo shader = {ProcessNonEmptyCubesCs_shader, 1, 4, 3};
+                process_non_empty_cubes_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
+                gen_vertices_indices_cb_ = ConstantBuffer<GenVerticesIndicesConstantBuffer>(gpu_system_, 1, L"gen_vertices_indices_cb_");
+
+                const ShaderInfo shader = {GenVerticesIndicesCs_shader, 1, 7, 2};
+                gen_vertices_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+        }
+
         Mesh Generate(std::span<const float> sdf, uint32_t grid_res, float isovalue)
         {
             assert(grid_res >= 2);
@@ -343,246 +358,194 @@ namespace AIHoloImager
             const uint32_t size = grid_res + 1;
             assert(sdf.size() == size * size * size);
 
-            const auto calc_offset = [size](uint32_t x, uint32_t y, uint32_t z) {
-                x = std::min(x, size - 1);
-                y = std::min(y, size - 1);
-                z = std::min(z, size - 1);
-                return (x * size + y) * size + z;
-            };
-            const auto decompose_xyz = [size](uint32_t index) {
-                const uint32_t xy = index / size;
-                const uint32_t z = index - xy * size;
-                const uint32_t x = xy / size;
-                const uint32_t y = xy - x * size;
-                return std::make_tuple(x, y, z);
-            };
-
-            constexpr uint32_t OwnedEdges[] = {0, 3, 8};
-
             const uint32_t total_cubes = size * size * size;
 
-            std::vector<uint32_t> non_empty_cube_flags(total_cubes);
-            std::vector<uint32_t> total_cube_indices(total_cubes);
-            for (uint32_t cid = 0; cid < total_cubes; ++cid)
+            GpuBuffer sdf_buff(gpu_system_, static_cast<uint32_t>(sdf.size() * sizeof(float)), D3D12_HEAP_TYPE_UPLOAD,
+                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"sdf_buff");
+            GpuShaderResourceView sdf_srv(gpu_system_, sdf_buff, DXGI_FORMAT_R32_FLOAT);
             {
-                const auto [x, y, z] = decompose_xyz(cid);
-                const float dist[] = {
-                    sdf[calc_offset(x + 0, y + 0, z + 0)],
-                    sdf[calc_offset(x + 1, y + 0, z + 0)],
-                    sdf[calc_offset(x + 1, y + 1, z + 0)],
-                    sdf[calc_offset(x + 0, y + 1, z + 0)],
-                    sdf[calc_offset(x + 0, y + 0, z + 1)],
-                    sdf[calc_offset(x + 1, y + 0, z + 1)],
-                    sdf[calc_offset(x + 1, y + 1, z + 1)],
-                    sdf[calc_offset(x + 0, y + 1, z + 1)],
-                };
-
-                uint32_t cube_index = 0;
-                for (uint32_t m = 0; m < std::size(dist); ++m)
-                {
-                    if (dist[m] <= isovalue)
-                    {
-                        cube_index |= 1U << m;
-                    }
-                }
-
-                total_cube_indices[cid] = cube_index;
-                non_empty_cube_flags[cid] = (EdgeTable[cube_index] != 0);
+                std::memcpy(sdf_buff.Map(), sdf.data(), sdf_buff.Size());
+                sdf_buff.Unmap(D3D12_RANGE{0, sdf_buff.Size()});
             }
 
-            std::vector<uint32_t> non_empty_cube_offsets(total_cubes + 1);
-            PrefixSum(non_empty_cube_offsets, non_empty_cube_flags);
-            const uint32_t num_non_empty_cubes = non_empty_cube_offsets.back();
-            non_empty_cube_flags.clear();
-            non_empty_cube_flags.shrink_to_fit();
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            std::vector<uint32_t> non_empty_cube_ids(num_non_empty_cubes);
-            std::vector<uint32_t> non_empty_cube_indices(num_non_empty_cubes);
-            std::vector<XMUINT2> non_empty_num_vertices_indices(num_non_empty_cubes);
-            for (uint32_t cid = 0; cid < total_cubes; ++cid)
+            GpuBuffer non_empty_cube_flags_buff(gpu_system_, total_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_flags_buff");
             {
-                if (non_empty_cube_offsets[cid] != non_empty_cube_offsets[cid + 1])
-                {
-                    const uint32_t offset = non_empty_cube_offsets[cid];
-                    non_empty_cube_ids[offset] = cid;
+                calc_cube_indices_cb_->size = size;
+                calc_cube_indices_cb_->total_cubes = total_cubes;
+                calc_cube_indices_cb_->isovalue = isovalue;
+                calc_cube_indices_cb_.UploadToGpu();
 
-                    const uint32_t cube_index = total_cube_indices[cid];
-                    non_empty_cube_indices[offset] = cube_index;
-                    const uint32_t cube_num_indices = TriangleTable[cube_index][0];
+                GpuUnorderedAccessView non_empty_cube_flags_uav(gpu_system_, non_empty_cube_flags_buff, DXGI_FORMAT_R32_UINT);
 
-                    const uint32_t edges = EdgeTable[cube_index];
-                    uint32_t cube_num_vertices = 0;
-                    if (edges != 0)
-                    {
-                        for (const uint32_t e : OwnedEdges)
-                        {
-                            if (edges & (1U << e))
-                            {
-                                ++cube_num_vertices;
-                            }
-                        }
-                    }
+                constexpr uint32_t BlockDim = 256;
 
-                    non_empty_num_vertices_indices[offset] = XMUINT2(cube_num_vertices, cube_num_indices);
-                }
+                const GeneralConstantBuffer* cbs[] = {&calc_cube_indices_cb_};
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &sdf_srv};
+                GpuUnorderedAccessView* uavs[] = {&non_empty_cube_flags_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
-            total_cube_indices.clear();
-            total_cube_indices.shrink_to_fit();
 
-            std::vector<XMUINT2> vertex_index_offsets(num_non_empty_cubes + 1);
-            PrefixSum(vertex_index_offsets, non_empty_num_vertices_indices);
-            const auto [num_non_empty_edges, num_non_empty_indices] = vertex_index_offsets.back();
-            non_empty_num_vertices_indices.clear();
-            non_empty_num_vertices_indices.shrink_to_fit();
+            GpuBuffer non_empty_cube_offsets_buff(gpu_system_, (total_cubes + 1) * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_offsets_buff");
+            GpuShaderResourceView non_empty_cube_offsets_srv(gpu_system_, non_empty_cube_offsets_buff, DXGI_FORMAT_R32_UINT);
+            prefix_sum_scanner_.Scan(cmd_list, non_empty_cube_flags_buff, non_empty_cube_offsets_buff, total_cubes, DXGI_FORMAT_R32_UINT);
+            non_empty_cube_flags_buff.Reset();
 
-            std::vector<uint32_t> non_empty_edges(num_non_empty_edges);
-            for (uint32_t i = 0; i < num_non_empty_cubes; ++i)
+            GpuReadbackBuffer num_non_empty_cubes_cpu_buff(gpu_system_, sizeof(uint32_t), L"num_non_empty_cubes_cpu_buff");
+            cmd_list.Copy(num_non_empty_cubes_cpu_buff, 0, non_empty_cube_offsets_buff, total_cubes * sizeof(uint32_t), sizeof(uint32_t));
+
+            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.WaitForGpu();
+
+            const uint32_t num_non_empty_cubes = *num_non_empty_cubes_cpu_buff.MappedData<uint32_t>();
+            num_non_empty_cubes_cpu_buff.Reset();
+            if (num_non_empty_cubes == 0)
             {
-                const uint32_t cube_id = non_empty_cube_ids[i];
-                const auto [x, y, z] = decompose_xyz(cube_id);
-                const uint32_t cube_index = non_empty_cube_indices[i];
-                const uint32_t edges = EdgeTable[cube_index];
-
-                uint32_t offset = vertex_index_offsets[i].x;
-                for (const uint32_t e : OwnedEdges)
-                {
-                    if (edges & (1U << e))
-                    {
-                        non_empty_edges[offset] = (i << 4) | e;
-                        ++offset;
-                    }
-                }
+                return Mesh();
             }
+
+            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            GpuBuffer non_empty_cube_ids_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_ids_buff");
+            GpuBuffer non_empty_cube_indices_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_indices_buff");
+            GpuBuffer non_empty_num_vertices_indices_buff(gpu_system_, num_non_empty_cubes * sizeof(XMUINT2), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_num_vertices_indices_buff");
+            {
+                process_non_empty_cubes_cb_->size = size;
+                process_non_empty_cubes_cb_->total_cubes = total_cubes;
+                process_non_empty_cubes_cb_->isovalue = isovalue;
+                process_non_empty_cubes_cb_.UploadToGpu();
+
+                GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system_, non_empty_cube_ids_buff, DXGI_FORMAT_R32_UINT);
+                GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system_, non_empty_cube_indices_buff, DXGI_FORMAT_R32_UINT);
+                GpuUnorderedAccessView non_empty_num_vertices_indices_uav(
+                    gpu_system_, non_empty_num_vertices_indices_buff, DXGI_FORMAT_R32G32_UINT);
+
+                constexpr uint32_t BlockDim = 256;
+
+                const GeneralConstantBuffer* cbs[] = {&process_non_empty_cubes_cb_};
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &non_empty_cube_offsets_srv, &sdf_srv};
+                GpuUnorderedAccessView* uavs[] = {
+                    &non_empty_cube_ids_uav, &non_empty_cube_indices_uav, &non_empty_num_vertices_indices_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(process_non_empty_cubes_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
+            }
+
+            GpuBuffer vertex_index_offsets_buff(gpu_system_, (num_non_empty_cubes + 1) * sizeof(XMUINT2), D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"index_offsets_buff");
+            prefix_sum_scanner_.Scan(
+                cmd_list, non_empty_num_vertices_indices_buff, vertex_index_offsets_buff, num_non_empty_cubes, DXGI_FORMAT_R32G32_UINT);
+            non_empty_num_vertices_indices_buff.Reset();
+
+            GpuReadbackBuffer num_non_empty_vertices_indices_cpu_buff(
+                gpu_system_, sizeof(XMUINT2), L"num_non_empty_vertices_indices_cpu_buff");
+            cmd_list.Copy(num_non_empty_vertices_indices_cpu_buff, 0, vertex_index_offsets_buff, num_non_empty_cubes * sizeof(XMUINT2),
+                sizeof(XMUINT2));
+
+            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.WaitForGpu();
+
+            const auto [num_non_empty_edges, num_non_empty_indices] = *num_non_empty_vertices_indices_cpu_buff.MappedData<XMUINT2>();
+            num_non_empty_vertices_indices_cpu_buff.Reset();
 
             const VertexAttrib pos_only_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},
             };
             Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_non_empty_edges, num_non_empty_indices);
 
-            auto mesh_vertices = mesh.VertexBuffer();
-            for (uint32_t ei = 0; ei < num_non_empty_edges; ++ei)
+            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_non_empty_edges * 3 * sizeof(float), L"mesh_vertices_cpu_buff");
+            GpuReadbackBuffer mesh_indices_cpu_buff(gpu_system_, num_non_empty_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
             {
-                const uint32_t cube_id = non_empty_cube_ids[non_empty_edges[ei] >> 4];
-                const auto [i, j, k] = decompose_xyz(cube_id);
-                const uint32_t edge_id = non_empty_edges[ei] & 0xF;
+                gen_vertices_indices_cb_->size = size;
+                gen_vertices_indices_cb_->num_non_empty_cubes = num_non_empty_cubes;
+                gen_vertices_indices_cb_->isovalue = isovalue;
+                gen_vertices_indices_cb_.UploadToGpu();
 
-                const float x = static_cast<float>(i);
-                const float y = static_cast<float>(j);
-                const float z = static_cast<float>(k);
-                const float x_dx = x + 1;
-                const float y_dy = y + 1;
-                const float z_dz = z + 1;
+                GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, DXGI_FORMAT_R32_UINT);
+                GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, DXGI_FORMAT_R32_UINT);
+                GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, DXGI_FORMAT_R32G32_UINT);
 
-                const float dist[] = {
-                    sdf[calc_offset(i + 0, j + 0, k + 0)],
-                    sdf[calc_offset(i + 1, j + 0, k + 0)],
-                    0,
-                    sdf[calc_offset(i + 0, j + 1, k + 0)],
-                    sdf[calc_offset(i + 0, j + 0, k + 1)],
-                    0,
-                    0,
-                    0,
-                };
+                GpuBuffer mesh_vertices_buff(gpu_system_, mesh_vertices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_vertices_buff");
+                GpuBuffer mesh_indices_buff(gpu_system_, mesh_indices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_indices_buff");
+                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, DXGI_FORMAT_R32_FLOAT);
+                GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, DXGI_FORMAT_R32_UINT);
 
-                XMFLOAT3& inter_p = *reinterpret_cast<XMFLOAT3*>(&mesh_vertices[ei * 3]);
-                switch (edge_id)
-                {
-                case 0:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y, z), XMFLOAT3(x_dx, y, z), dist[0], dist[1], isovalue);
-                    break;
+                constexpr uint32_t BlockDim = 256;
 
-                case 3:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y_dy, z), XMFLOAT3(x, y, z), dist[3], dist[0], isovalue);
-                    break;
+                const GeneralConstantBuffer* cbs[] = {&gen_vertices_indices_cb_};
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &sdf_srv, &non_empty_cube_ids_srv,
+                    &non_empty_cube_indices_srv, &non_empty_cube_offsets_srv, &vertex_index_offsets_srv};
+                GpuUnorderedAccessView* uavs[] = {&mesh_vertices_uav, &mesh_indices_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(gen_vertices_indices_pipeline_, DivUp(num_non_empty_cubes, BlockDim), 1, 1, shader_binding);
 
-                case 8:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y, z), XMFLOAT3(x, y, z_dz), dist[0], dist[4], isovalue);
-                    break;
-
-                default:
-                    Unreachable();
-                }
+                cmd_list.Copy(mesh_vertices_cpu_buff, mesh_vertices_buff);
+                cmd_list.Copy(mesh_indices_cpu_buff, mesh_indices_buff);
             }
-            non_empty_edges.clear();
-            non_empty_edges.shrink_to_fit();
+            vertex_index_offsets_buff.Reset();
 
-            auto mesh_indices = mesh.IndexBuffer();
-            for (uint32_t i = 0; i < num_non_empty_cubes; ++i)
-            {
-                const auto [x, y, z] = decompose_xyz(non_empty_cube_ids[i]);
-                const uint32_t cube_index = non_empty_cube_indices[i];
-                const uint32_t edges = EdgeTable[cube_index];
+            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.WaitForGpu();
 
-                uint32_t indices[12]{};
-
-                uint32_t vertex_index = vertex_index_offsets[i].x;
-                for (const uint32_t e : OwnedEdges)
-                {
-                    if (edges & (1U << e))
-                    {
-                        indices[e] = vertex_index;
-                        ++vertex_index;
-                    }
-                }
-
-                constexpr uint32_t CoordBias[][3] = {
-                    {1, 0, 0},
-                    {0, 1, 0},
-                    {0, 0, 1},
-                    {0, 1, 1},
-                    {1, 0, 1},
-                    {1, 1, 0},
-                };
-                constexpr int32_t CorrespondEdges[][3] = {
-                    {-1, 1, 9},
-                    {2, -1, 11},
-                    {4, 7, -1},
-                    {6, -1, -1},
-                    {-1, 5, -1},
-                    {-1, -1, 10},
-                };
-
-                for (uint32_t j = 0; j < std::size(CoordBias); ++j)
-                {
-                    const uint32_t bias_cid = ((x + CoordBias[j][0]) * size + (y + CoordBias[j][1])) * size + (z + CoordBias[j][2]);
-                    if (non_empty_cube_offsets[bias_cid] != non_empty_cube_offsets[bias_cid + 1])
-                    {
-                        const uint32_t bias_ci = non_empty_cube_offsets[bias_cid];
-
-                        const uint32_t bias_cube_index = non_empty_cube_indices[bias_ci];
-                        const uint32_t bias_edges = EdgeTable[bias_cube_index];
-
-                        uint32_t bias_vertex_index = vertex_index_offsets[bias_ci].x;
-                        for (uint32_t ei = 0; ei < std::size(OwnedEdges); ++ei)
-                        {
-                            if (bias_edges & (1U << OwnedEdges[ei]))
-                            {
-                                const int32_t ce = CorrespondEdges[j][ei];
-                                if (ce != -1)
-                                {
-                                    indices[ce] = bias_vertex_index;
-                                }
-                                ++bias_vertex_index;
-                            }
-                        }
-                    }
-                }
-
-                const uint32_t offset = vertex_index_offsets[i].y;
-                const uint8_t* triangle_table_row = &TriangleTable[cube_index][1];
-                for (uint32_t m = 0; m < TriangleTable[cube_index][0]; ++m)
-                {
-                    mesh_indices[offset + m] = indices[triangle_table_row[m]];
-                }
-            }
-            vertex_index_offsets.clear();
-            vertex_index_offsets.shrink_to_fit();
+            std::memcpy(mesh.VertexBuffer().data(), mesh_vertices_cpu_buff.MappedData(), mesh_vertices_cpu_buff.Size());
+            std::memcpy(mesh.IndexBuffer().data(), mesh_indices_cpu_buff.MappedData(), mesh_indices_cpu_buff.Size());
 
             return mesh;
         }
+
+    private:
+        GpuSystem& gpu_system_;
+
+        PrefixSumScanner prefix_sum_scanner_;
+
+        GpuBuffer edge_table_buff_;
+        GpuShaderResourceView edge_table_srv_;
+
+        GpuBuffer triangle_table_buff_;
+        GpuShaderResourceView triangle_table_srv_;
+
+        struct CalcCubeIndicesConstantBuffer
+        {
+            uint32_t size;
+            uint32_t total_cubes;
+            float isovalue;
+            uint32_t padding;
+        };
+        ConstantBuffer<CalcCubeIndicesConstantBuffer> calc_cube_indices_cb_;
+        GpuComputePipeline calc_cube_indices_pipeline_;
+
+        struct ProcessNonEmptyCubesConstantBuffer
+        {
+            uint32_t size;
+            uint32_t total_cubes;
+            float isovalue;
+            uint32_t padding;
+        };
+        ConstantBuffer<ProcessNonEmptyCubesConstantBuffer> process_non_empty_cubes_cb_;
+        GpuComputePipeline process_non_empty_cubes_pipeline_;
+
+        struct GenVerticesIndicesConstantBuffer
+        {
+            uint32_t size;
+            uint32_t num_non_empty_cubes;
+            float isovalue;
+            uint32_t padding;
+        };
+        ConstantBuffer<GenVerticesIndicesConstantBuffer> gen_vertices_indices_cb_;
+        GpuComputePipeline gen_vertices_indices_pipeline_;
     };
 
-    MarchingCubes::MarchingCubes() : impl_(std::make_unique<Impl>())
+    MarchingCubes::MarchingCubes(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
     {
     }
 

@@ -1,0 +1,42 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
+uint CalcOffset(uint3 coord, uint size)
+{
+    coord = min(coord, size - 1);
+    return (coord.x * size + coord.y) * size + coord.z;
+}
+
+uint3 DecomposeCoord(uint index, uint size)
+{
+    const uint xy = index / size;
+    const uint z = index - xy * size;
+    const uint x = xy / size;
+    const uint y = xy - x * size;
+    return uint3(x, y, z);
+};
+
+uint CalcCubeIndex(Buffer<float> sdf, uint3 coord, uint size, float isovalue)
+{
+    const float dist[] = {
+        sdf[CalcOffset(coord + uint3(0, 0, 0), size)],
+        sdf[CalcOffset(coord + uint3(1, 0, 0), size)],
+        sdf[CalcOffset(coord + uint3(1, 1, 0), size)],
+        sdf[CalcOffset(coord + uint3(0, 1, 0), size)],
+        sdf[CalcOffset(coord + uint3(0, 0, 1), size)],
+        sdf[CalcOffset(coord + uint3(1, 0, 1), size)],
+        sdf[CalcOffset(coord + uint3(1, 1, 1), size)],
+        sdf[CalcOffset(coord + uint3(0, 1, 1), size)],
+    };
+
+    uint cube_index = 0;
+    for (uint m = 0; m < sizeof(dist) / sizeof(dist[0]); ++m)
+    {
+        if (dist[m] <= isovalue)
+        {
+            cube_index |= 1U << m;
+        }
+    }
+
+    return cube_index;
+}

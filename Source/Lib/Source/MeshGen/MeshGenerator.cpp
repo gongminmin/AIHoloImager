@@ -28,7 +28,8 @@ namespace AIHoloImager
     {
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), texture_recon_(exe_dir_, gpu_system_)
+            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), marching_cubes_(gpu_system_),
+              texture_recon_(exe_dir_, gpu_system_)
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");

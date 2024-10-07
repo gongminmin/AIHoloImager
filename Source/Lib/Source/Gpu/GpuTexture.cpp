@@ -35,6 +35,11 @@ namespace AIHoloImager
         case DXGI_FORMAT_R32_FLOAT:
             return 4;
 
+        case DXGI_FORMAT_R32G32_UINT:
+        case DXGI_FORMAT_R32G32_SINT:
+        case DXGI_FORMAT_R32G32_FLOAT:
+            return 8;
+
         default:
             // TODO: Support more formats
             Unreachable("Unsupported format");

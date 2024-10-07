@@ -6,6 +6,7 @@
 #include <span>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Gpu/GpuSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -15,7 +16,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MarchingCubes);
 
     public:
-        MarchingCubes();
+        explicit MarchingCubes(GpuSystem& gpu_system);
         MarchingCubes(MarchingCubes&& other) noexcept;
         ~MarchingCubes() noexcept;
 
