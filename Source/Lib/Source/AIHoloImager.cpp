@@ -21,7 +21,7 @@
 #include "MvRenderer/MultiViewRenderer.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
-#include "Util/TImer.hpp"
+#include "Util/Timer.hpp"
 
 namespace
 {
