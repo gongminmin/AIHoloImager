@@ -320,6 +320,15 @@ namespace
             output[i + 1] = input[i] + output[i];
         }
     }
+    void PrefixSum(std::span<XMUINT2> output, std::span<const XMUINT2> input)
+    {
+        output[0] = XMUINT2(0, 0);
+        for (size_t i = 0; i < input.size(); ++i)
+        {
+            output[i + 1].x = input[i].x + output[i].x;
+            output[i + 1].y = input[i].y + output[i].y;
+        }
+    }
 } // namespace
 
 namespace AIHoloImager
@@ -389,8 +398,7 @@ namespace AIHoloImager
 
             std::vector<uint32_t> non_empty_cube_ids(num_non_empty_cubes);
             std::vector<uint32_t> non_empty_cube_indices(num_non_empty_cubes);
-            std::vector<uint32_t> non_empty_num_vertices(num_non_empty_cubes);
-            std::vector<uint32_t> non_empty_num_indices(num_non_empty_cubes);
+            std::vector<XMUINT2> non_empty_num_vertices_indices(num_non_empty_cubes);
             for (uint32_t cid = 0; cid < total_cubes; ++cid)
             {
                 if (non_empty_cube_offsets[cid] != non_empty_cube_offsets[cid + 1])
@@ -400,7 +408,7 @@ namespace AIHoloImager
 
                     const uint32_t cube_index = total_cube_indices[cid];
                     non_empty_cube_indices[offset] = cube_index;
-                    non_empty_num_indices[offset] = TriangleTable[cube_index][0];
+                    const uint32_t cube_num_indices = TriangleTable[cube_index][0];
 
                     const uint32_t edges = EdgeTable[cube_index];
                     uint32_t cube_num_vertices = 0;
@@ -414,23 +422,18 @@ namespace AIHoloImager
                             }
                         }
                     }
-                    non_empty_num_vertices[offset] = cube_num_vertices;
+
+                    non_empty_num_vertices_indices[offset] = XMUINT2(cube_num_vertices, cube_num_indices);
                 }
             }
             total_cube_indices.clear();
             total_cube_indices.shrink_to_fit();
 
-            std::vector<uint32_t> edge_offsets(num_non_empty_cubes + 1);
-            PrefixSum(edge_offsets, non_empty_num_vertices);
-            const uint32_t num_non_empty_edges = edge_offsets.back();
-            non_empty_num_vertices.clear();
-            non_empty_num_vertices.shrink_to_fit();
-
-            std::vector<uint32_t> index_offsets(num_non_empty_cubes + 1);
-            PrefixSum(index_offsets, non_empty_num_indices);
-            const uint32_t num_non_empty_indices = index_offsets.back();
-            non_empty_num_indices.clear();
-            non_empty_num_indices.shrink_to_fit();
+            std::vector<XMUINT2> vertex_index_offsets(num_non_empty_cubes + 1);
+            PrefixSum(vertex_index_offsets, non_empty_num_vertices_indices);
+            const auto [num_non_empty_edges, num_non_empty_indices] = vertex_index_offsets.back();
+            non_empty_num_vertices_indices.clear();
+            non_empty_num_vertices_indices.shrink_to_fit();
 
             std::vector<uint32_t> non_empty_edges(num_non_empty_edges);
             for (uint32_t i = 0; i < num_non_empty_cubes; ++i)
@@ -440,7 +443,7 @@ namespace AIHoloImager
                 const uint32_t cube_index = non_empty_cube_indices[i];
                 const uint32_t edges = EdgeTable[cube_index];
 
-                uint32_t offset = edge_offsets[i];
+                uint32_t offset = vertex_index_offsets[i].x;
                 for (const uint32_t e : OwnedEdges)
                 {
                     if (edges & (1U << e))
@@ -512,7 +515,7 @@ namespace AIHoloImager
 
                 uint32_t indices[12]{};
 
-                uint32_t vertex_index = edge_offsets[i];
+                uint32_t vertex_index = vertex_index_offsets[i].x;
                 for (const uint32_t e : OwnedEdges)
                 {
                     if (edges & (1U << e))
@@ -549,7 +552,7 @@ namespace AIHoloImager
                         const uint32_t bias_cube_index = non_empty_cube_indices[bias_ci];
                         const uint32_t bias_edges = EdgeTable[bias_cube_index];
 
-                        uint32_t bias_vertex_index = edge_offsets[bias_ci];
+                        uint32_t bias_vertex_index = vertex_index_offsets[bias_ci].x;
                         for (uint32_t ei = 0; ei < std::size(OwnedEdges); ++ei)
                         {
                             if (bias_edges & (1U << OwnedEdges[ei]))
@@ -565,15 +568,15 @@ namespace AIHoloImager
                     }
                 }
 
-                const uint32_t offset = index_offsets[i];
+                const uint32_t offset = vertex_index_offsets[i].y;
                 const uint8_t* triangle_table_row = &TriangleTable[cube_index][1];
                 for (uint32_t m = 0; m < TriangleTable[cube_index][0]; ++m)
                 {
                     mesh_indices[offset + m] = indices[triangle_table_row[m]];
                 }
             }
-            index_offsets.clear();
-            index_offsets.shrink_to_fit();
+            vertex_index_offsets.clear();
+            vertex_index_offsets.shrink_to_fit();
 
             return mesh;
         }
