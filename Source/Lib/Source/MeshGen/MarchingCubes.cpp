@@ -334,21 +334,23 @@ namespace AIHoloImager
             const uint32_t size = grid_res + 1;
             assert(sdf.size() == size * size * size);
 
-            const auto calc_offset = [size](uint32_t x, uint32_t y, uint32_t z) { return (x * size + y) * size + z; };
-            const auto decompose_xyz = [grid_res](uint32_t index) {
-                const uint32_t xy = index / grid_res;
-                const uint32_t z = index - xy * grid_res;
-                const uint32_t x = xy / grid_res;
-                const uint32_t y = xy - x * grid_res;
+            const auto calc_offset = [size](uint32_t x, uint32_t y, uint32_t z) {
+                x = std::min(x, size - 1);
+                y = std::min(y, size - 1);
+                z = std::min(z, size - 1);
+                return (x * size + y) * size + z;
+            };
+            const auto decompose_xyz = [size](uint32_t index) {
+                const uint32_t xy = index / size;
+                const uint32_t z = index - xy * size;
+                const uint32_t x = xy / size;
+                const uint32_t y = xy - x * size;
                 return std::make_tuple(x, y, z);
             };
 
             constexpr uint32_t OwnedEdges[] = {0, 3, 8};
-            constexpr uint32_t XBoundaryOwnedEdges[] = {1, 9};
-            constexpr uint32_t YBoundaryOwnedEdges[] = {2, 11};
-            constexpr uint32_t ZBoundaryOwnedEdges[] = {4, 7};
 
-            const uint32_t total_cubes = grid_res * grid_res * grid_res;
+            const uint32_t total_cubes = size * size * size;
 
             std::vector<uint32_t> non_empty_cube_flags(total_cubes);
             std::vector<uint32_t> total_cube_indices(total_cubes);
@@ -411,38 +413,6 @@ namespace AIHoloImager
                                 ++cube_num_vertices;
                             }
                         }
-
-                        const auto [x, y, z] = decompose_xyz(cid);
-                        if (x == grid_res - 1)
-                        {
-                            for (const uint32_t e : XBoundaryOwnedEdges)
-                            {
-                                if (edges & (1U << e))
-                                {
-                                    ++cube_num_vertices;
-                                }
-                            }
-                        }
-                        if (y == grid_res - 1)
-                        {
-                            for (const uint32_t e : YBoundaryOwnedEdges)
-                            {
-                                if (edges & (1U << e))
-                                {
-                                    ++cube_num_vertices;
-                                }
-                            }
-                        }
-                        if (z == grid_res - 1)
-                        {
-                            for (const uint32_t e : ZBoundaryOwnedEdges)
-                            {
-                                if (edges & (1U << e))
-                                {
-                                    ++cube_num_vertices;
-                                }
-                            }
-                        }
                     }
                     non_empty_num_vertices[offset] = cube_num_vertices;
                 }
@@ -479,40 +449,6 @@ namespace AIHoloImager
                         ++offset;
                     }
                 }
-
-                if (x == grid_res - 1)
-                {
-                    for (const uint32_t e : XBoundaryOwnedEdges)
-                    {
-                        if (edges & (1U << e))
-                        {
-                            non_empty_edges[offset] = (i << 4) | e;
-                            ++offset;
-                        }
-                    }
-                }
-                if (y == grid_res - 1)
-                {
-                    for (const uint32_t e : YBoundaryOwnedEdges)
-                    {
-                        if (edges & (1U << e))
-                        {
-                            non_empty_edges[offset] = (i << 4) | e;
-                            ++offset;
-                        }
-                    }
-                }
-                if (z == grid_res - 1)
-                {
-                    for (const uint32_t e : ZBoundaryOwnedEdges)
-                    {
-                        if (edges & (1U << e))
-                        {
-                            non_empty_edges[offset] = (i << 4) | e;
-                            ++offset;
-                        }
-                    }
-                }
             }
 
             const VertexAttrib pos_only_vertex_attribs[] = {
@@ -537,12 +473,12 @@ namespace AIHoloImager
                 const float dist[] = {
                     sdf[calc_offset(i + 0, j + 0, k + 0)],
                     sdf[calc_offset(i + 1, j + 0, k + 0)],
-                    sdf[calc_offset(i + 1, j + 1, k + 0)],
+                    0,
                     sdf[calc_offset(i + 0, j + 1, k + 0)],
                     sdf[calc_offset(i + 0, j + 0, k + 1)],
-                    sdf[calc_offset(i + 1, j + 0, k + 1)],
-                    sdf[calc_offset(i + 1, j + 1, k + 1)],
-                    sdf[calc_offset(i + 0, j + 1, k + 1)],
+                    0,
+                    0,
+                    0,
                 };
 
                 XMFLOAT3& inter_p = *reinterpret_cast<XMFLOAT3*>(&mesh_vertices[ei * 3]);
@@ -552,36 +488,12 @@ namespace AIHoloImager
                     inter_p = InterpolateVertex(XMFLOAT3(x, y, z), XMFLOAT3(x_dx, y, z), dist[0], dist[1], isovalue);
                     break;
 
-                case 1:
-                    inter_p = InterpolateVertex(XMFLOAT3(x_dx, y, z), XMFLOAT3(x_dx, y_dy, z), dist[1], dist[2], isovalue);
-                    break;
-
-                case 2:
-                    inter_p = InterpolateVertex(XMFLOAT3(x_dx, y_dy, z), XMFLOAT3(x, y_dy, z), dist[2], dist[3], isovalue);
-                    break;
-
                 case 3:
                     inter_p = InterpolateVertex(XMFLOAT3(x, y_dy, z), XMFLOAT3(x, y, z), dist[3], dist[0], isovalue);
                     break;
 
-                case 4:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y, z_dz), XMFLOAT3(x_dx, y, z_dz), dist[4], dist[5], isovalue);
-                    break;
-
-                case 7:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y_dy, z_dz), XMFLOAT3(x, y, z_dz), dist[7], dist[4], isovalue);
-                    break;
-
                 case 8:
                     inter_p = InterpolateVertex(XMFLOAT3(x, y, z), XMFLOAT3(x, y, z_dz), dist[0], dist[4], isovalue);
-                    break;
-
-                case 9:
-                    inter_p = InterpolateVertex(XMFLOAT3(x_dx, y, z), XMFLOAT3(x_dx, y, z_dz), dist[1], dist[5], isovalue);
-                    break;
-
-                case 11:
-                    inter_p = InterpolateVertex(XMFLOAT3(x, y_dy, z), XMFLOAT3(x, y_dy, z_dz), dist[3], dist[7], isovalue);
                     break;
 
                 default:
@@ -610,163 +522,45 @@ namespace AIHoloImager
                     }
                 }
 
-                if (x == grid_res - 1)
+                constexpr uint32_t CoordBias[][3] = {
+                    {1, 0, 0},
+                    {0, 1, 0},
+                    {0, 0, 1},
+                    {0, 1, 1},
+                    {1, 0, 1},
+                    {1, 1, 0},
+                };
+                constexpr int32_t CorrespondEdges[][3] = {
+                    {-1, 1, 9},
+                    {2, -1, 11},
+                    {4, 7, -1},
+                    {6, -1, -1},
+                    {-1, 5, -1},
+                    {-1, -1, 10},
+                };
+
+                for (uint32_t j = 0; j < std::size(CoordBias); ++j)
                 {
-                    for (const uint32_t e : XBoundaryOwnedEdges)
+                    const uint32_t bias_cid = ((x + CoordBias[j][0]) * size + (y + CoordBias[j][1])) * size + (z + CoordBias[j][2]);
+                    if (non_empty_cube_offsets[bias_cid] != non_empty_cube_offsets[bias_cid + 1])
                     {
-                        if (edges & (1U << e))
-                        {
-                            indices[e] = vertex_index;
-                            ++vertex_index;
-                        }
-                    }
-                }
-                else
-                {
-                    const uint32_t dx_cid = ((x + 1) * grid_res + y) * grid_res + z;
-                    if (non_empty_cube_offsets[dx_cid] != non_empty_cube_offsets[dx_cid + 1])
-                    {
-                        const uint32_t dx_ci = non_empty_cube_offsets[dx_cid];
+                        const uint32_t bias_ci = non_empty_cube_offsets[bias_cid];
 
-                        const uint32_t dx_cube_index = non_empty_cube_indices[dx_ci];
-                        const uint32_t dx_edges = EdgeTable[dx_cube_index];
+                        const uint32_t bias_cube_index = non_empty_cube_indices[bias_ci];
+                        const uint32_t bias_edges = EdgeTable[bias_cube_index];
 
-                        uint32_t dx_vertex_index = edge_offsets[dx_ci];
-                        if (dx_edges & (1U << 0))
+                        uint32_t bias_vertex_index = edge_offsets[bias_ci];
+                        for (uint32_t ei = 0; ei < std::size(OwnedEdges); ++ei)
                         {
-                            ++dx_vertex_index;
-                        }
-                        if (dx_edges & (1U << 3))
-                        {
-                            indices[1] = dx_vertex_index;
-                            ++dx_vertex_index;
-                        }
-                        if (dx_edges & (1U << 8))
-                        {
-                            indices[9] = dx_vertex_index;
-                            ++dx_vertex_index;
-                        }
-                    }
-                }
-
-                if (y == grid_res - 1)
-                {
-                    for (const uint32_t e : YBoundaryOwnedEdges)
-                    {
-                        if (edges & (1U << e))
-                        {
-                            indices[e] = vertex_index;
-                            ++vertex_index;
-                        }
-                    }
-                }
-                else
-                {
-                    const uint32_t dy_cid = (x * grid_res + (y + 1)) * grid_res + z;
-                    if (non_empty_cube_offsets[dy_cid] != non_empty_cube_offsets[dy_cid + 1])
-                    {
-                        const uint32_t dy_ci = non_empty_cube_offsets[dy_cid];
-
-                        const uint32_t dy_cube_index = non_empty_cube_indices[dy_ci];
-                        const uint32_t dy_edges = EdgeTable[dy_cube_index];
-
-                        uint32_t dy_vertex_index = edge_offsets[dy_ci];
-                        if (dy_edges & (1U << 0))
-                        {
-                            indices[2] = dy_vertex_index;
-                            ++dy_vertex_index;
-                        }
-                        if (dy_edges & (1U << 3))
-                        {
-                            ++dy_vertex_index;
-                        }
-                        if (dy_edges & (1U << 8))
-                        {
-                            indices[11] = dy_vertex_index;
-                            ++dy_vertex_index;
-                        }
-                    }
-                }
-
-                if (z == grid_res - 1)
-                {
-                    for (const uint32_t e : ZBoundaryOwnedEdges)
-                    {
-                        if (edges & (1U << e))
-                        {
-                            indices[e] = vertex_index;
-                            ++vertex_index;
-                        }
-                    }
-                }
-                else
-                {
-                    const uint32_t dz_cid = (x * grid_res + y) * grid_res + (z + 1);
-                    if (non_empty_cube_offsets[dz_cid] != non_empty_cube_offsets[dz_cid + 1])
-                    {
-                        const uint32_t dz_ci = non_empty_cube_offsets[dz_cid];
-
-                        const uint32_t dz_cube_index = non_empty_cube_indices[dz_ci];
-                        const uint32_t dz_edges = EdgeTable[dz_cube_index];
-
-                        uint32_t dz_vertex_index = edge_offsets[dz_ci];
-                        if (dz_edges & (1U << 0))
-                        {
-                            indices[4] = dz_vertex_index;
-                            ++dz_vertex_index;
-                        }
-                        if (dz_edges & (1U << 3))
-                        {
-                            indices[7] = dz_vertex_index;
-                            ++dz_vertex_index;
-                        }
-                        if (dz_edges & (1U << 8))
-                        {
-                            ++dz_vertex_index;
-                        }
-                    }
-                }
-
-                {
-                    const uint32_t dy_dz_cid = (x * grid_res + (y + 1)) * grid_res + (z + 1);
-                    if (non_empty_cube_offsets[dy_dz_cid] != non_empty_cube_offsets[dy_dz_cid + 1])
-                    {
-                        const uint32_t dy_dz_ci = non_empty_cube_offsets[dy_dz_cid];
-
-                        const uint32_t dy_dz_cube_index = non_empty_cube_indices[dy_dz_ci];
-                        const uint32_t dy_dz_edges = EdgeTable[dy_dz_cube_index];
-                        if (dy_dz_edges & (1U << 0))
-                        {
-                            indices[6] = edge_offsets[dy_dz_ci];
-                        }
-                    }
-                }
-                {
-                    const uint32_t dx_dz_cid = ((x + 1) * grid_res + y) * grid_res + (z + 1);
-                    if (non_empty_cube_offsets[dx_dz_cid] != non_empty_cube_offsets[dx_dz_cid + 1])
-                    {
-                        const uint32_t dx_dz_ci = non_empty_cube_offsets[dx_dz_cid];
-
-                        const uint32_t dx_dz_cube_index = non_empty_cube_indices[dx_dz_ci];
-                        const uint32_t dx_dz_edges = EdgeTable[dx_dz_cube_index];
-                        if (dx_dz_edges & (1U << 3))
-                        {
-                            indices[5] = edge_offsets[dx_dz_ci] + ((dx_dz_edges & (1U << 0)) ? 1 : 0);
-                        }
-                    }
-                }
-                {
-                    const uint32_t dx_dy_cid = ((x + 1) * grid_res + (y + 1)) * grid_res + z;
-                    if (non_empty_cube_offsets[dx_dy_cid] != non_empty_cube_offsets[dx_dy_cid + 1])
-                    {
-                        const uint32_t dx_dy_ci = non_empty_cube_offsets[dx_dy_cid];
-
-                        const uint32_t dx_dy_cube_index = non_empty_cube_indices[dx_dy_ci];
-                        const uint32_t dx_dy_edges = EdgeTable[dx_dy_cube_index];
-                        if (dx_dy_edges & (1U << 8))
-                        {
-                            indices[10] =
-                                edge_offsets[dx_dy_ci] + ((dx_dy_edges & (1U << 0)) ? 1 : 0) + ((dx_dy_edges & (1U << 3)) ? 1 : 0);
+                            if (bias_edges & (1U << OwnedEdges[ei]))
+                            {
+                                const int32_t ce = CorrespondEdges[j][ei];
+                                if (ce != -1)
+                                {
+                                    indices[ce] = bias_vertex_index;
+                                }
+                                ++bias_vertex_index;
+                            }
                         }
                     }
                 }
