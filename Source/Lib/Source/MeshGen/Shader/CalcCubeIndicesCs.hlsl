@@ -15,7 +15,8 @@ cbuffer param_cb : register(b0)
 Buffer<uint> edge_table : register(t0);
 Buffer<float> sdf : register(t1);
 
-RWBuffer<uint> non_empty_cube_flags : register(u0);
+RWBuffer<uint> cube_offsets : register(u0);
+RWBuffer<uint> counter : register(u1);
 
 [numthreads(BLOCK_DIM, 1, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
@@ -29,5 +30,15 @@ void main(uint3 dtid : SV_DispatchThreadID)
     const uint cid = dtid.x;
     const uint3 coord = DecomposeCoord(cid, size);
     const uint cube_index = CalcCubeIndex(sdf, coord, size, isovalue);
-    non_empty_cube_flags[cid] = (edge_table[cube_index] != 0);
+
+    if (edge_table[cube_index] != 0)
+    {
+        uint addr;
+        InterlockedAdd(counter[0], 1, addr);
+        cube_offsets[cid] = addr;
+    }
+    else
+    {
+        cube_offsets[cid] = ~0U;
+    }
 }

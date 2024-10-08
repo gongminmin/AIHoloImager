@@ -14,12 +14,13 @@ cbuffer param_cb : register(b0)
 
 Buffer<uint> edge_table : register(t0);
 Buffer<uint> triangle_table : register(t1);
-Buffer<uint> non_empty_cube_offsets : register(t2);
+Buffer<uint> cube_offsets : register(t2);
 Buffer<float> sdf : register(t3);
 
 RWBuffer<uint> non_empty_cube_ids : register(u0);
 RWBuffer<uint> non_empty_cube_indices : register(u1);
-RWBuffer<uint2> non_empty_num_vertices_indices : register(u2);
+RWBuffer<uint2> vertex_index_offsets : register(u2);
+RWBuffer<uint> counter : register(u3);
 
 [numthreads(BLOCK_DIM, 1, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
@@ -31,9 +32,9 @@ void main(uint3 dtid : SV_DispatchThreadID)
     }
 
     const uint cid = dtid.x;
-    const uint offset = non_empty_cube_offsets[cid];
+    const uint offset = cube_offsets[cid];
     [branch]
-    if (offset == non_empty_cube_offsets[cid + 1])
+    if (offset == ~0U)
     {
         return;
     }
@@ -62,5 +63,10 @@ void main(uint3 dtid : SV_DispatchThreadID)
         }
     }
 
-    non_empty_num_vertices_indices[offset] = uint2(cube_num_vertices, cube_num_indices);
+    uint addr;
+    InterlockedAdd(counter[1], cube_num_vertices, addr);
+    vertex_index_offsets[offset].x = addr;
+
+    InterlockedAdd(counter[2], cube_num_indices, addr);
+    vertex_index_offsets[offset].y = addr;
 }

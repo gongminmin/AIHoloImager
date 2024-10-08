@@ -44,25 +44,17 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
-    Source/MeshGen/Shader/ApplySumCs.hlslh
-    Source/MeshGen/Shader/ApplySumUint2Cs.hlsl
-    Source/MeshGen/Shader/ApplySumUintCs.hlsl
     Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MergeTextureCs.hlsl
-    Source/MeshGen/Shader/PrefixSumCs.hlslh
-    Source/MeshGen/Shader/PrefixSumUint2Cs.hlsl
-    Source/MeshGen/Shader/PrefixSumUintCs.hlsl
     Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl
     Source/MeshGen/MarchingCubes.cpp
     Source/MeshGen/MarchingCubes.hpp
     Source/MeshGen/MeshGenerator.cpp
     Source/MeshGen/MeshGenerator.hpp
     Source/MeshGen/MeshGenerator.py
-    Source/MeshGen/PrefixSumScanner.cpp
-    Source/MeshGen/PrefixSumScanner.hpp
     Source/MeshGen/Lrm.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
@@ -125,14 +117,10 @@ macro(AddShaderFile file_name shader_type entry_point)
     )
 endmacro()
 
-AddShaderFile(Source/MeshGen/Shader/ApplySumUintCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ApplySumUint2Cs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumUint2Cs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumUintCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")

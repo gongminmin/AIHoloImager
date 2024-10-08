@@ -17,7 +17,7 @@ Buffer<uint> triangle_table : register(t1);
 Buffer<float> sdf : register(t2);
 Buffer<uint> non_empty_cube_ids : register(t3);
 Buffer<uint> non_empty_cube_indices : register(t4);
-Buffer<uint> non_empty_cube_offsets : register(t5);
+Buffer<uint> cube_offsets : register(t5);
 Buffer<uint2> vertex_index_offsets : register(t6);
 
 RWBuffer<float> mesh_vertices : register(u0);
@@ -89,11 +89,9 @@ void main(uint3 dtid : SV_DispatchThreadID)
         for (uint i = 0; i < sizeof(CoordBias) / sizeof(CoordBias[0]); ++i)
         {
             const uint3 bias_coord = coord + CoordBias[i];
-            const uint bias_cid = (bias_coord.x * size + bias_coord.y) * size + bias_coord.z;
-            if (non_empty_cube_offsets[bias_cid] != non_empty_cube_offsets[bias_cid + 1])
+            const uint bias_ci = cube_offsets[(bias_coord.x * size + bias_coord.y) * size + bias_coord.z];
+            if (bias_ci != ~0U)
             {
-                const uint bias_ci = non_empty_cube_offsets[bias_cid];
-
                 const uint bias_cube_index = non_empty_cube_indices[bias_ci];
                 const uint bias_edges = edge_table[bias_cube_index];
 
