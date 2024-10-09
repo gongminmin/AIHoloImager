@@ -15,7 +15,7 @@ Texture2D pos_tex : register(t1);
 RWTexture2D<unorm float4> color_tex : register(u0);
 RWBuffer<uint> counter_buff : register(u1);
 RWBuffer<uint> uv_buff : register(u2);
-RWBuffer<float> pos_buff : register(u3);
+RWStructuredBuffer<float3> pos_buff : register(u3);
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
@@ -43,9 +43,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
             pos_os /= pos_os.w;
 
             uv_buff[addr] = (dtid.y << 16) | dtid.x;
-            pos_buff[addr * 3 + 0] = pos_os.x;
-            pos_buff[addr * 3 + 1] = pos_os.y;
-            pos_buff[addr * 3 + 2] = pos_os.z;
+            pos_buff[addr] = pos_os.xyz;
         }
     }
     else

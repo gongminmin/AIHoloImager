@@ -63,10 +63,11 @@ void main(uint3 dtid : SV_DispatchThreadID)
         }
     }
 
-    uint addr;
-    InterlockedAdd(counter[1], cube_num_vertices, addr);
-    vertex_index_offsets[offset].x = addr;
+    uint vertex_addr;
+    InterlockedAdd(counter[1], cube_num_vertices, vertex_addr);
 
-    InterlockedAdd(counter[2], cube_num_indices, addr);
-    vertex_index_offsets[offset].y = addr;
+    uint index_addr;
+    InterlockedAdd(counter[2], cube_num_indices, index_addr);
+
+    vertex_index_offsets[offset] = uint2(vertex_addr, index_addr);
 }

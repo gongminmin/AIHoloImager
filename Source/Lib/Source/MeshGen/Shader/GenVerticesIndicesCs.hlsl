@@ -20,7 +20,7 @@ Buffer<uint> non_empty_cube_indices : register(t4);
 Buffer<uint> cube_offsets : register(t5);
 Buffer<uint2> vertex_index_offsets : register(t6);
 
-RWBuffer<float> mesh_vertices : register(u0);
+RWStructuredBuffer<float3> mesh_vertices : register(u0);
 RWBuffer<uint> mesh_indices : register(u1);
 
 float3 InterpolateVertex(float3 p0, float3 p1, float v0, float v1, float isovalue)
@@ -159,10 +159,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
                     break;
                 }
 
-                const float3 inter_p = InterpolateVertex(beg_p, end_p, beg_dist, end_dist, isovalue);
-                mesh_vertices[vertex_offset * 3 + 0] = inter_p.x;
-                mesh_vertices[vertex_offset * 3 + 1] = inter_p.y;
-                mesh_vertices[vertex_offset * 3 + 2] = inter_p.z;
+                mesh_vertices[vertex_offset] = InterpolateVertex(beg_p, end_p, beg_dist, end_dist, isovalue);
                 ++vertex_offset;
             }
         }

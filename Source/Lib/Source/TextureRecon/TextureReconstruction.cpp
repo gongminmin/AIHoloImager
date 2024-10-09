@@ -422,7 +422,7 @@ namespace AIHoloImager
                 GpuUnorderedAccessView uv_uav(gpu_system_, uv_buff, DXGI_FORMAT_R32_UINT);
                 pos_buff = GpuBuffer(gpu_system_, max_pos_size * sizeof(XMFLOAT3), D3D12_HEAP_TYPE_DEFAULT,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"pos_buff");
-                GpuUnorderedAccessView pos_uav(gpu_system_, pos_buff, DXGI_FORMAT_R32_FLOAT);
+                GpuUnorderedAccessView pos_uav(gpu_system_, pos_buff, sizeof(XMFLOAT3));
 
                 const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
                 const GpuShaderResourceView* srvs[] = {&accum_color_srv, &flatten_pos_srv};

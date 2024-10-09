@@ -451,7 +451,7 @@ namespace AIHoloImager
 
             cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * 3 * sizeof(float), L"mesh_vertices_cpu_buff");
+            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(XMFLOAT3), L"mesh_vertices_cpu_buff");
             GpuReadbackBuffer mesh_indices_cpu_buff(gpu_system_, num_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
             {
                 gen_vertices_indices_cb_->size = size;
@@ -467,7 +467,7 @@ namespace AIHoloImager
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(gpu_system_, mesh_indices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_indices_buff");
-                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, DXGI_FORMAT_R32_FLOAT);
+                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(XMFLOAT3));
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, DXGI_FORMAT_R32_UINT);
 
                 constexpr uint32_t BlockDim = 256;
