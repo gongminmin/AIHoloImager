@@ -54,7 +54,7 @@ class MultiViewDiffusion:
             downloaded_unet_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = unet_ckpt_path.name, repo_type = "model")
             shutil.copyfile(downloaded_unet_ckpt_path, unet_ckpt_path)
 
-        state_dict = torch.load(unet_ckpt_path, map_location = "cpu")
+        state_dict = torch.load(unet_ckpt_path, map_location = "cpu", weights_only = True)
         self.pipeline.unet.load_state_dict(state_dict, strict = True)
 
         self.pipeline = self.pipeline.to(device)

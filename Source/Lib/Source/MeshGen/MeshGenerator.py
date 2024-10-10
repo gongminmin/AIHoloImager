@@ -31,7 +31,7 @@ class MeshGenerator:
             downloaded_model_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = model_ckpt_path.name, repo_type = "model")
             shutil.copyfile(downloaded_model_ckpt_path, model_ckpt_path)
 
-        loaded_state_dict = torch.load(model_ckpt_path, map_location = "cpu")["state_dict"]
+        loaded_state_dict = torch.load(model_ckpt_path, map_location = "cpu", weights_only = True)["state_dict"]
 
         # Remove the prefix from state_dict since we don't have a lrm_generator class wrapping the model
         prefix = "lrm_generator."

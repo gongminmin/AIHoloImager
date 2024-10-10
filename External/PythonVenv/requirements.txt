@@ -3,11 +3,11 @@ pooch==1.8.2
 onnx==1.16.2
 onnx2torch==1.5.15
 
---extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.1.0
-torchvision==0.16.0
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.4.1
+torchvision==0.19.1
 
-xformers==0.0.22.post7
+xformers==0.0.28.post1
 
 pytorch-lightning==2.1.2
 huggingface-hub==0.19.3
