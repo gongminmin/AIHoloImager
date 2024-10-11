@@ -13,7 +13,7 @@ cbuffer param_cb : register(b0)
 };
 
 Buffer<uint> edge_table : register(t0);
-Buffer<float> sdf : register(t1);
+Buffer<float4> sdf_deformation : register(t1);
 
 RWBuffer<uint> cube_offsets : register(u0);
 RWBuffer<uint> counter : register(u1);
@@ -29,7 +29,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
 
     const uint cid = dtid.x;
     const uint3 coord = DecomposeCoord(cid, size);
-    const uint cube_index = CalcCubeIndex(sdf, coord, size, isovalue);
+    const uint cube_index = CalcCubeIndex(sdf_deformation, coord, size, isovalue);
 
     if (edge_table[cube_index] != 0)
     {

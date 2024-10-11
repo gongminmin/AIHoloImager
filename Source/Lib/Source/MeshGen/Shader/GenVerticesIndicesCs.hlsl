@@ -14,7 +14,7 @@ cbuffer param_cb : register(b0)
 
 Buffer<uint> edge_table : register(t0);
 Buffer<uint> triangle_table : register(t1);
-Buffer<float> sdf : register(t2);
+Buffer<float4> sdf_deformation : register(t2);
 Buffer<uint> non_empty_cube_ids : register(t3);
 Buffer<uint> non_empty_cube_indices : register(t4);
 Buffer<uint> cube_offsets : register(t5);
@@ -113,52 +113,39 @@ void main(uint3 dtid : SV_DispatchThreadID)
     }
 
     {
-        const float dist[] = {
-            sdf[CalcOffset(coord + uint3(0, 0, 0), size)],
-            sdf[CalcOffset(coord + uint3(1, 0, 0), size)],
-            0,
-            sdf[CalcOffset(coord + uint3(0, 1, 0), size)],
-            sdf[CalcOffset(coord + uint3(0, 0, 1), size)],
-            0,
-            0,
-            0,
-        };
-
         uint vertex_offset = vertex_base;
         for (uint i = 0; i < sizeof(OwnedEdges) / sizeof(OwnedEdges[0]); ++i)
         {
             const uint e = OwnedEdges[i];
             if (edges & (1U << e))
             {
-                float3 beg_p;
-                float3 end_p;
-                float beg_dist;
-                float end_dist;
+                uint3 beg_coord;
+                uint3 end_coord;
                 switch (e)
                 {
                 case 0:
-                    beg_p = coord;
-                    end_p = coord + float3(1, 0, 0);
-                    beg_dist = dist[0];
-                    end_dist = dist[1];
+                    beg_coord = coord;
+                    end_coord = coord + uint3(1, 0, 0);
                     break;
 
                 case 3:
-                    beg_p = coord + float3(0, 1, 0);
-                    end_p = coord;
-                    beg_dist = dist[3];
-                    end_dist = dist[0];
+                    beg_coord = coord + uint3(0, 1, 0);
+                    end_coord = coord;
                     break;
 
                 case 8:
                 default:
-                    beg_p = coord;
-                    end_p = coord + float3(0, 0, 1);
-                    beg_dist = dist[0];
-                    end_dist = dist[4];
+                    beg_coord = coord;
+                    end_coord = coord + uint3(0, 0, 1);
                     break;
                 }
 
+                const float4 beg_sdf_deformation = sdf_deformation[CalcOffset(beg_coord, size)];
+                const float4 end_sdf_deformation = sdf_deformation[CalcOffset(end_coord, size)];
+                const float3 beg_p = beg_coord + beg_sdf_deformation.yzw;
+                const float3 end_p = end_coord + end_sdf_deformation.yzw;
+                const float beg_dist = beg_sdf_deformation.x;
+                const float end_dist = end_sdf_deformation.x;
                 mesh_vertices[vertex_offset] = InterpolateVertex(beg_p, end_p, beg_dist, end_dist, isovalue);
                 ++vertex_offset;
             }

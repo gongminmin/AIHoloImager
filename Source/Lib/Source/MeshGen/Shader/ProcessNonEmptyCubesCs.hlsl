@@ -15,7 +15,7 @@ cbuffer param_cb : register(b0)
 Buffer<uint> edge_table : register(t0);
 Buffer<uint> triangle_table : register(t1);
 Buffer<uint> cube_offsets : register(t2);
-Buffer<float> sdf : register(t3);
+Buffer<float4> sdf_deformation : register(t3);
 
 RWBuffer<uint> non_empty_cube_ids : register(u0);
 RWBuffer<uint> non_empty_cube_indices : register(u1);
@@ -44,7 +44,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     non_empty_cube_ids[offset] = cid;
 
     const uint3 coord = DecomposeCoord(cid, size);
-    const uint cube_index = CalcCubeIndex(sdf, coord, size, isovalue);
+    const uint cube_index = CalcCubeIndex(sdf_deformation, coord, size, isovalue);
 
     non_empty_cube_indices[offset] = cube_index;
     const uint cube_num_indices = triangle_table[cube_index * 16 + 0];

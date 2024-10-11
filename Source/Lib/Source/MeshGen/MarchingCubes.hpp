@@ -5,6 +5,8 @@
 
 #include <span>
 
+#include <DirectXMath.h>
+
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Util/Noncopyable.hpp"
@@ -22,7 +24,7 @@ namespace AIHoloImager
 
         MarchingCubes& operator=(MarchingCubes&& other) noexcept;
 
-        Mesh Generate(std::span<const float> sdf, uint32_t grid_res, float isovalue);
+        Mesh Generate(std::span<const DirectX::XMFLOAT4> sdf_deformation, uint32_t grid_res, float isovalue);
 
     private:
         class Impl;
