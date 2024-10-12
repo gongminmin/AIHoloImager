@@ -14,7 +14,7 @@ cbuffer param_cb : register(b0)
 
 Buffer<uint> edge_table : register(t0);
 Buffer<uint> triangle_table : register(t1);
-Buffer<float4> sdf_deformation : register(t2);
+Buffer<float4> scalar_deformation : register(t2);
 Buffer<uint> non_empty_cube_ids : register(t3);
 Buffer<uint> non_empty_cube_indices : register(t4);
 Buffer<uint> cube_offsets : register(t5);
@@ -140,13 +140,13 @@ void main(uint3 dtid : SV_DispatchThreadID)
                     break;
                 }
 
-                const float4 beg_sdf_deformation = sdf_deformation[CalcOffset(beg_coord, size)];
-                const float4 end_sdf_deformation = sdf_deformation[CalcOffset(end_coord, size)];
-                const float3 beg_p = beg_coord + beg_sdf_deformation.yzw;
-                const float3 end_p = end_coord + end_sdf_deformation.yzw;
-                const float beg_dist = beg_sdf_deformation.x;
-                const float end_dist = end_sdf_deformation.x;
-                mesh_vertices[vertex_offset] = InterpolateVertex(beg_p, end_p, beg_dist, end_dist, isovalue);
+                const float4 beg_scalar_deformation = scalar_deformation[CalcOffset(beg_coord, size)];
+                const float4 end_scalar_deformation = scalar_deformation[CalcOffset(end_coord, size)];
+                const float3 beg_p = beg_coord + beg_scalar_deformation.yzw;
+                const float3 end_p = end_coord + end_scalar_deformation.yzw;
+                const float beg_scalar = beg_scalar_deformation.x;
+                const float end_scalar = end_scalar_deformation.x;
+                mesh_vertices[vertex_offset] = InterpolateVertex(beg_p, end_p, beg_scalar, end_scalar, isovalue);
                 ++vertex_offset;
             }
         }

@@ -350,21 +350,21 @@ namespace AIHoloImager
             }
         }
 
-        Mesh Generate(std::span<const XMFLOAT4> sdf_deformation, uint32_t grid_res, float isovalue)
+        Mesh Generate(std::span<const XMFLOAT4> scalar_deformation, uint32_t grid_res, float isovalue)
         {
             assert(grid_res >= 2);
 
             const uint32_t size = grid_res + 1;
-            assert(sdf_deformation.size() == size * size * size);
+            assert(scalar_deformation.size() == size * size * size);
 
             const uint32_t total_cubes = size * size * size;
 
-            GpuBuffer sdf_deformation_buff(gpu_system_, static_cast<uint32_t>(sdf_deformation.size() * sizeof(XMFLOAT4)),
-                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"sdf_deformation_buff");
-            GpuShaderResourceView sdf_deformation_srv(gpu_system_, sdf_deformation_buff, DXGI_FORMAT_R32G32B32A32_FLOAT);
+            GpuBuffer scalar_deformation_buff(gpu_system_, static_cast<uint32_t>(scalar_deformation.size() * sizeof(XMFLOAT4)),
+                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"scalar_deformation_buff");
+            GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation_buff, DXGI_FORMAT_R32G32B32A32_FLOAT);
             {
-                std::memcpy(sdf_deformation_buff.Map(), sdf_deformation.data(), sdf_deformation_buff.Size());
-                sdf_deformation_buff.Unmap(D3D12_RANGE{0, sdf_deformation_buff.Size()});
+                std::memcpy(scalar_deformation_buff.Map(), scalar_deformation.data(), scalar_deformation_buff.Size());
+                scalar_deformation_buff.Unmap(D3D12_RANGE{0, scalar_deformation_buff.Size()});
             }
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
@@ -390,7 +390,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 256;
 
                 const GeneralConstantBuffer* cbs[] = {&calc_cube_indices_cb_};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &sdf_deformation_srv};
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &scalar_deformation_srv};
                 GpuUnorderedAccessView* uavs[] = {&cube_offsets_uav, &counter_uav};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
@@ -429,7 +429,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 256;
 
                 const GeneralConstantBuffer* cbs[] = {&process_non_empty_cubes_cb_};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &cube_offsets_srv, &sdf_deformation_srv};
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &cube_offsets_srv, &scalar_deformation_srv};
                 GpuUnorderedAccessView* uavs[] = {
                     &non_empty_cube_ids_uav, &non_empty_cube_indices_uav, &vertex_index_offsets_uav, &counter_uav};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -473,7 +473,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 256;
 
                 const GeneralConstantBuffer* cbs[] = {&gen_vertices_indices_cb_};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &sdf_deformation_srv,
+                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &scalar_deformation_srv,
                     &non_empty_cube_ids_srv, &non_empty_cube_indices_srv, &cube_offsets_srv, &vertex_index_offsets_srv};
                 GpuUnorderedAccessView* uavs[] = {&mesh_vertices_uav, &mesh_indices_uav};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -542,8 +542,8 @@ namespace AIHoloImager
     MarchingCubes::MarchingCubes(MarchingCubes&& other) noexcept = default;
     MarchingCubes& MarchingCubes::operator=(MarchingCubes&& other) noexcept = default;
 
-    Mesh MarchingCubes::Generate(std::span<const XMFLOAT4> sdf_deformation, uint32_t grid_res, float isovalue)
+    Mesh MarchingCubes::Generate(std::span<const XMFLOAT4> scalar_deformation, uint32_t grid_res, float isovalue)
     {
-        return impl_->Generate(std::move(sdf_deformation), grid_res, isovalue);
+        return impl_->Generate(std::move(scalar_deformation), grid_res, isovalue);
     }
 } // namespace AIHoloImager

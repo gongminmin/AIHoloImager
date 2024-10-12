@@ -42,7 +42,7 @@ namespace AIHoloImager
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_, *args);
 
             mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
-            mesh_generator_query_sdf_deformation_method_ = python_system_.GetAttr(*mesh_generator_, "QuerySdfDeformation");
+            mesh_generator_query_density_deformation_method_ = python_system_.GetAttr(*mesh_generator_, "QueryDensityDeformation");
             mesh_generator_query_colors_method_ = python_system_.GetAttr(*mesh_generator_, "QueryColors");
 
             {
@@ -207,10 +207,10 @@ namespace AIHoloImager
 
             Mesh pos_only_mesh;
             {
-                const auto py_sdf_deformation = python_system_.CallObject(*mesh_generator_query_sdf_deformation_method_);
-                const auto sdf_deformation = python_system_.ToSpan<const XMFLOAT4>(*py_sdf_deformation);
+                const auto py_density_deformation = python_system_.CallObject(*mesh_generator_query_density_deformation_method_);
+                const auto density_deformation = python_system_.ToSpan<const XMFLOAT4>(*py_density_deformation);
 
-                pos_only_mesh = marching_cubes_.Generate(sdf_deformation, GridRes, 0);
+                pos_only_mesh = marching_cubes_.Generate(density_deformation, GridRes, 0);
 
                 const uint32_t pos_attrib_index = pos_only_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
                 for (uint32_t i = 0; i < pos_only_mesh.NumVertices(); ++i)
@@ -572,7 +572,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_class_;
         PyObjectPtr mesh_generator_;
         PyObjectPtr mesh_generator_gen_nerf_method_;
-        PyObjectPtr mesh_generator_query_sdf_deformation_method_;
+        PyObjectPtr mesh_generator_query_density_deformation_method_;
         PyObjectPtr mesh_generator_query_colors_method_;
 
         MarchingCubes marching_cubes_;

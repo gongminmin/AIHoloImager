@@ -65,11 +65,11 @@ class MeshGenerator:
             input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = 4).to(self.device).squeeze(0)
             self.model.GenNeRF(mv_images, input_cameras)
 
-    def QuerySdfDeformation(self):
+    def QueryDensityDeformation(self):
         with torch.no_grad():
-            sdf_deformation = self.model.QuerySdfDeformation()
+            density_deformation = self.model.QueryDensityDeformation()
 
-        return sdf_deformation.cpu().numpy().tobytes()
+        return density_deformation.cpu().numpy().tobytes()
 
     def QueryColors(self, positions : bytes, size : int):
         with torch.no_grad():

@@ -100,14 +100,14 @@ class Lrm(nn.Module):
         assert(planes.shape[0] == 1)
         self.planes = planes.squeeze(0)
 
-    def QuerySdfDeformation(self):
-        sdf, deformation, weight = self.synthesizer.get_geometry_prediction(
+    def QueryDensityDeformation(self):
+        density, deformation, weight = self.synthesizer.get_geometry_prediction(
             self.planes.unsqueeze(0),
             self.cube_verts.unsqueeze(0),
             self.cube_indices
         )
-        assert((sdf.shape[0] == 1) and (deformation.shape[0] == 1))
-        sdf = sdf.squeeze(0)
+        assert((density.shape[0] == 1) and (deformation.shape[0] == 1))
+        density = density.squeeze(0)
         deformation = deformation.squeeze(0)
 
         # Normalize the deformation to avoid the flipped triangles.
@@ -115,11 +115,11 @@ class Lrm(nn.Module):
         deformation = 1.0 / (self.grid_res * deformation_multiplier) * torch.tanh(deformation)
 
         size = self.grid_res + 1
-        sdf = sdf.reshape(size, size, size, 1)
+        density = density.reshape(size, size, size, 1)
         deformation = deformation.reshape(size, size, size, -1)
         deformation *= size
 
-        return torch.cat([sdf, deformation], dim = 3)
+        return torch.cat([density, deformation], dim = 3)
 
     def QueryColors(self, positions):
         colors = self.synthesizer.get_texture_prediction(self.planes.unsqueeze(0), positions.unsqueeze(0))

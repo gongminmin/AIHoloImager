@@ -16,23 +16,23 @@ uint3 DecomposeCoord(uint index, uint size)
     return uint3(x, y, z);
 };
 
-uint CalcCubeIndex(Buffer<float4> sdf_deformation, uint3 coord, uint size, float isovalue)
+uint CalcCubeIndex(Buffer<float4> scalar_deformation, uint3 coord, uint size, float isovalue)
 {
-    const float dist[] = {
-        sdf_deformation[CalcOffset(coord + uint3(0, 0, 0), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(1, 0, 0), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(1, 1, 0), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(0, 1, 0), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(0, 0, 1), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(1, 0, 1), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(1, 1, 1), size)].x,
-        sdf_deformation[CalcOffset(coord + uint3(0, 1, 1), size)].x,
+    const float scalars[] = {
+        scalar_deformation[CalcOffset(coord + uint3(0, 0, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(1, 0, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(1, 1, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(0, 1, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(0, 0, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(1, 0, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(1, 1, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint3(0, 1, 1), size)].x,
     };
 
     uint cube_index = 0;
-    for (uint m = 0; m < sizeof(dist) / sizeof(dist[0]); ++m)
+    for (uint m = 0; m < sizeof(scalars) / sizeof(scalars[0]); ++m)
     {
-        if (dist[m] <= isovalue)
+        if (scalars[m] <= isovalue)
         {
             cube_index |= 1U << m;
         }
