@@ -5,16 +5,16 @@
 
 cbuffer param_cb : register(b0)
 {
-    uint buffer_size;
+    uint32_t buffer_size;
 };
 
-Buffer<uint> uv_buff : register(t0);
+Buffer<uint32_t> uv_buff : register(t0);
 Buffer<unorm float4> color_buffer : register(t1);
 
 RWTexture2D<unorm float4> merged_tex : register(u0);
 
 [numthreads(BLOCK_DIM, 1, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
     if (dtid.x >= buffer_size)
@@ -22,6 +22,6 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    uint uv = uv_buff[dtid.x];
-    merged_tex[uint2(uv & 0xFFFF, uv >> 16)] = color_buffer[dtid.x];
+    uint32_t uv = uv_buff[dtid.x];
+    merged_tex[uint32_t2(uv & 0xFFFF, uv >> 16)] = color_buffer[dtid.x];
 }

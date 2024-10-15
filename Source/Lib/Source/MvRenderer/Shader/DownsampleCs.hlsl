@@ -9,15 +9,15 @@ Texture2D ssaa_tex : register(t0);
 RWTexture2D<unorm float4> tex : register(u0);
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     float4 color = 0;
-    for (uint dy = 0; dy < SSAA_SCALE; ++dy)
+    for (uint32_t dy = 0; dy < SSAA_SCALE; ++dy)
     {
-        for (uint dx = 0; dx < SSAA_SCALE; ++dx)
+        for (uint32_t dx = 0; dx < SSAA_SCALE; ++dx)
         {
-            uint2 coord = dtid.xy * SSAA_SCALE + uint2(dx, dy);
-            color += ssaa_tex.Load(uint3(coord, 0));
+            uint32_t2 coord = dtid.xy * SSAA_SCALE + uint32_t2(dx, dy);
+            color += ssaa_tex.Load(uint32_t3(coord, 0));
         }
     }
 

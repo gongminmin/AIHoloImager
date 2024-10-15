@@ -7,19 +7,19 @@
 
 cbuffer param_cb : register(b0)
 {
-    uint size;
-    uint total_cubes;
+    uint32_t size;
+    uint32_t total_cubes;
     float isovalue;
 };
 
-Buffer<uint> edge_table : register(t0);
+Buffer<uint16_t> edge_table : register(t0);
 Buffer<float4> scalar_deformation : register(t1);
 
-RWBuffer<uint> cube_offsets : register(u0);
-RWBuffer<uint> counter : register(u1);
+RWBuffer<uint32_t> cube_offsets : register(u0);
+RWBuffer<uint32_t> counter : register(u1);
 
 [numthreads(BLOCK_DIM, 1, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
     if (dtid.x >= total_cubes)
@@ -27,13 +27,13 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    const uint cid = dtid.x;
-    const uint3 coord = DecomposeCoord(cid, size);
-    const uint cube_index = CalcCubeIndex(scalar_deformation, coord, size, isovalue);
+    const uint32_t cid = dtid.x;
+    const uint32_t3 coord = DecomposeCoord(cid, size);
+    const uint32_t cube_index = CalcCubeIndex(scalar_deformation, coord, size, isovalue);
 
     if (edge_table[cube_index] != 0)
     {
-        uint addr;
+        uint32_t addr;
         InterlockedAdd(counter[0], 1, addr);
         cube_offsets[cid] = addr;
     }

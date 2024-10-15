@@ -53,7 +53,7 @@ float2 GetDistortedCoord(float2 p)
 }
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     float2 undistort_coord = dtid.xy;
     float2 distort_coord = GetDistortedCoord(undistort_coord);

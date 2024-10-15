@@ -5,7 +5,7 @@
 
 cbuffer param_cb : register(b0)
 {
-    uint texture_size;
+    uint32_t texture_size;
 };
 
 Texture2D blended_tex : register(t0);
@@ -13,7 +13,7 @@ Texture2D blended_tex : register(t0);
 RWTexture2D<unorm float4> dilated_tex : register(u0);
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
     if (any(dtid.xy >= texture_size))
@@ -21,7 +21,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 curr = blended_tex.Load(uint3(dtid.xy, 0));
+    float4 curr = blended_tex.Load(uint32_t3(dtid.xy, 0));
 
     [branch]
     if (curr.a > 0)
@@ -30,8 +30,8 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    uint width;
-    uint height;
+    uint32_t width;
+    uint32_t height;
     blended_tex.GetDimensions(width, height);
 
     float4 sum = 0;
@@ -42,7 +42,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
             int2 coord = dtid.xy + int2(dx, dy);
             if (all(bool4(coord >= 0, coord < int2(width, height))))
             {
-                float4 color = blended_tex.Load(uint3(coord, 0));
+                float4 color = blended_tex.Load(uint32_t3(coord, 0));
                 if (color.a > 0)
                 {
                     sum += float4(color.rgb, 1);

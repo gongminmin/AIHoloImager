@@ -9,7 +9,7 @@ cbuffer param_cb : register(b0)
     float4x4 camera_view;
     float4x4 camera_view_it;
     float2 offset;
-    uint texture_size;
+    uint32_t texture_size;
 };
 
 Texture2D pos_tex : register(t0);
@@ -28,7 +28,7 @@ float Sqr(float x)
 }
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
     if (any(dtid.xy >= texture_size))
@@ -36,7 +36,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 normal_ws = normal_tex.Load(uint3(dtid.xy, 0));
+    float4 normal_ws = normal_tex.Load(uint32_t3(dtid.xy, 0));
 
     [branch]
     if (normal_ws.a < 0.5f)
@@ -44,7 +44,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 pos_ws = pos_tex.Load(uint3(dtid.xy, 0));
+    float4 pos_ws = pos_tex.Load(uint32_t3(dtid.xy, 0));
 
     float4 pos_ss = mul(pos_ws, camera_view_proj);
     float4 abs_pos_ss = abs(pos_ss);

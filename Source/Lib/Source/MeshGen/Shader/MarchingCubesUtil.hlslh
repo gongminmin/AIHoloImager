@@ -1,36 +1,36 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
-uint CalcOffset(uint3 coord, uint size)
+uint32_t CalcOffset(uint32_t3 coord, uint32_t size)
 {
     coord = min(coord, size - 1);
     return (coord.x * size + coord.y) * size + coord.z;
 }
 
-uint3 DecomposeCoord(uint index, uint size)
+uint32_t3 DecomposeCoord(uint32_t index, uint32_t size)
 {
-    const uint xy = index / size;
-    const uint z = index - xy * size;
-    const uint x = xy / size;
-    const uint y = xy - x * size;
-    return uint3(x, y, z);
+    const uint32_t xy = index / size;
+    const uint32_t z = index - xy * size;
+    const uint32_t x = xy / size;
+    const uint32_t y = xy - x * size;
+    return uint32_t3(x, y, z);
 };
 
-uint CalcCubeIndex(Buffer<float4> scalar_deformation, uint3 coord, uint size, float isovalue)
+uint32_t CalcCubeIndex(Buffer<float4> scalar_deformation, uint32_t3 coord, uint32_t size, float isovalue)
 {
     const float scalars[] = {
-        scalar_deformation[CalcOffset(coord + uint3(0, 0, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(1, 0, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(1, 1, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(0, 1, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(0, 0, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(1, 0, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(1, 1, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint3(0, 1, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(0, 0, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(1, 0, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(1, 1, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(0, 1, 0), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(0, 0, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(1, 0, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(1, 1, 1), size)].x,
+        scalar_deformation[CalcOffset(coord + uint32_t3(0, 1, 1), size)].x,
     };
 
-    uint cube_index = 0;
-    for (uint m = 0; m < sizeof(scalars) / sizeof(scalars[0]); ++m)
+    uint32_t cube_index = 0;
+    for (uint32_t m = 0; m < sizeof(scalars) / sizeof(scalars[0]); ++m)
     {
         if (scalars[m] <= isovalue)
         {

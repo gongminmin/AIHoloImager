@@ -302,22 +302,18 @@ namespace AIHoloImager
     public:
         Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
-            edge_table_buff_ = GpuBuffer(gpu_system_, std::size(EdgeTable) * sizeof(uint32_t), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"edge_table_buff");
+            edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                D3D12_RESOURCE_STATE_COMMON, L"edge_table_buff");
             {
-                uint32_t* edge_table_buff_ptr = reinterpret_cast<uint32_t*>(edge_table_buff_.Map());
-                for (size_t i = 0; i < std::size(EdgeTable); ++i)
-                {
-                    edge_table_buff_ptr[i] = EdgeTable[i];
-                }
+                std::memcpy(edge_table_buff_.Map(), EdgeTable, sizeof(EdgeTable));
                 edge_table_buff_.Unmap(D3D12_RANGE{0, edge_table_buff_.Size()});
             }
-            edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R32_UINT);
+            edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R16_UINT);
 
-            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint32_t), D3D12_HEAP_TYPE_UPLOAD,
+            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), D3D12_HEAP_TYPE_UPLOAD,
                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"triangle_table_buff");
             {
-                uint32_t* triangle_table_buff_ptr = reinterpret_cast<uint32_t*>(triangle_table_buff_.Map());
+                uint16_t* triangle_table_buff_ptr = reinterpret_cast<uint16_t*>(triangle_table_buff_.Map());
                 for (size_t i = 0; i < std::size(TriangleTable); ++i)
                 {
                     for (uint32_t j = 0; j < 16; ++j)
@@ -327,7 +323,7 @@ namespace AIHoloImager
                 }
                 triangle_table_buff_.Unmap(D3D12_RANGE{0, triangle_table_buff_.Size()});
             }
-            triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, DXGI_FORMAT_R32_UINT);
+            triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, DXGI_FORMAT_R16_UINT);
 
             {
                 calc_cube_indices_cb_ = ConstantBuffer<CalcCubeIndicesConstantBuffer>(gpu_system_, 1, L"calc_cube_indices_cb_");

@@ -6,19 +6,19 @@
 cbuffer param_cb : register(b0)
 {
     float4x4 inv_model;
-    uint texture_size;
+    uint32_t texture_size;
 };
 
 Texture2D accum_color_tex : register(t0);
 Texture2D pos_tex : register(t1);
 
 RWTexture2D<unorm float4> color_tex : register(u0);
-RWBuffer<uint> counter_buff : register(u1);
-RWBuffer<uint> uv_buff : register(u2);
+RWBuffer<uint32_t> counter_buff : register(u1);
+RWBuffer<uint32_t> uv_buff : register(u2);
 RWStructuredBuffer<float3> pos_buff : register(u3);
 
 [numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
-void main(uint3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
     if (any(dtid.xy >= texture_size))
@@ -26,17 +26,17 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 color = accum_color_tex.Load(uint3(dtid.xy, 0));
+    float4 color = accum_color_tex.Load(uint32_t3(dtid.xy, 0));
     if (color.a < 0.1f)
     {
         color = 0;
 
-        float4 pos_ws = pos_tex.Load(uint3(dtid.xy, 0));
+        float4 pos_ws = pos_tex.Load(uint32_t3(dtid.xy, 0));
 
         [branch]
         if (pos_ws.a > 0.5f)
         {
-            uint addr;
+            uint32_t addr;
             InterlockedAdd(counter_buff[0], 1, addr);
 
             float4 pos_os = mul(pos_ws, inv_model);
