@@ -42,9 +42,9 @@ namespace AIHoloImager
             const auto mv_image_tuple = python_system_.CallObject(*mv_diffusion_gen_method_, *args);
 
             const auto mv_image_data = python_system_.GetTupleItem(*mv_image_tuple, 0);
-            const uint32_t width = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 1));
-            const uint32_t height = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 2));
-            const uint32_t num_channels = python_system_.Cast<long>(*python_system_.GetTupleItem(*mv_image_tuple, 3));
+            const uint32_t width = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*mv_image_tuple, 1));
+            const uint32_t height = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*mv_image_tuple, 2));
+            const uint32_t num_channels = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*mv_image_tuple, 3));
 
             Texture mv_image(width, height, num_channels);
             const auto mv_image_span = python_system_.ToBytes(*mv_image_data);

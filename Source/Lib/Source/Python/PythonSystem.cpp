@@ -147,9 +147,14 @@ namespace AIHoloImager
     }
 
     template <>
-    long PythonSystem::Cast<long>(PyObject& object)
+    int32_t PythonSystem::Cast<int32_t>(PyObject& object)
     {
-        return PyLong_AsLong(&object);
+        return static_cast<int32_t>(PyLong_AsLong(&object));
+    }
+    template <>
+    uint32_t PythonSystem::Cast<uint32_t>(PyObject& object)
+    {
+        return static_cast<uint32_t>(PyLong_AsUnsignedLong(&object));
     }
 
     template <>
