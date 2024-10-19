@@ -129,9 +129,17 @@ namespace AIHoloImager
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const float color[4])
     {
         ID3D12Resource* resource = nullptr;
-        if (auto* tex = uav.Texture())
+        if (auto* tex_2d = uav.Texture2D())
         {
-            resource = tex->NativeTexture();
+            resource = tex_2d->NativeTexture();
+        }
+        else if (auto* tex_2d_array = uav.Texture2DArray())
+        {
+            resource = tex_2d_array->NativeTexture();
+        }
+        else if (auto* tex_3d = uav.Texture3D())
+        {
+            resource = tex_3d->NativeTexture();
         }
         else if (auto* buff = uav.Buffer())
         {
@@ -161,14 +169,23 @@ namespace AIHoloImager
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const uint32_t color[4])
     {
         ID3D12Resource* resource = nullptr;
-        if (auto* tex = uav.Texture())
+        if (auto* tex_2d = uav.Texture2D())
         {
-            resource = tex->NativeTexture();
+            resource = tex_2d->NativeTexture();
+        }
+        else if (auto* tex_2d_array = uav.Texture2D())
+        {
+            resource = tex_2d_array->NativeTexture();
+        }
+        else if (auto* tex_3d = uav.Texture3D())
+        {
+            resource = tex_3d->NativeTexture();
         }
         else if (auto* buff = uav.Buffer())
         {
             resource = buff->NativeBuffer();
         }
+
 
         if (!resource)
         {

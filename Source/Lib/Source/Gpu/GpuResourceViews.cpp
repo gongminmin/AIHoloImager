@@ -27,7 +27,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format)
-        : gpu_system_(&gpu_system), texture_(&texture)
+        : gpu_system_(&gpu_system), texture_2d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -44,11 +44,98 @@ namespace AIHoloImager
         }
         else
         {
-            SubResourceToMipLevelPlane(
-                sub_resource, texture.MipLevels(), srv_desc.Texture2D.MostDetailedMip, srv_desc.Texture2D.PlaneSlice);
+            uint32_t array_slice;
+            DecomposeSubResource(
+                sub_resource, texture.MipLevels(), 1, srv_desc.Texture2D.MostDetailedMip, array_slice, srv_desc.Texture2D.PlaneSlice);
             srv_desc.Texture2D.MipLevels = 1;
         }
         srv_desc.Texture2D.ResourceMinLODClamp = 0;
+        gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture(), &srv_desc, cpu_handle_);
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array)
+        : GpuShaderResourceView(gpu_system, texture_array, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, DXGI_FORMAT format)
+        : GpuShaderResourceView(gpu_system, texture_array, ~0U, format)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource)
+        : GpuShaderResourceView(gpu_system, texture_array, sub_resource, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(
+        GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+        srv_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture_array.Format() : format;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        if (sub_resource == ~0U)
+        {
+            srv_desc.Texture2DArray.MostDetailedMip = 0;
+            srv_desc.Texture2DArray.MipLevels = texture_array.MipLevels();
+            srv_desc.Texture2DArray.PlaneSlice = 0;
+            srv_desc.Texture2DArray.ArraySize = texture_array.ArraySize();
+            srv_desc.Texture2DArray.FirstArraySlice = 0;
+        }
+        else
+        {
+            DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(),
+                srv_desc.Texture2DArray.MostDetailedMip, srv_desc.Texture2DArray.FirstArraySlice, srv_desc.Texture2DArray.PlaneSlice);
+            srv_desc.Texture2DArray.MipLevels = 1;
+        }
+        srv_desc.Texture2DArray.ResourceMinLODClamp = 0;
+        gpu_system.NativeDevice()->CreateShaderResourceView(texture_array.NativeTexture(), &srv_desc, cpu_handle_);
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture)
+        : GpuShaderResourceView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, DXGI_FORMAT format)
+        : GpuShaderResourceView(gpu_system, texture, ~0U, format)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource)
+        : GpuShaderResourceView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(
+        GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), texture_3d_(&texture)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+        srv_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        if (sub_resource == ~0U)
+        {
+            srv_desc.Texture3D.MostDetailedMip = 0;
+            srv_desc.Texture3D.MipLevels = texture.MipLevels();
+        }
+        else
+        {
+            uint32_t array_slice;
+            uint32_t plane_slice;
+            DecomposeSubResource(sub_resource, texture.MipLevels(), 1, srv_desc.Texture3D.MostDetailedMip, array_slice, plane_slice);
+            srv_desc.Texture3D.MipLevels = 1;
+        }
+        srv_desc.Texture3D.ResourceMinLODClamp = 0;
         gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture(), &srv_desc, cpu_handle_);
     }
 
@@ -75,6 +162,29 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateShaderResourceView(buffer.NativeBuffer(), &srv_desc, cpu_handle_);
     }
 
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size)
+        : GpuShaderResourceView(gpu_system, buffer, 0, buffer.Size() / element_size, element_size)
+    {
+    }
+
+    GpuShaderResourceView::GpuShaderResourceView(
+        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
+        : gpu_system_(&gpu_system), buffer_(&buffer)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+        srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv_desc.Buffer.FirstElement = first_element;
+        srv_desc.Buffer.NumElements = num_elements;
+        srv_desc.Buffer.StructureByteStride = element_size;
+        srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        gpu_system.NativeDevice()->CreateShaderResourceView(buffer.NativeBuffer(), &srv_desc, cpu_handle_);
+    }
+
     GpuShaderResourceView::~GpuShaderResourceView()
     {
         this->Reset();
@@ -94,9 +204,17 @@ namespace AIHoloImager
 
     void GpuShaderResourceView::Transition(GpuCommandList& cmd_list) const
     {
-        if (texture_ != nullptr)
+        if (texture_2d_ != nullptr)
         {
-            texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            texture_2d_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
+        else if (texture_2d_array_ != nullptr)
+        {
+            texture_2d_array_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+        }
+        else if (texture_3d_ != nullptr)
+        {
+            texture_3d_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
         }
         else if (buffer_ != nullptr)
         {
@@ -230,7 +348,7 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format)
-        : gpu_system_(&gpu_system), texture_(&texture)
+        : gpu_system_(&gpu_system), texture_2d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -238,7 +356,71 @@ namespace AIHoloImager
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
         uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        SubResourceToMipLevelPlane(sub_resource, texture.MipLevels(), uav_desc.Texture2D.MipSlice, uav_desc.Texture2D.PlaneSlice);
+        uint32_t array_slice;
+        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture2D.MipSlice, array_slice, uav_desc.Texture2D.PlaneSlice);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array)
+        : GpuUnorderedAccessView(gpu_system, texture_array, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, DXGI_FORMAT format)
+        : GpuUnorderedAccessView(gpu_system, texture_array, 0, format)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource)
+        : GpuUnorderedAccessView(gpu_system, texture_array, sub_resource, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(
+        GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
+        uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture_array.Format() : format;
+        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+        uav_desc.Texture2DArray.ArraySize = 1;
+        DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), uav_desc.Texture2DArray.MipSlice,
+            uav_desc.Texture2DArray.FirstArraySlice, uav_desc.Texture2DArray.PlaneSlice);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(texture_array.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture)
+        : GpuUnorderedAccessView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, DXGI_FORMAT format)
+        : GpuUnorderedAccessView(gpu_system, texture, 0, format)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource)
+        : GpuUnorderedAccessView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+    {
+    }
+
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+        : gpu_system_(&gpu_system), texture_3d_(&texture)
+    {
+        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
+        uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture3D.MipSlice, array_slice, plane_slice);
+        uav_desc.Texture3D.FirstWSlice = 0;
+        uav_desc.Texture3D.WSize = texture.Depth(uav_desc.Texture3D.MipSlice);
         gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
     }
 
@@ -303,9 +485,17 @@ namespace AIHoloImager
 
     void GpuUnorderedAccessView::Transition(GpuCommandList& cmd_list) const
     {
-        if (texture_ != nullptr)
+        if (texture_2d_ != nullptr)
         {
-            texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            texture_2d_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        else if (texture_2d_array_ != nullptr)
+        {
+            texture_2d_array_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        else if (texture_3d_ != nullptr)
+        {
+            texture_3d_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         else if (buffer_ != nullptr)
         {
