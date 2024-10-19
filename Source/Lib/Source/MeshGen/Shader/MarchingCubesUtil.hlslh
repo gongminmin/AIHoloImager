@@ -1,10 +1,9 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
-uint32_t CalcOffset(uint32_t3 coord, uint32_t size)
+uint32_t3 CalcCoord(uint32_t3 coord, uint32_t size)
 {
-    coord = min(coord, size - 1);
-    return (coord.x * size + coord.y) * size + coord.z;
+    return min(coord, size - 1).zyx;
 }
 
 uint32_t3 DecomposeCoord(uint32_t index, uint32_t size)
@@ -16,17 +15,17 @@ uint32_t3 DecomposeCoord(uint32_t index, uint32_t size)
     return uint32_t3(x, y, z);
 };
 
-uint32_t CalcCubeIndex(Buffer<float4> scalar_deformation, uint32_t3 coord, uint32_t size, float isovalue)
+uint32_t CalcCubeIndex(Texture3D<float4> scalar_deformation, uint32_t3 coord, uint32_t size, float isovalue)
 {
     const float scalars[] = {
-        scalar_deformation[CalcOffset(coord + uint32_t3(0, 0, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(1, 0, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(1, 1, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(0, 1, 0), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(0, 0, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(1, 0, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(1, 1, 1), size)].x,
-        scalar_deformation[CalcOffset(coord + uint32_t3(0, 1, 1), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(0, 0, 0), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(1, 0, 0), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(1, 1, 0), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(0, 1, 0), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(0, 0, 1), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(1, 0, 1), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(1, 1, 1), size)].x,
+        scalar_deformation[CalcCoord(coord + uint32_t3(0, 1, 1), size)].x,
     };
 
     uint32_t cube_index = 0;

@@ -346,22 +346,16 @@ namespace AIHoloImager
             }
         }
 
-        Mesh Generate(std::span<const XMFLOAT4> scalar_deformation, uint32_t grid_res, float isovalue)
+        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue)
         {
-            assert(grid_res >= 2);
+            assert(scalar_deformation.Width(0) >= 3);
 
-            const uint32_t size = grid_res + 1;
-            assert(scalar_deformation.size() == size * size * size);
+            const uint32_t size = scalar_deformation.Width(0);
+            assert((scalar_deformation.Height(0) == size) && (scalar_deformation.Depth(0) == size));
 
             const uint32_t total_cubes = size * size * size;
 
-            GpuBuffer scalar_deformation_buff(gpu_system_, static_cast<uint32_t>(scalar_deformation.size() * sizeof(XMFLOAT4)),
-                D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"scalar_deformation_buff");
-            GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation_buff, DXGI_FORMAT_R32G32B32A32_FLOAT);
-            {
-                std::memcpy(scalar_deformation_buff.Map(), scalar_deformation.data(), scalar_deformation_buff.Size());
-                scalar_deformation_buff.Unmap(D3D12_RANGE{0, scalar_deformation_buff.Size()});
-            }
+            GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -538,8 +532,8 @@ namespace AIHoloImager
     MarchingCubes::MarchingCubes(MarchingCubes&& other) noexcept = default;
     MarchingCubes& MarchingCubes::operator=(MarchingCubes&& other) noexcept = default;
 
-    Mesh MarchingCubes::Generate(std::span<const XMFLOAT4> scalar_deformation, uint32_t grid_res, float isovalue)
+    Mesh MarchingCubes::Generate(const GpuTexture3D& scalar_deformation, float isovalue)
     {
-        return impl_->Generate(std::move(scalar_deformation), grid_res, isovalue);
+        return impl_->Generate(scalar_deformation, isovalue);
     }
 } // namespace AIHoloImager

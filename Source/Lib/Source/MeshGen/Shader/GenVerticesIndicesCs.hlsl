@@ -14,7 +14,7 @@ cbuffer param_cb : register(b0)
 
 Buffer<uint16_t> edge_table : register(t0);
 Buffer<uint16_t> triangle_table : register(t1);
-Buffer<float4> scalar_deformation : register(t2);
+Texture3D<float4> scalar_deformation : register(t2);
 Buffer<uint32_t> non_empty_cube_ids : register(t3);
 Buffer<uint32_t> non_empty_cube_indices : register(t4);
 Buffer<uint32_t> cube_offsets : register(t5);
@@ -136,8 +136,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
                 break;
             }
 
-            const float4 beg_scalar_deformation = scalar_deformation[CalcOffset(beg_coord, size)];
-            const float4 end_scalar_deformation = scalar_deformation[CalcOffset(end_coord, size)];
+            const float4 beg_scalar_deformation = scalar_deformation[CalcCoord(beg_coord, size)];
+            const float4 end_scalar_deformation = scalar_deformation[CalcCoord(end_coord, size)];
             const float3 beg_p = beg_coord + beg_scalar_deformation.yzw;
             const float3 end_p = end_coord + end_scalar_deformation.yzw;
             const float beg_scalar = beg_scalar_deformation.x;

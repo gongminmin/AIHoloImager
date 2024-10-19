@@ -207,10 +207,18 @@ namespace AIHoloImager
 
             Mesh pos_only_mesh;
             {
-                const auto py_density_deformation = python_system_.CallObject(*mesh_generator_query_density_deformation_method_);
-                const auto density_deformation = python_system_.ToSpan<const XMFLOAT4>(*py_density_deformation);
+                GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"density_deformation_tex");
 
-                pos_only_mesh = marching_cubes_.Generate(density_deformation, GridRes, 0);
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                {
+                    const auto py_density_deformation = python_system_.CallObject(*mesh_generator_query_density_deformation_method_);
+                    const auto density_deformation = python_system_.ToSpan<const XMFLOAT4>(*py_density_deformation);
+                    density_deformation_tex.Upload(gpu_system_, cmd_list, 0, density_deformation.data());
+                }
+                gpu_system_.Execute(std::move(cmd_list));
+
+                pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0);
 
                 const uint32_t pos_attrib_index = pos_only_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
                 for (uint32_t i = 0; i < pos_only_mesh.NumVertices(); ++i)

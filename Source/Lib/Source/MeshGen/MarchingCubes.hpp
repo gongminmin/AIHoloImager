@@ -5,10 +5,9 @@
 
 #include <span>
 
-#include <DirectXMath.h>
-
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Gpu/GpuTexture.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -24,7 +23,7 @@ namespace AIHoloImager
 
         MarchingCubes& operator=(MarchingCubes&& other) noexcept;
 
-        Mesh Generate(std::span<const DirectX::XMFLOAT4> scalar_deformation, uint32_t grid_res, float isovalue);
+        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue);
 
     private:
         class Impl;

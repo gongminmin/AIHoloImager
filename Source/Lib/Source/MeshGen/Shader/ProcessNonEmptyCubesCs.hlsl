@@ -15,7 +15,7 @@ cbuffer param_cb : register(b0)
 Buffer<uint16_t> edge_table : register(t0);
 Buffer<uint16_t> triangle_table : register(t1);
 Buffer<uint32_t> cube_offsets : register(t2);
-Buffer<float4> scalar_deformation : register(t3);
+Texture3D<float4> scalar_deformation : register(t3);
 
 RWBuffer<uint32_t> non_empty_cube_ids : register(u0);
 RWBuffer<uint32_t> non_empty_cube_indices : register(u1);
