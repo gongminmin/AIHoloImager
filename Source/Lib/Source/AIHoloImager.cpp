@@ -76,6 +76,7 @@ namespace AIHoloImager
             std::chrono::duration<double> mesh_gen_time;
             Mesh result_mesh;
             {
+                timer.Restart();
                 MeshGenerator mesh_gen(exe_dir_, gpu_system_, python_system_);
                 result_mesh = mesh_gen.Generate(mv_renderer_result.multi_view_images, 2048, sfm_result, mesh_recon_result, tmp_dir_);
                 mesh_gen_time = timer.Elapsed();
