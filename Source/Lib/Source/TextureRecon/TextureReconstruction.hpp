@@ -25,9 +25,8 @@ namespace AIHoloImager
         {
             GpuTexture2D color_tex;
 
-            GpuBuffer counter_buff;
-            GpuBuffer uv_buff;
-            GpuBuffer pos_buff;
+            GpuTexture2D pos_tex;
+            DirectX::XMFLOAT4X4 inv_model;
         };
 
     public:
@@ -38,7 +37,7 @@ namespace AIHoloImager
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
         Result Process(const Mesh& mesh, const DirectX::XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir);
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

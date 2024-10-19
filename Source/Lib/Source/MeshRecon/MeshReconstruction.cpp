@@ -61,7 +61,7 @@ namespace AIHoloImager
 
             mesh = mesh.UnwrapUv(texture_size, 0);
 
-            auto texture_result = texture_recon_.Process(mesh, XMMatrixIdentity(), obb, sfm_input, texture_size, false, tmp_dir);
+            auto texture_result = texture_recon_.Process(mesh, XMMatrixIdentity(), obb, sfm_input, texture_size, tmp_dir);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 

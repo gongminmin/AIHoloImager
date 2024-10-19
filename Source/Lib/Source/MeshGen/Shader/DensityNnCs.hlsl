@@ -2,8 +2,9 @@
 //
 
 #include "Nn.hlslh"
+#include "MarchingCubesUtil.hlslh"
 
-#define BLOCK_DIM 16
+#define BLOCK_DIM 256
 #define MAX_HIDDEN_DIM 64
 #define MAX_FEATURES 240
 
@@ -17,8 +18,9 @@ cbuffer param_cb : register(b0)
     uint32_t layer_3_nodes;
     uint32_t layer_4_nodes;
 
-    uint32_t texture_size;
-    float4x4 inv_model;
+    uint32_t grid_res;
+    uint32_t size;
+    float grid_scale;
 };
 
 SamplerState bilinear_sampler : register(s0);
@@ -34,47 +36,30 @@ Buffer<float> nn_layer_3_bias : register(t6);
 Buffer<float> nn_layer_4_weight : register(t7);
 Buffer<float> nn_layer_4_bias : register(t8);
 
-Texture2D pos_tex : register(t9);
+RWTexture3D<float4> density_deformations : register(u0);
 
-RWTexture2D<unorm float4> merged_tex : register(u0);
-
-[numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
+[numthreads(BLOCK_DIM, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
-    if (any(dtid.xy >= texture_size))
+    if (dtid.x >= num_samples)
     {
         return;
     }
 
-    [branch]
-    if (merged_tex[dtid.xy].a > 0.5f)
-    {
-        return;
-    }
-
-    float4 pos_ws = pos_tex[dtid.xy];
-    [branch]
-    if (pos_ws.a < 0.5f)
-    {
-        return;
-    }
-
-    float4 pos_os = mul(pos_ws, inv_model);
-    pos_os /= pos_os.w;
-
-    float3 coord = pos_os.xyz * 0.5f + 0.5f;
+    uint32_t3 coord = DecomposeCoord(dtid.x, size);
+    float3 cube_vert = (float3(coord) / grid_res - 0.5f) * grid_scale * 0.5f + 0.5f;
 
     Tensor<MAX_FEATURES> inputs;
     uint32_t num_per_plane_features = num_features / 3;
     for (uint32_t i = 0; i < num_per_plane_features; ++i)
     {
         uint32_t index = i;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xy, index), 0));
+        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(cube_vert.xy, index), 0));
         index += num_per_plane_features;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xz, index), 0));
+        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(cube_vert.xz, index), 0));
         index += num_per_plane_features;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.zy, index), 0));
+        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(cube_vert.zy, index), 0));
     }
 
     Tensor<MAX_HIDDEN_DIM> nodes[2];
@@ -104,11 +89,10 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         TensorView biases = TensorView::Create(nn_layer_4_bias, 0, uint32_t2(layer_4_nodes, 1));
 
         Linear(nodes[1], nodes[0], weights, biases);
-        Sigmoid(nodes[1], nodes[1]);
     }
 
-    // layer_4_nodes == 3
+    // layer_4_nodes == 1
     {
-        merged_tex[dtid.xy] = float4(saturate(float3(nodes[1].Read(0), nodes[1].Read(1), nodes[1].Read(2))), 1);
+        density_deformations[coord.zyx].x = nodes[1].Read(0);
     }
 }

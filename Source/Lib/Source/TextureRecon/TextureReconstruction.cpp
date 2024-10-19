@@ -8,8 +8,6 @@
     #include <format>
 #endif
 
-#include <DirectXPackedVector.h>
-
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 
@@ -18,10 +16,8 @@
 #include "CompiledShader/GenShadowMapVs.h"
 #include "CompiledShader/ProjectTextureCs.h"
 #include "CompiledShader/ResolveTextureCs.h"
-#include "CompiledShader/ResolveTextureWoEmptyCs.h"
 
 using namespace DirectX;
-using namespace DirectX::PackedVector;
 
 namespace AIHoloImager
 {
@@ -104,20 +100,13 @@ namespace AIHoloImager
             {
                 resolve_texture_cb_ = ConstantBuffer<ResolveTextureConstantBuffer>(gpu_system_, 1, L"resolve_texture_cb_");
 
-                const ShaderInfo shader = {ResolveTextureCs_shader, 1, 2, 4};
+                const ShaderInfo shader = {ResolveTextureCs_shader, 1, 1, 1};
                 resolve_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
-            }
-            {
-                resolve_texture_wo_empty_cb_ =
-                    ConstantBuffer<ResolveTextureWoEmptyConstantBuffer>(gpu_system_, 1, L"resolve_texture_wo_empty_cb_");
-
-                const ShaderInfo shader = {ResolveTextureWoEmptyCs_shader, 1, 1, 1};
-                resolve_texture_wo_empty_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }
 
         TextureReconstruction::Result Process(const Mesh& mesh, const XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, const std::filesystem::path& tmp_dir)
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
 
@@ -155,8 +144,8 @@ namespace AIHoloImager
 #endif
 
             TextureReconstruction::Result result;
-            result.color_tex = this->GenTextureFromPhotos(mesh_vb, mesh_ib, model_mtx_lh, world_obb, flatten_pos_tex, flatten_normal_tex,
-                sfm_input, texture_size, empty_pos, result.counter_buff, result.uv_buff, result.pos_buff, tmp_dir);
+            result.color_tex = this->GenTextureFromPhotos(
+                mesh_vb, mesh_ib, model_mtx_lh, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size, tmp_dir);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -170,6 +159,9 @@ namespace AIHoloImager
                 SaveTexture(projective_tex, output_dir / "Projective.png");
             }
 #endif
+
+            result.pos_tex = std::move(flatten_pos_tex);
+            XMStoreFloat4x4(&result.inv_model, XMMatrixTranspose(XMMatrixInverse(nullptr, model_mtx_lh)));
 
             return result;
         }
@@ -224,8 +216,7 @@ namespace AIHoloImager
 
         GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx,
             const BoundingOrientedBox& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos, GpuBuffer& counter_buff,
-            GpuBuffer& uv_buff, GpuBuffer& pos_buff, [[maybe_unused]] const std::filesystem::path& tmp_dir)
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -345,8 +336,7 @@ namespace AIHoloImager
             }
             std::cout << "\n";
 
-            return this->ResolveTexture(
-                model_mtx, texture_size, accum_color_tex, flatten_pos_srv, empty_pos, counter_buff, uv_buff, pos_buff);
+            return this->ResolveTexture(texture_size, accum_color_tex);
         }
 
         void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, const XMFLOAT2& offset,
@@ -393,8 +383,7 @@ namespace AIHoloImager
             cmd_list.Compute(project_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
         }
 
-        GpuTexture2D ResolveTexture(const XMMATRIX& model_mtx, uint32_t texture_size, const GpuTexture2D& accum_color_tex,
-            const GpuShaderResourceView& flatten_pos_srv, bool empty_pos, GpuBuffer& counter_buff, GpuBuffer& uv_buff, GpuBuffer& pos_buff)
+        GpuTexture2D ResolveTexture(uint32_t texture_size, const GpuTexture2D& accum_color_tex)
         {
             constexpr uint32_t BlockDim = 16;
 
@@ -406,48 +395,15 @@ namespace AIHoloImager
 
             GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
 
-            if (empty_pos)
-            {
-                XMStoreFloat4x4(&resolve_texture_cb_->inv_model, XMMatrixTranspose(XMMatrixInverse(nullptr, model_mtx)));
-                resolve_texture_cb_->texture_size = texture_size;
-                resolve_texture_cb_.UploadToGpu();
+            resolve_texture_cb_->texture_size = texture_size;
+            resolve_texture_cb_.UploadToGpu();
 
-                counter_buff = GpuBuffer(gpu_system_, sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                    D3D12_RESOURCE_STATE_COMMON, L"counter_buff");
-                GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, DXGI_FORMAT_R32_UINT);
+            const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
+            const GpuShaderResourceView* srvs[] = {&accum_color_srv};
+            GpuUnorderedAccessView* uavs[] = {&color_uav};
 
-                const uint32_t max_pos_size = texture_size * texture_size;
-                uv_buff = GpuBuffer(gpu_system_, max_pos_size * sizeof(XMUSHORT2), D3D12_HEAP_TYPE_DEFAULT,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"uv_buff");
-                GpuUnorderedAccessView uv_uav(gpu_system_, uv_buff, DXGI_FORMAT_R32_UINT);
-                pos_buff = GpuBuffer(gpu_system_, max_pos_size * sizeof(XMFLOAT3), D3D12_HEAP_TYPE_DEFAULT,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"pos_buff");
-                GpuUnorderedAccessView pos_uav(gpu_system_, pos_buff, sizeof(XMFLOAT3));
-
-                const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
-                const GpuShaderResourceView* srvs[] = {&accum_color_srv, &flatten_pos_srv};
-                GpuUnorderedAccessView* uavs[] = {&color_uav, &counter_uav, &uv_uav, &pos_uav};
-
-                const uint32_t zeros[] = {0, 0, 0, 0};
-                cmd_list.Clear(counter_uav, zeros);
-
-                const GpuCommandList::ShaderBinding cs_shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(
-                    resolve_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
-            }
-            else
-            {
-                resolve_texture_wo_empty_cb_->texture_size = texture_size;
-                resolve_texture_wo_empty_cb_.UploadToGpu();
-
-                const GeneralConstantBuffer* cbs[] = {&resolve_texture_wo_empty_cb_};
-                const GpuShaderResourceView* srvs[] = {&accum_color_srv};
-                GpuUnorderedAccessView* uavs[] = {&color_uav};
-
-                const GpuCommandList::ShaderBinding cs_shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(
-                    resolve_texture_wo_empty_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
-            }
+            const GpuCommandList::ShaderBinding cs_shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(resolve_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
 
             gpu_system_.Execute(std::move(cmd_list));
 
@@ -495,20 +451,11 @@ namespace AIHoloImager
 
         struct ResolveTextureConstantBuffer
         {
-            XMFLOAT4X4 inv_model;
             uint32_t texture_size;
             uint32_t padding[3];
         };
         ConstantBuffer<ResolveTextureConstantBuffer> resolve_texture_cb_;
         GpuComputePipeline resolve_texture_pipeline_;
-
-        struct ResolveTextureWoEmptyConstantBuffer
-        {
-            uint32_t texture_size;
-            uint32_t padding[3];
-        };
-        ConstantBuffer<ResolveTextureWoEmptyConstantBuffer> resolve_texture_wo_empty_cb_;
-        GpuComputePipeline resolve_texture_wo_empty_pipeline_;
 
         static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
         static constexpr DXGI_FORMAT PositionFmt = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -527,9 +474,9 @@ namespace AIHoloImager
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
     TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const XMMATRIX& model_mtx,
-        const BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input, uint32_t texture_size, bool empty_pos,
+        const BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input, uint32_t texture_size,
         const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size, empty_pos, tmp_dir);
+        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
     }
 } // namespace AIHoloImager

@@ -15,7 +15,6 @@ import torch.nn as nn
 
 from src.models.decoder.transformer import TriplaneTransformer
 from src.models.encoder.dino_wrapper import DinoWrapper
-from src.models.renderer.synthesizer_mesh import TriplaneSynthesizer
 
 class Lrm(nn.Module):
     def __init__(self,
@@ -27,7 +26,6 @@ class Lrm(nn.Module):
                  triplane_low_res : int = 32,
                  triplane_high_res : int = 64,
                  triplane_dim : int = 80,
-                 rendering_samples_per_ray : int = 128,
                  grid_res : int = 128,
                  grid_scale : float = 2.0):
         super(Lrm, self).__init__()
@@ -69,28 +67,6 @@ class Lrm(nn.Module):
             triplane_high_res = triplane_high_res,
             triplane_dim = triplane_dim,
         )
- 
-        self.synthesizer = TriplaneSynthesizer(
-            triplane_dim = triplane_dim,
-            samples_per_ray = rendering_samples_per_ray,
-        )
-
-        size = self.grid_res + 1
-
-        self.cube_verts = torch.nonzero(torch.ones((size, size, size), device = self.device)).float()
-        self.cube_verts = (self.cube_verts / grid_res - 0.5) * grid_scale
-
-        cube_corners_offset = torch.tensor([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]],
-                                           dtype = torch.int32)
-        cube_corners_offset *= torch.tensor([size * size, size, 1], dtype = torch.int32)
-        cube_corners_offset = torch.sum(cube_corners_offset, 1)
-        cube_corners_offset = cube_corners_offset.to(self.device)
-
-        self.cube_indices = torch.arange(size * size * size, dtype = torch.int32, device = self.device)
-        self.cube_indices = self.cube_indices.reshape(size, size, size)
-        self.cube_indices = self.cube_indices[0 : grid_res, 0 : grid_res, 0 : grid_res]
-        self.cube_indices = self.cube_indices.reshape(-1, 1).expand(-1, 8)
-        self.cube_indices = torch.add(self.cube_indices, cube_corners_offset)
 
     def GenNeRF(self, images, cameras):
         image_feats = self.encoder(images.unsqueeze(0), cameras.unsqueeze(0))
@@ -98,30 +74,4 @@ class Lrm(nn.Module):
 
         planes = self.transformer(image_feats)
         assert(planes.shape[0] == 1)
-        self.planes = planes.squeeze(0)
-
-    def QueryDensityDeformation(self):
-        density, deformation, weight = self.synthesizer.get_geometry_prediction(
-            self.planes.unsqueeze(0),
-            self.cube_verts.unsqueeze(0),
-            self.cube_indices
-        )
-        assert((density.shape[0] == 1) and (deformation.shape[0] == 1))
-        density = density.squeeze(0)
-        deformation = deformation.squeeze(0)
-
-        # Normalize the deformation to avoid the flipped triangles.
-        deformation_multiplier = 4.0
-        deformation = 1.0 / (self.grid_res * deformation_multiplier) * torch.tanh(deformation)
-
-        size = self.grid_res + 1
-        density = density.reshape(size, size, size, 1)
-        deformation = deformation.reshape(size, size, size, -1)
-        deformation *= size
-
-        return torch.cat([density, deformation], dim = 3)
-
-    def QueryColors(self, positions):
-        colors = self.synthesizer.get_texture_prediction(self.planes.unsqueeze(0), positions.unsqueeze(0))
-        assert(colors.shape[0] == 1)
-        return colors.squeeze(0)
+        return planes.squeeze(0)

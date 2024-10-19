@@ -17,6 +17,8 @@
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 
+#include "CompiledShader/DeformationNnCs.h"
+#include "CompiledShader/DensityNnCs.h"
 #include "CompiledShader/DilateCs.h"
 #include "CompiledShader/MergeTextureCs.h"
 
@@ -42,15 +44,204 @@ namespace AIHoloImager
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_, *args);
 
             mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
-            mesh_generator_query_density_deformation_method_ = python_system_.GetAttr(*mesh_generator_, "QueryDensityDeformation");
-            mesh_generator_query_colors_method_ = python_system_.GetAttr(*mesh_generator_, "QueryColors");
 
+            D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
+            bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+            bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+            bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+            bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+            bilinear_sampler_desc.MaxAnisotropy = 16;
+            bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+            bilinear_sampler_desc.MinLOD = 0.0f;
+            bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
+            bilinear_sampler_desc.ShaderRegister = 0;
+
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
             {
-                merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
+                PyObjectPtr num_density_nn_layers_method = python_system_.GetAttr(*mesh_generator_, "NumDensityNnLayers");
+                const auto py_num_layers = python_system_.CallObject(*num_density_nn_layers_method);
+                const uint32_t num_layers = python_system_.Cast<uint32_t>(*py_num_layers);
 
-                const ShaderInfo shader = {MergeTextureCs_shader, 1, 2, 1};
-                merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+                density_nn_.resize(num_layers);
+
+                PyObjectPtr density_nn_size_method = python_system_.GetAttr(*mesh_generator_, "DensityNnSize");
+                PyObjectPtr density_nn_weight_method = python_system_.GetAttr(*mesh_generator_, "DensityNnWeight");
+                PyObjectPtr density_nn_bias_method = python_system_.GetAttr(*mesh_generator_, "DensityNnBias");
+                for (uint32_t i = 0; i < num_layers; ++i)
+                {
+                    auto layer_args = python_system_.MakeTuple(1);
+                    python_system_.SetTupleItem(*layer_args, 0, python_system_.MakeObject(i));
+
+                    const auto py_size = python_system_.CallObject(*density_nn_size_method, *layer_args);
+
+                    NnLayer& layer = density_nn_[i];
+                    layer.input_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 1));
+                    layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
+
+                    layer.weight_buff =
+                        GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                            D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} weight_buff", i));
+                    {
+                        const auto py_weight = python_system_.CallObject(*density_nn_weight_method, *layer_args);
+
+                        GpuUploadBuffer weight_upload_buff(gpu_system_, layer.weight_buff.Size(), L"weight_upload_buff");
+                        std::memcpy(weight_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_weight).data(),
+                            layer.weight_buff.Size());
+                        cmd_list.Copy(layer.weight_buff, weight_upload_buff);
+                    }
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} bias_buff", i));
+                    {
+                        const auto py_bias = python_system_.CallObject(*density_nn_bias_method, *layer_args);
+
+                        GpuUploadBuffer bias_upload_buff(gpu_system_, layer.bias_buff.Size(), L"bias_upload_buff");
+                        std::memcpy(bias_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_bias).data(),
+                            layer.bias_buff.Size());
+                        cmd_list.Copy(layer.bias_buff, bias_upload_buff);
+                    }
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                }
+                {
+                    density_nn_cb_ = ConstantBuffer<DensityNnConstantBuffer>(gpu_system_, 1, L"density_nn_cb_");
+
+                    const ShaderInfo shader = {DensityNnCs_shader, 1, 9, 1};
+                    density_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+
+                    density_nn_cb_->num_features = density_nn_[0].input_features;
+                    density_nn_cb_->layer_1_nodes = density_nn_[0].output_features;
+                    density_nn_cb_->layer_2_nodes = density_nn_[1].output_features;
+                    density_nn_cb_->layer_3_nodes = density_nn_[2].output_features;
+                    density_nn_cb_->layer_4_nodes = density_nn_[3].output_features;
+                    density_nn_cb_->grid_res = GridRes;
+                    density_nn_cb_->size = GridRes + 1;
+                    density_nn_cb_->grid_scale = GridScale;
+                }
             }
+            {
+                PyObjectPtr num_deformation_nn_layers_method = python_system_.GetAttr(*mesh_generator_, "NumDeformationNnLayers");
+                const auto py_num_layers = python_system_.CallObject(*num_deformation_nn_layers_method);
+                const uint32_t num_layers = python_system_.Cast<uint32_t>(*py_num_layers);
+
+                deformation_nn_.resize(num_layers);
+
+                PyObjectPtr deformation_nn_size_method = python_system_.GetAttr(*mesh_generator_, "DeformationNnSize");
+                PyObjectPtr deformation_nn_weight_method = python_system_.GetAttr(*mesh_generator_, "DeformationNnWeight");
+                PyObjectPtr deformation_nn_bias_method = python_system_.GetAttr(*mesh_generator_, "DeformationNnBias");
+                for (uint32_t i = 0; i < num_layers; ++i)
+                {
+                    auto layer_args = python_system_.MakeTuple(1);
+                    python_system_.SetTupleItem(*layer_args, 0, python_system_.MakeObject(i));
+
+                    const auto py_size = python_system_.CallObject(*deformation_nn_size_method, *layer_args);
+
+                    NnLayer& layer = deformation_nn_[i];
+                    layer.input_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 1));
+                    layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
+
+                    layer.weight_buff =
+                        GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                            D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} weight_buff", i));
+                    {
+                        const auto py_weight = python_system_.CallObject(*deformation_nn_weight_method, *layer_args);
+
+                        GpuUploadBuffer weight_upload_buff(gpu_system_, layer.weight_buff.Size(), L"weight_upload_buff");
+                        std::memcpy(weight_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_weight).data(),
+                            layer.weight_buff.Size());
+                        cmd_list.Copy(layer.weight_buff, weight_upload_buff);
+                    }
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} bias_buff", i));
+                    {
+                        const auto py_bias = python_system_.CallObject(*deformation_nn_bias_method, *layer_args);
+
+                        GpuUploadBuffer bias_upload_buff(gpu_system_, layer.bias_buff.Size(), L"bias_upload_buff");
+                        std::memcpy(bias_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_bias).data(),
+                            layer.bias_buff.Size());
+                        cmd_list.Copy(layer.bias_buff, bias_upload_buff);
+                    }
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                }
+                {
+                    deformation_nn_cb_ = ConstantBuffer<DeformationNnConstantBuffer>(gpu_system_, 1, L"deformation_nn_cb_");
+
+                    const ShaderInfo shader = {DeformationNnCs_shader, 1, 9, 1};
+                    deformation_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+
+                    deformation_nn_cb_->num_features = deformation_nn_[0].input_features;
+                    deformation_nn_cb_->layer_1_nodes = deformation_nn_[0].output_features;
+                    deformation_nn_cb_->layer_2_nodes = deformation_nn_[1].output_features;
+                    deformation_nn_cb_->layer_3_nodes = deformation_nn_[2].output_features;
+                    deformation_nn_cb_->layer_4_nodes = deformation_nn_[3].output_features;
+                    deformation_nn_cb_->grid_res = GridRes;
+                    deformation_nn_cb_->size = GridRes + 1;
+                    deformation_nn_cb_->grid_scale = GridScale;
+                }
+            }
+            {
+                PyObjectPtr num_color_nn_layers_method = python_system_.GetAttr(*mesh_generator_, "NumColorNnLayers");
+                const auto py_num_layers = python_system_.CallObject(*num_color_nn_layers_method);
+                const uint32_t num_layers = python_system_.Cast<uint32_t>(*py_num_layers);
+
+                color_nn_.resize(num_layers);
+
+                PyObjectPtr color_nn_size_method = python_system_.GetAttr(*mesh_generator_, "ColorNnSize");
+                PyObjectPtr color_nn_weight_method = python_system_.GetAttr(*mesh_generator_, "ColorNnWeight");
+                PyObjectPtr color_nn_bias_method = python_system_.GetAttr(*mesh_generator_, "ColorNnBias");
+                for (uint32_t i = 0; i < num_layers; ++i)
+                {
+                    auto layer_args = python_system_.MakeTuple(1);
+                    python_system_.SetTupleItem(*layer_args, 0, python_system_.MakeObject(i));
+
+                    const auto py_size = python_system_.CallObject(*color_nn_size_method, *layer_args);
+
+                    NnLayer& layer = color_nn_[i];
+                    layer.input_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 1));
+                    layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
+
+                    layer.weight_buff =
+                        GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                            D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} weight_buff", i));
+                    {
+                        const auto py_weight = python_system_.CallObject(*color_nn_weight_method, *layer_args);
+
+                        GpuUploadBuffer weight_upload_buff(gpu_system_, layer.weight_buff.Size(), L"weight_upload_buff");
+                        std::memcpy(weight_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_weight).data(),
+                            layer.weight_buff.Size());
+                        cmd_list.Copy(layer.weight_buff, weight_upload_buff);
+                    }
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
+                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::format(L"layer {} bias_buff", i));
+                    {
+                        const auto py_bias = python_system_.CallObject(*color_nn_bias_method, *layer_args);
+
+                        GpuUploadBuffer bias_upload_buff(gpu_system_, layer.bias_buff.Size(), L"bias_upload_buff");
+                        std::memcpy(bias_upload_buff.MappedData<float>(), python_system_.ToSpan<const float>(*py_bias).data(),
+                            layer.bias_buff.Size());
+                        cmd_list.Copy(layer.bias_buff, bias_upload_buff);
+                    }
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                }
+                {
+                    merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
+
+                    const ShaderInfo shader = {MergeTextureCs_shader, 1, 10, 1};
+                    merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+
+                    merge_texture_cb_->num_features = color_nn_[0].input_features;
+                    merge_texture_cb_->layer_1_nodes = color_nn_[0].output_features;
+                    merge_texture_cb_->layer_2_nodes = color_nn_[1].output_features;
+                    merge_texture_cb_->layer_3_nodes = color_nn_[2].output_features;
+                    merge_texture_cb_->layer_4_nodes = color_nn_[3].output_features;
+                }
+            }
+            gpu_system_.Execute(std::move(cmd_list));
+
             {
                 dilate_cb_ = ConstantBuffer<DilateConstantBuffer>(gpu_system_, 1, L"dilate_cb_");
 
@@ -78,9 +269,13 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
-            std::cout << "Generating mesh from images...\n";
+            std::cout << "Generating NeRF from images...\n";
 
-            Mesh mesh = this->GenMeshFromImages(input_images);
+            this->GenNeRF(input_images);
+
+            std::cout << "Generating mesh...\n";
+
+            Mesh mesh = this->GenMesh();
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
@@ -110,33 +305,7 @@ namespace AIHoloImager
 
             std::cout << "Generating texture...\n";
 
-            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, true, tmp_dir);
-
-            GpuReadbackBuffer counter_cpu_buff;
-            GpuReadbackBuffer pos_cpu_buff;
-            {
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-                {
-                    SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
-
-                    Texture projective_tex(texture_size, texture_size, 4);
-                    texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, projective_tex.Data());
-                    SaveTexture(projective_tex, output_dir / "Projective.png");
-                }
-#endif
-
-                counter_cpu_buff = GpuReadbackBuffer(gpu_system_, texture_result.counter_buff.Size(), L"counter_cpu_buff");
-                cmd_list.Copy(counter_cpu_buff, texture_result.counter_buff);
-                texture_result.counter_buff = GpuBuffer();
-
-                pos_cpu_buff = GpuReadbackBuffer(gpu_system_, texture_result.pos_buff.Size(), L"pos_cpu_buff");
-                cmd_list.Copy(pos_cpu_buff, texture_result.pos_buff);
-                texture_result.pos_buff = GpuBuffer();
-
-                gpu_system_.Execute(std::move(cmd_list));
-            }
+            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
             {
                 const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
@@ -159,13 +328,12 @@ namespace AIHoloImager
                     XMStoreFloat3(&normal, XMVector3TransformNormal(XMLoadFloat3(&normal), adjust_it_mtx));
                 }
             }
-            gpu_system_.WaitForGpu();
-
-            this->MergeTexture(counter_cpu_buff, texture_result.uv_buff, pos_cpu_buff, texture_result.color_tex);
 
             Texture merged_tex(texture_size, texture_size, 4);
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                this->MergeTexture(cmd_list, texture_result.pos_tex, texture_result.inv_model, texture_result.color_tex);
 
                 GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
                     texture_result.color_tex.Format(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
@@ -187,7 +355,7 @@ namespace AIHoloImager
         }
 
     private:
-        Mesh GenMeshFromImages(std::span<const Texture> input_images)
+        void GenNeRF(std::span<const Texture> input_images)
         {
             auto args = python_system_.MakeTuple(1);
             {
@@ -203,26 +371,69 @@ namespace AIHoloImager
                 python_system_.SetTupleItem(*args, 0, std::move(imgs_args));
             }
 
-            python_system_.CallObject(*mesh_generator_gen_nerf_method_, *args);
+            const auto py_planes = python_system_.CallObject(*mesh_generator_gen_nerf_method_, *args);
+            num_planes_ = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 0));
+            num_per_plane_features_ = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 1));
+            const uint32_t plane_width = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 2));
+            const uint32_t plane_height = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 3));
+            auto planes = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_planes, 4));
 
-            Mesh pos_only_mesh;
+            planes_tex_ = GpuTexture2DArray(gpu_system_, plane_width, plane_height, num_planes_ * num_per_plane_features_, 1,
+                DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"planes_tex");
+            planes_srv_ = GpuShaderResourceView(gpu_system_, planes_tex_, DXGI_FORMAT_R32_FLOAT);
+
+            const float* data = planes.data();
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            for (uint32_t i = 0; i < num_planes_ * num_per_plane_features_; ++i)
             {
-                GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"density_deformation_tex");
-
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                {
-                    const auto py_density_deformation = python_system_.CallObject(*mesh_generator_query_density_deformation_method_);
-                    const auto density_deformation = python_system_.ToSpan<const XMFLOAT4>(*py_density_deformation);
-                    density_deformation_tex.Upload(gpu_system_, cmd_list, 0, density_deformation.data());
-                }
-                gpu_system_.Execute(std::move(cmd_list));
-
-                pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
-                pos_only_mesh = this->CleanMesh(pos_only_mesh);
+                planes_tex_.Upload(gpu_system_, cmd_list, i, data);
+                data += plane_width * plane_height;
             }
+            gpu_system_.Execute(std::move(cmd_list));
+        }
 
-            return pos_only_mesh;
+        Mesh GenMesh()
+        {
+            const uint32_t num_samples = (GridRes + 1) * (GridRes + 1) * (GridRes + 1);
+            GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"density_deformation_tex");
+            GpuUnorderedAccessView density_deformation_uav(gpu_system_, density_deformation_tex);
+
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            {
+                density_nn_cb_->num_samples = num_samples;
+                assert(density_nn_cb_->num_features == num_planes_ * num_per_plane_features_);
+                density_nn_cb_.UploadToGpu();
+
+                constexpr uint32_t BlockDim = 256;
+
+                const GeneralConstantBuffer* cbs[] = {&density_nn_cb_};
+                const GpuShaderResourceView* srvs[] = {&planes_srv_, &density_nn_[0].weight_srv, &density_nn_[0].bias_srv,
+                    &density_nn_[1].weight_srv, &density_nn_[1].bias_srv, &density_nn_[2].weight_srv, &density_nn_[2].bias_srv,
+                    &density_nn_[3].weight_srv, &density_nn_[3].bias_srv};
+                GpuUnorderedAccessView* uavs[] = {&density_deformation_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(density_nn_pipeline_, DivUp(num_samples, BlockDim), 1, 1, shader_binding);
+            }
+            {
+                deformation_nn_cb_->num_samples = num_samples;
+                assert(deformation_nn_cb_->num_features == num_planes_ * num_per_plane_features_);
+                deformation_nn_cb_.UploadToGpu();
+
+                constexpr uint32_t BlockDim = 256;
+
+                const GeneralConstantBuffer* cbs[] = {&deformation_nn_cb_};
+                const GpuShaderResourceView* srvs[] = {&planes_srv_, &deformation_nn_[0].weight_srv, &deformation_nn_[0].bias_srv,
+                    &deformation_nn_[1].weight_srv, &deformation_nn_[1].bias_srv, &deformation_nn_[2].weight_srv,
+                    &deformation_nn_[2].bias_srv, &deformation_nn_[3].weight_srv, &deformation_nn_[3].bias_srv};
+                GpuUnorderedAccessView* uavs[] = {&density_deformation_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(deformation_nn_pipeline_, DivUp(num_samples, BlockDim), 1, 1, shader_binding);
+            }
+            gpu_system_.Execute(std::move(cmd_list));
+
+            Mesh pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
+            return this->CleanMesh(pos_only_mesh);
         }
 
         Mesh CleanMesh(const Mesh& input_mesh)
@@ -454,48 +665,26 @@ namespace AIHoloImager
             }
         }
 
-        void MergeTexture(const GpuReadbackBuffer& counter_cpu_buff, const GpuBuffer& uv_buff, const GpuReadbackBuffer& pos_cpu_buff,
-            GpuTexture2D& color_gpu_tex)
+        void MergeTexture(GpuCommandList& cmd_list, const GpuTexture2D& pos_tex, const XMFLOAT4X4& inv_model, GpuTexture2D& color_tex)
         {
-            const uint32_t count = *counter_cpu_buff.MappedData<uint32_t>();
-            if (count > 0)
-            {
-                const XMFLOAT3* pos = pos_cpu_buff.MappedData<XMFLOAT3>();
+            GpuUnorderedAccessView merged_uav(gpu_system_, color_tex);
 
-                auto query_colors_args = python_system_.MakeTuple(2);
-                {
-                    auto pos_py = python_system_.MakeObject(
-                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(pos), count * sizeof(XMFLOAT3)));
-                    python_system_.SetTupleItem(*query_colors_args, 0, std::move(pos_py));
-                    python_system_.SetTupleItem(*query_colors_args, 1, python_system_.MakeObject(count));
-                }
+            const uint32_t texture_size = color_tex.Width(0);
+            merge_texture_cb_->inv_model = inv_model;
+            merge_texture_cb_->texture_size = texture_size;
+            merge_texture_cb_.UploadToGpu();
 
-                auto colors_data = python_system_.CallObject(*mesh_generator_query_colors_method_, *query_colors_args);
-                const auto colors = python_system_.ToSpan<const uint32_t>(*colors_data);
+            GpuShaderResourceView pos_srv(gpu_system_, pos_tex);
 
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            constexpr uint32_t BlockDim = 16;
 
-                GpuUnorderedAccessView merged_uav(gpu_system_, color_gpu_tex);
-
-                merge_texture_cb_->buffer_size = count;
-                merge_texture_cb_.UploadToGpu();
-
-                GpuShaderResourceView uv_srv(gpu_system_, uv_buff, DXGI_FORMAT_R32_UINT);
-
-                GpuUploadBuffer color_buff(gpu_system_, colors.data(), count * sizeof(uint32_t), L"color_buff");
-                GpuShaderResourceView color_srv(gpu_system_, color_buff, DXGI_FORMAT_R8G8B8A8_UNORM);
-
-                constexpr uint32_t BlockDim = 256;
-
-                const GeneralConstantBuffer* cbs[] = {&merge_texture_cb_};
-                const GpuShaderResourceView* srvs[] = {&uv_srv, &color_srv};
-                GpuUnorderedAccessView* uavs[] = {&merged_uav};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(merge_texture_pipeline_, DivUp(count, BlockDim), 1, 1, shader_binding);
-
-                gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
-            }
+            const GeneralConstantBuffer* cbs[] = {&merge_texture_cb_};
+            const GpuShaderResourceView* srvs[] = {&planes_srv_, &color_nn_[0].weight_srv, &color_nn_[0].bias_srv, &color_nn_[1].weight_srv,
+                &color_nn_[1].bias_srv, &color_nn_[2].weight_srv, &color_nn_[2].bias_srv, &color_nn_[3].weight_srv, &color_nn_[3].bias_srv,
+                &pos_srv};
+            GpuUnorderedAccessView* uavs[] = {&merged_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
         XMMATRIX CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, BoundingOrientedBox& world_obb)
@@ -572,16 +761,78 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_class_;
         PyObjectPtr mesh_generator_;
         PyObjectPtr mesh_generator_gen_nerf_method_;
-        PyObjectPtr mesh_generator_query_density_deformation_method_;
-        PyObjectPtr mesh_generator_query_colors_method_;
 
         MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
 
+        struct NnLayer
+        {
+            uint32_t input_features;
+            uint32_t output_features;
+            GpuBuffer weight_buff;
+            GpuShaderResourceView weight_srv;
+            GpuBuffer bias_buff;
+            GpuShaderResourceView bias_srv;
+        };
+        std::vector<NnLayer> density_nn_;
+        std::vector<NnLayer> deformation_nn_;
+        std::vector<NnLayer> color_nn_;
+
+        GpuTexture2DArray planes_tex_;
+        GpuShaderResourceView planes_srv_;
+        uint32_t num_planes_;
+        uint32_t num_per_plane_features_;
+
+        struct DensityNnConstantBuffer
+        {
+            uint32_t num_samples;
+            uint32_t num_features;
+
+            uint32_t layer_1_nodes;
+            uint32_t layer_2_nodes;
+            uint32_t layer_3_nodes;
+            uint32_t layer_4_nodes;
+
+            uint32_t grid_res;
+            uint32_t size;
+            float grid_scale;
+            uint32_t padding[3];
+        };
+        ConstantBuffer<DensityNnConstantBuffer> density_nn_cb_;
+        GpuComputePipeline density_nn_pipeline_;
+
+        struct DeformationNnConstantBuffer
+        {
+            uint32_t num_samples;
+            uint32_t num_features;
+
+            uint32_t layer_1_nodes;
+            uint32_t layer_2_nodes;
+            uint32_t layer_3_nodes;
+            uint32_t layer_4_nodes;
+
+            uint32_t grid_res;
+            uint32_t size;
+            float grid_scale;
+            uint32_t padding[3];
+        };
+        ConstantBuffer<DeformationNnConstantBuffer> deformation_nn_cb_;
+        GpuComputePipeline deformation_nn_pipeline_;
+
         struct MergeTextureConstantBuffer
         {
-            uint32_t buffer_size;
-            uint32_t padding[3];
+            uint32_t num_samples;
+            uint32_t num_features;
+
+            uint32_t layer_1_nodes;
+            uint32_t layer_2_nodes;
+            uint32_t layer_3_nodes;
+            uint32_t layer_4_nodes;
+
+            uint32_t texture_size;
+            uint32_t padding;
+
+            XMFLOAT4X4 inv_model;
         };
         ConstantBuffer<MergeTextureConstantBuffer> merge_texture_cb_;
         GpuComputePipeline merge_texture_pipeline_;

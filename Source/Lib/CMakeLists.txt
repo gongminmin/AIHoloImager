@@ -45,6 +45,8 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl
+    Source/MeshGen/Shader/DeformationNnCs.hlsl
+    Source/MeshGen/Shader/DensityNnCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubesUtil.hlslh
@@ -81,9 +83,9 @@ set(aihi_files
     Source/TextureRecon/Shader/GenShadowMapVs.hlsl
     Source/TextureRecon/Shader/ProjectTextureCs.hlsl
     Source/TextureRecon/Shader/ResolveTextureCs.hlsl
-    Source/TextureRecon/Shader/ResolveTextureWoEmptyCs.hlsl
     Source/TextureRecon/TextureReconstruction.cpp
     Source/TextureRecon/TextureReconstruction.hpp
+    Source/Util/Shader/Nn.hlslh
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
     Source/Util/ErrorHandling.hpp
@@ -118,6 +120,8 @@ macro(AddShaderFile file_name shader_type entry_point)
 endmacro()
 
 AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/DeformationNnCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/DensityNnCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
@@ -134,7 +138,6 @@ AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
 AddShaderFile(Source/TextureRecon/Shader/GenShadowMapVs.hlsl "vs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ProjectTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ResolveTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/TextureRecon/Shader/ResolveTextureWoEmptyCs.hlsl "cs" "main")
 
 target_include_directories(AIHoloImagerLib
     PUBLIC

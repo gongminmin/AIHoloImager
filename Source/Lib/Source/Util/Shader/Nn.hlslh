@@ -1,0 +1,95 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
+struct TensorView
+{
+    static TensorView Create(Buffer<float> buff, uint32_t offset, uint32_t2 shape)
+    {
+        TensorView view;
+        view.data = buff;
+        view.offset = offset;
+        view.shape = shape;
+        return view;
+    }
+
+    float Read(uint32_t x, uint32_t y = 0)
+    {
+        return data[offset + y * shape[0] + x];
+    }
+
+    uint32_t Shape(uint32_t dim)
+    {
+        if (dim < 2)
+        {
+            return shape[dim];
+        }
+        else
+        {
+            return 1;
+        }
+    }
+
+    Buffer<float> data;
+    uint32_t offset;
+    uint32_t2 shape;
+};
+
+template <uint32_t Size>
+struct Tensor
+{
+    float Read(uint32_t x)
+    {
+        return buffer[x];
+    }
+
+    void Write(uint32_t x, float value)
+    {
+        buffer[x] = value;
+    }
+
+    uint32_t Shape(uint32_t dim)
+    {
+        if (dim == 0)
+        {
+            return Size;
+        }
+        else
+        {
+            return 1;
+        }
+    }
+
+    float buffer[Size];
+};
+
+template <typename WeightType, typename BiasType, typename InputType, typename OutputType>
+void Linear(out OutputType out_tensor, InputType node_tensor, WeightType weight_tensor, BiasType bias_tensor)
+{
+    for (uint32_t i = 0; i < weight_tensor.Shape(1); ++i)
+    {
+        float val = bias_tensor.Read(i);
+        for (uint32_t j = 0; j < weight_tensor.Shape(0); ++j)
+        {
+            val += node_tensor.Read(j) * weight_tensor.Read(j, i);
+        }
+        out_tensor.Write(i, val);
+    }
+}
+
+template <typename InputType, typename OutputType>
+void ReLU(out OutputType out_tensor, InputType in_tensor)
+{
+    for (uint32_t i = 0; i < in_tensor.Shape(0); ++i)
+    {
+        out_tensor.Write(i, max(in_tensor.Read(i), 0));
+    }
+}
+
+template <typename InputType, typename OutputType>
+void Sigmoid(out OutputType out_tensor, InputType in_tensor)
+{
+    for (uint32_t i = 0; i < in_tensor.Shape(0); ++i)
+    {
+        out_tensor.Write(i, 1 / (1 + exp(-in_tensor.Read(i))));
+    }
+}
