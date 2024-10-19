@@ -218,15 +218,7 @@ namespace AIHoloImager
                 }
                 gpu_system_.Execute(std::move(cmd_list));
 
-                pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0);
-
-                const uint32_t pos_attrib_index = pos_only_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
-                for (uint32_t i = 0; i < pos_only_mesh.NumVertices(); ++i)
-                {
-                    auto& pos = pos_only_mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
-                    XMStoreFloat3(&pos, (XMLoadFloat3(&pos) / GridRes - XMVectorSet(0.5f, 0.5f, 0.5f, 0)) * GridScale);
-                }
-
+                pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
                 pos_only_mesh = this->CleanMesh(pos_only_mesh);
             }
 

@@ -23,7 +23,7 @@ namespace AIHoloImager
 
         MarchingCubes& operator=(MarchingCubes&& other) noexcept;
 
-        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue);
+        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale);
 
     private:
         class Impl;

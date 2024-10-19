@@ -346,7 +346,7 @@ namespace AIHoloImager
             }
         }
 
-        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue)
+        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
         {
             assert(scalar_deformation.Width(0) >= 3);
 
@@ -447,6 +447,7 @@ namespace AIHoloImager
                 gen_vertices_indices_cb_->size = size;
                 gen_vertices_indices_cb_->num_non_empty_cubes = num_non_empty_cubes;
                 gen_vertices_indices_cb_->isovalue = isovalue;
+                gen_vertices_indices_cb_->scale = scale;
                 gen_vertices_indices_cb_.UploadToGpu();
 
                 GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, DXGI_FORMAT_R32_UINT);
@@ -517,7 +518,7 @@ namespace AIHoloImager
             uint32_t size;
             uint32_t num_non_empty_cubes;
             float isovalue;
-            uint32_t padding;
+            float scale;
         };
         ConstantBuffer<GenVerticesIndicesConstantBuffer> gen_vertices_indices_cb_;
         GpuComputePipeline gen_vertices_indices_pipeline_;
@@ -532,8 +533,8 @@ namespace AIHoloImager
     MarchingCubes::MarchingCubes(MarchingCubes&& other) noexcept = default;
     MarchingCubes& MarchingCubes::operator=(MarchingCubes&& other) noexcept = default;
 
-    Mesh MarchingCubes::Generate(const GpuTexture3D& scalar_deformation, float isovalue)
+    Mesh MarchingCubes::Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
     {
-        return impl_->Generate(scalar_deformation, isovalue);
+        return impl_->Generate(scalar_deformation, isovalue, scale);
     }
 } // namespace AIHoloImager

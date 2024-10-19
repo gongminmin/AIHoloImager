@@ -10,6 +10,7 @@ cbuffer param_cb : register(b0)
     uint32_t size;
     uint32_t num_non_empty_cubes;
     float isovalue;
+    float scale;
 };
 
 Buffer<uint16_t> edge_table : register(t0);
@@ -142,7 +143,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
             const float3 end_p = end_coord + end_scalar_deformation.yzw;
             const float beg_scalar = beg_scalar_deformation.x;
             const float end_scalar = end_scalar_deformation.x;
-            mesh_vertices[vertex_offset] = InterpolateVertex(beg_p, end_p, beg_scalar, end_scalar, isovalue);
+            const float3 pos = InterpolateVertex(beg_p, end_p, beg_scalar, end_scalar, isovalue);
+            mesh_vertices[vertex_offset] = (pos / (size - 1) - 0.5f) * scale;
             ++vertex_offset;
         }
     }
