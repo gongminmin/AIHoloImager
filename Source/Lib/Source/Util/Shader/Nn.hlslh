@@ -1,6 +1,8 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#pragma once
+
 struct TensorView
 {
     static TensorView Create(Buffer<float> buff, uint32_t offset, uint32_t2 shape)

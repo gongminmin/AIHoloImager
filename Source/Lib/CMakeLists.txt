@@ -52,6 +52,7 @@ set(aihi_files
     Source/MeshGen/Shader/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl
+    Source/MeshGen/Shader/TriplaneNeRF.hlslh
     Source/MeshGen/MarchingCubes.cpp
     Source/MeshGen/MarchingCubes.hpp
     Source/MeshGen/MeshGenerator.cpp

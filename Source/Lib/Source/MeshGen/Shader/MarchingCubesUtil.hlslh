@@ -1,6 +1,8 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#pragma once
+
 uint32_t3 CalcCoord(uint32_t3 coord, uint32_t size)
 {
     return min(coord, size - 1).zyx;

@@ -376,11 +376,11 @@ namespace AIHoloImager
             num_per_plane_features_ = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 1));
             const uint32_t plane_width = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 2));
             const uint32_t plane_height = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_planes, 3));
-            auto planes = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_planes, 4));
+            const auto planes = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_planes, 4));
 
             planes_tex_ = GpuTexture2DArray(gpu_system_, plane_width, plane_height, num_planes_ * num_per_plane_features_, 1,
-                DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"planes_tex");
-            planes_srv_ = GpuShaderResourceView(gpu_system_, planes_tex_, DXGI_FORMAT_R32_FLOAT);
+                DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"planes_tex_");
+            planes_srv_ = GpuShaderResourceView(gpu_system_, planes_tex_);
 
             const float* data = planes.data();
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);

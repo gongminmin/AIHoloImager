@@ -2,6 +2,7 @@
 //
 
 #include "Nn.hlslh"
+#include "TriplaneNeRF.hlslh"
 
 #define BLOCK_DIM 16
 #define MAX_HIDDEN_DIM 64
@@ -60,50 +61,39 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 pos_os = mul(pos_ws, inv_model);
-    pos_os /= pos_os.w;
-
-    float3 coord = pos_os.xyz * 0.5f + 0.5f;
-
-    Tensor<MAX_FEATURES> inputs;
-    uint32_t num_per_plane_features = num_features / 3;
-    for (uint32_t i = 0; i < num_per_plane_features; ++i)
-    {
-        uint32_t index = i;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xy, index), 0));
-        index += num_per_plane_features;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xz, index), 0));
-        index += num_per_plane_features;
-        inputs.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.zy, index), 0));
-    }
-
     Tensor<MAX_HIDDEN_DIM> nodes[2];
     {
-        TensorView weights = TensorView::Create(nn_layer_1_weight, 0, uint32_t2(num_features, layer_1_nodes));
-        TensorView biases = TensorView::Create(nn_layer_1_bias, 0, uint32_t2(layer_1_nodes, 1));
+        float4 pos_os = mul(pos_ws, inv_model);
+        pos_os /= pos_os.w;
 
-        Linear(nodes[0], inputs, weights, biases);
+        Tensor<MAX_FEATURES> inputs;
+        FetchTriplaneNeRF(inputs, planes, bilinear_sampler, pos_os.xyz, num_features);
+
+        TensorView weight = TensorView::Create(nn_layer_1_weight, 0, uint32_t2(num_features, layer_1_nodes));
+        TensorView bias = TensorView::Create(nn_layer_1_bias, 0, uint32_t2(layer_1_nodes, 1));
+
+        Linear(nodes[0], inputs, weight, bias);
         ReLU(nodes[0], nodes[0]);
     }
     {
-        TensorView weights = TensorView::Create(nn_layer_2_weight, 0, uint32_t2(layer_1_nodes, layer_2_nodes));
-        TensorView biases = TensorView::Create(nn_layer_2_bias, 0, uint32_t2(layer_2_nodes, 1));
+        TensorView weight = TensorView::Create(nn_layer_2_weight, 0, uint32_t2(layer_1_nodes, layer_2_nodes));
+        TensorView bias = TensorView::Create(nn_layer_2_bias, 0, uint32_t2(layer_2_nodes, 1));
 
-        Linear(nodes[1], nodes[0], weights, biases);
+        Linear(nodes[1], nodes[0], weight, bias);
         ReLU(nodes[1], nodes[1]);
     }
     {
-        TensorView weights = TensorView::Create(nn_layer_3_weight, 0, uint32_t2(layer_2_nodes, layer_3_nodes));
-        TensorView biases = TensorView::Create(nn_layer_3_bias, 0, uint32_t2(layer_3_nodes, 1));
+        TensorView weight = TensorView::Create(nn_layer_3_weight, 0, uint32_t2(layer_2_nodes, layer_3_nodes));
+        TensorView bias = TensorView::Create(nn_layer_3_bias, 0, uint32_t2(layer_3_nodes, 1));
 
-        Linear(nodes[0], nodes[1], weights, biases);
+        Linear(nodes[0], nodes[1], weight, bias);
         ReLU(nodes[0], nodes[0]);
     }
     {
-        TensorView weights = TensorView::Create(nn_layer_4_weight, 0, uint32_t2(layer_3_nodes, layer_4_nodes));
-        TensorView biases = TensorView::Create(nn_layer_4_bias, 0, uint32_t2(layer_4_nodes, 1));
+        TensorView weight = TensorView::Create(nn_layer_4_weight, 0, uint32_t2(layer_3_nodes, layer_4_nodes));
+        TensorView bias = TensorView::Create(nn_layer_4_bias, 0, uint32_t2(layer_4_nodes, 1));
 
-        Linear(nodes[1], nodes[0], weights, biases);
+        Linear(nodes[1], nodes[0], weight, bias);
         Sigmoid(nodes[1], nodes[1]);
     }
 

@@ -1,0 +1,23 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
+#pragma once
+
+#include "Nn.hlslh"
+
+template <uint32_t MaxFeatures>
+void FetchTriplaneNeRF(out Tensor<MaxFeatures> ret, Texture2DArray<float> planes, SamplerState bilinear_sampler, float3 coord, uint32_t num_features)
+{
+    coord = coord * 0.5f + 0.5f;
+
+    uint32_t num_per_plane_features = num_features / 3;
+    for (uint32_t i = 0; i < num_per_plane_features; ++i)
+    {
+        uint32_t index = i;
+        ret.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xy, index), 0));
+        index += num_per_plane_features;
+        ret.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.xz, index), 0));
+        index += num_per_plane_features;
+        ret.Write(index, planes.SampleLevel(bilinear_sampler, float3(coord.zy, index), 0));
+    }
+}
