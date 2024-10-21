@@ -13,15 +13,15 @@ from src.utils.camera_util import get_zero123plus_input_cameras
 from Lrm import Lrm
 
 class MeshGenerator:
-    def __init__(self, grid_res : int, grid_scale : float):
+    def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
 
         seed_everything(42)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = Lrm(self.device, encoder_feat_dim = 768, transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16,
-            triplane_low_res = 32, triplane_high_res = 64, triplane_dim = 80, grid_res = grid_res, grid_scale = grid_scale
+        self.model = Lrm(encoder_feat_dim = 768, transformer_dim = 1024, transformer_layers = 16, transformer_heads = 16,
+            triplane_low_res = 32, triplane_high_res = 64, triplane_dim = 80
         )
 
         model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")
@@ -53,15 +53,15 @@ class MeshGenerator:
                     if key_tokens[2] == "net_sdf":
                         if index == 0:
                             self.decoder_density_nn[layer] = [None] * 2
-                        self.decoder_density_nn[layer][index] = value
+                        self.decoder_density_nn[layer][index] = value.cpu().numpy()
                     elif key_tokens[2] == "net_deformation":
                         if index == 0:
                             self.decoder_deformation_nn[layer] = [None] * 2
-                        self.decoder_deformation_nn[layer][index] = value
+                        self.decoder_deformation_nn[layer][index] = value.cpu().numpy()
                     elif key_tokens[2] == "net_rgb":
                         if index == 0:
                             self.decoder_color_nn[layer] = [None] * 2
-                        self.decoder_color_nn[layer][index] = value
+                        self.decoder_color_nn[layer][index] = value.cpu().numpy()
                 else:
                     state_dict[key] = value
         self.model.load_state_dict(state_dict, strict = True)
@@ -99,10 +99,10 @@ class MeshGenerator:
         return (size[0], size[1])
 
     def DensityNnWeight(self, layer):
-        return self.decoder_density_nn[layer][0].cpu().numpy().tobytes()
+        return self.decoder_density_nn[layer][0].tobytes()
 
     def DensityNnBias(self, layer):
-        return self.decoder_density_nn[layer][1].cpu().numpy().tobytes()
+        return self.decoder_density_nn[layer][1].tobytes()
 
     def NumDeformationNnLayers(self):
         return len(self.decoder_deformation_nn)
@@ -112,10 +112,10 @@ class MeshGenerator:
         return (size[0], size[1])
 
     def DeformationNnWeight(self, layer):
-        return self.decoder_deformation_nn[layer][0].cpu().numpy().tobytes()
+        return self.decoder_deformation_nn[layer][0].tobytes()
 
     def DeformationNnBias(self, layer):
-        return self.decoder_deformation_nn[layer][1].cpu().numpy().tobytes()
+        return self.decoder_deformation_nn[layer][1].tobytes()
 
     def NumColorNnLayers(self):
         return len(self.decoder_color_nn)
@@ -125,7 +125,7 @@ class MeshGenerator:
         return (size[0], size[1])
 
     def ColorNnWeight(self, layer):
-        return self.decoder_color_nn[layer][0].cpu().numpy().tobytes()
+        return self.decoder_color_nn[layer][0].tobytes()
 
     def ColorNnBias(self, layer):
-        return self.decoder_color_nn[layer][1].cpu().numpy().tobytes()
+        return self.decoder_color_nn[layer][1].tobytes()

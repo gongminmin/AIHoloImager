@@ -35,14 +35,7 @@ namespace AIHoloImager
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
-
-            auto args = python_system_.MakeTuple(2);
-            {
-                python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(GridRes));
-                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(GridScale));
-            }
-            mesh_generator_ = python_system_.CallObject(*mesh_generator_class_, *args);
-
+            mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
             mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
 
             D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};

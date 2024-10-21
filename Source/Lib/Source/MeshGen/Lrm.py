@@ -18,21 +18,14 @@ from src.models.encoder.dino_wrapper import DinoWrapper
 
 class Lrm(nn.Module):
     def __init__(self,
-                 device,
                  encoder_feat_dim : int = 768,
                  transformer_dim : int = 1024,
                  transformer_layers : int = 16,
                  transformer_heads : int = 16,
                  triplane_low_res : int = 32,
                  triplane_high_res : int = 64,
-                 triplane_dim : int = 80,
-                 grid_res : int = 128,
-                 grid_scale : float = 2.0):
+                 triplane_dim : int = 80):
         super(Lrm, self).__init__()
-
-        self.device = device
-        self.grid_res = grid_res
-        self.grid_scale = grid_scale
 
         this_py_dir = Path(__file__).parent.resolve()
         pretrained_dir = this_py_dir.joinpath("Models/dino-vitb16")
