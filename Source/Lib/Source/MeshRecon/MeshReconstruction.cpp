@@ -5,6 +5,7 @@
 
 #include <format>
 #include <iostream>
+#include <numbers>
 
 #include <DirectXMath.h>
 
@@ -95,7 +96,7 @@ namespace AIHoloImager
 
             const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
             const XMMATRIX pre_rotate = XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&obb.Orientation))) *
-                                        XMMatrixRotationZ(XM_PI / 2) * XMMatrixRotationX(XM_PI);
+                                        XMMatrixRotationZ(std::numbers::pi_v<float> / 2) * XMMatrixRotationX(std::numbers::pi_v<float>);
             const XMMATRIX pre_scale = XMMatrixScaling(inv_max_dim, inv_max_dim, inv_max_dim);
 
             XMMATRIX model_mtx = pre_trans * pre_rotate * pre_scale;

@@ -4,6 +4,7 @@
 #include "MultiViewRenderer.hpp"
 
 #include <format>
+#include <numbers>
 
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -28,7 +29,7 @@ namespace
     // The angles are defined by zero123plus v1.2 (https://github.com/SUDO-AI-3D/zero123plus)
     constexpr float Azimuths[] = {30, 90, 150, 210, 270, 330};
     constexpr float Elevations[] = {20, -10, 20, -10, 20, -10};
-    constexpr float Fov = XM_PI / 6;
+    constexpr float Fov = std::numbers::pi_v<float> / 6;
     const float MvScale = 1.6f; // The fine-tuned zero123plus in InstantMesh has a scale
                                 // (https://github.com/TencentARC/InstantMesh/commit/34c193cc96eebd46deb7c48a76613753ad777122)
 

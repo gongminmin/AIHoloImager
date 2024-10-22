@@ -6,6 +6,7 @@
 #include <array>
 #include <cassert>
 #include <iostream>
+#include <numbers>
 #include <set>
 
 #include <directx/d3d12.h>
@@ -304,7 +305,7 @@ namespace AIHoloImager
                 const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
                 const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
                 const XMMATRIX pre_rotate = XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&recon_input.obb.Orientation))) *
-                                            XMMatrixRotationZ(XM_PI / 2) * XMMatrixRotationX(XM_PI);
+                                            XMMatrixRotationZ(std::numbers::pi_v<float> / 2) * XMMatrixRotationX(std::numbers::pi_v<float>);
                 const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
 
                 const XMMATRIX adjust_mtx = model_mtx * handedness * pre_trans * pre_rotate * handedness;
