@@ -663,7 +663,7 @@ namespace AIHoloImager
             GpuUnorderedAccessView merged_uav(gpu_system_, color_tex);
 
             const uint32_t texture_size = color_tex.Width(0);
-            merge_texture_cb_->inv_model = inv_model;
+            XMStoreFloat4x4(&merge_texture_cb_->inv_model, XMMatrixTranspose(XMLoadFloat4x4(&inv_model)));
             merge_texture_cb_->texture_size = texture_size;
             merge_texture_cb_.UploadToGpu();
 

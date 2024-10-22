@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <span>
-
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"

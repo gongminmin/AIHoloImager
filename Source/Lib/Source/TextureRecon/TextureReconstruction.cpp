@@ -161,7 +161,7 @@ namespace AIHoloImager
 #endif
 
             result.pos_tex = std::move(flatten_pos_tex);
-            XMStoreFloat4x4(&result.inv_model, XMMatrixTranspose(XMMatrixInverse(nullptr, model_mtx_lh)));
+            XMStoreFloat4x4(&result.inv_model, XMMatrixInverse(nullptr, model_mtx_lh));
 
             return result;
         }
@@ -286,8 +286,7 @@ namespace AIHoloImager
                 for (const auto& corner : corners)
                 {
                     XMVECTOR pos = XMVectorSet(corner.x, corner.y, -corner.z, 1);
-                    pos = XMVector4Dot(pos, z_col);
-                    const float z = XMVectorGetZ(pos);
+                    const float z = XMVectorGetZ(XMVector4Dot(pos, z_col));
                     min_z_es = std::min(min_z_es, z);
                     max_z_es = std::max(max_z_es, z);
                 }
