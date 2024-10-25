@@ -16,7 +16,7 @@
     #include <windows.h>
 #endif
 #include <DirectXCollision.h>
-#include <DirectXMath.h>
+#include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -34,7 +34,7 @@ namespace AIHoloImager
         {
             Mesh mesh;
 
-            DirectX::XMFLOAT4X4 transform; // From model space to SfM space
+            glm::mat4x4 transform; // From model space to SfM space
             DirectX::BoundingOrientedBox obb;
         };
 

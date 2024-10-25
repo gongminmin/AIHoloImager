@@ -184,6 +184,7 @@ target_link_libraries(AIHoloImagerLib
         dxgi
         dxguid
         DirectX-Headers
+        glm
         openMVG_exif
         openMVG_matching_image_collection
         openMVG_sfm

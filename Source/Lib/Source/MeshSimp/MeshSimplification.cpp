@@ -3,10 +3,8 @@
 
 #include "MeshSimplification.hpp"
 
-#include <DirectXMath.h>
-#include <Eigen/Core>
-
-using namespace DirectX;
+#include <glm/geometric.hpp>
+#include <glm/vec3.hpp>
 
 // QEM-based mesh simplification.
 // Based on https://github.com/sp4cerat/Fast-Quadric-Mesh-Simplification/blob/master/src.cmd/Simplify.h
@@ -99,12 +97,12 @@ namespace AIHoloImager
             bool deleted;
             bool dirty;
             int attr;
-            Eigen::Vector3d normal;
+            glm::dvec3 normal;
         };
 
         struct Vertex
         {
-            Eigen::Vector3d pos;
+            glm::dvec3 pos;
             uint32_t tri_start;
             uint32_t tri_count;
             SymmetricMatrix q;
@@ -127,8 +125,8 @@ namespace AIHoloImager
             vertices_.resize(input_mesh.NumVertices());
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const XMFLOAT3& pos = input_mesh.VertexData<XMFLOAT3>(i, 0);
-                vertices_[i].pos = Eigen::Vector3d(pos.x, pos.y, pos.z);
+                const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, 0);
+                vertices_[i].pos = {pos.x, pos.y, pos.z};
             }
 
             triangles_.resize(input_mesh.IndexBuffer().size() / 3);
@@ -189,7 +187,7 @@ namespace AIHoloImager
                             }
 
                             // Compute vertex to collapse to
-                            Eigen::Vector3d pos;
+                            glm::dvec3 pos;
                             this->CalcEdgeError(ind0, ind1, pos);
 
                             deleted0.resize(v0.tri_count);
@@ -242,10 +240,10 @@ namespace AIHoloImager
             Mesh mesh(input_mesh.MeshVertexDesc(), static_cast<uint32_t>(vertices_.size()), static_cast<uint32_t>(triangles_.size() * 3));
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                mesh.VertexData<XMFLOAT3>(i, 0) = {
-                    static_cast<float>(vertices_[i].pos.x()),
-                    static_cast<float>(vertices_[i].pos.y()),
-                    static_cast<float>(vertices_[i].pos.z()),
+                mesh.VertexData<glm::vec3>(i, 0) = {
+                    static_cast<float>(vertices_[i].pos.x),
+                    static_cast<float>(vertices_[i].pos.y),
+                    static_cast<float>(vertices_[i].pos.z),
                 };
             }
             for (uint32_t i = 0; i < static_cast<uint32_t>(triangles_.size()); ++i)
@@ -368,24 +366,22 @@ namespace AIHoloImager
 
                 for (auto& tri : triangles_)
                 {
-                    Eigen::Vector3d pos[3];
+                    glm::dvec3 pos[3];
                     for (uint32_t i = 0; i < 3; ++i)
                     {
                         pos[i] = vertices_[tri.indices[i]].pos;
                     }
 
-                    Eigen::Vector3d normal = (pos[1] - pos[0]).cross(pos[2] - pos[0]);
-                    normal.normalize();
-                    tri.normal = normal;
+                    tri.normal = glm::normalize(glm::cross(pos[1] - pos[0], pos[2] - pos[0]));
 
                     for (const uint32_t ind : tri.indices)
                     {
-                        vertices_[ind].q += SymmetricMatrix(normal.x(), normal.y(), normal.z(), -normal.dot(pos[0]));
+                        vertices_[ind].q += SymmetricMatrix(tri.normal.x, tri.normal.y, tri.normal.z, -glm::dot(tri.normal, pos[0]));
                     }
                 }
                 for (auto& tri : triangles_)
                 {
-                    Eigen::Vector3d pos;
+                    glm::dvec3 pos;
                     for (uint32_t i = 0; i < 3; ++i)
                     {
                         tri.err[i] = this->CalcEdgeError(tri.indices[i], tri.indices[(i + 1) % 3], pos);
@@ -396,15 +392,14 @@ namespace AIHoloImager
         }
 
         // Error between vertex and Quadric
-        double CalcVertexError(const SymmetricMatrix& q, const Eigen::Vector3d& pos) const
+        double CalcVertexError(const SymmetricMatrix& q, const glm::dvec3& pos) const
         {
-            return q[0] * pos.x() * pos.x() + 2 * q[1] * pos.x() * pos.y() + 2 * q[2] * pos.x() * pos.z() + 2 * q[3] * pos.x() +
-                   q[4] * pos.y() * pos.y() + 2 * q[5] * pos.y() * pos.z() + 2 * q[6] * pos.y() + q[7] * pos.z() * pos.z() +
-                   2 * q[8] * pos.z() + q[9];
+            return q[0] * pos.x * pos.x + 2 * q[1] * pos.x * pos.y + 2 * q[2] * pos.x * pos.z + 2 * q[3] * pos.x + q[4] * pos.y * pos.y +
+                   2 * q[5] * pos.y * pos.z + 2 * q[6] * pos.y + q[7] * pos.z * pos.z + 2 * q[8] * pos.z + q[9];
         }
 
         // Error for one edge
-        double CalcEdgeError(uint32_t v0, uint32_t v1, Eigen::Vector3d& pos_result) const
+        double CalcEdgeError(uint32_t v0, uint32_t v1, glm::dvec3& pos_result) const
         {
             // compute interpolated vertex
 
@@ -415,18 +410,18 @@ namespace AIHoloImager
             if ((det != 0) && !boundary)
             {
                 // q_delta is invertible
-                pos_result.x() = -1 / det * (q.Det(1, 2, 3, 4, 5, 6, 5, 7, 8)); // vx = A41/det(q_delta)
-                pos_result.y() = 1 / det * (q.Det(0, 2, 3, 1, 5, 6, 2, 7, 8));  // vy = A42/det(q_delta)
-                pos_result.z() = -1 / det * (q.Det(0, 1, 3, 1, 4, 6, 2, 5, 8)); // vz = A43/det(q_delta)
+                pos_result.x = -1 / det * (q.Det(1, 2, 3, 4, 5, 6, 5, 7, 8)); // vx = A41/det(q_delta)
+                pos_result.y = 1 / det * (q.Det(0, 2, 3, 1, 5, 6, 2, 7, 8));  // vy = A42/det(q_delta)
+                pos_result.z = -1 / det * (q.Det(0, 1, 3, 1, 4, 6, 2, 5, 8)); // vz = A43/det(q_delta)
 
                 error = this->CalcVertexError(q, pos_result);
             }
             else
             {
                 // det = 0 -> try to find best result
-                const Eigen::Vector3d& p1 = vertices_[v0].pos;
-                const Eigen::Vector3d& p2 = vertices_[v1].pos;
-                const Eigen::Vector3d p3 = (p1 + p2) / 2;
+                const glm::dvec3& p1 = vertices_[v0].pos;
+                const glm::dvec3& p2 = vertices_[v1].pos;
+                const glm::dvec3 p3 = (p1 + p2) / 2.0;
                 error = this->CalcVertexError(q, p1);
                 pos_result = p1;
                 const double error2 = this->CalcVertexError(q, p2);
@@ -447,7 +442,7 @@ namespace AIHoloImager
         }
 
         // Check if a triangle flips when this edge is removed
-        bool Flipped(const Eigen::Vector3d& pos, [[maybe_unused]] uint32_t v0, uint32_t v1, const Vertex& vert0,
+        bool Flipped(const glm::dvec3& pos, [[maybe_unused]] uint32_t v0, uint32_t v1, const Vertex& vert0,
             [[maybe_unused]] const Vertex& vert1, std::vector<bool>& deleted)
         {
             for (uint32_t i = 0; i < vert0.tri_count; ++i)
@@ -469,19 +464,16 @@ namespace AIHoloImager
                     continue;
                 }
 
-                Eigen::Vector3d d0 = vertices_[id0].pos - pos;
-                d0.normalize();
-                Eigen::Vector3d d1 = vertices_[id1].pos - pos;
-                d1.normalize();
-                if (std::abs(d0.dot(d1)) > 0.999)
+                glm::dvec3 d0 = glm::normalize(vertices_[id0].pos - pos);
+                glm::dvec3 d1 = glm::normalize(vertices_[id1].pos - pos);
+                if (std::abs(glm::dot(d0, d1)) > 0.999)
                 {
                     return true;
                 }
 
-                Eigen::Vector3d normal = d0.cross(d1);
-                normal.normalize();
+                glm::dvec3 normal = glm::normalize(glm::cross(d0, d1));
                 deleted[i] = false;
-                if (normal.dot(tri.normal) < 0.2)
+                if (glm::dot(normal, tri.normal) < 0.2)
                 {
                     return true;
                 }
@@ -493,7 +485,7 @@ namespace AIHoloImager
         // Update triangle connections and edge error after a edge is collapsed
         void UpdateTriangles(uint32_t i0, const Vertex& vert, const std::vector<bool>& deleted, uint32_t& deleted_triangles)
         {
-            Eigen::Vector3d pos;
+            glm::dvec3 pos;
             for (uint32_t i = 0; i < vert.tri_count; ++i)
             {
                 const auto& ref = refs_[vert.tri_start + i];

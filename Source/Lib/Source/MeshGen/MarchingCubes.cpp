@@ -5,6 +5,9 @@
 
 #include <memory>
 
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -13,8 +16,6 @@
 #include "CompiledShader/CalcCubeIndicesCs.h"
 #include "CompiledShader/GenVerticesIndicesCs.h"
 #include "CompiledShader/ProcessNonEmptyCubesCs.h"
-
-using namespace DirectX;
 
 namespace
 {
@@ -386,7 +387,7 @@ namespace AIHoloImager
                 cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
 
-            GpuReadbackBuffer counter_cpu_buff(gpu_system_, sizeof(XMUINT2), L"counter_cpu_buff");
+            GpuReadbackBuffer counter_cpu_buff(gpu_system_, sizeof(glm::uvec2), L"counter_cpu_buff");
             cmd_list.Copy(counter_cpu_buff, 0, counter_buff, 0, sizeof(uint32_t));
 
             gpu_system_.Execute(std::move(cmd_list));
@@ -404,7 +405,7 @@ namespace AIHoloImager
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_ids_buff");
             GpuBuffer non_empty_cube_indices_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"non_empty_cube_indices_buff");
-            GpuBuffer vertex_index_offsets_buff(gpu_system_, num_non_empty_cubes * sizeof(XMUINT2), D3D12_HEAP_TYPE_DEFAULT,
+            GpuBuffer vertex_index_offsets_buff(gpu_system_, num_non_empty_cubes * sizeof(glm::uvec2), D3D12_HEAP_TYPE_DEFAULT,
                 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"vertex_index_offsets_buff");
             {
                 process_non_empty_cubes_cb_->size = size;
@@ -426,12 +427,14 @@ namespace AIHoloImager
                 cmd_list.Compute(process_non_empty_cubes_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
 
-            cmd_list.Copy(counter_cpu_buff, 0, counter_buff, sizeof(uint32_t), sizeof(XMUINT2));
+            cmd_list.Copy(counter_cpu_buff, 0, counter_buff, sizeof(uint32_t), sizeof(glm::uvec2));
 
             gpu_system_.Execute(std::move(cmd_list));
             gpu_system_.WaitForGpu();
 
-            const auto [num_vertices, num_indices] = *counter_cpu_buff.MappedData<XMUINT2>();
+            const auto& counter = *counter_cpu_buff.MappedData<glm::uvec2>();
+            const uint32_t num_vertices = counter.x;
+            const uint32_t num_indices = counter.y;
             counter_cpu_buff.Reset();
 
             const VertexAttrib pos_only_vertex_attribs[] = {
@@ -441,7 +444,7 @@ namespace AIHoloImager
 
             cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(XMFLOAT3), L"mesh_vertices_cpu_buff");
+            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(glm::vec3), L"mesh_vertices_cpu_buff");
             GpuReadbackBuffer mesh_indices_cpu_buff(gpu_system_, num_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
             {
                 gen_vertices_indices_cb_->size = size;
@@ -458,7 +461,7 @@ namespace AIHoloImager
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(gpu_system_, mesh_indices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
                     D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"mesh_indices_buff");
-                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(XMFLOAT3));
+                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, DXGI_FORMAT_R32_UINT);
 
                 constexpr uint32_t BlockDim = 256;

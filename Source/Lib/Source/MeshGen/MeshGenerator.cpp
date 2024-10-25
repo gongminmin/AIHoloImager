@@ -10,6 +10,8 @@
 #include <set>
 
 #include <directx/d3d12.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -285,7 +287,7 @@ namespace AIHoloImager
 #endif
 
             BoundingOrientedBox world_obb;
-            const XMMATRIX model_mtx = this->CalcModelMatrix(mesh, recon_input, world_obb);
+            const glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input, world_obb);
 
             mesh.ComputeNormals();
 
@@ -302,24 +304,28 @@ namespace AIHoloImager
             auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
             {
-                const XMVECTOR center = XMLoadFloat3(&recon_input.obb.Center);
-                const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
-                const XMMATRIX pre_rotate = XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&recon_input.obb.Orientation))) *
-                                            XMMatrixRotationZ(std::numbers::pi_v<float> / 2) * XMMatrixRotationX(std::numbers::pi_v<float>);
-                const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
+                const glm::vec3 center(recon_input.obb.Center.x, recon_input.obb.Center.y, recon_input.obb.Center.z);
+                const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
+                const glm::mat4x4 pre_rotate =
+                    glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
+                    glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
+                    glm::mat4_cast(glm::inverse(*reinterpret_cast<const glm::quat*>(&recon_input.obb.Orientation)));
+                const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
 
-                const XMMATRIX adjust_mtx = model_mtx * handedness * pre_trans * pre_rotate * handedness;
-                const XMMATRIX adjust_it_mtx = XMMatrixTranspose(XMMatrixInverse(nullptr, adjust_mtx));
+                const glm::mat4x4 adjust_mtx = handedness * pre_rotate * pre_trans * handedness * model_mtx;
+                const glm::mat4x4 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
 
                 const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
                 const uint32_t normal_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Normal, 0);
                 for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
                 {
-                    auto& pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
-                    XMStoreFloat3(&pos, XMVector3TransformCoord(XMLoadFloat3(&pos), adjust_mtx));
+                    auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                    const glm::vec4 p = adjust_mtx * glm::vec4(pos, 1);
+                    pos = glm::vec3(p.x, p.y, p.z) / p.w;
 
-                    auto& normal = mesh.VertexData<XMFLOAT3>(i, normal_attrib_index);
-                    XMStoreFloat3(&normal, XMVector3TransformNormal(XMLoadFloat3(&normal), adjust_it_mtx));
+                    auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
+                    const glm::vec4 n = adjust_it_mtx * glm::vec4(normal, 0);
+                    normal = glm::vec3(n.x, n.y, n.z);
                 }
             }
 
@@ -438,7 +444,7 @@ namespace AIHoloImager
             std::set<std::array<int32_t, 3>> unique_int_pos;
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const XMFLOAT3& pos = input_mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
+                const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, pos_attrib_index);
                 std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f), static_cast<int32_t>(pos.y * Scale + 0.5f),
                     static_cast<int32_t>(pos.z * Scale + 0.5f)};
                 unique_int_pos.emplace(std::move(int_pos));
@@ -458,7 +464,7 @@ namespace AIHoloImager
 #endif
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const XMFLOAT3& pos = input_mesh.VertexData<XMFLOAT3>(i, 0);
+                const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, 0);
                 const std::array<int32_t, 3> int_pos = {static_cast<int32_t>(pos.x * Scale + 0.5f),
                     static_cast<int32_t>(pos.y * Scale + 0.5f), static_cast<int32_t>(pos.z * Scale + 0.5f)};
 
@@ -468,7 +474,7 @@ namespace AIHoloImager
                 if (vertex_mapping[i] == ~0U)
                 {
                     vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
-                    ret_mesh.VertexData<XMFLOAT3>(vertex_mapping[i], pos_attrib_index) = pos;
+                    ret_mesh.VertexData<glm::vec3>(vertex_mapping[i], pos_attrib_index) = pos;
                 }
             }
 
@@ -623,17 +629,17 @@ namespace AIHoloImager
                     break;
                 }
 
-                XMVECTOR bb_min = XMVectorSplatX(XMVectorSetX(XMVectorZero(), std::numeric_limits<float>::max()));
-                XMVECTOR bb_max = XMVectorSplatX(XMVectorSetX(XMVectorZero(), std::numeric_limits<float>::lowest()));
+                glm::vec3 bb_min(std::numeric_limits<float>::max());
+                glm::vec3 bb_max(std::numeric_limits<float>::lowest());
                 for (const uint32_t vi : new_component_vertices)
                 {
-                    const auto& vert = mesh.VertexData<XMFLOAT3>(vi, pos_attrib_index);
-                    const XMVECTOR pos = XMLoadFloat3(&vert);
-                    bb_min = XMVectorMin(bb_min, pos);
-                    bb_max = XMVectorMax(bb_max, pos);
+                    const auto& pos = mesh.VertexData<glm::vec3>(vi, pos_attrib_index);
+                    bb_min = glm::min(bb_min, pos);
+                    bb_max = glm::max(bb_max, pos);
                 }
 
-                const float bb_extent_sq = XMVectorGetX(XMVector3LengthSq(bb_max - bb_min));
+                const glm::vec3 diagonal = bb_max - bb_min;
+                const float bb_extent_sq = glm::dot(diagonal, diagonal);
                 if (bb_extent_sq > largest_bb_extent_sq)
                 {
                     largest_comp_face_indices.assign(new_component_faces.begin(), new_component_faces.end());
@@ -659,12 +665,12 @@ namespace AIHoloImager
             }
         }
 
-        void MergeTexture(GpuCommandList& cmd_list, const GpuTexture2D& pos_tex, const XMFLOAT4X4& inv_model, GpuTexture2D& color_tex)
+        void MergeTexture(GpuCommandList& cmd_list, const GpuTexture2D& pos_tex, const glm::mat4x4& inv_model, GpuTexture2D& color_tex)
         {
             GpuUnorderedAccessView merged_uav(gpu_system_, color_tex);
 
             const uint32_t texture_size = color_tex.Width(0);
-            XMStoreFloat4x4(&merge_texture_cb_->inv_model, XMMatrixTranspose(XMLoadFloat4x4(&inv_model)));
+            merge_texture_cb_->inv_model = glm::transpose(inv_model);
             merge_texture_cb_->texture_size = texture_size;
             merge_texture_cb_.UploadToGpu();
 
@@ -681,11 +687,11 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        XMMATRIX CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, BoundingOrientedBox& world_obb)
+        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, BoundingOrientedBox& world_obb)
         {
-            XMMATRIX model_mtx = XMLoadFloat4x4(&recon_input.transform);
-            model_mtx *= XMMatrixScaling(1, 1, -1);    // RH to LH
-            std::swap(model_mtx.r[1], model_mtx.r[2]); // Swap Y and Z
+            const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
+            glm::mat4x4 model_mtx = handedness * *reinterpret_cast<const glm::mat4x4*>(&recon_input.transform); // RH to LH
+            std::swap(model_mtx[1], model_mtx[2]);                                                              // Swap Y and Z
 
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
@@ -694,15 +700,15 @@ namespace AIHoloImager
                 ai_obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
 
             BoundingOrientedBox transformed_ai_obb;
-            ai_obb.Transform(transformed_ai_obb, model_mtx);
+            ai_obb.Transform(transformed_ai_obb, XMLoadFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&model_mtx)));
 
             const float scale_x = transformed_ai_obb.Extents.x / recon_input.obb.Extents.x;
             const float scale_y = transformed_ai_obb.Extents.y / recon_input.obb.Extents.y;
             const float scale_z = transformed_ai_obb.Extents.z / recon_input.obb.Extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
-            model_mtx = XMMatrixScaling(scale, scale, scale) * model_mtx;
-            ai_obb.Transform(world_obb, model_mtx);
+            model_mtx *= glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale, scale, scale));
+            ai_obb.Transform(world_obb, XMLoadFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&model_mtx)));
 
             return model_mtx;
         }
@@ -826,7 +832,7 @@ namespace AIHoloImager
             uint32_t texture_size;
             uint32_t padding;
 
-            XMFLOAT4X4 inv_model;
+            glm::mat4x4 inv_model;
         };
         ConstantBuffer<MergeTextureConstantBuffer> merge_texture_cb_;
         GpuComputePipeline merge_texture_pipeline_;

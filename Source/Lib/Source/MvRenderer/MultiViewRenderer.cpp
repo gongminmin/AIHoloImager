@@ -6,6 +6,11 @@
 #include <format>
 #include <numbers>
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
@@ -22,7 +27,6 @@
 #include "CompiledShader/RenderVs.h"
 
 using namespace AIHoloImager;
-using namespace DirectX;
 
 namespace
 {
@@ -33,23 +37,21 @@ namespace
     const float MvScale = 1.6f; // The fine-tuned zero123plus in InstantMesh has a scale
                                 // (https://github.com/TencentARC/InstantMesh/commit/34c193cc96eebd46deb7c48a76613753ad777122)
 
-    XMVECTOR SphericalCameraPose(float azimuth_deg, float elevation_deg, float radius)
+    glm::vec3 SphericalCameraPose(float azimuth_deg, float elevation_deg, float radius)
     {
-        const float azimuth = XMConvertToRadians(azimuth_deg);
-        const float elevation = XMConvertToRadians(elevation_deg);
+        const float azimuth = glm::radians(azimuth_deg);
+        const float elevation = glm::radians(elevation_deg);
 
-        float sin_azimuth;
-        float cos_azimuth;
-        XMScalarSinCos(&sin_azimuth, &cos_azimuth, azimuth);
+        const float sin_azimuth = std::sin(azimuth);
+        const float cos_azimuth = std::cos(azimuth);
 
-        float sin_elevation;
-        float cos_elevation;
-        XMScalarSinCos(&sin_elevation, &cos_elevation, elevation);
+        const float sin_elevation = std::sin(elevation);
+        const float cos_elevation = std::cos(elevation);
 
         const float x = cos_elevation * cos_azimuth;
         const float y = sin_elevation;
         const float z = cos_elevation * sin_azimuth;
-        return XMVectorSet(x, y, z, 0) * radius;
+        return glm::vec3(x, y, z) * radius;
     }
 } // namespace
 
@@ -59,7 +61,7 @@ namespace AIHoloImager
     {
     public:
         Impl(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
-            : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(XMMatrixPerspectiveFovLH(Fov, 1, 0.1f, 30))
+            : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(glm::perspectiveLH_ZO(Fov, 1.0f, 0.1f, 30.0f))
         {
             constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
             constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
@@ -257,21 +259,21 @@ namespace AIHoloImager
         void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices,
             const GpuShaderResourceView& albedo_srv, float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
         {
-            const XMVECTOR camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
-            const XMVECTOR camera_dir = -XMVector3Normalize(camera_pos);
-            XMVECTOR up_vec;
-            if (-XMVectorGetY(camera_dir) > 0.95f)
+            const glm::vec3 camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
+            const glm::vec3 camera_dir = -glm::normalize(camera_pos);
+            glm::vec3 up_vec;
+            if (-camera_dir.y > 0.95f)
             {
-                up_vec = XMVectorSet(1, 0, 0, 0);
+                up_vec = glm::vec3(1, 0, 0);
             }
             else
             {
-                up_vec = XMVectorSet(0, 1, 0, 0);
+                up_vec = glm::vec3(0, 1, 0);
             }
 
-            const XMMATRIX view_mtx = XMMatrixLookAtLH(camera_pos, XMVectorSet(0, 0, 0, 1.0f), up_vec);
+            const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
-            XMStoreFloat4x4(&render_cb_->mvp, XMMatrixTranspose(view_mtx * proj_mtx_));
+            render_cb_->mvp = glm::transpose(proj_mtx_ * view_mtx);
             render_cb_.UploadToGpu();
 
             const float clear_clr[] = {0, 0, 0, 0};
@@ -391,16 +393,16 @@ namespace AIHoloImager
         GpuTexture2D ssaa_ds_tex_;
         GpuDepthStencilView ssaa_dsv_;
 
-        XMMATRIX proj_mtx_;
+        glm::mat4x4 proj_mtx_;
 
         struct VertexFormat
         {
-            XMFLOAT3 pos;
-            XMFLOAT2 texcoord;
+            glm::vec3 pos;
+            glm::vec2 texcoord;
         };
         struct RenderConstantBuffer
         {
-            DirectX::XMFLOAT4X4 mvp;
+            glm::mat4x4 mvp;
         };
         ConstantBuffer<RenderConstantBuffer> render_cb_;
         GpuRenderPipeline render_pipeline_;
@@ -411,16 +413,16 @@ namespace AIHoloImager
 
         struct CalcDiffusionBoxConstantBuffer
         {
-            XMUINT4 atlas_offset_view_size;
+            glm::uvec4 atlas_offset_view_size;
         };
         ConstantBuffer<CalcDiffusionBoxConstantBuffer> calc_diffusion_box_cb_;
         GpuComputePipeline calc_diffusion_box_pipeline_;
 
         struct BlendConstantBuffer
         {
-            XMUINT4 atlas_offset_view_size;
-            XMUINT4 rendered_diffusion_center;
-            XMFLOAT4 diffusion_inv_size;
+            glm::uvec4 atlas_offset_view_size;
+            glm::uvec4 rendered_diffusion_center;
+            glm::vec4 diffusion_inv_size;
         };
         ConstantBuffer<BlendConstantBuffer> blend_cb_;
         GpuComputePipeline blend_pipeline_;

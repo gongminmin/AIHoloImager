@@ -6,7 +6,7 @@
 #include <filesystem>
 
 #include <DirectXCollision.h>
-#include <DirectXMath.h>
+#include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -26,7 +26,7 @@ namespace AIHoloImager
             GpuTexture2D color_tex;
 
             GpuTexture2D pos_tex;
-            DirectX::XMFLOAT4X4 inv_model;
+            glm::mat4x4 inv_model;
         };
 
     public:
@@ -36,7 +36,7 @@ namespace AIHoloImager
 
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
-        Result Process(const Mesh& mesh, const DirectX::XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
+        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir);
 
     private:

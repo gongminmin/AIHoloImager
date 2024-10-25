@@ -7,15 +7,9 @@
 #include <memory>
 #include <vector>
 
-#ifdef _MSC_VER
-    #pragma warning(push)
-    #pragma warning(disable : 4127) // Ignore conditional expression is constant
-    #pragma warning(disable : 5054) // Ignore operator between enums of different types
-#endif
-#include <Eigen/Core>
-#ifdef _MSC_VER
-    #pragma warning(pop)
-#endif
+#include <glm/mat3x3.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 #include "AIHoloImager/Texture.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -35,8 +29,8 @@ namespace AIHoloImager
 
             uint32_t intrinsic_id;
 
-            Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotation;
-            Eigen::Vector3d center;
+            glm::dmat3x3 rotation;
+            glm::dvec3 center;
         };
 
         struct PinholeIntrinsic
@@ -44,19 +38,19 @@ namespace AIHoloImager
             uint32_t width;
             uint32_t height;
 
-            Eigen::Matrix<double, 3, 3, Eigen::RowMajor> k;
+            glm::dmat3x3 k;
         };
 
         struct Observation
         {
             uint32_t view_id;
-            Eigen::Vector2d point;
+            glm::dvec2 point;
             uint32_t feat_id;
         };
 
         struct Landmark
         {
-            Eigen::Vector3d point;
+            glm::dvec3 point;
             std::vector<Observation> obs;
         };
 

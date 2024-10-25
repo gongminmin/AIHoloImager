@@ -8,15 +8,16 @@
 #include <numbers>
 
 #include <DirectXMath.h>
-
-#define _USE_EIGEN
 #include <InterfaceMVS.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include "Gpu/GpuCommandList.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
-
-using namespace DirectX;
 
 namespace AIHoloImager
 {
@@ -55,14 +56,14 @@ namespace AIHoloImager
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             auto& obb = ret.obb;
-            BoundingOrientedBox::CreateFromPoints(
-                obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+            DirectX::BoundingOrientedBox::CreateFromPoints(
+                obb, mesh.NumVertices(), &mesh.VertexData<DirectX::XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
 
             mesh.ComputeNormals();
 
             mesh = mesh.UnwrapUv(texture_size, 0);
 
-            auto texture_result = texture_recon_.Process(mesh, XMMatrixIdentity(), obb, sfm_input, texture_size, tmp_dir);
+            auto texture_result = texture_recon_.Process(mesh, glm::identity<glm::mat4x4>(), obb, sfm_input, texture_size, tmp_dir);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -84,29 +85,31 @@ namespace AIHoloImager
 
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                auto& pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
+                auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
                 pos.z = -pos.z; // RH to LH
             }
 
-            BoundingOrientedBox::CreateFromPoints(
-                obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+            DirectX::BoundingOrientedBox::CreateFromPoints(
+                obb, mesh.NumVertices(), &mesh.VertexData<DirectX::XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
 
-            const XMVECTOR center = XMLoadFloat3(&obb.Center);
+            const glm::vec3 center(obb.Center.x, obb.Center.y, obb.Center.z);
             const float inv_max_dim = 1 / std::max({obb.Extents.x, obb.Extents.y, obb.Extents.z});
 
-            const XMMATRIX pre_trans = XMMatrixTranslationFromVector(-center);
-            const XMMATRIX pre_rotate = XMMatrixRotationQuaternion(XMQuaternionInverse(XMLoadFloat4(&obb.Orientation))) *
-                                        XMMatrixRotationZ(std::numbers::pi_v<float> / 2) * XMMatrixRotationX(std::numbers::pi_v<float>);
-            const XMMATRIX pre_scale = XMMatrixScaling(inv_max_dim, inv_max_dim, inv_max_dim);
+            const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
+            const glm::mat4x4 pre_rotate = glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
+                                           glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
+                                           glm::mat4_cast(glm::inverse(*reinterpret_cast<const glm::quat*>(&obb.Orientation)));
+            const glm::mat4x4 pre_scale = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(inv_max_dim));
 
-            XMMATRIX model_mtx = pre_trans * pre_rotate * pre_scale;
-            XMStoreFloat4x4(&ret.transform, XMMatrixInverse(nullptr, model_mtx));
+            glm::mat4x4 model_mtx = pre_scale * pre_rotate * pre_trans;
+            ret.transform = glm::inverse(model_mtx);
 
-            model_mtx *= XMMatrixScaling(1, 1, -1); // LH to RH
+            model_mtx = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1)) * model_mtx; // LH to RH
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                auto& transformed_pos = mesh.VertexData<XMFLOAT3>(i, pos_attrib_index);
-                XMStoreFloat3(&transformed_pos, XMVector3TransformCoord(XMLoadFloat3(&transformed_pos), model_mtx));
+                auto& transformed_pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                const glm::vec4 p = model_mtx * glm::vec4(transformed_pos, 1);
+                transformed_pos = glm::vec3(p.x, p.y, p.z) / p.w;
             }
 
             return ret;
@@ -126,9 +129,10 @@ namespace AIHoloImager
                 auto& camera = platform.cameras.emplace_back();
                 camera.width = intrinsic.width;
                 camera.height = intrinsic.height;
-                camera.K = intrinsic.k;
-                camera.R = Eigen::Matrix<double, 3, 3, Eigen::RowMajor>::Identity();
-                camera.C = Eigen::Vector3d::Zero();
+                std::memcpy(&camera.K, &intrinsic.k, sizeof(intrinsic.k));
+                std::memset(&camera.R, 0, sizeof(camera.R));
+                camera.R(0, 0) = camera.R(1, 1) = camera.R(2, 2) = 1;
+                camera.C = {0, 0, 0};
             }
 
             const auto out_images_dir = working_dir_ / "Images";
@@ -169,8 +173,8 @@ namespace AIHoloImager
                 image.ID = static_cast<uint32_t>(i);
 
                 auto& pose = platform.poses.emplace_back();
-                pose.R = view.rotation;
-                pose.C = view.center;
+                std::memcpy(&pose.R, &view.rotation, sizeof(view.rotation));
+                pose.C = {view.center.x, view.center.y, view.center.z};
             }
 
             scene.vertices.reserve(sfm_input.structure.size());
@@ -192,7 +196,7 @@ namespace AIHoloImager
                 std::sort(views.begin(), views.end(), [](const MVS::Interface::Vertex::View& lhs, const MVS::Interface::Vertex::View& rhs) {
                     return lhs.imageID < rhs.imageID;
                 });
-                vert.X = landmark.point.cast<float>();
+                vert.X = {static_cast<float>(landmark.point.x), static_cast<float>(landmark.point.y), static_cast<float>(landmark.point.z)};
             }
 
             const auto out_mvs_file = working_dir_ / "Temp.mvs";

@@ -8,6 +8,12 @@
     #include <format>
 #endif
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 
@@ -105,7 +111,7 @@ namespace AIHoloImager
             }
         }
 
-        TextureReconstruction::Result Process(const Mesh& mesh, const XMMATRIX& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
+        TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
@@ -125,8 +131,8 @@ namespace AIHoloImager
             memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
-            const XMMATRIX handedness = XMMatrixScaling(1, 1, -1);
-            const XMMATRIX model_mtx_lh = model_mtx * handedness;
+            const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
+            const glm::mat4x4 model_mtx_lh = handedness * model_mtx;
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
@@ -161,13 +167,13 @@ namespace AIHoloImager
 #endif
 
             result.pos_tex = std::move(flatten_pos_tex);
-            XMStoreFloat4x4(&result.inv_model, XMMatrixInverse(nullptr, model_mtx_lh));
+            result.inv_model = glm::inverse(model_mtx_lh);
 
             return result;
         }
 
     private:
-        void FlattenMesh(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx, uint32_t texture_size,
+        void FlattenMesh(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx, uint32_t texture_size,
             GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
@@ -182,8 +188,8 @@ namespace AIHoloImager
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            XMStoreFloat4x4(&flatten_cb_->model_mtx, XMMatrixTranspose(model_mtx));
-            XMStoreFloat4x4(&flatten_cb_->model_it_mtx, XMMatrixInverse(nullptr, model_mtx));
+            flatten_cb_->model_mtx = glm::transpose(model_mtx);
+            flatten_cb_->model_it_mtx = glm::inverse(model_mtx);
             flatten_cb_.UploadToGpu();
 
             const float clear_clr[] = {0, 0, 0, 0};
@@ -214,7 +220,7 @@ namespace AIHoloImager
             gpu_system_.WaitForGpu();
         }
 
-        GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const XMMATRIX& model_mtx,
+        GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx,
             const BoundingOrientedBox& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
@@ -266,27 +272,26 @@ namespace AIHoloImager
                 }
                 photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
 
-                const XMVECTOR camera_pos = XMVectorSet(
-                    static_cast<float>(view.center.x()), static_cast<float>(view.center.y()), -static_cast<float>(view.center.z()), 1);
-                const XMVECTOR camera_up_vec = XMVectorSet(-static_cast<float>(view.rotation(1, 0)),
-                    -static_cast<float>(view.rotation(1, 1)), static_cast<float>(view.rotation(1, 2)), 0);
-                const XMVECTOR camera_forward_vec = XMVectorSet(static_cast<float>(view.rotation(2, 0)),
-                    static_cast<float>(view.rotation(2, 1)), -static_cast<float>(view.rotation(2, 2)), 0);
+                const glm::vec3 camera_pos(
+                    static_cast<float>(view.center.x), static_cast<float>(view.center.y), -static_cast<float>(view.center.z));
+                const glm::vec3 camera_up_vec(-static_cast<float>(view.rotation[1].x), -static_cast<float>(view.rotation[1].y),
+                    static_cast<float>(view.rotation[1].z));
+                const glm::vec3 camera_forward_vec(static_cast<float>(view.rotation[2].x), static_cast<float>(view.rotation[2].y),
+                    -static_cast<float>(view.rotation[2].z));
 
-                const XMMATRIX view_mtx = XMMatrixLookAtLH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
+                const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
 
                 XMFLOAT3 corners[BoundingOrientedBox::CORNER_COUNT];
                 world_obb.GetCorners(corners);
 
-                const XMVECTOR z_col = XMVectorSet(
-                    XMVectorGetZ(view_mtx.r[0]), XMVectorGetZ(view_mtx.r[1]), XMVectorGetZ(view_mtx.r[2]), XMVectorGetZ(view_mtx.r[3]));
+                const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
 
                 float min_z_es = 1e10f;
                 float max_z_es = -1e10f;
                 for (const auto& corner : corners)
                 {
-                    XMVECTOR pos = XMVectorSet(corner.x, corner.y, -corner.z, 1);
-                    const float z = XMVectorGetZ(XMVector4Dot(pos, z_col));
+                    glm::vec4 pos(corner.x, corner.y, -corner.z, 1);
+                    const float z = glm::dot(pos, z_col);
                     min_z_es = std::min(min_z_es, z);
                     max_z_es = std::max(max_z_es, z);
                 }
@@ -297,17 +302,17 @@ namespace AIHoloImager
                 const float near_plane = center_es_z - extent_es_z;
                 const float far_plane = center_es_z + extent_es_z;
 
-                const double fy = intrinsic.k(1, 1);
+                const double fy = intrinsic.k[1].y;
                 const float fov = static_cast<float>(2 * std::atan(intrinsic.height / (2 * fy)));
-                const XMMATRIX proj_mtx =
-                    XMMatrixPerspectiveFovLH(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
+                const glm::mat4x4 proj_mtx =
+                    glm::perspectiveLH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
 
-                XMStoreFloat4x4(&gen_shadow_map_cb_->mvp, XMMatrixTranspose(model_mtx * view_mtx * proj_mtx));
+                gen_shadow_map_cb_->mvp = glm::transpose(proj_mtx * view_mtx * model_mtx);
                 gen_shadow_map_cb_.UploadToGpu();
 
-                const XMFLOAT2 offset = {
-                    static_cast<float>(intrinsic.k(0, 2)) - intrinsic.width / 2,
-                    static_cast<float>(intrinsic.k(1, 2)) - intrinsic.height / 2,
+                const glm::vec2 offset = {
+                    static_cast<float>(intrinsic.k[0].z) - intrinsic.width / 2,
+                    static_cast<float>(intrinsic.k[1].z) - intrinsic.height / 2,
                 };
 
                 shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -338,7 +343,7 @@ namespace AIHoloImager
             return this->ResolveTexture(texture_size, accum_color_tex);
         }
 
-        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, const XMFLOAT2& offset,
+        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, const glm::vec2& offset,
             const StructureFromMotion::PinholeIntrinsic& intrinsic, GpuDepthStencilView& shadow_map_dsv)
         {
             cmd_list.ClearDepth(shadow_map_dsv, 1);
@@ -360,17 +365,17 @@ namespace AIHoloImager
                 viewports, scissor_rcs);
         }
 
-        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const XMMATRIX& view_mtx, const XMMATRIX& proj_mtx,
-            const XMFLOAT2& offset, const StructureFromMotion::PinholeIntrinsic& intrinsic, const GpuShaderResourceView& flatten_pos_srv,
+        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
+            const glm::vec2& offset, const StructureFromMotion::PinholeIntrinsic& intrinsic, const GpuShaderResourceView& flatten_pos_srv,
             const GpuShaderResourceView& flatten_normal_srv, const GpuShaderResourceView& projective_map_srv,
             const GpuShaderResourceView& shadow_map_srv, GpuUnorderedAccessView& accum_color_uav)
         {
             constexpr uint32_t BlockDim = 16;
 
-            XMStoreFloat4x4(&project_tex_cb_->camera_view_proj, XMMatrixTranspose(view_mtx * proj_mtx));
-            XMStoreFloat4x4(&project_tex_cb_->camera_view, XMMatrixTranspose(view_mtx));
-            XMStoreFloat4x4(&project_tex_cb_->camera_view_it, XMMatrixInverse(nullptr, view_mtx));
-            project_tex_cb_->offset = XMFLOAT2(offset.x / intrinsic.width, offset.y / intrinsic.height);
+            project_tex_cb_->camera_view_proj = glm::transpose(proj_mtx * view_mtx);
+            project_tex_cb_->camera_view = glm::transpose(view_mtx);
+            project_tex_cb_->camera_view_it = glm::inverse(view_mtx);
+            project_tex_cb_->offset = glm::vec2(offset.x / intrinsic.width, offset.y / intrinsic.height);
             project_tex_cb_->texture_size = texture_size;
             project_tex_cb_.UploadToGpu();
 
@@ -416,32 +421,32 @@ namespace AIHoloImager
 
         struct VertexFormat
         {
-            XMFLOAT3 pos;
-            XMFLOAT3 normal;
-            XMFLOAT2 texcoord;
+            glm::vec3 pos;
+            glm::vec3 normal;
+            glm::vec2 texcoord;
         };
 
         struct FlattenConstantBuffer
         {
-            XMFLOAT4X4 model_mtx;
-            XMFLOAT4X4 model_it_mtx;
+            glm::mat4x4 model_mtx;
+            glm::mat4x4 model_it_mtx;
         };
         ConstantBuffer<FlattenConstantBuffer> flatten_cb_;
         GpuRenderPipeline flatten_pipeline_;
 
         struct GenShadowMapConstantBuffer
         {
-            XMFLOAT4X4 mvp;
+            glm::mat4x4 mvp;
         };
         ConstantBuffer<GenShadowMapConstantBuffer> gen_shadow_map_cb_;
         GpuRenderPipeline gen_shadow_map_pipeline_;
 
         struct ProjectTextureConstantBuffer
         {
-            XMFLOAT4X4 camera_view_proj;
-            XMFLOAT4X4 camera_view;
-            XMFLOAT4X4 camera_view_it;
-            XMFLOAT2 offset;
+            glm::mat4x4 camera_view_proj;
+            glm::mat4x4 camera_view;
+            glm::mat4x4 camera_view_it;
+            glm::vec2 offset;
             uint32_t texture_size;
             uint32_t padding;
         };
@@ -472,7 +477,7 @@ namespace AIHoloImager
     TextureReconstruction::TextureReconstruction(TextureReconstruction&& other) noexcept = default;
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
-    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const XMMATRIX& model_mtx,
+    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx,
         const BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input, uint32_t texture_size,
         const std::filesystem::path& tmp_dir)
     {

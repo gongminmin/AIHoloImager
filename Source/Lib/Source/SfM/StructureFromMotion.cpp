@@ -8,7 +8,8 @@
 #include <map>
 #include <stdexcept>
 
-#include <DirectXMath.h>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #ifndef OPENMVG_USE_OPENMP
     #define OPENMVG_USE_OPENMP
@@ -67,8 +68,6 @@ using namespace openMVG::sfm;
 using namespace openMVG::image;
 using namespace openMVG::matching;
 using namespace openMVG::matching_image_collection;
-
-using namespace DirectX;
 
 namespace AIHoloImager
 {
@@ -412,7 +411,9 @@ namespace AIHoloImager
                 auto& result_intrinsic = ret.intrinsics.emplace_back();
                 result_intrinsic.width = cam.w();
                 result_intrinsic.height = cam.h();
-                result_intrinsic.k = cam.K();
+                const auto& k = cam.K();
+                std::memcpy(&result_intrinsic.k, k.data(), sizeof(result_intrinsic.k));
+                result_intrinsic.k = glm::transpose(result_intrinsic.k);
             }
 
             GpuTexture2D distort_gpu_tex;
@@ -437,8 +438,11 @@ namespace AIHoloImager
                     result_view.intrinsic_id = intrinsic_id_mapping.at(mvg_view.second->id_intrinsic);
 
                     const auto& mvg_pose = sfm_data.poses.at(mvg_view.second->id_pose);
-                    result_view.rotation = mvg_pose.rotation();
-                    result_view.center = mvg_pose.center();
+                    const auto& rotation = mvg_pose.rotation();
+                    std::memcpy(&result_view.rotation, rotation.data(), sizeof(result_view.rotation));
+                    result_view.rotation = glm::transpose(result_view.rotation);
+                    const auto& center = mvg_pose.center();
+                    result_view.center = {center.x(), center.y(), center.z()};
 
                     result_view.image_mask = LoadTexture(src_image);
 
@@ -487,7 +491,7 @@ namespace AIHoloImager
             {
                 const auto& mvg_landmark = mvg_vertex.second;
                 auto& result_landmark = ret.structure.emplace_back();
-                result_landmark.point = mvg_landmark.X;
+                result_landmark.point = {mvg_landmark.X.x(), mvg_landmark.X.y(), mvg_landmark.X.z()};
                 for (const auto& mvg_observation : mvg_landmark.obs)
                 {
                     const auto iter = view_id_mapping.find(mvg_observation.first);
@@ -495,7 +499,7 @@ namespace AIHoloImager
                     {
                         auto& result_observation = result_landmark.obs.emplace_back();
                         result_observation.view_id = iter->second;
-                        result_observation.point = mvg_observation.second.x;
+                        result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
                         result_observation.feat_id = mvg_observation.second.id_feat;
                     }
                 }
@@ -552,11 +556,11 @@ namespace AIHoloImager
 
         struct UndistortConstantBuffer
         {
-            XMFLOAT3 k;
+            glm::vec3 k;
             float padding_0;
-            XMFLOAT3 params;
+            glm::vec3 params;
             float padding_1;
-            XMFLOAT4 width_height;
+            glm::vec4 width_height;
         };
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
         GpuComputePipeline undistort_pipeline_;

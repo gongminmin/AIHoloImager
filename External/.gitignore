@@ -1,6 +1,7 @@
 assimp/assimp/
 cxxopts/cxxopts/
 DirectX-Headers/DirectX-Headers/
+glm/glm/
 InstantMesh/InstantMesh/
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
