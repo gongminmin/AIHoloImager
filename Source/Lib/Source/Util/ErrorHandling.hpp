@@ -23,6 +23,7 @@ namespace AIHoloImager
     std::string CombineFileLine(HRESULT hr, std::string_view file, uint32_t line);
     void Verify(bool value);
 
+#ifdef _WIN32
     class HrException : public std::runtime_error
     {
     public:
@@ -39,6 +40,7 @@ namespace AIHoloImager
     private:
         const HRESULT hr_;
     };
+#endif
 
     [[noreturn]] inline void Unreachable([[maybe_unused]] std::string_view msg = {})
     {
@@ -51,10 +53,12 @@ namespace AIHoloImager
 } // namespace AIHoloImager
 
 
-#define TIFHR(hr)                                                    \
-    {                                                                \
-        if (FAILED(hr))                                              \
-        {                                                            \
-            throw AIHoloImager::HrException(hr, __FILE__, __LINE__); \
-        }                                                            \
-    }
+#ifdef _WIN32
+    #define TIFHR(hr)                                                    \
+        {                                                                \
+            if (FAILED(hr))                                              \
+            {                                                            \
+                throw AIHoloImager::HrException(hr, __FILE__, __LINE__); \
+            }                                                            \
+        }
+#endif

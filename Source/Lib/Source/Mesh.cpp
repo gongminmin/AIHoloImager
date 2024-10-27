@@ -5,14 +5,16 @@
 
 #include <set>
 
+#include <glm/geometric.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+
 #include <assimp/Exporter.hpp>
 #include <assimp/GltfMaterial.h>
 #include <assimp/Importer.hpp>
 #include <assimp/material.h>
 #include <assimp/scene.h>
 #include <xatlas/xatlas.h>
-
-using namespace DirectX;
 
 namespace AIHoloImager
 {
@@ -303,28 +305,24 @@ namespace AIHoloImager
             for (uint32_t i = 0; i < static_cast<uint32_t>(indices_.size()); i += 3)
             {
                 const uint32_t ind[] = {indices_[i + 0], indices_[i + 1], indices_[i + 2]};
-                const XMVECTOR pos[] = {
-                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[0], 0)),
-                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[1], 0)),
-                    XMLoadFloat3(&this->VertexData<XMFLOAT3>(ind[2], 0)),
+                const glm::vec3 pos[] = {
+                    this->VertexData<glm::vec3>(ind[0], 0),
+                    this->VertexData<glm::vec3>(ind[1], 0),
+                    this->VertexData<glm::vec3>(ind[2], 0),
                 };
-                const XMVECTOR edge[] = {pos[1] - pos[0], pos[2] - pos[0]};
-                const XMVECTOR face_normal = XMVector3Cross(edge[0], edge[1]);
+                const glm::vec3 edge[] = {pos[1] - pos[0], pos[2] - pos[0]};
+                const glm::vec3 face_normal = glm::cross(edge[0], edge[1]);
                 for (uint32_t j = 0; j < 3; ++j)
                 {
-                    XMFLOAT3& normal3 = this->VertexData<XMFLOAT3>(ind[j], normal_attrib_index);
-                    XMVECTOR normal = XMLoadFloat3(&normal3);
+                    glm::vec3& normal = this->VertexData<glm::vec3>(ind[j], normal_attrib_index);
                     normal += face_normal;
-                    XMStoreFloat3(&normal3, normal);
                 }
             }
 
             for (uint32_t vi = 0; vi < num_vertices_; ++vi)
             {
-                XMFLOAT3& normal3 = this->VertexData<XMFLOAT3>(vi, normal_attrib_index);
-                XMVECTOR normal = XMLoadFloat3(&normal3);
-                normal = XMVector3Normalize(normal);
-                XMStoreFloat3(&normal3, normal);
+                glm::vec3& normal = this->VertexData<glm::vec3>(vi, normal_attrib_index);
+                normal = glm::normalize(normal);
             }
         }
 
@@ -458,8 +456,8 @@ namespace AIHoloImager
                 for (uint32_t vi = 0; vi < mesh.vertexCount; ++vi)
                 {
                     const auto& vertex = mesh.vertexArray[vi];
-                    const XMFLOAT2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
-                    ret_mesh.VertexData<XMFLOAT2>(vi, texcoord_attrib) = uv;
+                    const glm::vec2 uv(vertex.uv[0] / atlas->width, vertex.uv[1] / atlas->height);
+                    ret_mesh.VertexData<glm::vec2>(vi, texcoord_attrib) = uv;
                 }
 
                 if (vertex_referencing)
@@ -671,11 +669,13 @@ namespace AIHoloImager
             {
                 if (pos_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    mesh.VertexData<XMFLOAT3>(vi, pos_attrib_index) = XMFLOAT3(&ai_mesh->mVertices[vi].x);
+                    mesh.VertexData<glm::vec3>(vi, pos_attrib_index) =
+                        glm::vec3(ai_mesh->mVertices[vi].x, ai_mesh->mVertices[vi].y, ai_mesh->mVertices[vi].z);
                 }
                 if (normal_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    mesh.VertexData<XMFLOAT3>(vi, normal_attrib_index) = XMFLOAT3(&ai_mesh->mNormals[vi].x);
+                    mesh.VertexData<glm::vec3>(vi, normal_attrib_index) =
+                        glm::vec3(ai_mesh->mNormals[vi].x, ai_mesh->mNormals[vi].y, ai_mesh->mNormals[vi].z);
                 }
                 for (size_t j = 0; j < texcoord_attrib_indices.size(); ++j)
                 {

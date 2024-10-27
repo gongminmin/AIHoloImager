@@ -21,6 +21,7 @@ set(aihi_files
     Source/AIHoloImager.cpp
     Source/Mesh.cpp
     Source/Texture.cpp
+    Source/pch.hpp
     Source/Gpu/GpuBuffer.cpp
     Source/Gpu/GpuBuffer.hpp
     Source/Gpu/GpuBufferHelper.hpp

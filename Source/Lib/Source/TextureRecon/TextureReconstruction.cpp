@@ -23,8 +23,6 @@
 #include "CompiledShader/ProjectTextureCs.h"
 #include "CompiledShader/ResolveTextureCs.h"
 
-using namespace DirectX;
-
 namespace AIHoloImager
 {
     class TextureReconstruction::Impl

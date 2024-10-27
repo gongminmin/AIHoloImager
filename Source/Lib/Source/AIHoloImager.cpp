@@ -12,7 +12,7 @@
     #ifndef NOMINMAX
         #define NOMINMAX
     #endif
-    #include <windows.h>
+    #include <windows.h> // For GetModuleFileNameA
 #endif
 
 #include "Gpu/GpuSystem.hpp"

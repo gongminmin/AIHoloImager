@@ -17,7 +17,5 @@
     #include <windows.h>
 #endif
 
-#include <DirectXMath.h>
 #include <assimp/types.h>
 #include <directx/d3d12.h>
-#include <third_party/eigen/Eigen/Core>
