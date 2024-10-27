@@ -91,6 +91,8 @@ set(aihi_files
     Source/Util/ErrorHandling.cpp
     Source/Util/ErrorHandling.hpp
     Source/Util/Noncopyable.hpp
+    Source/Util/BoundingBox.cpp
+    Source/Util/BoundingBox.hpp
     Source/Util/SmartPtrHelper.hpp
     Source/Util/Timer.cpp
     Source/Util/Timer.hpp

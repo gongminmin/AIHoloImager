@@ -15,12 +15,12 @@
     #endif
     #include <windows.h>
 #endif
-#include <DirectXCollision.h>
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
+#include "Util/BoundingBox.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -35,7 +35,7 @@ namespace AIHoloImager
             Mesh mesh;
 
             glm::mat4x4 transform; // From model space to SfM space
-            DirectX::BoundingOrientedBox obb;
+            Obb obb;
         };
 
     public:

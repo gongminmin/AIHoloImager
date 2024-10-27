@@ -7,7 +7,6 @@
 #include <iostream>
 #include <numbers>
 
-#include <DirectXMath.h>
 #include <InterfaceMVS.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -56,8 +55,7 @@ namespace AIHoloImager
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             auto& obb = ret.obb;
-            DirectX::BoundingOrientedBox::CreateFromPoints(
-                obb, mesh.NumVertices(), &mesh.VertexData<DirectX::XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+            obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
 
             mesh.ComputeNormals();
 
@@ -89,16 +87,15 @@ namespace AIHoloImager
                 pos.z = -pos.z; // RH to LH
             }
 
-            DirectX::BoundingOrientedBox::CreateFromPoints(
-                obb, mesh.NumVertices(), &mesh.VertexData<DirectX::XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+            obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
 
-            const glm::vec3 center(obb.Center.x, obb.Center.y, obb.Center.z);
-            const float inv_max_dim = 1 / std::max({obb.Extents.x, obb.Extents.y, obb.Extents.z});
+            const glm::vec3& center = obb.center;
+            const float inv_max_dim = 1 / std::max({obb.extents.x, obb.extents.y, obb.extents.z});
 
             const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
             const glm::mat4x4 pre_rotate = glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
                                            glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
-                                           glm::mat4_cast(glm::inverse(*reinterpret_cast<const glm::quat*>(&obb.Orientation)));
+                                           glm::mat4_cast(glm::inverse(obb.orientation));
             const glm::mat4x4 pre_scale = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(inv_max_dim));
 
             glm::mat4x4 model_mtx = pre_scale * pre_rotate * pre_trans;

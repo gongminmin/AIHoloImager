@@ -111,7 +111,7 @@ namespace AIHoloImager
             }
         }
 
-        TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
+        TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
@@ -221,7 +221,7 @@ namespace AIHoloImager
         }
 
         GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx,
-            const BoundingOrientedBox& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
+            const Obb& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
@@ -281,8 +281,8 @@ namespace AIHoloImager
 
                 const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
 
-                XMFLOAT3 corners[BoundingOrientedBox::CORNER_COUNT];
-                world_obb.GetCorners(corners);
+                glm::vec3 corners[8];
+                Obb::GetCorners(world_obb, corners);
 
                 const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
 
@@ -477,9 +477,8 @@ namespace AIHoloImager
     TextureReconstruction::TextureReconstruction(TextureReconstruction&& other) noexcept = default;
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
-    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx,
-        const BoundingOrientedBox& world_obb, const StructureFromMotion::Result& sfm_input, uint32_t texture_size,
-        const std::filesystem::path& tmp_dir)
+    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
+        const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
     {
         return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
     }

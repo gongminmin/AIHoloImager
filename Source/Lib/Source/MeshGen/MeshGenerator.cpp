@@ -19,13 +19,12 @@
 #include "MarchingCubes.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
+#include "Util/BoundingBox.hpp"
 
 #include "CompiledShader/DeformationNnCs.h"
 #include "CompiledShader/DensityNnCs.h"
 #include "CompiledShader/DilateCs.h"
 #include "CompiledShader/MergeTextureCs.h"
-
-using namespace DirectX;
 
 namespace AIHoloImager
 {
@@ -286,7 +285,7 @@ namespace AIHoloImager
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-            BoundingOrientedBox world_obb;
+            Obb world_obb;
             const glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input, world_obb);
 
             mesh.ComputeNormals();
@@ -304,12 +303,12 @@ namespace AIHoloImager
             auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
             {
-                const glm::vec3 center(recon_input.obb.Center.x, recon_input.obb.Center.y, recon_input.obb.Center.z);
+                const glm::vec3& center = recon_input.obb.center;
                 const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
                 const glm::mat4x4 pre_rotate =
                     glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
                     glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
-                    glm::mat4_cast(glm::inverse(*reinterpret_cast<const glm::quat*>(&recon_input.obb.Orientation)));
+                    glm::mat4_cast(glm::inverse(recon_input.obb.orientation));
                 const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
 
                 const glm::mat4x4 adjust_mtx = handedness * pre_rotate * pre_trans * handedness * model_mtx;
@@ -687,28 +686,26 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, BoundingOrientedBox& world_obb)
+        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, Obb& world_obb)
         {
             const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
-            glm::mat4x4 model_mtx = handedness * *reinterpret_cast<const glm::mat4x4*>(&recon_input.transform); // RH to LH
-            std::swap(model_mtx[1], model_mtx[2]);                                                              // Swap Y and Z
+            glm::mat4x4 model_mtx = handedness * recon_input.transform; // RH to LH
+            std::swap(model_mtx[1], model_mtx[2]);                      // Swap Y and Z
 
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
-            BoundingOrientedBox ai_obb;
-            BoundingOrientedBox::CreateFromPoints(
-                ai_obb, mesh.NumVertices(), &mesh.VertexData<XMFLOAT3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride());
+            const Obb ai_obb =
+                Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
 
-            BoundingOrientedBox transformed_ai_obb;
-            ai_obb.Transform(transformed_ai_obb, XMLoadFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&model_mtx)));
+            const Obb transformed_ai_obb = Obb::Transform(ai_obb, model_mtx);
 
-            const float scale_x = transformed_ai_obb.Extents.x / recon_input.obb.Extents.x;
-            const float scale_y = transformed_ai_obb.Extents.y / recon_input.obb.Extents.y;
-            const float scale_z = transformed_ai_obb.Extents.z / recon_input.obb.Extents.z;
+            const float scale_x = transformed_ai_obb.extents.x / recon_input.obb.extents.x;
+            const float scale_y = transformed_ai_obb.extents.y / recon_input.obb.extents.y;
+            const float scale_z = transformed_ai_obb.extents.z / recon_input.obb.extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
             model_mtx *= glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale, scale, scale));
-            ai_obb.Transform(world_obb, XMLoadFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&model_mtx)));
+            world_obb = Obb::Transform(ai_obb, model_mtx);
 
             return model_mtx;
         }

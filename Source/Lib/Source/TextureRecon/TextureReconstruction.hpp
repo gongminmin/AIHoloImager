@@ -5,13 +5,13 @@
 
 #include <filesystem>
 
-#include <DirectXCollision.h>
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "SfM/StructureFromMotion.hpp"
+#include "Util/BoundingBox.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -36,8 +36,8 @@ namespace AIHoloImager
 
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
-        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const DirectX::BoundingOrientedBox& world_obb,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir);
+        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input,
+            uint32_t texture_size, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;
