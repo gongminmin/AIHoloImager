@@ -5,9 +5,9 @@
 #include "MarchingCubesUtil.hlslh"
 #include "TriplaneNeRF.hlslh"
 
-#define BLOCK_DIM 256
-#define MAX_HIDDEN_DIM 64
-#define MAX_FEATURES 240
+static const uint32_t BlockDim = 256;
+static const uint32_t MaxHiddenDim = 64;
+static const uint32_t MaxFeatures = 240;
 
 cbuffer param_cb : register(b0)
 {
@@ -39,7 +39,7 @@ Buffer<float> nn_layer_4_bias : register(t8);
 
 RWTexture3D<float4> density_deformations : register(u0);
 
-[numthreads(BLOCK_DIM, 1, 1)]
+[numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
@@ -50,11 +50,11 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     const uint32_t3 coord = DecomposeCoord(dtid.x, size);
 
-    Tensor<MAX_HIDDEN_DIM> nodes[2];
+    Tensor<MaxHiddenDim> nodes[2];
     {
         const float3 cube_vert = (float3(coord) / grid_res - 0.5f) * grid_scale;
 
-        Tensor<MAX_FEATURES> inputs;
+        Tensor<MaxFeatures> inputs;
         FetchTriplaneNeRF(inputs, planes, bilinear_sampler, cube_vert, num_features);
 
         TensorView weight = TensorView::Create(nn_layer_1_weight, 0, uint32_t2(num_features, layer_1_nodes));

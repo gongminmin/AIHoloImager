@@ -3,7 +3,7 @@
 
 #include "MarchingCubesUtil.hlslh"
 
-#define BLOCK_DIM 256
+static const uint32_t BlockDim = 256;
 
 cbuffer param_cb : register(b0)
 {
@@ -18,7 +18,7 @@ Texture3D<float4> scalar_deformation : register(t1);
 RWBuffer<uint32_t> cube_offsets : register(u0);
 RWBuffer<uint32_t> counter : register(u1);
 
-[numthreads(BLOCK_DIM, 1, 1)]
+[numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]

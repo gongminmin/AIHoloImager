@@ -4,9 +4,9 @@
 #include "Nn.hlslh"
 #include "TriplaneNeRF.hlslh"
 
-#define BLOCK_DIM 16
-#define MAX_HIDDEN_DIM 64
-#define MAX_FEATURES 240
+static const uint32_t BlockDim = 16;
+static const uint32_t MaxHiddenDim = 64;
+static const uint32_t MaxFeatures = 240;
 
 cbuffer param_cb : register(b0)
 {
@@ -39,7 +39,7 @@ Texture2D pos_tex : register(t9);
 
 RWTexture2D<unorm float4> merged_tex : register(u0);
 
-[numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
+[numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
@@ -61,12 +61,12 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    Tensor<MAX_HIDDEN_DIM> nodes[2];
+    Tensor<MaxHiddenDim> nodes[2];
     {
         float4 pos_os = mul(pos_ws, inv_model);
         pos_os /= pos_os.w;
 
-        Tensor<MAX_FEATURES> inputs;
+        Tensor<MaxFeatures> inputs;
         FetchTriplaneNeRF(inputs, planes, bilinear_sampler, pos_os.xyz, num_features);
 
         TensorView weight = TensorView::Create(nn_layer_1_weight, 0, uint32_t2(num_features, layer_1_nodes));

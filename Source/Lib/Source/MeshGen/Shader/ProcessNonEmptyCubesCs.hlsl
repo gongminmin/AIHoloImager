@@ -3,7 +3,7 @@
 
 #include "MarchingCubesUtil.hlslh"
 
-#define BLOCK_DIM 256
+static const uint32_t BlockDim = 256;
 
 cbuffer param_cb : register(b0)
 {
@@ -22,7 +22,7 @@ RWBuffer<uint32_t> non_empty_cube_indices : register(u1);
 RWBuffer<uint32_t2> vertex_index_offsets : register(u2);
 RWBuffer<uint32_t> counter : register(u3);
 
-[numthreads(BLOCK_DIM, 1, 1)]
+[numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]

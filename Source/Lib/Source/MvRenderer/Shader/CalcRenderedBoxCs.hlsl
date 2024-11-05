@@ -1,17 +1,17 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
-#define BLOCK_DIM 16
-#define MIN_WAVE_SIZE 32
+static const uint32_t BlockDim = 16;
+static const uint32_t MinWaveSize = 32;
 
 Texture2D rendered_tex : register(t0);
 
 RWTexture2D<uint32_t> bounding_box_tex : register(u0);
 
-groupshared uint32_t2 group_wave_mins[BLOCK_DIM * BLOCK_DIM / MIN_WAVE_SIZE];
-groupshared uint32_t2 group_wave_maxs[BLOCK_DIM * BLOCK_DIM / MIN_WAVE_SIZE];
+groupshared uint32_t2 group_wave_mins[BlockDim * BlockDim / MinWaveSize];
+groupshared uint32_t2 group_wave_maxs[BlockDim * BlockDim / MinWaveSize];
 
-[numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
+[numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
 {
     uint32_t width;
@@ -43,7 +43,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     }
     GroupMemoryBarrierWithGroupSync();
 
-    uint32_t group_mem_size = BLOCK_DIM * BLOCK_DIM / wave_size;
+    uint32_t group_mem_size = BlockDim * BlockDim / wave_size;
 
     if (group_index < group_mem_size)
     {

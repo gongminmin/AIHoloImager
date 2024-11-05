@@ -3,7 +3,7 @@
 
 #include "MarchingCubesUtil.hlslh"
 
-#define BLOCK_DIM 256
+static const uint32_t BlockDim = 256;
 
 cbuffer param_cb : register(b0)
 {
@@ -39,7 +39,7 @@ float3 InterpolateVertex(float3 p0, float3 p1, float v0, float v1, float isovalu
     return inter_p;
 }
 
-[numthreads(BLOCK_DIM, 1, 1)]
+[numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
