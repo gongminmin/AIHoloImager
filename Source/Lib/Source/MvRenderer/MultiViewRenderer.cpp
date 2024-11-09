@@ -19,12 +19,12 @@
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
 
-#include "CompiledShader/BlendCs.h"
-#include "CompiledShader/CalcDiffusionBoxCs.h"
-#include "CompiledShader/CalcRenderedBoxCs.h"
-#include "CompiledShader/DownsampleCs.h"
-#include "CompiledShader/RenderPs.h"
-#include "CompiledShader/RenderVs.h"
+#include "CompiledShader/MvRenderer/BlendCs.h"
+#include "CompiledShader/MvRenderer/CalcDiffusionBoxCs.h"
+#include "CompiledShader/MvRenderer/CalcRenderedBoxCs.h"
+#include "CompiledShader/MvRenderer/DownsampleCs.h"
+#include "CompiledShader/MvRenderer/RenderPs.h"
+#include "CompiledShader/MvRenderer/RenderVs.h"
 
 using namespace AIHoloImager;
 

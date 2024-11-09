@@ -13,9 +13,9 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 
-#include "CompiledShader/CalcCubeIndicesCs.h"
-#include "CompiledShader/GenVerticesIndicesCs.h"
-#include "CompiledShader/ProcessNonEmptyCubesCs.h"
+#include "CompiledShader/MeshGen/CalcCubeIndicesCs.h"
+#include "CompiledShader/MeshGen/GenVerticesIndicesCs.h"
+#include "CompiledShader/MeshGen/ProcessNonEmptyCubesCs.h"
 
 namespace
 {

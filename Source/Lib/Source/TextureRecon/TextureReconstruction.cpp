@@ -17,11 +17,11 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 
-#include "CompiledShader/FlattenPs.h"
-#include "CompiledShader/FlattenVs.h"
-#include "CompiledShader/GenShadowMapVs.h"
-#include "CompiledShader/ProjectTextureCs.h"
-#include "CompiledShader/ResolveTextureCs.h"
+#include "CompiledShader/TextureRecon/FlattenPs.h"
+#include "CompiledShader/TextureRecon/FlattenVs.h"
+#include "CompiledShader/TextureRecon/GenShadowMapVs.h"
+#include "CompiledShader/TextureRecon/ProjectTextureCs.h"
+#include "CompiledShader/TextureRecon/ResolveTextureCs.h"
 
 namespace AIHoloImager
 {

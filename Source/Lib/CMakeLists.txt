@@ -109,8 +109,11 @@ add_library(AIHoloImagerLib STATIC
 
 macro(AddShaderFile file_name shader_type entry_point)
     get_filename_component(file_base_name ${file_name} NAME_WE)
+    get_filename_component(file_dir ${file_name} DIRECTORY)
+    string(REPLACE "/" ";" file_dir_list ${file_dir})
+    list(GET file_dir_list 1 file_dir)
     set(variable_name ${file_base_name}_shader)
-    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${file_base_name}.h")
+    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${file_dir}/${file_base_name}.h")
     set(debug_option "-Zi;-Od;-Qembed_debug")
     set(release_option "-O2")
 

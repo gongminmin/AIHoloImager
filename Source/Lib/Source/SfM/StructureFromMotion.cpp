@@ -60,7 +60,7 @@
 #include "Gpu/GpuTexture.hpp"
 #include "MaskGen/MaskGenerator.hpp"
 
-#include "CompiledShader/UndistortCs.h"
+#include "CompiledShader/SfM/UndistortCs.h"
 
 using namespace openMVG;
 using namespace openMVG::cameras;

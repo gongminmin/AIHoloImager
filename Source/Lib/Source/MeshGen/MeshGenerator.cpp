@@ -21,10 +21,10 @@
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
 
-#include "CompiledShader/DeformationNnCs.h"
-#include "CompiledShader/DensityNnCs.h"
-#include "CompiledShader/DilateCs.h"
-#include "CompiledShader/MergeTextureCs.h"
+#include "CompiledShader/MeshGen/DeformationNnCs.h"
+#include "CompiledShader/MeshGen/DensityNnCs.h"
+#include "CompiledShader/MeshGen/DilateCs.h"
+#include "CompiledShader/MeshGen/MergeTextureCs.h"
 
 namespace AIHoloImager
 {
