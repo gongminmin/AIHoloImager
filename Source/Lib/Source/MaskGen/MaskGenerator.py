@@ -42,14 +42,20 @@ class MaskGenerator:
         del self.device
         torch.cuda.empty_cache()
 
-    def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:
-        with torch.no_grad():
-            img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
-            img = torch.from_numpy(img.copy()).to(self.device)
-            img = img.reshape(height, width, num_channels)
+    def SetImage(self, img_data : bytes, width : int, height : int, num_channels : int):
+        img = np.frombuffer(img_data, dtype = np.uint8, count = width * height * num_channels)
+        img = torch.from_numpy(img.copy()).to(self.device)
+        self.img = img.reshape(height, width, num_channels)
 
-            mask = self.Predict(img)
-            mask = self.PostProcess(mask)
+    def Gen(self, roi_left : int, roi_top : int, roi_right : int, roi_bottom : int) -> bytes:
+        with torch.no_grad():
+            cropped_img = self.img[roi_top : roi_bottom, roi_left : roi_right, :]
+
+            cropped_mask = self.Predict(cropped_img)
+            cropped_mask = self.PostProcess(cropped_mask)
+
+            mask = torch.zeros((1, self.img.shape[0], self.img.shape[1]), dtype = torch.uint8, device = self.device)
+            mask[:, roi_top : roi_bottom, roi_left : roi_right] = cropped_mask
 
             mask = mask.cpu().numpy()
         return mask.tobytes()

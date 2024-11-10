@@ -510,65 +510,7 @@ namespace AIHoloImager
                 for (size_t i = 0; i < ret.views.size(); ++i)
                 {
                     std::cout << "Generating mask images (" << (i + 1) << " / " << ret.views.size() << ")\r";
-
-                    auto& image_mask = ret.views[i].image_mask;
-                    mask_gen.Generate(image_mask);
-
-                    uint32_t* image_mask_data = reinterpret_cast<uint32_t*>(image_mask.Data());
-                    const uint32_t width = image_mask.Width();
-                    const uint32_t height = image_mask.Height();
-
-                    glm::uvec2 bb_min(width, height);
-                    glm::uvec2 bb_max(0, 0);
-                    for (uint32_t y = 0; y < height; ++y)
-                    {
-                        for (uint32_t x = 0; x < width; ++x)
-                        {
-                            if ((image_mask_data[y * width + x] >> 24) > 127)
-                            {
-                                const glm::uvec2 coord = glm::uvec2(x, y);
-                                bb_min = glm::min(bb_min, coord);
-                                bb_max = glm::max(bb_max, coord);
-                            }
-                        }
-                    }
-
-                    const uint32_t crop_size = std::max(bb_max.x - bb_min.x, bb_max.y - bb_min.y) + 8;
-                    const glm::uvec2 crop_center = (bb_min + bb_max) / 2u;
-                    glm::ivec2 crop_left_top = crop_center - crop_size / 2;
-                    Texture crop_image_mask(crop_size, crop_size, 4);
-                    uint32_t* crop_data = reinterpret_cast<uint32_t*>(crop_image_mask.Data());
-                    for (uint32_t y = 0; y < crop_size; ++y)
-                    {
-                        for (uint32_t x = 0; x < crop_size; ++x)
-                        {
-                            const glm::ivec2 coord = crop_left_top + glm::ivec2(x, y);
-                            if (glm::all(glm::bvec4(
-                                    glm::greaterThanEqual(coord, glm::ivec2(0, 0)), glm::lessThan(coord, glm::ivec2(width, height)))))
-                            {
-                                crop_data[y * crop_size + x] = image_mask_data[coord.y * width + coord.x];
-                            }
-                            else
-                            {
-                                crop_data[y * crop_size + x] = 0;
-                            }
-                        }
-                    }
-
-                    mask_gen.Generate(crop_image_mask);
-
-                    for (uint32_t y = 0; y < crop_size; ++y)
-                    {
-                        for (uint32_t x = 0; x < crop_size; ++x)
-                        {
-                            const glm::ivec2 coord = crop_left_top + glm::ivec2(x, y);
-                            if (glm::all(glm::bvec4(
-                                    glm::greaterThanEqual(coord, glm::ivec2(0, 0)), glm::lessThan(coord, glm::ivec2(width, height)))))
-                            {
-                                image_mask_data[coord.y * width + coord.x] = crop_data[y * crop_size + x];
-                            }
-                        }
-                    }
+                    mask_gen.Generate(ret.views[i].image_mask);
                 }
                 std::cout << "\n\n";
             }
