@@ -42,6 +42,17 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/Gpu/GpuUtil.hpp
+    Source/MaskGen/Shader/CalcBBoxCs.hlsl
+    Source/MaskGen/Shader/CalcRoiCs.hlsl
+    Source/MaskGen/Shader/DownsampleCs.hlsl
+    Source/MaskGen/Shader/ErosionDilationCs.hlsl
+    Source/MaskGen/Shader/GaussianBlurCs.hlsl
+    Source/MaskGen/Shader/Lanczos.hlslh
+    Source/MaskGen/Shader/MergeMaskCs.hlsl
+    Source/MaskGen/Shader/NormalizeImageCs.hlsl
+    Source/MaskGen/Shader/UpsampleCs.hlsl
+    Source/MaskGen/Shader/StatImageCs.hlsl
+    Source/MaskGen/Shader/StatPredCs.hlsl
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
@@ -126,6 +137,16 @@ macro(AddShaderFile file_name shader_type entry_point)
     )
 endmacro()
 
+AddShaderFile(Source/MaskGen/Shader/CalcBBoxCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/CalcRoiCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/DownsampleCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/ErosionDilationCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/GaussianBlurCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/MergeMaskCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/NormalizeImageCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
+AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DeformationNnCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DensityNnCs.hlsl "cs" "main")

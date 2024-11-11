@@ -418,6 +418,7 @@ namespace AIHoloImager
 
             GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
+            MaskGenerator mask_gen(gpu_system_, python_system_);
 
             ret.views.reserve(sfm_data.views.size());
             const std::filesystem::path image_dir = sfm_data.s_root_path;
@@ -471,6 +472,8 @@ namespace AIHoloImager
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
+                        mask_gen.Generate(cmd_list, undistort_gpu_tex);
+
                         undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 
                         gpu_system_.Execute(std::move(cmd_list));
@@ -503,16 +506,6 @@ namespace AIHoloImager
                         result_observation.feat_id = mvg_observation.second.id_feat;
                     }
                 }
-            }
-
-            {
-                MaskGenerator mask_gen(python_system_);
-                for (size_t i = 0; i < ret.views.size(); ++i)
-                {
-                    std::cout << "Generating mask images (" << (i + 1) << " / " << ret.views.size() << ")\r";
-                    mask_gen.Generate(ret.views[i].image_mask);
-                }
-                std::cout << "\n\n";
             }
 
             return ret;

@@ -3,7 +3,9 @@
 
 #pragma once
 
-#include "AIHoloImager/Texture.hpp"
+#include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuSystem.hpp"
+#include "Gpu/GpuTexture.hpp"
 #include "Python/PythonSystem.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -14,13 +16,13 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MaskGenerator);
 
     public:
-        explicit MaskGenerator(PythonSystem& python_system);
+        MaskGenerator(GpuSystem& gpu_system, PythonSystem& python_system);
         MaskGenerator(MaskGenerator&& other) noexcept;
         ~MaskGenerator() noexcept;
 
         MaskGenerator& operator=(MaskGenerator&& other) noexcept;
 
-        void Generate(Texture& image);
+        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image);
 
     private:
         class Impl;

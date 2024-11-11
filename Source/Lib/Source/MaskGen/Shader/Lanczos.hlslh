@@ -1,0 +1,58 @@
+// Copyright (c) 2024 Minmin Gong
+//
+
+#pragma once
+
+float Sinc(float x)
+{
+    static const float Pi = 3.1415926f;
+
+    if (x == 0)
+    {
+        return 1;
+    }
+    else
+    {
+        x *= Pi;
+        return sin(x) / x;
+    }
+}
+
+float Lanczos(float f, uint32_t kernel_radius)
+{
+    return abs(f) < kernel_radius ? Sinc(f) * Sinc(f / kernel_radius) : 0;
+}
+
+template <typename T>
+T LanczosResample(Texture2D<T> input_tex, uint32_t2 dest_coord, uint32_t4 src_roi, float scale, uint32_t kernel_radius, bool x_dir, T min_value, T value_scale)
+{
+    const float src_coord = ((x_dir ? dest_coord.x : dest_coord.y) + 0.5f) * scale - 0.5f;
+
+    const float sampling_scale = max(scale, 1);
+    int32_t sampling_range = int32_t(round(kernel_radius * sampling_scale));
+
+    T sum = 0;
+    float total_weight = 0;
+    for (int32_t i = -sampling_range; i <= sampling_range; ++i)
+    {
+        const float f = frac(src_coord) - i;
+        const float weight = Lanczos(f / sampling_scale, kernel_radius);
+
+        uint32_t2 input_coord;
+        if (x_dir)
+        {
+            const uint32_t x = clamp(src_roi.x + int32_t(src_coord + i), src_roi.x, src_roi.z - 1);
+            input_coord = uint32_t2(x, src_roi.y + dest_coord.y);
+        }
+        else
+        {
+            const uint32_t y = clamp(src_roi.y + int32_t(src_coord + i), src_roi.y, src_roi.w - 1);
+            input_coord = uint32_t2(src_roi.x + dest_coord.x, y);
+        }
+
+        sum += (input_tex.Load(uint32_t3(input_coord, 0)) - min_value) * value_scale * weight;
+        total_weight += weight;
+    }
+
+    return sum / total_weight;
+}
