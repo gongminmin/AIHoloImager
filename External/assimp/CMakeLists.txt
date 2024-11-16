@@ -29,7 +29,12 @@ unset(ASSIMP_ARCHIVE_OUTPUT_DIRECTORY CACHE)
 
 add_subdirectory(assimp EXCLUDE_FROM_ALL)
 
-if(ai_holo_imager_compiler_clangcl)
+if(ai_holo_imager_compiler_msvc)
+    target_compile_options(assimp
+        PRIVATE
+            /wd4756 # Ignore the INFINITY constant overflow in some specific Windows SDKs
+    )
+elseif(ai_holo_imager_compiler_clangcl)
 	target_compile_options(assimp
 		PRIVATE
 			-Wno-unused-function
