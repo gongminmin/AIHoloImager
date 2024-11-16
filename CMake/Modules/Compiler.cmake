@@ -3,6 +3,12 @@ if(MSVC)
 
     set(CMAKE_CXX_STANDARD 20)
 
+    if(DEFINED ENV{BUILD_BUILDID})
+        set(ltcg OFF) # Turn off LTCG for CI to reduce OOM crashes
+    else()
+        set(ltcg ON)
+    endif()
+
     if(CMAKE_C_COMPILER_ID MATCHES Clang)
         set(ai_holo_imager_compiler_name "clangcl")
         set(ai_holo_imager_compiler_clangcl TRUE)
@@ -48,21 +54,28 @@ if(MSVC)
         endforeach()
         foreach(flag_var
             CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO)
-            set(${flag_var} "/DEBUG:FASTLINK /INCREMENTAL:NO /LTCG:incremental /OPT:REF /OPT:ICF")
+            set(${flag_var} "/DEBUG:FASTLINK /INCREMENTAL:NO /OPT:REF /OPT:ICF")
         endforeach()
         foreach(flag_var
             CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELEASE CMAKE_SHARED_LINKER_FLAGS_RELEASE)
-            set(${flag_var} "/INCREMENTAL:NO /LTCG /OPT:REF /OPT:ICF")
+            set(${flag_var} "/INCREMENTAL:NO /OPT:REF /OPT:ICF")
         endforeach()
         foreach(flag_var
             CMAKE_MODULE_LINKER_FLAGS_RELEASE CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL)
-            set(${flag_var} "/INCREMENTAL:NO /LTCG")
+            set(${flag_var} "/INCREMENTAL:NO")
         endforeach()
-        foreach(flag_var
-            CMAKE_STATIC_LINKER_FLAGS_RELEASE CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL)
-            set(${flag_var} "${${flag_var}} /LTCG")
-        endforeach()
-        set(CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO} /LTCG:incremental")
+
+        if(ltcg)
+            foreach(flag_var
+                CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL
+                CMAKE_EXE_LINKER_FLAGS_RELEASE CMAKE_SHARED_LINKER_FLAGS_RELEASE CMAKE_MODULE_LINKER_FLAGS_RELEASE  CMAKE_STATIC_LINKER_FLAGS_RELEASE)
+                set(${flag_var} "${${flag_var}} /LTCG")
+            endforeach()
+            foreach(flag_var
+                CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO)
+                set(${flag_var} "${${flag_var}} /LTCG:incremental")
+            endforeach()
+        endif()
 
         set(CMAKE_C_FLAGS ${CMAKE_CXX_FLAGS})
     endif()
@@ -70,7 +83,10 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DAI_HOLO_IMAGER_SHIP")
     foreach(flag_var
         CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_MINSIZEREL)
-        set(${flag_var} "${${flag_var}} /fp:fast /Ob2 /GL")
+        set(${flag_var} "${${flag_var}} /fp:fast /Ob2")
+        if(ltcg)
+            set(${flag_var} "${${flag_var}} /GL")
+        endif()
     endforeach()
 
     add_definitions(-DWIN32 -D_WINDOWS)
