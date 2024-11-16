@@ -43,4 +43,6 @@ namespace AIHoloImager
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    glm::mat4x4 RegularizeTransform(const glm::vec3& translate, const glm::quat& rotation, const glm::vec3& scale);
 } // namespace AIHoloImager

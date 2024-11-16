@@ -303,15 +303,11 @@ namespace AIHoloImager
             auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
             {
-                const glm::vec3& center = recon_input.obb.center;
-                const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
-                const glm::mat4x4 pre_rotate =
-                    glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
-                    glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
-                    glm::mat4_cast(glm::inverse(recon_input.obb.orientation));
                 const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
 
-                const glm::mat4x4 adjust_mtx = handedness * pre_rotate * pre_trans * handedness * model_mtx;
+                const glm::mat4x4 adjust_mtx =
+                    handedness * RegularizeTransform(-recon_input.obb.center, glm::inverse(recon_input.obb.orientation), glm::vec3(1)) *
+                    handedness * model_mtx;
                 const glm::mat4x4 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
 
                 const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
@@ -320,11 +316,11 @@ namespace AIHoloImager
                 {
                     auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
                     const glm::vec4 p = adjust_mtx * glm::vec4(pos, 1);
-                    pos = glm::vec3(p.x, p.y, p.z) / p.w;
+                    pos = glm::vec3(p) / p.w;
 
                     auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
                     const glm::vec4 n = adjust_it_mtx * glm::vec4(normal, 0);
-                    normal = glm::vec3(n.x, n.y, n.z);
+                    normal = glm::vec3(n);
                 }
             }
 
@@ -688,9 +684,8 @@ namespace AIHoloImager
 
         glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, Obb& world_obb)
         {
-            const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
-            glm::mat4x4 model_mtx = handedness * recon_input.transform; // RH to LH
-            std::swap(model_mtx[1], model_mtx[2]);                      // Swap Y and Z
+            glm::mat4x4 model_mtx = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1)) * recon_input.transform; // Flip the Z
+            std::swap(model_mtx[1], model_mtx[2]);                                                                         // Swap Y and Z
 
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
@@ -704,7 +699,7 @@ namespace AIHoloImager
             const float scale_z = transformed_ai_obb.extents.z / recon_input.obb.extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
-            model_mtx *= glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale, scale, scale));
+            model_mtx = glm::scale(model_mtx, glm::vec3(scale));
             world_obb = Obb::Transform(ai_obb, model_mtx);
 
             return model_mtx;

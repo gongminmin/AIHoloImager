@@ -89,16 +89,8 @@ namespace AIHoloImager
 
             obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
 
-            const glm::vec3& center = obb.center;
             const float inv_max_dim = 1 / std::max({obb.extents.x, obb.extents.y, obb.extents.z});
-
-            const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), -center);
-            const glm::mat4x4 pre_rotate = glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
-                                           glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
-                                           glm::mat4_cast(glm::inverse(obb.orientation));
-            const glm::mat4x4 pre_scale = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(inv_max_dim));
-
-            glm::mat4x4 model_mtx = pre_scale * pre_rotate * pre_trans;
+            glm::mat4x4 model_mtx = RegularizeTransform(-obb.center, glm::inverse(obb.orientation), glm::vec3(inv_max_dim));
             ret.transform = glm::inverse(model_mtx);
 
             model_mtx = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1)) * model_mtx; // LH to RH
@@ -106,7 +98,7 @@ namespace AIHoloImager
             {
                 auto& transformed_pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
                 const glm::vec4 p = model_mtx * glm::vec4(transformed_pos, 1);
-                transformed_pos = glm::vec3(p.x, p.y, p.z) / p.w;
+                transformed_pos = glm::vec3(p) / p.w;
             }
 
             return ret;
@@ -284,5 +276,16 @@ namespace AIHoloImager
         const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
     {
         return impl_->Process(sfm_input, refine_mesh, max_texture_size, tmp_dir);
+    }
+
+    glm::mat4x4 RegularizeTransform(const glm::vec3& translate, const glm::quat& rotation, const glm::vec3& scale)
+    {
+        const glm::mat4x4 pre_trans = glm::translate(glm::identity<glm::mat4x4>(), translate);
+        const glm::mat4x4 pre_rotate = glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float>, glm::vec3(1, 0, 0)) *
+                                       glm::rotate(glm::identity<glm::mat4x4>(), std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
+                                       glm::mat4_cast(rotation);
+        const glm::mat4x4 pre_scale = glm::scale(glm::identity<glm::mat4x4>(), scale);
+
+        return pre_scale * pre_rotate * pre_trans;
     }
 } // namespace AIHoloImager

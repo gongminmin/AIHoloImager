@@ -270,13 +270,9 @@ namespace AIHoloImager
                 }
                 photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
 
-                const glm::vec3 camera_pos(
-                    static_cast<float>(view.center.x), static_cast<float>(view.center.y), -static_cast<float>(view.center.z));
-                const glm::vec3 camera_up_vec(-static_cast<float>(view.rotation[1].x), -static_cast<float>(view.rotation[1].y),
-                    static_cast<float>(view.rotation[1].z));
-                const glm::vec3 camera_forward_vec(static_cast<float>(view.rotation[2].x), static_cast<float>(view.rotation[2].y),
-                    -static_cast<float>(view.rotation[2].z));
-
+                const glm::vec3 camera_pos = {view.center.x, view.center.y, -view.center.z};
+                const glm::vec3 camera_up_vec = {-view.rotation[1].x, -view.rotation[1].y, view.rotation[1].z};
+                const glm::vec3 camera_forward_vec = {view.rotation[2].x, view.rotation[2].y, -view.rotation[2].z};
                 const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
 
                 glm::vec3 corners[8];
@@ -284,8 +280,8 @@ namespace AIHoloImager
 
                 const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
 
-                float min_z_es = 1e10f;
-                float max_z_es = -1e10f;
+                float min_z_es = std::numeric_limits<float>::max();
+                float max_z_es = std::numeric_limits<float>::lowest();
                 for (const auto& corner : corners)
                 {
                     glm::vec4 pos(corner.x, corner.y, -corner.z, 1);
@@ -309,8 +305,8 @@ namespace AIHoloImager
                 gen_shadow_map_cb_.UploadToGpu();
 
                 const glm::vec2 offset = {
-                    static_cast<float>(intrinsic.k[0].z) - intrinsic.width / 2,
-                    static_cast<float>(intrinsic.k[1].z) - intrinsic.height / 2,
+                    intrinsic.k[0].z - intrinsic.width / 2,
+                    intrinsic.k[1].z - intrinsic.height / 2,
                 };
 
                 shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);

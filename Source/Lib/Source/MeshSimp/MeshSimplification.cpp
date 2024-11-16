@@ -126,7 +126,7 @@ namespace AIHoloImager
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
                 const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, 0);
-                vertices_[i].pos = {pos.x, pos.y, pos.z};
+                vertices_[i].pos = pos;
             }
 
             triangles_.resize(input_mesh.IndexBuffer().size() / 3);
@@ -240,11 +240,7 @@ namespace AIHoloImager
             Mesh mesh(input_mesh.MeshVertexDesc(), static_cast<uint32_t>(vertices_.size()), static_cast<uint32_t>(triangles_.size() * 3));
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
-                mesh.VertexData<glm::vec3>(i, 0) = {
-                    static_cast<float>(vertices_[i].pos.x),
-                    static_cast<float>(vertices_[i].pos.y),
-                    static_cast<float>(vertices_[i].pos.z),
-                };
+                mesh.VertexData<glm::vec3>(i, 0) = vertices_[i].pos;
             }
             for (uint32_t i = 0; i < static_cast<uint32_t>(triangles_.size()); ++i)
             {

@@ -669,13 +669,13 @@ namespace AIHoloImager
             {
                 if (pos_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    mesh.VertexData<glm::vec3>(vi, pos_attrib_index) =
-                        glm::vec3(ai_mesh->mVertices[vi].x, ai_mesh->mVertices[vi].y, ai_mesh->mVertices[vi].z);
+                    mesh.VertexData<glm::vec3>(vi, pos_attrib_index) = {
+                        ai_mesh->mVertices[vi].x, ai_mesh->mVertices[vi].y, ai_mesh->mVertices[vi].z};
                 }
                 if (normal_attrib_index != VertexDesc::InvalidIndex)
                 {
-                    mesh.VertexData<glm::vec3>(vi, normal_attrib_index) =
-                        glm::vec3(ai_mesh->mNormals[vi].x, ai_mesh->mNormals[vi].y, ai_mesh->mNormals[vi].z);
+                    mesh.VertexData<glm::vec3>(vi, normal_attrib_index) = {
+                        ai_mesh->mNormals[vi].x, ai_mesh->mNormals[vi].y, ai_mesh->mNormals[vi].z};
                 }
                 for (size_t j = 0; j < texcoord_attrib_indices.size(); ++j)
                 {
