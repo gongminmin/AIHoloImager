@@ -22,6 +22,8 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 option(AIHI_KEEP_INTERMEDIATES "Keep intermediate results" OFF)
 
+find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
+
 add_subdirectory(External)
 add_subdirectory(Source)
 

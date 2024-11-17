@@ -177,7 +177,6 @@ target_include_directories(AIHoloImagerLib
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
-find_package(Python3 COMPONENTS Interpreter Development.Embed REQUIRED)
 string(REPLACE "\\" "/" AIHI_PY_STDLIB_DIR ${Python3_STDLIB})
 string(REPLACE "\\" "/" AIHI_PY_RUNTIME_LIB_DIR ${Python3_RUNTIME_LIBRARY_DIRS})
 
