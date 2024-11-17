@@ -53,7 +53,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         pos_ss /= pos_ss.w;
 
         float3 normal_es = normalize(mul(normal_ws.xyz * 2 - 1, (float3x3)camera_view_it));
-        if (normal_es.z < 0)
+        if (normal_es.z > 0)
         {
             float2 coord = float2(pos_ss.x, -pos_ss.y) * 0.5f + 0.5f + offset;
             if (pos_ss.z < depth_tex.SampleLevel(point_sampler, coord, 0) * 1.02f)

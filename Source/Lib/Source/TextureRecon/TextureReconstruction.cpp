@@ -129,12 +129,9 @@ namespace AIHoloImager
             memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
-            const glm::mat4x4 handedness = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(1, 1, -1));
-            const glm::mat4x4 model_mtx_lh = handedness * model_mtx;
-
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
-            this->FlattenMesh(mesh_vb, mesh_ib, model_mtx_lh, texture_size, flatten_pos_tex, flatten_normal_tex);
+            this->FlattenMesh(mesh_vb, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -149,7 +146,7 @@ namespace AIHoloImager
 
             TextureReconstruction::Result result;
             result.color_tex = this->GenTextureFromPhotos(
-                mesh_vb, mesh_ib, model_mtx_lh, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size, tmp_dir);
+                mesh_vb, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size, tmp_dir);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -165,7 +162,7 @@ namespace AIHoloImager
 #endif
 
             result.pos_tex = std::move(flatten_pos_tex);
-            result.inv_model = glm::inverse(model_mtx_lh);
+            result.inv_model = glm::inverse(model_mtx);
 
             return result;
         }
@@ -270,10 +267,10 @@ namespace AIHoloImager
                 }
                 photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
 
-                const glm::vec3 camera_pos = {view.center.x, view.center.y, -view.center.z};
-                const glm::vec3 camera_up_vec = {-view.rotation[1].x, -view.rotation[1].y, view.rotation[1].z};
-                const glm::vec3 camera_forward_vec = {view.rotation[2].x, view.rotation[2].y, -view.rotation[2].z};
-                const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
+                const glm::vec3 camera_pos = view.center;
+                const glm::vec3 camera_up_vec = -view.rotation[1];
+                const glm::vec3 camera_forward_vec = view.rotation[2];
+                const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
 
                 glm::vec3 corners[8];
                 Obb::GetCorners(world_obb, corners);
@@ -284,7 +281,7 @@ namespace AIHoloImager
                 float max_z_es = std::numeric_limits<float>::lowest();
                 for (const auto& corner : corners)
                 {
-                    glm::vec4 pos(corner.x, corner.y, -corner.z, 1);
+                    const glm::vec4 pos(corner.x, corner.y, corner.z, 1);
                     const float z = glm::dot(pos, z_col);
                     min_z_es = std::min(min_z_es, z);
                     max_z_es = std::max(max_z_es, z);
@@ -293,13 +290,13 @@ namespace AIHoloImager
                 const float center_es_z = (max_z_es + min_z_es) / 2;
                 const float extent_es_z = (max_z_es - min_z_es) / 2 * 1.05f;
 
-                const float near_plane = center_es_z - extent_es_z;
-                const float far_plane = center_es_z + extent_es_z;
+                const float near_plane = center_es_z + extent_es_z;
+                const float far_plane = center_es_z - extent_es_z;
 
                 const double fy = intrinsic.k[1].y;
                 const float fov = static_cast<float>(2 * std::atan(intrinsic.height / (2 * fy)));
                 const glm::mat4x4 proj_mtx =
-                    glm::perspectiveLH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
+                    glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, -near_plane, -far_plane);
 
                 gen_shadow_map_cb_->mvp = glm::transpose(proj_mtx * view_mtx * model_mtx);
                 gen_shadow_map_cb_.UploadToGpu();

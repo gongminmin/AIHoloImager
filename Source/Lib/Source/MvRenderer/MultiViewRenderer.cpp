@@ -42,7 +42,7 @@ namespace
         const float azimuth = glm::radians(azimuth_deg);
         const float elevation = glm::radians(elevation_deg);
 
-        const float sin_azimuth = std::sin(azimuth);
+        const float sin_azimuth = -std::sin(azimuth);
         const float cos_azimuth = std::cos(azimuth);
 
         const float sin_elevation = std::sin(elevation);
@@ -61,7 +61,7 @@ namespace AIHoloImager
     {
     public:
         Impl(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
-            : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(glm::perspectiveLH_ZO(Fov, 1.0f, 0.1f, 30.0f))
+            : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 0.1f, 30.0f))
         {
             constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
             constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
@@ -271,7 +271,7 @@ namespace AIHoloImager
                 up_vec = glm::vec3(0, 1, 0);
             }
 
-            const glm::mat4x4 view_mtx = glm::lookAtLH(camera_pos, glm::vec3(0, 0, 0), up_vec);
+            const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
             render_cb_->mvp = glm::transpose(proj_mtx_ * view_mtx);
             render_cb_.UploadToGpu();

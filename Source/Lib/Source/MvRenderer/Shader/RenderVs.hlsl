@@ -11,6 +11,6 @@ void main(float3 pos : POSITION,
           out float2 out_texcoord0 : TEXCOORD0,
           out float4 out_pos : SV_Position)
 {
-    out_pos = mul(float4(pos.xy, -pos.z, 1), mvp); // RH to LH
+    out_pos = mul(float4(pos, 1), mvp);
     out_texcoord0 = float2(texcoord0.x, 1 - texcoord0.y);
 }
