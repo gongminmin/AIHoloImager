@@ -18,44 +18,47 @@ set(py_files
     InstantMesh/src/utils/__init__.py
     InstantMesh/src/utils/camera_util.py
 )
-set(pyc_files )
-foreach(py_file ${py_files})
-    get_filename_component(py_file_dir ${py_file} DIRECTORY)
-    get_filename_component(py_file_name ${py_file} NAME)
-    get_filename_component(py_file_stem ${py_file} NAME_WE)
-    set(py_file_dst "${output_dir}/${py_file_dir}/${py_file_stem}.pyc")
-    add_custom_command(OUTPUT ${py_file_dst}
-        COMMAND ${Python3_EXECUTABLE} -m compileall -b ${py_file}
-        COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
-        COMMENT "Compiling ${py_file_name} ..."
-        DEPENDS ${py_file}
+foreach(src_file ${py_files})
+    get_filename_component(src_file_dir ${src_file} DIRECTORY)
+    get_filename_component(src_file_stem ${src_file} NAME_WE)
+    set(pyc_file "${src_file_dir}/${src_file_stem}.pyc")
+    set(dst_file "${output_dir}/${pyc_file}")
+    add_custom_command(OUTPUT ${dst_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b ${src_file}
+        COMMAND ${CMAKE_COMMAND} -E copy ${pyc_file} ${dst_file}
+        COMMENT "Compiling ${src_file} ..."
+        MAIN_DEPENDENCY ${src_file}
+        DEPENDS ${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
-
-    list(APPEND pyc_files ${py_file_dst})
 endforeach()
 
 # zero123plus files need to be in source form
-set(py_files
+set(copy_files
     InstantMesh/zero123plus/model.py
     InstantMesh/zero123plus/pipeline.py
 )
-foreach(py_file ${py_files})
-    get_filename_component(py_file_dir ${py_file} DIRECTORY)
-    get_filename_component(py_file_name ${py_file} NAME)
-    set(py_file_dst "${output_dir}/${py_file_dir}/${py_file_name}")
-    add_custom_command(OUTPUT ${py_file_dst}
-        COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_name} ${py_file_dst}
-        COMMENT "Copying ${py_file_name} ..."
-        DEPENDS ${py_file}
+foreach(src_file ${copy_files})
+    set(dst_file "${output_dir}/${src_file}")
+    add_custom_command(OUTPUT ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E copy ${src_file} ${dst_file}
+        COMMENT "Copying ${src_file} ..."
+        MAIN_DEPENDENCY ${src_file}
+        DEPENDS ${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
-
-    list(APPEND pyc_files ${py_file_dst})
 endforeach()
 
-add_custom_target(DeployInstantMesh DEPENDS ${pyc_files})
+set(instant_mesh_files
+    ${py_files}
+    ${copy_files}
+)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/InstantMesh FILES ${instant_mesh_files})
 
-set_target_properties(DeployInstantMesh PROPERTIES FOLDER "External")
+add_library(InstantMesh INTERFACE
+    ${instant_mesh_files}
+)
+
+set_target_properties(InstantMesh PROPERTIES FOLDER "External")
