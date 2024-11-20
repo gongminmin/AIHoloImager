@@ -8,14 +8,20 @@ from diffusers import DiffusionPipeline, EulerAncestralDiscreteScheduler
 from huggingface_hub import hf_hub_download
 import numpy as np
 from PIL import Image
-from pytorch_lightning import seed_everything
 import torch
+
+def SeedRandom(seed : int):
+    import random
+    random.seed(seed)
+
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 class MultiViewDiffusion:
     def __init__(self):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        seed_everything(42)
+        SeedRandom(42)
 
         this_py_dir = Path(__file__).parent.resolve()
         pipeline_path = this_py_dir.joinpath("InstantMesh/zero123plus")

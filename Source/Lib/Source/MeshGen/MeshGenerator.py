@@ -6,7 +6,6 @@ import shutil
 
 from huggingface_hub import hf_hub_download
 import numpy as np
-from pytorch_lightning import seed_everything
 import torch
 
 from src.utils.camera_util import get_zero123plus_input_cameras
@@ -15,8 +14,6 @@ from Lrm import Lrm
 class MeshGenerator:
     def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
-
-        seed_everything(42)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
