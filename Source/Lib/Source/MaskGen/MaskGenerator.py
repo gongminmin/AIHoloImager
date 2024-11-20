@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnx2torch
-import pooch
+import requests
 import torch
 
 class MaskGenerator:
@@ -14,13 +14,9 @@ class MaskGenerator:
         this_py_dir = Path(__file__).parent.resolve()
         u2net_model_path = this_py_dir.joinpath("Models/u2net.onnx")
         if not u2net_model_path.exists():
-            pooch.retrieve(
-                "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx",
-                None,
-                fname = u2net_model_path.name,
-                path = u2net_model_path.parent.resolve(),
-                progressbar = True,
-            )
+            response = requests.get("https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx")
+            with open(u2net_model_path, "wb") as file:
+                file.write(response.content)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
