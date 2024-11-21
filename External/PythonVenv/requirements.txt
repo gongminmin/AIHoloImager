@@ -1,5 +1,11 @@
 numpy==1.26.4
 
+urllib3==2.2.3
+idna==3.10
+charset-normalizer==3.4.0
+certifi==2024.8.30
+requests==2.32.3
+
 protobuf==5.28.3
 #numpy==1.26.4
 onnx==1.16.2
@@ -56,39 +62,25 @@ onnx2torch==1.5.15
 #torch==2.4.1+cu124
 xformers==0.0.28.post1
 
-urllib3==2.2.3
-#typing-extensions==4.12.2
-PyYAML==6.0.2
-packaging==24.2
-idna==3.10
-#fsspec==2024.10.0
-#filelock==3.16.1
-colorama==0.4.6
-charset-normalizer==3.4.0
-certifi==2024.8.30
-tqdm==4.67.0
-requests==2.32.3
-huggingface-hub==0.19.3
-
 zipp==3.21.0
 #urllib3==2.2.3
 #typing-extensions==4.12.2
 safetensors==0.4.5
 regex==2024.11.6
-#PyYAML==6.0.2
+PyYAML==6.0.2
 #pillow==11.0.0
-#packaging==24.2
+packaging==24.2
 #numpy==1.26.4
 #idna==3.10
 #fsspec==2024.10.0
 #filelock==3.16.1
-#colorama==0.4.6
+colorama==0.4.6
 #charset-normalizer==3.4.0
 #certifi==2024.8.30
-#tqdm==4.67.0
+tqdm==4.67.0
 #requests==2.32.3
 importlib-metadata==8.5.0
-#huggingface-hub==0.19.3
+huggingface-hub==0.19.3
 diffusers==0.20.2
 
 #urllib3==2.2.3

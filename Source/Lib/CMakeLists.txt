@@ -108,6 +108,7 @@ set(aihi_files
     Source/Util/SmartPtrHelper.hpp
     Source/Util/Timer.cpp
     Source/Util/Timer.hpp
+    Source/Util/Util.py
     Source/Util/Uuid.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
@@ -224,6 +225,7 @@ set(py_files
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Lrm.py
     Source/MvDiffusion/MultiViewDiffusion.py
+    Source/Util/Util.py
 )
 foreach(py_file ${py_files})
     get_filename_component(py_file_dir ${py_file} DIRECTORY)

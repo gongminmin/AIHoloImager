@@ -9,14 +9,15 @@ import onnx2torch
 import requests
 import torch
 
+import Util
+
 class MaskGenerator:
     def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
         u2net_model_path = this_py_dir.joinpath("Models/u2net.onnx")
         if not u2net_model_path.exists():
-            response = requests.get("https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx")
-            with open(u2net_model_path, "wb") as file:
-                file.write(response.content)
+            print("Downloading pre-trained mask generator model...")
+            Util.DownloadFile(f"https://github.com/danielgatis/rembg/releases/download/v0.0.0/{u2net_model_path.name}", u2net_model_path)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

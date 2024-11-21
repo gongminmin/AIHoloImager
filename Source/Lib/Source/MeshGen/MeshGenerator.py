@@ -2,14 +2,14 @@
 #
 
 from pathlib import Path
-import shutil
 
-from huggingface_hub import hf_hub_download
 import numpy as np
 import torch
 
 from src.utils.camera_util import get_zero123plus_input_cameras
 from Lrm import Lrm
+
+import Util
 
 class MeshGenerator:
     def __init__(self):
@@ -23,9 +23,8 @@ class MeshGenerator:
 
         model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")
         if not model_ckpt_path.exists():
-            print("Downloading pre-trained mesh generator models...")
-            downloaded_model_ckpt_path = hf_hub_download(repo_id = "TencentARC/InstantMesh", filename = model_ckpt_path.name, repo_type = "model")
-            shutil.copyfile(downloaded_model_ckpt_path, model_ckpt_path)
+            print("Downloading pre-trained mesh generator model...")
+            Util.DownloadFile(f"https://huggingface.co/TencentARC/InstantMesh/resolve/main/{model_ckpt_path.name}", model_ckpt_path);
 
         loaded_state_dict = torch.load(model_ckpt_path, map_location = "cpu", weights_only = True)["state_dict"]
 
