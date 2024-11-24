@@ -1,4 +1,4 @@
-python -m venv PythonVenv
+%1 -m venv PythonVenv --without-pip
 call PythonVenv\Scripts\activate.bat
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m ensurepip --upgrade
+python -m pip install -r requirements.txt
