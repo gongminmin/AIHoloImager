@@ -172,14 +172,6 @@ target_include_directories(AIHoloImagerLib
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
-string(REPLACE "\\" "/" AIHI_PY_STDLIB_DIR ${Python3_STDLIB})
-string(REPLACE "\\" "/" AIHI_PY_RUNTIME_LIB_DIR ${Python3_RUNTIME_LIBRARY_DIRS})
-
-target_compile_definitions(AIHoloImagerLib
-    PRIVATE
-        AIHI_PY_STDLIB_DIR="${AIHI_PY_STDLIB_DIR}"
-        AIHI_PY_RUNTIME_LIB_DIR="${AIHI_PY_RUNTIME_LIB_DIR}"
-)
 if(AIHI_KEEP_INTERMEDIATES)
     target_compile_definitions(AIHoloImagerLib
         PUBLIC

@@ -16,9 +16,9 @@ namespace AIHoloImager
         explicit Impl(const std::filesystem::path& exe_dir)
         {
             std::vector<std::wstring> paths;
-            paths.push_back(std::filesystem::path(AIHI_PY_STDLIB_DIR).lexically_normal().wstring());
-            paths.push_back((std::filesystem::path(AIHI_PY_RUNTIME_LIB_DIR) / "DLLs").lexically_normal().wstring());
             paths.push_back(exe_dir.lexically_normal().wstring());
+            paths.push_back((exe_dir / "Python/DLLs").lexically_normal().wstring());
+            paths.push_back((exe_dir / "Python/Lib").lexically_normal().wstring());
             paths.push_back((exe_dir / "Python/Lib/site-packages").lexically_normal().wstring());
             paths.push_back((exe_dir / "InstantMesh").lexically_normal().wstring());
 

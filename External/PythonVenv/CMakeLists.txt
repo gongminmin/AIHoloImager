@@ -2715,6 +2715,318 @@ foreach(src_file ${copy_files})
     list(APPEND deploy_files ${dst_file})
 endforeach()
 
+set(py_files
+    asyncio/base_events.py
+    asyncio/base_futures.py
+    asyncio/base_subprocess.py
+    asyncio/base_tasks.py
+    asyncio/constants.py
+    asyncio/coroutines.py
+    asyncio/events.py
+    asyncio/exceptions.py
+    asyncio/format_helpers.py
+    asyncio/futures.py
+    asyncio/locks.py
+    asyncio/log.py
+    asyncio/mixins.py
+    asyncio/proactor_events.py
+    asyncio/protocols.py
+    asyncio/queues.py
+    asyncio/runners.py
+    asyncio/selector_events.py
+    asyncio/sslproto.py
+    asyncio/staggered.py
+    asyncio/streams.py
+    asyncio/subprocess.py
+    asyncio/taskgroups.py
+    asyncio/tasks.py
+    asyncio/threads.py
+    asyncio/timeouts.py
+    asyncio/transports.py
+    asyncio/trsock.py
+    asyncio/windows_events.py
+    asyncio/windows_utils.py
+    asyncio/__init__.py
+    collections/abc.py
+    collections/__init__.py
+    concurrent/futures/thread.py
+    concurrent/futures/_base.py
+    concurrent/futures/__init__.py
+    concurrent/__init__.py
+    ctypes/wintypes.py
+    ctypes/_endian.py
+    ctypes/__init__.py
+    distutils/debug.py
+    distutils/dep_util.py
+    distutils/errors.py
+    distutils/log.py
+    distutils/spawn.py
+    distutils/util.py
+    distutils/__init__.py
+    email/base64mime.py
+    email/charset.py
+    email/encoders.py
+    email/errors.py
+    email/feedparser.py
+    email/header.py
+    email/headerregistry.py
+    email/iterators.py
+    email/message.py
+    email/parser.py
+    email/quoprimime.py
+    email/utils.py
+    email/_encoded_words.py
+    email/_header_value_parser.py
+    email/_parseaddr.py
+    email/_policybase.py
+    email/__init__.py
+    encodings/aliases.py
+    encodings/gbk.py
+    encodings/idna.py
+    encodings/raw_unicode_escape.py
+    encodings/unicode_escape.py
+    encodings/utf_8.py
+    encodings/__init__.py
+    html/entities.py
+    html/parser.py
+    html/__init__.py
+    http/client.py
+    http/cookiejar.py
+    http/cookies.py
+    http/__init__.py
+    importlib/metadata/_adapters.py
+    importlib/metadata/_collections.py
+    importlib/metadata/_functools.py
+    importlib/metadata/_itertools.py
+    importlib/metadata/_meta.py
+    importlib/metadata/_text.py
+    importlib/metadata/__init__.py
+    importlib/resources/abc.py
+    importlib/resources/readers.py
+    importlib/resources/_adapters.py
+    importlib/resources/_common.py
+    importlib/resources/_itertools.py
+    importlib/resources/_legacy.py
+    importlib/resources/__init__.py
+    importlib/abc.py
+    importlib/readers.py
+    importlib/_abc.py
+    importlib/__init__.py
+    json/decoder.py
+    json/encoder.py
+    json/scanner.py
+    json/__init__.py
+    logging/__init__.py
+    multiprocessing/connection.py
+    multiprocessing/context.py
+    multiprocessing/process.py
+    multiprocessing/reduction.py
+    multiprocessing/resource_sharer.py
+    multiprocessing/synchronize.py
+    multiprocessing/util.py
+    multiprocessing/__init__.py
+    re/_casefix.py
+    re/_compiler.py
+    re/_constants.py
+    re/_parser.py
+    re/__init__.py
+    unittest/case.py
+    unittest/loader.py
+    unittest/main.py
+    unittest/mock.py
+    unittest/result.py
+    unittest/runner.py
+    unittest/signals.py
+    unittest/suite.py
+    unittest/util.py
+    unittest/__init__.py
+    urllib/error.py
+    urllib/parse.py
+    urllib/request.py
+    urllib/response.py
+    urllib/__init__.py
+    xml/etree/ElementPath.py
+    xml/etree/ElementTree.py
+    xml/etree/__init__.py
+    xml/parsers/expat.py
+    xml/parsers/__init__.py
+    xml/__init__.py
+    argparse.py
+    ast.py
+    base64.py
+    bdb.py
+    bisect.py
+    bz2.py
+    calendar.py
+    cmd.py
+    code.py
+    codeop.py
+    colorsys.py
+    configparser.py
+    contextlib.py
+    contextvars.py
+    copy.py
+    copyreg.py
+    cProfile.py
+    csv.py
+    dataclasses.py
+    datetime.py
+    decimal.py
+    difflib.py
+    dis.py
+    enum.py
+    filecmp.py
+    fnmatch.py
+    fractions.py
+    functools.py
+    getopt.py
+    getpass.py
+    gettext.py
+    glob.py
+    gzip.py
+    hashlib.py
+    heapq.py
+    hmac.py
+    inspect.py
+    ipaddress.py
+    keyword.py
+    linecache.py
+    locale.py
+    lzma.py
+    mimetypes.py
+    modulefinder.py
+    netrc.py
+    nturl2path.py
+    numbers.py
+    opcode.py
+    operator.py
+    pathlib.py
+    pdb.py
+    pickle.py
+    pickletools.py
+    pkgutil.py
+    platform.py
+    plistlib.py
+    pprint.py
+    profile.py
+    pstats.py
+    queue.py
+    quopri.py
+    random.py
+    reprlib.py
+    secrets.py
+    selectors.py
+    shlex.py
+    shutil.py
+    signal.py
+    socket.py
+    ssl.py
+    string.py
+    stringprep.py
+    struct.py
+    subprocess.py
+    sysconfig.py
+    tarfile.py
+    tempfile.py
+    textwrap.py
+    threading.py
+    timeit.py
+    token.py
+    tokenize.py
+    traceback.py
+    types.py
+    typing.py
+    uuid.py
+    warnings.py
+    weakref.py
+    zipfile.py
+    _compat_pickle.py
+    _compression.py
+    _markupbase.py
+    _strptime.py
+    _weakrefset.py
+    __future__.py
+)
+foreach(src_file ${py_files})
+    get_filename_component(src_file_dir ${src_file} DIRECTORY)
+    file(COPY "${Python3_STDLIB}/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/Lib/${src_file_dir}")
+endforeach()
+foreach(src_file ${py_files})
+    get_filename_component(src_file_dir ${src_file} DIRECTORY)
+    get_filename_component(src_file_stem ${src_file} NAME_WE)
+    set(pyc_file "${src_file_dir}/${src_file_stem}.pyc")
+    set(dst_file "${aihi_output_dir}/Python/Lib/${pyc_file}")
+    add_custom_command(OUTPUT ${dst_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> "Python/Lib/${src_file}"
+        COMMAND ${CMAKE_COMMAND} -E copy "Python/Lib/${pyc_file}" ${dst_file}
+        COMMENT "Deploying ${src_file} ..."
+        DEPENDS Python/Lib/${src_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+
+    list(APPEND deploy_files ${dst_file})
+endforeach()
+
+set(copy_files
+    _asyncio.pyd
+    _bz2.pyd
+    _ctypes.pyd
+    _decimal.pyd
+    _elementtree.pyd
+    _hashlib.pyd
+    _lzma.pyd
+    _multiprocessing.pyd
+    _overlapped.pyd
+    _queue.pyd
+    _socket.pyd
+    _ssl.pyd
+    _uuid.pyd
+    libcrypto-3.dll
+    libffi-8.dll
+    libssl-3.dll
+    pyexpat.pyd
+    select.pyd
+    unicodedata.pyd
+)
+foreach(src_file ${copy_files})
+    get_filename_component(src_file_dir ${src_file} DIRECTORY)
+    file(COPY "${Python3_RUNTIME_LIBRARY_DIRS}/DLLs/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/DLLs/${src_file_dir}")
+endforeach()
+foreach(src_file ${copy_files})
+    set(dst_file "${aihi_output_dir}/Python/DLLs/${src_file}")
+    add_custom_command(OUTPUT ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink "Python/DLLs/${src_file}" ${dst_file}
+        COMMENT "Deploying ${src_file} ..."
+        DEPENDS Python/DLLs/${src_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+
+    list(APPEND deploy_files ${dst_file})
+endforeach()
+
+set(copy_files
+    python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll
+    python3.dll
+)
+foreach(src_file ${copy_files})
+    get_filename_component(src_file_dir ${src_file} DIRECTORY)
+    file(COPY "${Python3_RUNTIME_LIBRARY_DIRS}/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/${src_file_dir}")
+endforeach()
+foreach(src_file ${copy_files})
+    set(dst_file "${aihi_output_dir}/${src_file}")
+    add_custom_command(OUTPUT ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink "Python/${src_file}" ${dst_file}
+        COMMENT "Deploying ${src_file} ..."
+        DEPENDS Python/${src_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+
+    list(APPEND deploy_files ${dst_file})
+endforeach()
+
 add_custom_target(DeployPython DEPENDS ${deploy_files})
 
 set_target_properties(DeployPython PROPERTIES FOLDER "External")
