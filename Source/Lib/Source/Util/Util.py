@@ -14,6 +14,10 @@ def SeedRandom(seed : int):
 def DownloadFile(url, target_path, chunk_size = 8192):
     import requests
 
+    target_dir = target_path.parent
+    if not target_dir.exists():
+        target_dir.mkdir(parents = True, exist_ok = True)
+
     with requests.get(url, stream = True) as response:
         response.raise_for_status()  # Raise an exception for bad status codes
         with open(target_path, "wb") as file:
