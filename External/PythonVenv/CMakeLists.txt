@@ -2865,7 +2865,6 @@ set(py_files
     uuid.py
     warnings.py
     weakref.py
-    zipfile.py
     _compat_pickle.py
     _compression.py
     _markupbase.py
@@ -2873,6 +2872,17 @@ set(py_files
     _weakrefset.py
     __future__.py
 )
+if(Python3_VERSION VERSION_GREATER_EQUAL "3.12")
+    set(py_files ${py_files}
+        zipfile/_path/glob.py
+        zipfile/_path/__init__.py
+        zipfile/__init__.py
+    )
+else()
+    set(py_files ${py_files}
+        zipfile.py
+    )
+endif()
 foreach(src_file ${py_files})
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
     file(COPY "${Python3_STDLIB}/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/Lib/${src_file_dir}")
