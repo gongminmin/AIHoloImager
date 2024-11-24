@@ -1,11 +1,5 @@
 set(camera_database_src "${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt")
-get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(is_multi_config)
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
-else()
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
-set(camera_database_dst "${output_dir}/sensor_width_camera_database.txt")
+set(camera_database_dst "${aihi_output_dir}/sensor_width_camera_database.txt")
 add_custom_command(OUTPUT ${camera_database_dst}
     COMMAND ${CMAKE_COMMAND} -E copy ${camera_database_src} ${camera_database_dst}
     COMMENT "Copying camera database ..."
@@ -231,9 +225,9 @@ foreach(py_file ${py_files})
     get_filename_component(py_file_dir ${py_file} DIRECTORY)
     get_filename_component(py_file_name ${py_file} NAME)
     get_filename_component(py_file_stem ${py_file} NAME_WE)
-    set(py_file_dst "${output_dir}/${py_file_stem}.pyc")
+    set(py_file_dst "${aihi_output_dir}/${py_file_stem}.pyc")
     add_custom_command(OUTPUT ${py_file_dst}
-        COMMAND ${Python3_EXECUTABLE} -m compileall -b ${py_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${py_file}
         COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
         COMMENT "Compiling ${py_file_name} ..."
         MAIN_DEPENDENCY ${py_file}

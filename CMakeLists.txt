@@ -1,21 +1,28 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
-set(ai_holo_imager_cmake_module_dir "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules")
-list(APPEND CMAKE_MODULE_PATH "${ai_holo_imager_cmake_module_dir}")
+set(aihi_cmake_module_dir "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${aihi_cmake_module_dir}")
 
 set(ai_holo_imager_major_version 0)
-set(ai_holo_imager_minor_version 2)
+set(ai_holo_imager_minor_version 3)
 set(ai_holo_imager_patch_version 0)
 set(ai_holo_imager_version ${ai_holo_imager_major_version}.${ai_holo_imager_minor_version}.${ai_holo_imager_patch_version})
 
 project(AIHoloImager LANGUAGES CXX VERSION ${ai_holo_imager_version})
 
-include(${ai_holo_imager_cmake_module_dir}/Platform.cmake)
-include(${ai_holo_imager_cmake_module_dir}/Compiler.cmake)
+include(${aihi_cmake_module_dir}/Platform.cmake)
+include(${aihi_cmake_module_dir}/Compiler.cmake)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(is_multi_config)
+    set(aihi_output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
+else()
+    set(aihi_output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endif()
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)

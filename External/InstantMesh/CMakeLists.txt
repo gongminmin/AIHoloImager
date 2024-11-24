@@ -1,12 +1,5 @@
 UpdateExternalLib("InstantMesh" "https://github.com/TencentARC/InstantMesh.git" "7fe95627cf819748f7830b2b278f302a9d798d17")
 
-get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(is_multi_config)
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
-else()
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
-
 set(py_files
     InstantMesh/src/__init__.py
     InstantMesh/src/models/__init__.py
@@ -22,9 +15,9 @@ foreach(src_file ${py_files})
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
     get_filename_component(src_file_stem ${src_file} NAME_WE)
     set(pyc_file "${src_file_dir}/${src_file_stem}.pyc")
-    set(dst_file "${output_dir}/${pyc_file}")
+    set(dst_file "${aihi_output_dir}/${pyc_file}")
     add_custom_command(OUTPUT ${dst_file}
-        COMMAND ${Python3_EXECUTABLE} -m compileall -b ${src_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${src_file}
         COMMAND ${CMAKE_COMMAND} -E copy ${pyc_file} ${dst_file}
         COMMENT "Compiling ${src_file} ..."
         MAIN_DEPENDENCY ${src_file}
@@ -40,7 +33,7 @@ set(copy_files
     InstantMesh/zero123plus/pipeline.py
 )
 foreach(src_file ${copy_files})
-    set(dst_file "${output_dir}/${src_file}")
+    set(dst_file "${aihi_output_dir}/${src_file}")
     add_custom_command(OUTPUT ${dst_file}
         COMMAND ${CMAKE_COMMAND} -E copy ${src_file} ${dst_file}
         COMMENT "Copying ${src_file} ..."

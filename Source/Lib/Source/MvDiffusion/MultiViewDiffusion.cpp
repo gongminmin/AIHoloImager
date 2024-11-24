@@ -3,8 +3,6 @@
 
 #include "MultiViewDiffusion.hpp"
 
-#include <string_view>
-
 namespace AIHoloImager
 {
     class MultiViewDiffusion::Impl

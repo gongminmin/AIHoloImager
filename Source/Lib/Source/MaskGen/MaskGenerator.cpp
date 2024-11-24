@@ -4,7 +4,6 @@
 #include "MaskGenerator.hpp"
 
 #include <cstddef>
-#include <numbers>
 #include <span>
 
 #include <glm/geometric.hpp>

@@ -3,13 +3,6 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(is_multi_config)
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
-else()
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
-
 set(deploy_files )
 
 set(py_files
@@ -2618,9 +2611,9 @@ foreach(src_file ${py_files})
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
     get_filename_component(src_file_stem ${src_file} NAME_WE)
     set(pyc_file "${src_file_dir}/${src_file_stem}.pyc")
-    set(dst_file "${output_dir}/Python/${pyc_file}")
+    set(dst_file "${aihi_output_dir}/Python/${pyc_file}")
     add_custom_command(OUTPUT ${dst_file}
-        COMMAND ${Python3_EXECUTABLE} -m compileall -b PythonVenv/${src_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> PythonVenv/${src_file}
         COMMAND ${CMAKE_COMMAND} -E copy "PythonVenv/${pyc_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
         DEPENDS PythonVenv/${src_file}
@@ -2652,6 +2645,7 @@ set(copy_files
     Lib/site-packages/onnx/onnx_cpp2py_export.${py_suffix}
     Lib/site-packages/PIL/_imaging.${py_suffix}
     Lib/site-packages/regex/_regex.${py_suffix}
+    Lib/site-packages/safetensors/_safetensors_rust.${py_suffix}
     Lib/site-packages/tokenizers/tokenizers.${py_suffix}
     Lib/site-packages/torch/_C.${py_suffix}
     Lib/site-packages/torch/functional.py
@@ -2692,7 +2686,6 @@ set(copy_files
     Lib/site-packages/torchvision/zlib.dll
     Lib/site-packages/torchvision/models/densenet.py
     Lib/site-packages/transformers/__init__.py
-    Lib/site-packages/safetensors/_safetensors_rust.${py_suffix}
     Lib/site-packages/accelerate-0.30.1.dist-info/METADATA
     Lib/site-packages/filelock-3.16.1.dist-info/METADATA
     Lib/site-packages/huggingface_hub-0.19.3.dist-info/METADATA
@@ -2710,7 +2703,7 @@ set(copy_files
     Lib/site-packages/transformers-4.38.0.dist-info/METADATA
 )
 foreach(src_file ${copy_files})
-    set(dst_file "${output_dir}/Python/${src_file}")
+    set(dst_file "${aihi_output_dir}/Python/${src_file}")
     add_custom_command(OUTPUT ${dst_file}
         COMMAND ${CMAKE_COMMAND} -E create_hardlink "PythonVenv/${src_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
