@@ -2,7 +2,7 @@ UpdateExternalLib("zlib" "https://github.com/madler/zlib.git" "09155eaa2f9270dc4
 
 set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
 
-set(BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS ON)
 set(ZLIB_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 
 add_subdirectory(zlib EXCLUDE_FROM_ALL)
