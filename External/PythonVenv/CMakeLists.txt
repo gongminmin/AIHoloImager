@@ -509,6 +509,7 @@ set(py_files
     onnx/version.py
     onnx/version_converter.py
     onnx/__init__.py
+    onnx/_custom_element_types.py
     onnx2torch/node_converters/activations.py
     onnx2torch/node_converters/arg_extrema.py
     onnx2torch/node_converters/average_pool.py
@@ -2968,6 +2969,11 @@ foreach(src_file ${copy_files})
     list(APPEND deploy_files ${dst_file})
 endforeach()
 
-add_custom_target(DeployPython DEPENDS ${deploy_files})
+add_custom_target(DeployPython DEPENDS ${deploy_files} requirements.txt)
+
+target_sources(DeployPython
+    PRIVATE
+        requirements.txt
+)
 
 set_target_properties(DeployPython PROPERTIES FOLDER "External")
