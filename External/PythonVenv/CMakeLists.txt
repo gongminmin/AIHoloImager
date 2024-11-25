@@ -70,186 +70,104 @@ set(py_files
     Lib/site-packages/colorama/win32.py
     Lib/site-packages/colorama/winterm.py
     Lib/site-packages/colorama/__init__.py
+    Lib/site-packages/diffusers/loaders/ip_adapter.py
+    Lib/site-packages/diffusers/loaders/lora_base.py
+    Lib/site-packages/diffusers/loaders/lora_conversion_utils.py
+    Lib/site-packages/diffusers/loaders/lora_pipeline.py
+    Lib/site-packages/diffusers/loaders/peft.py
+    Lib/site-packages/diffusers/loaders/single_file.py
+    Lib/site-packages/diffusers/loaders/single_file_model.py
+    Lib/site-packages/diffusers/loaders/single_file_utils.py
+    Lib/site-packages/diffusers/loaders/textual_inversion.py
+    Lib/site-packages/diffusers/loaders/unet.py
+    Lib/site-packages/diffusers/loaders/unet_loader_utils.py
+    Lib/site-packages/diffusers/loaders/utils.py
+    Lib/site-packages/diffusers/loaders/__init__.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_asym_kl.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_kl.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_kl_cogvideox.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_kl_temporal_decoder.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_oobleck.py
+    Lib/site-packages/diffusers/models/autoencoders/autoencoder_tiny.py
+    Lib/site-packages/diffusers/models/autoencoders/consistency_decoder_vae.py
+    Lib/site-packages/diffusers/models/autoencoders/vae.py
+    Lib/site-packages/diffusers/models/autoencoders/vq_model.py
+    Lib/site-packages/diffusers/models/autoencoders/__init__.py
+    Lib/site-packages/diffusers/models/transformers/auraflow_transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/cogvideox_transformer_3d.py
+    Lib/site-packages/diffusers/models/transformers/dit_transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/dual_transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/hunyuan_transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/latte_transformer_3d.py
+    Lib/site-packages/diffusers/models/transformers/lumina_nextdit2d.py
+    Lib/site-packages/diffusers/models/transformers/pixart_transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/prior_transformer.py
+    Lib/site-packages/diffusers/models/transformers/stable_audio_transformer.py
+    Lib/site-packages/diffusers/models/transformers/t5_film_transformer.py
+    Lib/site-packages/diffusers/models/transformers/transformer_2d.py
+    Lib/site-packages/diffusers/models/transformers/transformer_cogview3plus.py
+    Lib/site-packages/diffusers/models/transformers/transformer_flux.py
+    Lib/site-packages/diffusers/models/transformers/transformer_sd3.py
+    Lib/site-packages/diffusers/models/transformers/transformer_temporal.py
+    Lib/site-packages/diffusers/models/transformers/__init__.py
+    Lib/site-packages/diffusers/models/unets/unet_1d.py
+    Lib/site-packages/diffusers/models/unets/unet_1d_blocks.py
+    Lib/site-packages/diffusers/models/unets/unet_2d.py
+    Lib/site-packages/diffusers/models/unets/unet_2d_blocks.py
+    Lib/site-packages/diffusers/models/unets/unet_2d_condition.py
+    Lib/site-packages/diffusers/models/unets/unet_3d_blocks.py
+    Lib/site-packages/diffusers/models/unets/unet_3d_condition.py
+    Lib/site-packages/diffusers/models/unets/unet_i2vgen_xl.py
+    Lib/site-packages/diffusers/models/unets/unet_kandinsky3.py
+    Lib/site-packages/diffusers/models/unets/unet_motion_model.py
+    Lib/site-packages/diffusers/models/unets/unet_spatio_temporal_condition.py
+    Lib/site-packages/diffusers/models/unets/unet_stable_cascade.py
+    Lib/site-packages/diffusers/models/unets/uvit_2d.py
+    Lib/site-packages/diffusers/models/unets/__init__.py
     Lib/site-packages/diffusers/models/activations.py
-    Lib/site-packages/diffusers/models/adapter.py
     Lib/site-packages/diffusers/models/attention.py
     Lib/site-packages/diffusers/models/attention_processor.py
-    Lib/site-packages/diffusers/models/autoencoder_asym_kl.py
-    Lib/site-packages/diffusers/models/autoencoder_kl.py
-    Lib/site-packages/diffusers/models/autoencoder_tiny.py
     Lib/site-packages/diffusers/models/controlnet.py
-    Lib/site-packages/diffusers/models/dual_transformer_2d.py
+    Lib/site-packages/diffusers/models/downsampling.py
     Lib/site-packages/diffusers/models/embeddings.py
     Lib/site-packages/diffusers/models/lora.py
+    Lib/site-packages/diffusers/models/modeling_outputs.py
     Lib/site-packages/diffusers/models/modeling_utils.py
-    Lib/site-packages/diffusers/models/prior_transformer.py
+    Lib/site-packages/diffusers/models/model_loading_utils.py
+    Lib/site-packages/diffusers/models/normalization.py
     Lib/site-packages/diffusers/models/resnet.py
-    Lib/site-packages/diffusers/models/t5_film_transformer.py
-    Lib/site-packages/diffusers/models/transformer_2d.py
-    Lib/site-packages/diffusers/models/transformer_temporal.py
-    Lib/site-packages/diffusers/models/unet_1d.py
-    Lib/site-packages/diffusers/models/unet_1d_blocks.py
-    Lib/site-packages/diffusers/models/unet_2d.py
-    Lib/site-packages/diffusers/models/unet_2d_blocks.py
-    Lib/site-packages/diffusers/models/unet_2d_condition.py
-    Lib/site-packages/diffusers/models/unet_3d_blocks.py
-    Lib/site-packages/diffusers/models/unet_3d_condition.py
-    Lib/site-packages/diffusers/models/vae.py
-    Lib/site-packages/diffusers/models/vq_model.py
+    Lib/site-packages/diffusers/models/upsampling.py
     Lib/site-packages/diffusers/models/__init__.py
-    Lib/site-packages/diffusers/pipelines/alt_diffusion/modeling_roberta_series.py
-    Lib/site-packages/diffusers/pipelines/alt_diffusion/pipeline_alt_diffusion.py
-    Lib/site-packages/diffusers/pipelines/alt_diffusion/pipeline_alt_diffusion_img2img.py
-    Lib/site-packages/diffusers/pipelines/alt_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/audioldm/pipeline_audioldm.py
-    Lib/site-packages/diffusers/pipelines/audioldm/__init__.py
-    Lib/site-packages/diffusers/pipelines/consistency_models/pipeline_consistency_models.py
-    Lib/site-packages/diffusers/pipelines/consistency_models/__init__.py
-    Lib/site-packages/diffusers/pipelines/controlnet/multicontrolnet.py
-    Lib/site-packages/diffusers/pipelines/controlnet/pipeline_controlnet.py
-    Lib/site-packages/diffusers/pipelines/controlnet/pipeline_controlnet_img2img.py
-    Lib/site-packages/diffusers/pipelines/controlnet/pipeline_controlnet_inpaint.py
-    Lib/site-packages/diffusers/pipelines/controlnet/pipeline_controlnet_sd_xl.py
-    Lib/site-packages/diffusers/pipelines/controlnet/__init__.py
-    Lib/site-packages/diffusers/pipelines/dance_diffusion/pipeline_dance_diffusion.py
-    Lib/site-packages/diffusers/pipelines/dance_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/ddim/pipeline_ddim.py
-    Lib/site-packages/diffusers/pipelines/ddim/__init__.py
-    Lib/site-packages/diffusers/pipelines/ddpm/pipeline_ddpm.py
-    Lib/site-packages/diffusers/pipelines/ddpm/__init__.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if_img2img.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if_img2img_superresolution.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if_inpainting.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if_inpainting_superresolution.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/pipeline_if_superresolution.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/safety_checker.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/timesteps.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/watermark.py
-    Lib/site-packages/diffusers/pipelines/deepfloyd_if/__init__.py
-    Lib/site-packages/diffusers/pipelines/dit/pipeline_dit.py
-    Lib/site-packages/diffusers/pipelines/dit/__init__.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/pipeline_kandinsky.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/pipeline_kandinsky_combined.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/pipeline_kandinsky_img2img.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/pipeline_kandinsky_inpaint.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/pipeline_kandinsky_prior.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/text_encoder.py
-    Lib/site-packages/diffusers/pipelines/kandinsky/__init__.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_combined.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_controlnet.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_controlnet_img2img.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_img2img.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_inpainting.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_prior.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/pipeline_kandinsky2_2_prior_emb2emb.py
-    Lib/site-packages/diffusers/pipelines/kandinsky2_2/__init__.py
-    Lib/site-packages/diffusers/pipelines/latent_diffusion/pipeline_latent_diffusion.py
-    Lib/site-packages/diffusers/pipelines/latent_diffusion/pipeline_latent_diffusion_superresolution.py
-    Lib/site-packages/diffusers/pipelines/latent_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/latent_diffusion_uncond/pipeline_latent_diffusion_uncond.py
-    Lib/site-packages/diffusers/pipelines/latent_diffusion_uncond/__init__.py
-    Lib/site-packages/diffusers/pipelines/paint_by_example/image_encoder.py
-    Lib/site-packages/diffusers/pipelines/paint_by_example/pipeline_paint_by_example.py
-    Lib/site-packages/diffusers/pipelines/paint_by_example/__init__.py
-    Lib/site-packages/diffusers/pipelines/pndm/pipeline_pndm.py
-    Lib/site-packages/diffusers/pipelines/pndm/__init__.py
-    Lib/site-packages/diffusers/pipelines/repaint/pipeline_repaint.py
-    Lib/site-packages/diffusers/pipelines/repaint/__init__.py
-    Lib/site-packages/diffusers/pipelines/score_sde_ve/pipeline_score_sde_ve.py
-    Lib/site-packages/diffusers/pipelines/score_sde_ve/__init__.py
-    Lib/site-packages/diffusers/pipelines/semantic_stable_diffusion/pipeline_semantic_stable_diffusion.py
-    Lib/site-packages/diffusers/pipelines/semantic_stable_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/shap_e/camera.py
-    Lib/site-packages/diffusers/pipelines/shap_e/pipeline_shap_e.py
-    Lib/site-packages/diffusers/pipelines/shap_e/pipeline_shap_e_img2img.py
-    Lib/site-packages/diffusers/pipelines/shap_e/renderer.py
-    Lib/site-packages/diffusers/pipelines/shap_e/__init__.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_cycle_diffusion.py
+    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_output.py
     Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_attend_and_excite.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_diffedit.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_gligen.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_image_variation.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_img2img.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_inpaint.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_inpaint_legacy.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_instruct_pix2pix.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_latent_upscale.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_ldm3d.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_model_editing.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_panorama.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_paradigms.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_pix2pix_zero.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_sag.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_upscale.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
     Lib/site-packages/diffusers/pipelines/stable_diffusion/safety_checker.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion/stable_unclip_image_normalizer.py
     Lib/site-packages/diffusers/pipelines/stable_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_safe/pipeline_stable_diffusion_safe.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_safe/safety_checker.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_safe/__init__.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_img2img.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_instruct_pix2pix.py
-    Lib/site-packages/diffusers/pipelines/stable_diffusion_xl/__init__.py
-    Lib/site-packages/diffusers/pipelines/stochastic_karras_ve/pipeline_stochastic_karras_ve.py
-    Lib/site-packages/diffusers/pipelines/stochastic_karras_ve/__init__.py
-    Lib/site-packages/diffusers/pipelines/t2i_adapter/pipeline_stable_diffusion_adapter.py
-    Lib/site-packages/diffusers/pipelines/t2i_adapter/__init__.py
-    Lib/site-packages/diffusers/pipelines/text_to_video_synthesis/pipeline_text_to_video_synth.py
-    Lib/site-packages/diffusers/pipelines/text_to_video_synthesis/pipeline_text_to_video_synth_img2img.py
-    Lib/site-packages/diffusers/pipelines/text_to_video_synthesis/pipeline_text_to_video_zero.py
-    Lib/site-packages/diffusers/pipelines/text_to_video_synthesis/__init__.py
-    Lib/site-packages/diffusers/pipelines/unclip/pipeline_unclip.py
-    Lib/site-packages/diffusers/pipelines/unclip/pipeline_unclip_image_variation.py
-    Lib/site-packages/diffusers/pipelines/unclip/text_proj.py
-    Lib/site-packages/diffusers/pipelines/unclip/__init__.py
-    Lib/site-packages/diffusers/pipelines/unidiffuser/modeling_text_decoder.py
-    Lib/site-packages/diffusers/pipelines/unidiffuser/modeling_uvit.py
-    Lib/site-packages/diffusers/pipelines/unidiffuser/pipeline_unidiffuser.py
-    Lib/site-packages/diffusers/pipelines/unidiffuser/__init__.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/modeling_text_unet.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/pipeline_versatile_diffusion.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/pipeline_versatile_diffusion_dual_guided.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/pipeline_versatile_diffusion_image_variation.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/pipeline_versatile_diffusion_text_to_image.py
-    Lib/site-packages/diffusers/pipelines/versatile_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/vq_diffusion/pipeline_vq_diffusion.py
-    Lib/site-packages/diffusers/pipelines/vq_diffusion/__init__.py
-    Lib/site-packages/diffusers/pipelines/auto_pipeline.py
+    Lib/site-packages/diffusers/pipelines/pipeline_loading_utils.py
     Lib/site-packages/diffusers/pipelines/pipeline_utils.py
     Lib/site-packages/diffusers/pipelines/__init__.py
-    Lib/site-packages/diffusers/schedulers/scheduling_consistency_models.py
+    Lib/site-packages/diffusers/quantizers/bitsandbytes/bnb_quantizer.py
+    Lib/site-packages/diffusers/quantizers/bitsandbytes/utils.py
+    Lib/site-packages/diffusers/quantizers/bitsandbytes/__init__.py
+    Lib/site-packages/diffusers/quantizers/auto.py
+    Lib/site-packages/diffusers/quantizers/base.py
+    Lib/site-packages/diffusers/quantizers/quantization_config.py
+    Lib/site-packages/diffusers/quantizers/__init__.py
+    Lib/site-packages/diffusers/schedulers/scheduling_consistency_decoder.py
     Lib/site-packages/diffusers/schedulers/scheduling_ddim.py
-    Lib/site-packages/diffusers/schedulers/scheduling_ddim_inverse.py
-    Lib/site-packages/diffusers/schedulers/scheduling_ddim_parallel.py
     Lib/site-packages/diffusers/schedulers/scheduling_ddpm.py
-    Lib/site-packages/diffusers/schedulers/scheduling_ddpm_parallel.py
     Lib/site-packages/diffusers/schedulers/scheduling_deis_multistep.py
     Lib/site-packages/diffusers/schedulers/scheduling_dpmsolver_multistep.py
-    Lib/site-packages/diffusers/schedulers/scheduling_dpmsolver_multistep_inverse.py
     Lib/site-packages/diffusers/schedulers/scheduling_dpmsolver_singlestep.py
+    Lib/site-packages/diffusers/schedulers/scheduling_edm_dpmsolver_multistep.py
+    Lib/site-packages/diffusers/schedulers/scheduling_edm_euler.py
     Lib/site-packages/diffusers/schedulers/scheduling_euler_ancestral_discrete.py
     Lib/site-packages/diffusers/schedulers/scheduling_euler_discrete.py
     Lib/site-packages/diffusers/schedulers/scheduling_heun_discrete.py
-    Lib/site-packages/diffusers/schedulers/scheduling_ipndm.py
-    Lib/site-packages/diffusers/schedulers/scheduling_karras_ve.py
     Lib/site-packages/diffusers/schedulers/scheduling_k_dpm_2_ancestral_discrete.py
     Lib/site-packages/diffusers/schedulers/scheduling_k_dpm_2_discrete.py
     Lib/site-packages/diffusers/schedulers/scheduling_pndm.py
-    Lib/site-packages/diffusers/schedulers/scheduling_repaint.py
-    Lib/site-packages/diffusers/schedulers/scheduling_sde_ve.py
-    Lib/site-packages/diffusers/schedulers/scheduling_sde_vp.py
-    Lib/site-packages/diffusers/schedulers/scheduling_unclip.py
     Lib/site-packages/diffusers/schedulers/scheduling_unipc_multistep.py
     Lib/site-packages/diffusers/schedulers/scheduling_utils.py
-    Lib/site-packages/diffusers/schedulers/scheduling_vq_diffusion.py
     Lib/site-packages/diffusers/schedulers/__init__.py
     Lib/site-packages/diffusers/utils/accelerate_utils.py
     Lib/site-packages/diffusers/utils/constants.py
@@ -264,21 +182,26 @@ set(py_files
     Lib/site-packages/diffusers/utils/dummy_torch_and_torchsde_objects.py
     Lib/site-packages/diffusers/utils/dummy_torch_and_transformers_and_k_diffusion_objects.py
     Lib/site-packages/diffusers/utils/dummy_torch_and_transformers_and_onnx_objects.py
+    Lib/site-packages/diffusers/utils/dummy_torch_and_transformers_and_sentencepiece_objects.py
     Lib/site-packages/diffusers/utils/dummy_transformers_and_torch_and_note_seq_objects.py
     Lib/site-packages/diffusers/utils/dynamic_modules_utils.py
+    Lib/site-packages/diffusers/utils/export_utils.py
     Lib/site-packages/diffusers/utils/hub_utils.py
     Lib/site-packages/diffusers/utils/import_utils.py
+    Lib/site-packages/diffusers/utils/loading_utils.py
     Lib/site-packages/diffusers/utils/logging.py
     Lib/site-packages/diffusers/utils/outputs.py
+    Lib/site-packages/diffusers/utils/peft_utils.py
     Lib/site-packages/diffusers/utils/pil_utils.py
-    Lib/site-packages/diffusers/utils/testing_utils.py
+    Lib/site-packages/diffusers/utils/state_dict_utils.py
     Lib/site-packages/diffusers/utils/torch_utils.py
+    Lib/site-packages/diffusers/utils/versions.py
     Lib/site-packages/diffusers/utils/__init__.py
+    Lib/site-packages/diffusers/callbacks.py
     Lib/site-packages/diffusers/configuration_utils.py
+    Lib/site-packages/diffusers/dependency_versions_check.py
+    Lib/site-packages/diffusers/dependency_versions_table.py
     Lib/site-packages/diffusers/image_processor.py
-    Lib/site-packages/diffusers/loaders.py
-    Lib/site-packages/diffusers/optimization.py
-    Lib/site-packages/diffusers/training_utils.py
     Lib/site-packages/diffusers/__init__.py
     Lib/site-packages/einops/einops.py
     Lib/site-packages/einops/packing.py
@@ -326,33 +249,71 @@ set(py_files
     Lib/site-packages/google/protobuf/text_format.py
     Lib/site-packages/google/protobuf/unknown_fields.py
     Lib/site-packages/google/protobuf/__init__.py
+    Lib/site-packages/huggingface_hub/commands/_cli_utils.py
+    Lib/site-packages/huggingface_hub/commands/__init__.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/audio_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/audio_to_audio.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/automatic_speech_recognition.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/base.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/chat_completion.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/depth_estimation.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/document_question_answering.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/feature_extraction.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/fill_mask.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/image_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/image_segmentation.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/image_to_image.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/image_to_text.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/object_detection.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/question_answering.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/sentence_similarity.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/summarization.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/table_question_answering.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text2text_generation.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text_generation.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text_to_audio.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text_to_image.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/text_to_speech.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/token_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/translation.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/video_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/visual_question_answering.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/zero_shot_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/zero_shot_image_classification.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/zero_shot_object_detection.py
+    Lib/site-packages/huggingface_hub/inference/_generated/types/__init__.py
     Lib/site-packages/huggingface_hub/inference/_generated/_async_client.py
     Lib/site-packages/huggingface_hub/inference/_generated/__init__.py
     Lib/site-packages/huggingface_hub/inference/_client.py
     Lib/site-packages/huggingface_hub/inference/_common.py
-    Lib/site-packages/huggingface_hub/inference/_text_generation.py
-    Lib/site-packages/huggingface_hub/inference/_types.py
     Lib/site-packages/huggingface_hub/inference/__init__.py
+    Lib/site-packages/huggingface_hub/serialization/_base.py
+    Lib/site-packages/huggingface_hub/serialization/_tensorflow.py
+    Lib/site-packages/huggingface_hub/serialization/_torch.py
+    Lib/site-packages/huggingface_hub/serialization/__init__.py
     Lib/site-packages/huggingface_hub/utils/endpoint_helpers.py
     Lib/site-packages/huggingface_hub/utils/insecure_hashlib.py
     Lib/site-packages/huggingface_hub/utils/logging.py
     Lib/site-packages/huggingface_hub/utils/sha.py
     Lib/site-packages/huggingface_hub/utils/tqdm.py
+    Lib/site-packages/huggingface_hub/utils/_auth.py
     Lib/site-packages/huggingface_hub/utils/_cache_assets.py
     Lib/site-packages/huggingface_hub/utils/_cache_manager.py
     Lib/site-packages/huggingface_hub/utils/_chunk_utils.py
     Lib/site-packages/huggingface_hub/utils/_datetime.py
     Lib/site-packages/huggingface_hub/utils/_deprecation.py
-    Lib/site-packages/huggingface_hub/utils/_errors.py
     Lib/site-packages/huggingface_hub/utils/_experimental.py
     Lib/site-packages/huggingface_hub/utils/_fixes.py
     Lib/site-packages/huggingface_hub/utils/_git_credential.py
     Lib/site-packages/huggingface_hub/utils/_headers.py
     Lib/site-packages/huggingface_hub/utils/_hf_folder.py
     Lib/site-packages/huggingface_hub/utils/_http.py
+    Lib/site-packages/huggingface_hub/utils/_lfs.py
     Lib/site-packages/huggingface_hub/utils/_pagination.py
     Lib/site-packages/huggingface_hub/utils/_paths.py
     Lib/site-packages/huggingface_hub/utils/_runtime.py
+    Lib/site-packages/huggingface_hub/utils/_safetensors.py
     Lib/site-packages/huggingface_hub/utils/_subprocess.py
     Lib/site-packages/huggingface_hub/utils/_telemetry.py
     Lib/site-packages/huggingface_hub/utils/_typing.py
@@ -360,6 +321,7 @@ set(py_files
     Lib/site-packages/huggingface_hub/utils/__init__.py
     Lib/site-packages/huggingface_hub/community.py
     Lib/site-packages/huggingface_hub/constants.py
+    Lib/site-packages/huggingface_hub/errors.py
     Lib/site-packages/huggingface_hub/file_download.py
     Lib/site-packages/huggingface_hub/hf_api.py
     Lib/site-packages/huggingface_hub/lfs.py
@@ -367,9 +329,11 @@ set(py_files
     Lib/site-packages/huggingface_hub/repocard_data.py
     Lib/site-packages/huggingface_hub/_commit_api.py
     Lib/site-packages/huggingface_hub/_inference_endpoints.py
+    Lib/site-packages/huggingface_hub/_local_folder.py
     Lib/site-packages/huggingface_hub/_multi_commits.py
     Lib/site-packages/huggingface_hub/_snapshot_download.py
     Lib/site-packages/huggingface_hub/_space_api.py
+    Lib/site-packages/huggingface_hub/_upload_large_folder.py
     Lib/site-packages/huggingface_hub/__init__.py
     Lib/site-packages/idna/core.py
     Lib/site-packages/idna/idnadata.py
@@ -2204,6 +2168,7 @@ set(py_files
     Lib/site-packages/transformers/models/audio_spectrogram_transformer/__init__.py
     Lib/site-packages/transformers/models/auto/auto_factory.py
     Lib/site-packages/transformers/models/auto/configuration_auto.py
+    Lib/site-packages/transformers/models/auto/image_processing_auto.py
     Lib/site-packages/transformers/models/auto/modeling_auto.py
     Lib/site-packages/transformers/models/auto/__init__.py
     Lib/site-packages/transformers/models/autoformer/__init__.py
@@ -2219,14 +2184,9 @@ set(py_files
     Lib/site-packages/transformers/models/bigbird_pegasus/__init__.py
     Lib/site-packages/transformers/models/big_bird/__init__.py
     Lib/site-packages/transformers/models/biogpt/__init__.py
-    Lib/site-packages/transformers/models/bit/configuration_bit.py
     Lib/site-packages/transformers/models/bit/__init__.py
     Lib/site-packages/transformers/models/blenderbot/__init__.py
     Lib/site-packages/transformers/models/blenderbot_small/__init__.py
-    Lib/site-packages/transformers/models/blip/configuration_blip.py
-    Lib/site-packages/transformers/models/blip/modeling_blip.py
-    Lib/site-packages/transformers/models/blip/modeling_blip_text.py
-    Lib/site-packages/transformers/models/blip/processing_blip.py
     Lib/site-packages/transformers/models/blip/__init__.py
     Lib/site-packages/transformers/models/blip_2/__init__.py
     Lib/site-packages/transformers/models/bloom/__init__.py
@@ -2236,11 +2196,8 @@ set(py_files
     Lib/site-packages/transformers/models/camembert/__init__.py
     Lib/site-packages/transformers/models/canine/__init__.py
     Lib/site-packages/transformers/models/chinese_clip/__init__.py
-    Lib/site-packages/transformers/models/clap/configuration_clap.py
-    Lib/site-packages/transformers/models/clap/modeling_clap.py
     Lib/site-packages/transformers/models/clap/__init__.py
     Lib/site-packages/transformers/models/clip/configuration_clip.py
-    Lib/site-packages/transformers/models/clip/feature_extraction_clip.py
     Lib/site-packages/transformers/models/clip/image_processing_clip.py
     Lib/site-packages/transformers/models/clip/modeling_clip.py
     Lib/site-packages/transformers/models/clip/tokenization_clip.py
@@ -2274,10 +2231,6 @@ set(py_files
     Lib/site-packages/transformers/models/dit/__init__.py
     Lib/site-packages/transformers/models/donut/__init__.py
     Lib/site-packages/transformers/models/dpr/__init__.py
-    Lib/site-packages/transformers/models/dpt/configuration_dpt.py
-    Lib/site-packages/transformers/models/dpt/feature_extraction_dpt.py
-    Lib/site-packages/transformers/models/dpt/image_processing_dpt.py
-    Lib/site-packages/transformers/models/dpt/modeling_dpt.py
     Lib/site-packages/transformers/models/dpt/__init__.py
     Lib/site-packages/transformers/models/efficientformer/__init__.py
     Lib/site-packages/transformers/models/efficientnet/__init__.py
@@ -2299,9 +2252,6 @@ set(py_files
     Lib/site-packages/transformers/models/gemma/__init__.py
     Lib/site-packages/transformers/models/git/__init__.py
     Lib/site-packages/transformers/models/glpn/__init__.py
-    Lib/site-packages/transformers/models/gpt2/configuration_gpt2.py
-    Lib/site-packages/transformers/models/gpt2/modeling_gpt2.py
-    Lib/site-packages/transformers/models/gpt2/tokenization_gpt2.py
     Lib/site-packages/transformers/models/gpt2/__init__.py
     Lib/site-packages/transformers/models/gptj/__init__.py
     Lib/site-packages/transformers/models/gptsan_japanese/__init__.py
@@ -2392,10 +2342,6 @@ set(py_files
     Lib/site-packages/transformers/models/regnet/__init__.py
     Lib/site-packages/transformers/models/rembert/__init__.py
     Lib/site-packages/transformers/models/resnet/__init__.py
-    Lib/site-packages/transformers/models/roberta/configuration_roberta.py
-    Lib/site-packages/transformers/models/roberta/modeling_roberta.py
-    Lib/site-packages/transformers/models/roberta/tokenization_roberta.py
-    Lib/site-packages/transformers/models/roberta/tokenization_roberta_fast.py
     Lib/site-packages/transformers/models/roberta/__init__.py
     Lib/site-packages/transformers/models/roberta_prelayernorm/__init__.py
     Lib/site-packages/transformers/models/roc_bert/__init__.py
@@ -2408,8 +2354,6 @@ set(py_files
     Lib/site-packages/transformers/models/sew/__init__.py
     Lib/site-packages/transformers/models/sew_d/__init__.py
     Lib/site-packages/transformers/models/siglip/__init__.py
-    Lib/site-packages/transformers/models/speecht5/configuration_speecht5.py
-    Lib/site-packages/transformers/models/speecht5/modeling_speecht5.py
     Lib/site-packages/transformers/models/speecht5/__init__.py
     Lib/site-packages/transformers/models/speech_encoder_decoder/__init__.py
     Lib/site-packages/transformers/models/speech_to_text/__init__.py
@@ -2422,8 +2366,6 @@ set(py_files
     Lib/site-packages/transformers/models/swin2sr/__init__.py
     Lib/site-packages/transformers/models/swinv2/__init__.py
     Lib/site-packages/transformers/models/switch_transformers/__init__.py
-    Lib/site-packages/transformers/models/t5/configuration_t5.py
-    Lib/site-packages/transformers/models/t5/modeling_t5.py
     Lib/site-packages/transformers/models/t5/tokenization_t5_fast.py
     Lib/site-packages/transformers/models/t5/__init__.py
     Lib/site-packages/transformers/models/table_transformer/__init__.py
@@ -2465,8 +2407,6 @@ set(py_files
     Lib/site-packages/transformers/models/xglm/__init__.py
     Lib/site-packages/transformers/models/xlm/__init__.py
     Lib/site-packages/transformers/models/xlm_prophetnet/__init__.py
-    Lib/site-packages/transformers/models/xlm_roberta/configuration_xlm_roberta.py
-    Lib/site-packages/transformers/models/xlm_roberta/modeling_xlm_roberta.py
     Lib/site-packages/transformers/models/xlm_roberta/__init__.py
     Lib/site-packages/transformers/models/xlm_roberta_xl/__init__.py
     Lib/site-packages/transformers/models/xlnet/__init__.py
@@ -2501,7 +2441,6 @@ set(py_files
     Lib/site-packages/transformers/utils/hub.py
     Lib/site-packages/transformers/utils/import_utils.py
     Lib/site-packages/transformers/utils/logging.py
-    Lib/site-packages/transformers/utils/model_parallel_utils.py
     Lib/site-packages/transformers/utils/peft_utils.py
     Lib/site-packages/transformers/utils/quantization_config.py
     Lib/site-packages/transformers/utils/versions.py
@@ -2688,7 +2627,7 @@ set(copy_files
     Lib/site-packages/transformers/__init__.py
     Lib/site-packages/accelerate-0.30.1.dist-info/METADATA
     Lib/site-packages/filelock-3.16.1.dist-info/METADATA
-    Lib/site-packages/huggingface_hub-0.19.3.dist-info/METADATA
+    Lib/site-packages/huggingface_hub-0.26.2.dist-info/METADATA
     Lib/site-packages/idna-3.10.dist-info/METADATA
     Lib/site-packages/numpy-1.26.4.dist-info/METADATA
     Lib/site-packages/packaging-24.2.dist-info/METADATA
@@ -2756,27 +2695,18 @@ set(py_files
     ctypes/wintypes.py
     ctypes/_endian.py
     ctypes/__init__.py
-    distutils/debug.py
-    distutils/dep_util.py
-    distutils/errors.py
-    distutils/log.py
-    distutils/spawn.py
-    distutils/util.py
-    distutils/__init__.py
     email/base64mime.py
     email/charset.py
     email/encoders.py
     email/errors.py
     email/feedparser.py
     email/header.py
-    email/headerregistry.py
     email/iterators.py
     email/message.py
     email/parser.py
     email/quoprimime.py
     email/utils.py
     email/_encoded_words.py
-    email/_header_value_parser.py
     email/_parseaddr.py
     email/_policybase.py
     email/__init__.py
@@ -2848,8 +2778,6 @@ set(py_files
     xml/etree/ElementPath.py
     xml/etree/ElementTree.py
     xml/etree/__init__.py
-    xml/parsers/expat.py
-    xml/parsers/__init__.py
     xml/__init__.py
     argparse.py
     ast.py
@@ -2879,7 +2807,6 @@ set(py_files
     fnmatch.py
     fractions.py
     functools.py
-    getopt.py
     getpass.py
     gettext.py
     glob.py
@@ -2906,7 +2833,6 @@ set(py_files
     pickletools.py
     pkgutil.py
     platform.py
-    plistlib.py
     pprint.py
     profile.py
     pstats.py
