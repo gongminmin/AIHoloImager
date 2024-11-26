@@ -254,10 +254,10 @@ namespace AIHoloImager
         Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const StructureFromMotion::Result& sfm_input,
             const MeshReconstruction::Result& recon_input, const std::filesystem::path& tmp_dir)
         {
-            assert(input_images.size() == 6);
-            assert(input_images[0].Width() == 320);
-            assert(input_images[0].Height() == 320);
-            assert(input_images[0].NumChannels() == 3);
+            assert(input_images.size() == NumMvImages);
+            assert(input_images[0].Width() == MvImageDim);
+            assert(input_images[0].Height() == MvImageDim);
+            assert(input_images[0].NumChannels() == MvImageChannels);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "Texture";
@@ -837,6 +837,9 @@ namespace AIHoloImager
         static constexpr uint32_t DilateTimes = 4;
         static constexpr uint32_t GridRes = 128;
         static constexpr float GridScale = 2.1f;
+        static constexpr uint32_t NumMvImages = 6;
+        static constexpr uint32_t MvImageDim = 320;
+        static constexpr uint32_t MvImageChannels = 3;
     };
 
     MeshGenerator::MeshGenerator(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)

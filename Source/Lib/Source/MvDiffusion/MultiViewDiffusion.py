@@ -61,6 +61,7 @@ class MultiViewDiffusion:
         del self.pipeline
         torch.cuda.empty_cache()
 
+    @torch.no_grad()
     def Gen(self, input_image_data : bytes, width : int, height : int, num_channels : int, num_steps : int):
         if num_channels == 1:
             mode = "L"

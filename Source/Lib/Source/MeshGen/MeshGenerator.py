@@ -70,21 +70,24 @@ class MeshGenerator:
         del self.device
         torch.cuda.empty_cache()
 
+    @torch.no_grad()
     def GenNeRF(self, images):
-        with torch.no_grad():
-            mv_images = torch.empty(6, 3, 320, 320) # views, channels, height, width
-            for i in range(0, 6):
-                mv_image = np.frombuffer(images[i], dtype = np.uint8, count = 320 * 320 * 3)
-                mv_image = torch.from_numpy(mv_image.copy()).to(self.device)
-                mv_images[i] = mv_image.reshape(320, 320, 3).permute(2, 0, 1)
+        NumMvImages = 6
+        MvImageDim = 320
+        MvImageChannels = 3
 
-            mv_images = mv_images.float().contiguous()
-            mv_images /= 255.0
-            mv_images = mv_images.clamp(0, 1)
+        mv_images = torch.empty(NumMvImages, MvImageChannels, MvImageDim, MvImageDim) # views, channels, height, width
+        for i in range(0, NumMvImages):
+            mv_image = np.frombuffer(images[i], dtype = np.uint8, count = MvImageDim * MvImageDim * MvImageChannels)
+            mv_image = torch.from_numpy(mv_image.copy()).to(self.device)
+            mv_images[i] = mv_image.reshape(MvImageDim, MvImageDim, MvImageChannels).permute(2, 0, 1)
 
-            input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = 4).to(self.device).squeeze(0)
-            planes = self.model.GenNeRF(mv_images, input_cameras)
+        mv_images = mv_images.float().contiguous()
+        mv_images /= 255.0
+        mv_images = mv_images.clamp(0, 1)
 
+        input_cameras = get_zero123plus_input_cameras(batch_size = 1, radius = 4).to(self.device).squeeze(0)
+        planes = self.model.GenNeRF(mv_images, input_cameras)
         return (planes.shape[0], planes.shape[1], planes.shape[2], planes.shape[3], planes.cpu().numpy().tobytes())
 
     def NumDensityNnLayers(self):

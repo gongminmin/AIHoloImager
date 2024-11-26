@@ -31,14 +31,14 @@ class MaskGenerator:
         del self.device
         torch.cuda.empty_cache()
 
+    @torch.no_grad()
     def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:
-        with torch.no_grad():
-            norm_img = np.frombuffer(img_data, dtype = np.float32, count = width * height * num_channels)
-            norm_img = torch.from_numpy(norm_img.copy()).to(self.device)
-            norm_img = norm_img.reshape(1, num_channels, height, width)
+        norm_img = np.frombuffer(img_data, dtype = np.float32, count = width * height * num_channels)
+        norm_img = torch.from_numpy(norm_img.copy()).to(self.device)
+        norm_img = norm_img.reshape(1, num_channels, height, width)
 
-            outs = self.u2net(norm_img)
-            pred = outs[0][:, 0, :, :]
+        outs = self.u2net(norm_img)
+        pred = outs[0][:, 0, :, :]
 
-            pred = pred.cpu().numpy()
+        pred = pred.cpu().numpy()
         return pred.tobytes()
