@@ -186,8 +186,8 @@ namespace AIHoloImager
 
             const GpuRenderTargetView* rtvs[] = {&pos_rtv, &normal_rtv};
 
-            const D3D12_VIEWPORT viewports[] = {{0, 0, static_cast<float>(texture_size), static_cast<float>(texture_size), 0, 1}};
-            const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(texture_size), static_cast<LONG>(texture_size)}};
+            const GpuViewport viewports[] = {{0, 0, static_cast<float>(texture_size), static_cast<float>(texture_size)}};
+            const GpuRect scissor_rcs[] = {{0, 0, static_cast<int32_t>(texture_size), static_cast<int32_t>(texture_size)}};
 
             cmd_list.Render(
                 flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
@@ -332,12 +332,10 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const D3D12_VIEWPORT viewports[] = {
-                {offset.x, offset.y, static_cast<float>(intrinsic.width), static_cast<float>(intrinsic.height), 0, 1}};
-            const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(intrinsic.width), static_cast<LONG>(intrinsic.height)}};
+            const GpuViewport viewport = {offset.x, offset.y, static_cast<float>(intrinsic.width), static_cast<float>(intrinsic.height)};
 
             cmd_list.Render(gen_shadow_map_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, {}, &shadow_map_dsv,
-                viewports, scissor_rcs);
+                std::span(&viewport, 1), {});
         }
 
         void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,

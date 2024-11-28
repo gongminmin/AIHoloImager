@@ -274,12 +274,12 @@ namespace AIHoloImager
             const GpuRenderTargetView* rtvs[] = {&ssaa_rtv_};
 
             const float offset_scale = (scale - 1) / 2;
-            const D3D12_VIEWPORT viewports[] = {{-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
-                scale * ssaa_rt_tex_.Width(0), scale * ssaa_rt_tex_.Height(0), 0, 1}};
-            const D3D12_RECT scissor_rcs[] = {{0, 0, static_cast<LONG>(ssaa_rt_tex_.Width(0)), static_cast<LONG>(ssaa_rt_tex_.Height(0))}};
+            const GpuViewport viewport = {-offset_scale * ssaa_rt_tex_.Width(0), -offset_scale * ssaa_rt_tex_.Height(0),
+                scale * ssaa_rt_tex_.Width(0), scale * ssaa_rt_tex_.Height(0)};
+            const GpuRect scissor_rc = {0, 0, static_cast<int32_t>(ssaa_rt_tex_.Width(0)), static_cast<int32_t>(ssaa_rt_tex_.Height(0))};
 
-            cmd_list.Render(
-                render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, &ssaa_dsv_, viewports, scissor_rcs);
+            cmd_list.Render(render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, &ssaa_dsv_,
+                std::span(&viewport, 1), std::span(&scissor_rc, 1));
         }
 
         void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target_tex, GpuUnorderedAccessView& target_uav)

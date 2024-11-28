@@ -14,6 +14,24 @@
 
 namespace AIHoloImager
 {
+    struct GpuViewport
+    {
+        float left;
+        float top;
+        float width;
+        float height;
+        float min_depth = 0;
+        float max_depth = 1;
+    };
+
+    struct GpuRect
+    {
+        int32_t left;
+        int32_t top;
+        int32_t right;
+        int32_t bottom;
+    };
+
     class GpuCommandList
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandList)
@@ -70,7 +88,7 @@ namespace AIHoloImager
 
         void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
             const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
-            const GpuDepthStencilView* dsv, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects);
+            const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);

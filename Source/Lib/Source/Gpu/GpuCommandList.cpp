@@ -234,7 +234,7 @@ namespace AIHoloImager
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
         uint32_t num, const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
-        const GpuDepthStencilView* dsv, std::span<const D3D12_VIEWPORT> viewports, std::span<const D3D12_RECT> scissor_rects)
+        const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
@@ -385,8 +385,36 @@ namespace AIHoloImager
         }
         d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(rtvs.size()), rt_views.get(), false, dsv != nullptr ? &ds_view : nullptr);
 
-        d3d12_cmd_list->RSSetViewports(static_cast<uint32_t>(viewports.size()), viewports.data());
-        d3d12_cmd_list->RSSetScissorRects(static_cast<uint32_t>(scissor_rects.size()), scissor_rects.data());
+        auto d3d12_viewports = std::make_unique<D3D12_VIEWPORT[]>(viewports.size());
+        for (size_t i = 0; i < viewports.size(); ++i)
+        {
+            d3d12_viewports[i].TopLeftX = viewports[i].left;
+            d3d12_viewports[i].TopLeftY = viewports[i].top;
+            d3d12_viewports[i].Width = viewports[i].width;
+            d3d12_viewports[i].Height = viewports[i].height;
+            d3d12_viewports[i].MinDepth = viewports[i].min_depth;
+            d3d12_viewports[i].MaxDepth = viewports[i].max_depth;
+        }
+        d3d12_cmd_list->RSSetViewports(static_cast<uint32_t>(viewports.size()), d3d12_viewports.get());
+
+        if (scissor_rects.empty())
+        {
+            D3D12_RECT d3d12_scissor_rect = {static_cast<LONG>(viewports[0].left), static_cast<LONG>(viewports[0].top),
+                static_cast<LONG>(viewports[0].left + viewports[0].width), static_cast<LONG>(viewports[0].top + viewports[0].height)};
+            d3d12_cmd_list->RSSetScissorRects(1, &d3d12_scissor_rect);
+        }
+        else
+        {
+            auto d3d12_scissor_rects = std::make_unique<D3D12_RECT[]>(scissor_rects.size());
+            for (size_t i = 0; i < scissor_rects.size(); ++i)
+            {
+                d3d12_scissor_rects[i].left = scissor_rects[i].left;
+                d3d12_scissor_rects[i].top = scissor_rects[i].top;
+                d3d12_scissor_rects[i].right = scissor_rects[i].right;
+                d3d12_scissor_rects[i].bottom = scissor_rects[i].bottom;
+            }
+            d3d12_cmd_list->RSSetScissorRects(static_cast<uint32_t>(scissor_rects.size()), d3d12_scissor_rects.get());
+        }
 
         if (ib != nullptr)
         {
