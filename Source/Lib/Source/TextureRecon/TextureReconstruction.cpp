@@ -16,6 +16,7 @@
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuSampler.hpp"
 
 #include "CompiledShader/TextureRecon/FlattenPs.h"
 #include "CompiledShader/TextureRecon/FlattenVs.h"
@@ -74,32 +75,15 @@ namespace AIHoloImager
             {
                 project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, 1, L"project_tex_cb_");
 
-                D3D12_STATIC_SAMPLER_DESC sampler_desc[2]{};
-
-                auto& point_sampler_desc = sampler_desc[0];
-                point_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                point_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.MaxAnisotropy = 16;
-                point_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                point_sampler_desc.MinLOD = 0.0f;
-                point_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                point_sampler_desc.ShaderRegister = 0;
-
-                auto& bilinear_sampler_desc = sampler_desc[1];
-                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.MaxAnisotropy = 16;
-                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                bilinear_sampler_desc.MinLOD = 0.0f;
-                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                bilinear_sampler_desc.ShaderRegister = 1;
+                const GpuStaticSampler samplers[] = {
+                    GpuStaticSampler(
+                        {GpuStaticSampler::Filter::Point, GpuStaticSampler::Filter::Point}, GpuStaticSampler::AddressMode::Clamp),
+                    GpuStaticSampler(
+                        {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp),
+                };
 
                 const ShaderInfo shader = {ProjectTextureCs_shader, 1, 4, 1};
-                project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{sampler_desc});
+                project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{samplers});
             }
             {
                 resolve_texture_cb_ = ConstantBuffer<ResolveTextureConstantBuffer>(gpu_system_, 1, L"resolve_texture_cb_");

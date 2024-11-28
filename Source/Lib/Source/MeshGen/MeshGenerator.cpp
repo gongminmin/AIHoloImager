@@ -15,6 +15,7 @@
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MarchingCubes.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
@@ -40,16 +41,8 @@ namespace AIHoloImager
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
             mesh_generator_gen_nerf_method_ = python_system_.GetAttr(*mesh_generator_, "GenNeRF");
 
-            D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
-            bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-            bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-            bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-            bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-            bilinear_sampler_desc.MaxAnisotropy = 16;
-            bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-            bilinear_sampler_desc.MinLOD = 0.0f;
-            bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-            bilinear_sampler_desc.ShaderRegister = 0;
+            const GpuStaticSampler bilinear_sampler(
+                {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Border);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
             {
@@ -102,7 +95,7 @@ namespace AIHoloImager
                     density_nn_cb_ = ConstantBuffer<DensityNnConstantBuffer>(gpu_system_, 1, L"density_nn_cb_");
 
                     const ShaderInfo shader = {DensityNnCs_shader, 1, 9, 1};
-                    density_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+                    density_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
 
                     density_nn_cb_->num_features = density_nn_[0].input_features;
                     density_nn_cb_->layer_1_nodes = density_nn_[0].output_features;
@@ -164,7 +157,7 @@ namespace AIHoloImager
                     deformation_nn_cb_ = ConstantBuffer<DeformationNnConstantBuffer>(gpu_system_, 1, L"deformation_nn_cb_");
 
                     const ShaderInfo shader = {DeformationNnCs_shader, 1, 9, 1};
-                    deformation_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+                    deformation_nn_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
 
                     deformation_nn_cb_->num_features = deformation_nn_[0].input_features;
                     deformation_nn_cb_->layer_1_nodes = deformation_nn_[0].output_features;
@@ -226,7 +219,7 @@ namespace AIHoloImager
                     merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
 
                     const ShaderInfo shader = {MergeTextureCs_shader, 1, 10, 1};
-                    merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+                    merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
 
                     merge_texture_cb_->num_features = color_nn_[0].input_features;
                     merge_texture_cb_->layer_1_nodes = color_nn_[0].output_features;

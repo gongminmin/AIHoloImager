@@ -8,6 +8,7 @@
 
 #include <directx/d3d12.h>
 
+#include "GpuSampler.hpp"
 #include "GpuSystem.hpp"
 #include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
@@ -57,8 +58,7 @@ namespace AIHoloImager
     public:
         GpuRenderPipeline() noexcept;
         GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
-            std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers,
-            const States& states);
+            std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const GpuStaticSampler> samplers, const States& states);
         ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
@@ -78,7 +78,7 @@ namespace AIHoloImager
 
     public:
         GpuComputePipeline() noexcept;
-        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers);
+        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> samplers);
         ~GpuComputePipeline();
 
         GpuComputePipeline(GpuComputePipeline&& other) noexcept;

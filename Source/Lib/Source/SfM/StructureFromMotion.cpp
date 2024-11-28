@@ -56,6 +56,7 @@
 
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MaskGen/MaskGenerator.hpp"
@@ -86,19 +87,11 @@ namespace AIHoloImager
         {
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
 
-            D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
-            bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-            bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            bilinear_sampler_desc.MaxAnisotropy = 16;
-            bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-            bilinear_sampler_desc.MinLOD = 0.0f;
-            bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-            bilinear_sampler_desc.ShaderRegister = 0;
+            const GpuStaticSampler bilinear_sampler(
+                {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
             const ShaderInfo shader = {UndistortCs_shader, 1, 1, 1};
-            undistort_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span(&bilinear_sampler_desc, 1));
+            undistort_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span(&bilinear_sampler, 1));
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)

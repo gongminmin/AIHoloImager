@@ -12,7 +12,7 @@ namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
-        std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers, const States& states)
+        std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const GpuStaticSampler> samplers, const States& states)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         uint32_t num_desc_ranges = 0;
@@ -98,8 +98,14 @@ namespace AIHoloImager
             flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         }
 
+        auto d3d12_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(samplers.size());
+        for (uint32_t i = 0; i < samplers.size(); ++i)
+        {
+            d3d12_samplers[i] = samplers[i].NativeStaticSampler(i);
+        }
+
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-            num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()), samplers.data(), flags};
+            num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()), d3d12_samplers.get(), flags};
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;
@@ -203,8 +209,7 @@ namespace AIHoloImager
 
 
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
-    GpuComputePipeline::GpuComputePipeline(
-        GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const D3D12_STATIC_SAMPLER_DESC> samplers)
+    GpuComputePipeline::GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> samplers)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
@@ -247,8 +252,14 @@ namespace AIHoloImager
             }
         }
 
-        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-            num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_NONE};
+        auto d3d12_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(samplers.size());
+        for (uint32_t i = 0; i < samplers.size(); ++i)
+        {
+            d3d12_samplers[i] = samplers[i].NativeStaticSampler(i);
+        }
+
+        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()),
+            d3d12_samplers.get(), D3D12_ROOT_SIGNATURE_FLAG_NONE};
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;

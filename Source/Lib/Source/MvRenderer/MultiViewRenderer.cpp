@@ -15,6 +15,7 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
@@ -103,23 +104,14 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
                 states.dsv_format = ssaa_ds_tex_.Format();
 
-                D3D12_STATIC_SAMPLER_DESC point_sampler_desc{};
-                point_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                point_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                point_sampler_desc.MaxAnisotropy = 16;
-                point_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                point_sampler_desc.MinLOD = 0.0f;
-                point_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                point_sampler_desc.ShaderRegister = 0;
+                const GpuStaticSampler point_sampler(GpuStaticSampler::Filter::Point, GpuStaticSampler::AddressMode::Clamp);
 
                 const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
                     {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
                     {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
                 };
 
-                render_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&point_sampler_desc, 1), states);
+                render_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, std::span(&point_sampler, 1), states);
             }
 
             {
@@ -140,19 +132,11 @@ namespace AIHoloImager
             {
                 blend_cb_ = ConstantBuffer<BlendConstantBuffer>(gpu_system_, 1, L"blend_cb_");
 
-                D3D12_STATIC_SAMPLER_DESC bilinear_sampler_desc{};
-                bilinear_sampler_desc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                bilinear_sampler_desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                bilinear_sampler_desc.MaxAnisotropy = 16;
-                bilinear_sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                bilinear_sampler_desc.MinLOD = 0.0f;
-                bilinear_sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
-                bilinear_sampler_desc.ShaderRegister = 0;
+                const GpuStaticSampler bilinear_sampler(
+                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
                 const ShaderInfo shader = {BlendCs_shader, 1, 2, 1};
-                blend_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler_desc, 1});
+                blend_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
             }
             bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
