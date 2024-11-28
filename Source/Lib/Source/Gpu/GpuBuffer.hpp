@@ -22,8 +22,8 @@ namespace AIHoloImager
 
     public:
         GpuBuffer() noexcept;
-        GpuBuffer(GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags,
-            D3D12_RESOURCE_STATES init_state, std::wstring_view name = L"");
+        GpuBuffer(
+            GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags, std::wstring_view name = L"");
         GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"");
         virtual ~GpuBuffer();
 

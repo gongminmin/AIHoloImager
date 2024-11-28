@@ -12,16 +12,17 @@ namespace AIHoloImager
 {
     GpuBuffer::GpuBuffer() noexcept = default;
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags,
-        D3D12_RESOURCE_STATES init_state, std::wstring_view name)
-        : resource_(gpu_system, nullptr), heap_type_(heap_type), curr_state_(init_state)
+    GpuBuffer::GpuBuffer(
+        GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags, std::wstring_view name)
+        : resource_(gpu_system, nullptr), heap_type_(heap_type),
+          curr_state_(heap_type == D3D12_HEAP_TYPE_READBACK ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON)
     {
         const D3D12_HEAP_PROPERTIES heap_prop = {heap_type, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
 
         desc_ = {D3D12_RESOURCE_DIMENSION_BUFFER, 0, static_cast<uint64_t>(size), 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0},
             D3D12_TEXTURE_LAYOUT_ROW_MAJOR, flags};
         TIFHR(gpu_system.NativeDevice()->CreateCommittedResource(
-            &heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, init_state, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
+            &heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, curr_state_, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         if (!name.empty())
         {
             resource_->SetName(std::wstring(std::move(name)).c_str());
@@ -147,8 +148,7 @@ namespace AIHoloImager
     GpuUploadBuffer::GpuUploadBuffer() noexcept = default;
 
     GpuUploadBuffer::GpuUploadBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
-        : GpuBuffer(gpu_system, size, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, std::move(name)),
-          mapped_data_(this->Map())
+        : GpuBuffer(gpu_system, size, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, std::move(name)), mapped_data_(this->Map())
     {
     }
 
@@ -199,8 +199,7 @@ namespace AIHoloImager
     GpuReadbackBuffer::GpuReadbackBuffer() noexcept = default;
 
     GpuReadbackBuffer::GpuReadbackBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
-        : GpuBuffer(gpu_system, size, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST, std::move(name)),
-          mapped_data_(this->Map())
+        : GpuBuffer(gpu_system, size, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE, std::move(name)), mapped_data_(this->Map())
     {
     }
 

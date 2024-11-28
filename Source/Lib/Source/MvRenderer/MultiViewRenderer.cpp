@@ -68,23 +68,22 @@ namespace AIHoloImager
             constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
 
             ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ColorFmt,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON,
-                L"ssaa_rt_tex_");
+                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"ssaa_rt_tex_");
             ssaa_rtv_ = GpuRenderTargetView(gpu_system_, ssaa_rt_tex_);
             ssaa_srv_ = GpuShaderResourceView(gpu_system_, ssaa_rt_tex_);
             ssaa_uav_ = GpuUnorderedAccessView(gpu_system_, ssaa_rt_tex_);
 
-            ssaa_ds_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, DsFmt,
-                D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_COMMON, L"ssaa_ds_tex_");
+            ssaa_ds_tex_ = GpuTexture2D(
+                gpu_system_, width * SsaaScale, height * SsaaScale, 1, DsFmt, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, L"ssaa_ds_tex_");
             ssaa_dsv_ = GpuDepthStencilView(gpu_system_, ssaa_ds_tex_);
 
-            init_view_tex_ = GpuTexture2D(gpu_system_, width, height, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                D3D12_RESOURCE_STATE_COMMON, L"init_view_tex_");
+            init_view_tex_ =
+                GpuTexture2D(gpu_system_, width, height, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"init_view_tex_");
             init_view_uav_ = GpuUnorderedAccessView(gpu_system_, init_view_tex_);
             for (size_t i = 0; i < std::size(multi_view_texs_); ++i)
             {
                 multi_view_texs_[i] = GpuTexture2D(gpu_system_, width, height, 1, init_view_tex_.Format(),
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, std::format(L"multi_view_tex_{}", i));
+                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, std::format(L"multi_view_tex_{}", i));
                 multi_view_uavs_[i] = GpuUnorderedAccessView(gpu_system_, multi_view_texs_[i]);
             }
 
@@ -138,8 +137,7 @@ namespace AIHoloImager
                 const ShaderInfo shader = {BlendCs_shader, 1, 2, 1};
                 blend_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
             }
-            bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                D3D12_RESOURCE_STATE_COMMON, L"bb_tex_");
+            bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"bb_tex_");
             bb_srv_ = GpuShaderResourceView(gpu_system_, bb_tex_);
             bb_uav_ = GpuUnorderedAccessView(gpu_system_, bb_tex_);
         }
@@ -149,12 +147,12 @@ namespace AIHoloImager
             assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"vb");
+                D3D12_RESOURCE_FLAG_NONE, L"vb");
             memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
             vb.Unmap(D3D12_RANGE{0, vb.Size()});
 
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"ib");
+                D3D12_RESOURCE_FLAG_NONE, L"ib");
             memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
             ib.Unmap(D3D12_RANGE{0, ib.Size()});
 
@@ -162,7 +160,7 @@ namespace AIHoloImager
             {
                 const auto& albedo_tex = mesh.AlbedoTexture();
                 albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
-                    D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON);
+                    D3D12_RESOURCE_FLAG_NONE, L"albedo_gpu_tex");
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
@@ -210,7 +208,7 @@ namespace AIHoloImager
 
                 cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
-                    DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mv_diffusion_gpu_tex");
+                    DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, L"mv_diffusion_gpu_tex");
                 mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }

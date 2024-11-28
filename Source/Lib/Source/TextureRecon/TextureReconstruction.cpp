@@ -104,12 +104,12 @@ namespace AIHoloImager
 #endif
 
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_vb");
+                D3D12_RESOURCE_FLAG_NONE, L"mesh_vb");
             memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
             mesh_vb.Unmap(D3D12_RANGE{0, mesh_vb.Size()});
 
             GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"mesh_ib");
+                D3D12_RESOURCE_FLAG_NONE, L"mesh_ib");
             memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
             mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
 
@@ -157,10 +157,10 @@ namespace AIHoloImager
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            flatten_pos_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-                D3D12_RESOURCE_STATE_COMMON, L"flatten_pos_tex");
-            flatten_normal_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, NormalFmt,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON, L"flatten_normal_tex");
+            flatten_pos_tex = GpuTexture2D(
+                gpu_system_, texture_size, texture_size, 1, PositionFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, L"flatten_pos_tex");
+            flatten_normal_tex = GpuTexture2D(
+                gpu_system_, texture_size, texture_size, 1, NormalFmt, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, L"flatten_normal_tex");
 
             GpuRenderTargetView pos_rtv(gpu_system_, flatten_pos_tex);
             GpuRenderTargetView normal_rtv(gpu_system_, flatten_normal_tex);
@@ -206,7 +206,7 @@ namespace AIHoloImager
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, DXGI_FORMAT_R8G8B8A8_UNORM,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"accum_color_tex");
+                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"accum_color_tex");
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
 
             {
@@ -238,7 +238,7 @@ namespace AIHoloImager
                 if ((intrinsic.width != shadow_map_tex.Width(0)) || (intrinsic.height != shadow_map_tex.Height(0)))
                 {
                     shadow_map_tex = GpuTexture2D(gpu_system_, intrinsic.width, intrinsic.height, 1, DXGI_FORMAT_R32_FLOAT,
-                        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_COMMON, L"shadow_map_tex");
+                        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, L"shadow_map_tex");
                     shadow_map_srv = GpuShaderResourceView(gpu_system_, shadow_map_tex);
                     shadow_map_dsv = GpuDepthStencilView(gpu_system_, shadow_map_tex, DepthFmt);
                 }
@@ -246,7 +246,7 @@ namespace AIHoloImager
                 if ((view.image_mask.Width() != photo_tex.Width(0)) || (view.image_mask.Height() != photo_tex.Height(0)))
                 {
                     photo_tex = GpuTexture2D(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
-                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COMMON, L"photo_tex");
+                        D3D12_RESOURCE_FLAG_NONE, L"photo_tex");
                     photo_srv = GpuShaderResourceView(gpu_system_, photo_tex);
                 }
                 photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
@@ -368,8 +368,8 @@ namespace AIHoloImager
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-                D3D12_RESOURCE_STATE_COMMON, L"color_tex");
+            GpuTexture2D color_tex(
+                gpu_system_, texture_size, texture_size, 1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"color_tex");
             GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
 
             GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
