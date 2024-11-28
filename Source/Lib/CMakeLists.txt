@@ -40,6 +40,8 @@ set(aihi_files
     Source/Gpu/GpuTexture.cpp
     Source/Gpu/GpuTexture.hpp
     Source/Gpu/GpuUtil.hpp
+    Source/Gpu/GpuVertexAttrib.cpp
+    Source/Gpu/GpuVertexAttrib.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/CalcRoiCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl

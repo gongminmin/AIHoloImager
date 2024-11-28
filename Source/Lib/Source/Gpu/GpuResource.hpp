@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <directx/d3d12.h>
+
 namespace AIHoloImager
 {
 #define ENUM_CLASS_BITWISE_OPERATORS(Enum)                                                     \

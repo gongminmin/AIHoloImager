@@ -11,6 +11,7 @@
 #include "GpuSampler.hpp"
 #include "GpuSystem.hpp"
 #include "GpuUtil.hpp"
+#include "GpuVertexAttrib.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
 
@@ -57,8 +58,8 @@ namespace AIHoloImager
 
     public:
         GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
-            std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const GpuStaticSampler> samplers, const States& states);
+        GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages], const GpuVertexAttribs& vertex_attribs,
+            std::span<const GpuStaticSampler> samplers, const States& states);
         ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;

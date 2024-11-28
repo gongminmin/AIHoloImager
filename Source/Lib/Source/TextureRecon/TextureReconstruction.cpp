@@ -31,11 +31,11 @@ namespace AIHoloImager
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
-            const D3D12_INPUT_ELEMENT_DESC input_elems[] = {
-                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-                {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-            };
+            const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
+                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT},
+                {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT},
+                {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT},
+            }));
 
             {
                 flatten_cb_ = ConstantBuffer<FlattenConstantBuffer>(gpu_system_, 1, L"flatten_cb_");
@@ -54,7 +54,7 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
                 states.dsv_format = DXGI_FORMAT_UNKNOWN;
 
-                flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, {}, states);
+                flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, {}, states);
             }
             {
                 gen_shadow_map_cb_ = ConstantBuffer<GenShadowMapConstantBuffer>(gpu_system_, 1, L"gen_shadow_map_cb_");
@@ -70,7 +70,7 @@ namespace AIHoloImager
                 states.rtv_formats = {};
                 states.dsv_format = DepthFmt;
 
-                gen_shadow_map_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, input_elems, {}, states);
+                gen_shadow_map_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, {}, states);
             }
             {
                 project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, 1, L"project_tex_cb_");

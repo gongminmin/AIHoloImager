@@ -12,7 +12,7 @@ namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
-        std::span<const D3D12_INPUT_ELEMENT_DESC> input_elems, std::span<const GpuStaticSampler> samplers, const States& states)
+        const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         uint32_t num_desc_ranges = 0;
@@ -92,6 +92,7 @@ namespace AIHoloImager
             }
         }
 
+        const auto input_elems = vertex_attribs.InputElementDescs();
         D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
         if (!input_elems.empty())
         {

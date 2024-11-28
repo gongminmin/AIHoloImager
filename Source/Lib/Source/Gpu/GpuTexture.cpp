@@ -41,6 +41,11 @@ namespace AIHoloImager
         case DXGI_FORMAT_R32G32_FLOAT:
             return 8;
 
+        case DXGI_FORMAT_R32G32B32_UINT:
+        case DXGI_FORMAT_R32G32B32_SINT:
+        case DXGI_FORMAT_R32G32B32_FLOAT:
+            return 12;
+
         case DXGI_FORMAT_R32G32B32A32_UINT:
         case DXGI_FORMAT_R32G32B32A32_SINT:
         case DXGI_FORMAT_R32G32B32A32_FLOAT:
