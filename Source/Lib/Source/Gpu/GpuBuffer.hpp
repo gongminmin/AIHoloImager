@@ -17,6 +17,13 @@ namespace AIHoloImager
     class GpuSystem;
     class GpuCommandList;
 
+    struct GpuRange
+    {
+        uint64_t begin;
+        uint64_t end;
+    };
+    D3D12_RANGE ToD3D12Range(const GpuRange& range);
+
     class GpuBuffer
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBuffer)
@@ -24,7 +31,7 @@ namespace AIHoloImager
     public:
         GpuBuffer() noexcept;
         GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"");
+        GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
         virtual ~GpuBuffer();
 
         GpuBuffer(GpuBuffer&& other) noexcept;
@@ -39,15 +46,14 @@ namespace AIHoloImager
         D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
         uint32_t Size() const noexcept;
 
-        void* Map(const D3D12_RANGE& read_range);
+        void* Map(const GpuRange& read_range);
         void* Map();
-        void Unmap(const D3D12_RANGE& write_range);
+        void Unmap(const GpuRange& write_range);
         void Unmap();
 
         virtual void Reset();
 
-        D3D12_RESOURCE_STATES State() const noexcept;
-        void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const;
+        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
     protected:
         GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;

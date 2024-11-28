@@ -206,19 +206,19 @@ namespace AIHoloImager
     {
         if (texture_2d_ != nullptr)
         {
-            texture_2d_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            texture_2d_->Transition(cmd_list, GpuResourceState::Common);
         }
         else if (texture_2d_array_ != nullptr)
         {
-            texture_2d_array_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            texture_2d_array_->Transition(cmd_list, GpuResourceState::Common);
         }
         else if (texture_3d_ != nullptr)
         {
-            texture_3d_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            texture_3d_->Transition(cmd_list, GpuResourceState::Common);
         }
         else if (buffer_ != nullptr)
         {
-            buffer_->Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            buffer_->Transition(cmd_list, GpuResourceState::Common);
         }
     }
 
@@ -270,7 +270,7 @@ namespace AIHoloImager
 
     void GpuRenderTargetView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        texture_->Transition(cmd_list, GpuResourceState::ColorWrite);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GpuRenderTargetView::CpuHandle() const noexcept
@@ -321,7 +321,7 @@ namespace AIHoloImager
 
     void GpuDepthStencilView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        texture_->Transition(cmd_list, GpuResourceState::DepthWrite);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GpuDepthStencilView::CpuHandle() const noexcept
@@ -487,19 +487,19 @@ namespace AIHoloImager
     {
         if (texture_2d_ != nullptr)
         {
-            texture_2d_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            texture_2d_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
         }
         else if (texture_2d_array_ != nullptr)
         {
-            texture_2d_array_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            texture_2d_array_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
         }
         else if (texture_3d_ != nullptr)
         {
-            texture_3d_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            texture_3d_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
         }
         else if (buffer_ != nullptr)
         {
-            buffer_->Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            buffer_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
         }
     }
 

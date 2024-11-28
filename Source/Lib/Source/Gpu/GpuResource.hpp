@@ -80,4 +80,20 @@ namespace AIHoloImager
     ENUM_CLASS_BITWISE_OPERATORS(GpuResourceFlag);
 
     D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags);
+
+    enum class GpuResourceState
+    {
+        Common,
+
+        ColorWrite,
+        DepthWrite,
+
+        UnorderedAccess,
+
+        CopySrc,
+        CopyDst,
+
+        RayTracingAS,
+    };
+    D3D12_RESOURCE_STATES ToD3D12ResourceState(GpuResourceState state);
 } // namespace AIHoloImager

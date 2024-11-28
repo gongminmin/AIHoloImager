@@ -9,7 +9,6 @@
 #include <numbers>
 #include <set>
 
-#include <directx/d3d12.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 

@@ -41,4 +41,29 @@ namespace AIHoloImager
 
         return d3d12_flag;
     }
+
+    D3D12_RESOURCE_STATES ToD3D12ResourceState(GpuResourceState state)
+    {
+        switch (state)
+        {
+        case GpuResourceState::Common:
+            return D3D12_RESOURCE_STATE_COMMON;
+
+        case GpuResourceState::ColorWrite:
+            return D3D12_RESOURCE_STATE_RENDER_TARGET;
+        case GpuResourceState::DepthWrite:
+            return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+        case GpuResourceState::UnorderedAccess:
+            return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        case GpuResourceState::CopySrc:
+            return D3D12_RESOURCE_STATE_COPY_SOURCE;
+        case GpuResourceState::CopyDst:
+            return D3D12_RESOURCE_STATE_COPY_DEST;
+
+        default:
+            Unreachable("Invalid resource state");
+        }
+    }
 } // namespace AIHoloImager

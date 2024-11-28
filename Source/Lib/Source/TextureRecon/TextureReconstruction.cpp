@@ -106,12 +106,12 @@ namespace AIHoloImager
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"mesh_vb");
             memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
-            mesh_vb.Unmap(D3D12_RANGE{0, mesh_vb.Size()});
+            mesh_vb.Unmap(GpuRange{0, mesh_vb.Size()});
 
             GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"mesh_ib");
             memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
-            mesh_ib.Unmap(D3D12_RANGE{0, mesh_ib.Size()});
+            mesh_ib.Unmap(GpuRange{0, mesh_ib.Size()});
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
@@ -192,8 +192,8 @@ namespace AIHoloImager
             cmd_list.Render(
                 flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
 
-            flatten_pos_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-            flatten_normal_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+            flatten_pos_tex.Transition(cmd_list, GpuResourceState::Common);
+            flatten_normal_tex.Transition(cmd_list, GpuResourceState::Common);
 
             gpu_system_.Execute(std::move(cmd_list));
             gpu_system_.WaitForGpu();
@@ -290,17 +290,17 @@ namespace AIHoloImager
                     intrinsic.k[1].z - intrinsic.height / 2,
                 };
 
-                shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                shadow_map_tex.Transition(cmd_list, GpuResourceState::DepthWrite);
 
                 this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, offset, intrinsic, shadow_map_dsv);
 
-                shadow_map_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
-                accum_color_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                shadow_map_tex.Transition(cmd_list, GpuResourceState::Common);
+                accum_color_tex.Transition(cmd_list, GpuResourceState::UnorderedAccess);
 
                 this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
                     photo_srv, shadow_map_srv, accum_color_uav);
 
-                accum_color_tex.Transition(cmd_list, D3D12_RESOURCE_STATE_COMMON);
+                accum_color_tex.Transition(cmd_list, GpuResourceState::Common);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {

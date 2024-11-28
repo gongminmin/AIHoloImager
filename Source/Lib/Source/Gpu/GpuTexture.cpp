@@ -116,7 +116,7 @@ namespace AIHoloImager
     }
 
     GpuTexture::GpuTexture(
-        GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name) noexcept
+        GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
         : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false))
     {
         if (resource_)
@@ -127,7 +127,7 @@ namespace AIHoloImager
                 resource_->SetName(std::wstring(name).c_str());
             }
 
-            curr_states_.assign(this->MipLevels() * this->Planes(), curr_state);
+            curr_states_.assign(this->MipLevels() * this->Planes(), ToD3D12ResourceState(curr_state));
         }
     }
 
@@ -209,32 +209,29 @@ namespace AIHoloImager
         curr_states_.clear();
     }
 
-    D3D12_RESOURCE_STATES GpuTexture::State(uint32_t sub_resource) const noexcept
+    void GpuTexture::Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
-        return curr_states_[sub_resource];
-    }
-
-    void GpuTexture::Transition(GpuCommandList& cmd_list, uint32_t sub_resource, D3D12_RESOURCE_STATES target_state) const
-    {
-        if (curr_states_[sub_resource] != target_state)
+        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
+        if (curr_states_[sub_resource] != d3d12_target_state)
         {
             D3D12_RESOURCE_BARRIER barrier;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.Transition.pResource = resource_.Object().Get();
             barrier.Transition.StateBefore = curr_states_[sub_resource];
-            barrier.Transition.StateAfter = target_state;
+            barrier.Transition.StateAfter = d3d12_target_state;
             barrier.Transition.Subresource = sub_resource;
             cmd_list.Transition(std::span(&barrier, 1));
 
-            curr_states_[sub_resource] = target_state;
+            curr_states_[sub_resource] = d3d12_target_state;
         }
     }
 
-    void GpuTexture::Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const
+    void GpuTexture::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
-        if ((curr_states_[0] == target_state) && ((target_state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) ||
-                                                     (target_state == D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE)))
+        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
+        if ((curr_states_[0] == d3d12_target_state) &&
+            ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
         {
             D3D12_RESOURCE_BARRIER barrier;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -256,14 +253,14 @@ namespace AIHoloImager
 
             if (same_state)
             {
-                if (curr_states_[0] != target_state)
+                if (curr_states_[0] != d3d12_target_state)
                 {
                     D3D12_RESOURCE_BARRIER barrier;
                     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
                     barrier.Transition.pResource = resource_.Object().Get();
                     barrier.Transition.StateBefore = curr_states_[0];
-                    barrier.Transition.StateAfter = target_state;
+                    barrier.Transition.StateAfter = d3d12_target_state;
                     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
                     cmd_list.Transition(std::span(&barrier, 1));
                 }
@@ -273,14 +270,14 @@ namespace AIHoloImager
                 std::vector<D3D12_RESOURCE_BARRIER> barriers;
                 for (size_t i = 0; i < curr_states_.size(); ++i)
                 {
-                    if (curr_states_[i] != target_state)
+                    if (curr_states_[i] != d3d12_target_state)
                     {
                         auto& barrier = barriers.emplace_back();
                         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
                         barrier.Transition.pResource = resource_.Object().Get();
                         barrier.Transition.StateBefore = curr_states_[i];
-                        barrier.Transition.StateAfter = target_state;
+                        barrier.Transition.StateAfter = d3d12_target_state;
                         barrier.Transition.Subresource = static_cast<uint32_t>(i);
                     }
                 }
@@ -288,7 +285,7 @@ namespace AIHoloImager
             }
         }
 
-        curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
+        curr_states_.assign(this->MipLevels() * this->Planes(), d3d12_target_state);
     }
 
     void GpuTexture::Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, const void* data)
@@ -345,7 +342,7 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
+        this->Transition(cmd_list, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
 
@@ -394,7 +391,7 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        this->Transition(cmd_list, GpuResourceState::CopySrc);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
 
@@ -433,8 +430,8 @@ namespace AIHoloImager
         assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
-        other.Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        this->Transition(cmd_list, D3D12_RESOURCE_STATE_COPY_DEST);
+        other.Transition(cmd_list, GpuResourceState::CopySrc);
+        this->Transition(cmd_list, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyTextureRegion(&dst, dst_x, dst_y, dst_z, &src, &src_box);
 

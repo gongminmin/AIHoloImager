@@ -36,8 +36,8 @@ namespace AIHoloImager
         GpuTexture();
         GpuTexture(GpuSystem& gpu_system, D3D12_RESOURCE_DIMENSION dim, uint32_t width, uint32_t height, uint32_t depth,
             uint32_t array_size, uint32_t mip_levels, DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuTexture(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state,
-            std::wstring_view name = L"") noexcept;
+        GpuTexture(
+            GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
         virtual ~GpuTexture() noexcept;
 
         GpuTexture(GpuTexture&& other) noexcept;
@@ -58,9 +58,8 @@ namespace AIHoloImager
 
         void Reset();
 
-        D3D12_RESOURCE_STATES State(uint32_t sub_resource) const noexcept;
-        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, D3D12_RESOURCE_STATES target_state) const;
-        void Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const;
+        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
+        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
         void Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, const void* data);
         void Readback(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const;

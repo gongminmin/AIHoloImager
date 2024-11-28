@@ -10,6 +10,12 @@
 
 namespace AIHoloImager
 {
+    D3D12_RANGE ToD3D12Range(const GpuRange& range)
+    {
+        return D3D12_RANGE{range.begin, range.end};
+    }
+
+
     GpuBuffer::GpuBuffer() noexcept = default;
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
@@ -28,8 +34,8 @@ namespace AIHoloImager
         }
     }
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name)
-        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false)), curr_state_(curr_state)
+    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name)
+        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false)), curr_state_(ToD3D12ResourceState(curr_state))
     {
         if (resource_)
         {
@@ -80,29 +86,31 @@ namespace AIHoloImager
         return static_cast<uint32_t>(desc_.Width);
     }
 
-    void* GpuBuffer::Map(const D3D12_RANGE& read_range)
+    void* GpuBuffer::Map(const GpuRange& read_range)
     {
         void* addr;
-        TIFHR(resource_->Map(0, &read_range, &addr));
+        const D3D12_RANGE d3d12_read_range = ToD3D12Range(read_range);
+        TIFHR(resource_->Map(0, &d3d12_read_range, &addr));
         return addr;
     }
 
     void* GpuBuffer::Map()
     {
         void* addr;
-        const D3D12_RANGE read_range{0, 0};
-        TIFHR(resource_->Map(0, (heap_type_ == D3D12_HEAP_TYPE_READBACK) ? nullptr : &read_range, &addr));
+        const D3D12_RANGE d3d12_read_range{0, 0};
+        TIFHR(resource_->Map(0, (heap_type_ == D3D12_HEAP_TYPE_READBACK) ? nullptr : &d3d12_read_range, &addr));
         return addr;
     }
 
-    void GpuBuffer::Unmap(const D3D12_RANGE& write_range)
+    void GpuBuffer::Unmap(const GpuRange& write_range)
     {
-        resource_->Unmap(0, (heap_type_ == D3D12_HEAP_TYPE_UPLOAD) ? nullptr : &write_range);
+        const D3D12_RANGE d3d12_write_range = ToD3D12Range(write_range);
+        resource_->Unmap(0, (heap_type_ == D3D12_HEAP_TYPE_UPLOAD) ? nullptr : &d3d12_write_range);
     }
 
     void GpuBuffer::Unmap()
     {
-        this->Unmap(D3D12_RANGE{0, 0});
+        this->Unmap(GpuRange{0, 0});
     }
 
     void GpuBuffer::Reset()
@@ -113,26 +121,22 @@ namespace AIHoloImager
         curr_state_ = {};
     }
 
-    D3D12_RESOURCE_STATES GpuBuffer::State() const noexcept
+    void GpuBuffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
-        return curr_state_;
-    }
+        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
 
-    void GpuBuffer::Transition(GpuCommandList& cmd_list, D3D12_RESOURCE_STATES target_state) const
-    {
         D3D12_RESOURCE_BARRIER barrier;
-        if (curr_state_ != target_state)
+        if (curr_state_ != d3d12_target_state)
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.Transition.pResource = resource_.Object().Get();
             barrier.Transition.StateBefore = curr_state_;
-            barrier.Transition.StateAfter = target_state;
+            barrier.Transition.StateAfter = d3d12_target_state;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             cmd_list.Transition(std::span(&barrier, 1));
         }
-        else if ((target_state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) ||
-                 (target_state == D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE))
+        else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -140,7 +144,7 @@ namespace AIHoloImager
             cmd_list.Transition(std::span(&barrier, 1));
         }
 
-        curr_state_ = target_state;
+        curr_state_ = d3d12_target_state;
     }
 
 

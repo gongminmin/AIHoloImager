@@ -148,12 +148,12 @@ namespace AIHoloImager
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"vb");
             memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
-            vb.Unmap(D3D12_RANGE{0, vb.Size()});
+            vb.Unmap(GpuRange{0, vb.Size()});
 
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"ib");
             memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
-            ib.Unmap(D3D12_RANGE{0, ib.Size()});
+            ib.Unmap(GpuRange{0, ib.Size()});
 
             GpuTexture2D albedo_gpu_tex;
             {

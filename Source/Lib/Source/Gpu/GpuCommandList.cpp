@@ -246,7 +246,7 @@ namespace AIHoloImager
                 const auto& vb_binding = vbs[i];
                 assert(vb_binding.vb != nullptr);
 
-                vb_binding.vb->Transition(*this, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+                vb_binding.vb->Transition(*this, GpuResourceState::Common);
 
                 D3D12_VERTEX_BUFFER_VIEW& vbv = vbvs[i];
                 vbv.BufferLocation = vb_binding.vb->GpuVirtualAddress() + vb_binding.offset;
@@ -262,7 +262,7 @@ namespace AIHoloImager
 
         if (ib != nullptr)
         {
-            ib->ib->Transition(*this, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+            ib->ib->Transition(*this, GpuResourceState::Common);
 
             D3D12_INDEX_BUFFER_VIEW ibv;
             ibv.BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset;
@@ -479,8 +479,8 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
+        src.Transition(*this, GpuResourceState::CopySrc);
+        dest.Transition(*this, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyResource(dest.NativeBuffer(), src.NativeBuffer());
     }
@@ -489,8 +489,8 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
+        src.Transition(*this, GpuResourceState::CopySrc);
+        dest.Transition(*this, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyBufferRegion(dest.NativeBuffer(), dst_offset, src.NativeBuffer(), src_offset, src_size);
     }
@@ -499,8 +499,8 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        src.Transition(*this, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        dest.Transition(*this, D3D12_RESOURCE_STATE_COPY_DEST);
+        src.Transition(*this, GpuResourceState::CopySrc);
+        dest.Transition(*this, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyResource(dest.NativeTexture(), src.NativeTexture());
     }

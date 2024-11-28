@@ -306,7 +306,7 @@ namespace AIHoloImager
             edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Upload, GpuResourceFlag::None, L"edge_table_buff");
             {
                 std::memcpy(edge_table_buff_.Map(), EdgeTable, sizeof(EdgeTable));
-                edge_table_buff_.Unmap(D3D12_RANGE{0, edge_table_buff_.Size()});
+                edge_table_buff_.Unmap(GpuRange{0, edge_table_buff_.Size()});
             }
             edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R16_UINT);
 
@@ -321,7 +321,7 @@ namespace AIHoloImager
                         triangle_table_buff_ptr[i * 16 + j] = TriangleTable[i][j];
                     }
                 }
-                triangle_table_buff_.Unmap(D3D12_RANGE{0, triangle_table_buff_.Size()});
+                triangle_table_buff_.Unmap(GpuRange{0, triangle_table_buff_.Size()});
             }
             triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, DXGI_FORMAT_R16_UINT);
 
