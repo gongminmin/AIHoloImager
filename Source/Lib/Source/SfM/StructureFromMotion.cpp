@@ -449,13 +449,13 @@ namespace AIHoloImager
                             (distort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
                             distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
-                                ColorFmt, D3D12_RESOURCE_FLAG_NONE, L"distort_gpu_tex");
+                                ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
                         }
                         if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
                             (undistort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
                             undistort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(),
-                                1, ColorFmt, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"undistort_gpu_tex");
+                                1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
                         }
 
                         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);

@@ -303,16 +303,15 @@ namespace AIHoloImager
     public:
         Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
-            edge_table_buff_ =
-                GpuBuffer(gpu_system_, sizeof(EdgeTable), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, L"edge_table_buff");
+            edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Upload, GpuResourceFlag::None, L"edge_table_buff");
             {
                 std::memcpy(edge_table_buff_.Map(), EdgeTable, sizeof(EdgeTable));
                 edge_table_buff_.Unmap(D3D12_RANGE{0, edge_table_buff_.Size()});
             }
             edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R16_UINT);
 
-            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), D3D12_HEAP_TYPE_UPLOAD,
-                D3D12_RESOURCE_FLAG_NONE, L"triangle_table_buff");
+            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Upload,
+                GpuResourceFlag::None, L"triangle_table_buff");
             {
                 uint16_t* triangle_table_buff_ptr = reinterpret_cast<uint16_t*>(triangle_table_buff_.Map());
                 for (size_t i = 0; i < std::size(TriangleTable); ++i)
@@ -361,14 +360,13 @@ namespace AIHoloImager
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
             // [num_non_empty_cubes, num_vertices, num_indices]
-            GpuBuffer counter_buff(
-                gpu_system_, 3 * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"counter_buff");
+            GpuBuffer counter_buff(gpu_system_, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"counter_buff");
             GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, DXGI_FORMAT_R32_UINT);
             const uint32_t zeros[] = {0, 0, 0, 0};
             cmd_list.Clear(counter_uav, zeros);
 
-            GpuBuffer cube_offsets_buff(gpu_system_, total_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"cube_offsets_buff");
+            GpuBuffer cube_offsets_buff(
+                gpu_system_, total_cubes * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"cube_offsets_buff");
             GpuShaderResourceView cube_offsets_srv(gpu_system_, cube_offsets_buff, DXGI_FORMAT_R32_UINT);
             {
                 calc_cube_indices_cb_->size = size;
@@ -401,12 +399,12 @@ namespace AIHoloImager
 
             cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuBuffer non_empty_cube_ids_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"non_empty_cube_ids_buff");
-            GpuBuffer non_empty_cube_indices_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), D3D12_HEAP_TYPE_DEFAULT,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"non_empty_cube_indices_buff");
-            GpuBuffer vertex_index_offsets_buff(gpu_system_, num_non_empty_cubes * sizeof(glm::uvec2), D3D12_HEAP_TYPE_DEFAULT,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"vertex_index_offsets_buff");
+            GpuBuffer non_empty_cube_ids_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess, L"non_empty_cube_ids_buff");
+            GpuBuffer non_empty_cube_indices_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess, L"non_empty_cube_indices_buff");
+            GpuBuffer vertex_index_offsets_buff(gpu_system_, num_non_empty_cubes * sizeof(glm::uvec2), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess, L"vertex_index_offsets_buff");
             {
                 process_non_empty_cubes_cb_->size = size;
                 process_non_empty_cubes_cb_->total_cubes = total_cubes;
@@ -457,10 +455,10 @@ namespace AIHoloImager
                 GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, DXGI_FORMAT_R32_UINT);
                 GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, DXGI_FORMAT_R32G32_UINT);
 
-                GpuBuffer mesh_vertices_buff(gpu_system_, mesh_vertices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"mesh_vertices_buff");
-                GpuBuffer mesh_indices_buff(gpu_system_, mesh_indices_cpu_buff.Size(), D3D12_HEAP_TYPE_DEFAULT,
-                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"mesh_indices_buff");
+                GpuBuffer mesh_vertices_buff(
+                    gpu_system_, mesh_vertices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_vertices_buff");
+                GpuBuffer mesh_indices_buff(
+                    gpu_system_, mesh_indices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_indices_buff");
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, DXGI_FORMAT_R32_UINT);
 

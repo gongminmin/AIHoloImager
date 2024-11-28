@@ -7,6 +7,7 @@
 
 #include <directx/d3d12.h>
 
+#include "GpuResource.hpp"
 #include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
 #include "Util/Noncopyable.hpp"
@@ -22,8 +23,7 @@ namespace AIHoloImager
 
     public:
         GpuBuffer() noexcept;
-        GpuBuffer(
-            GpuSystem& gpu_system, uint32_t size, D3D12_HEAP_TYPE heap_type, D3D12_RESOURCE_FLAGS flags, std::wstring_view name = L"");
+        GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name = L"");
         GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, D3D12_RESOURCE_STATES curr_state, std::wstring_view name = L"");
         virtual ~GpuBuffer();
 

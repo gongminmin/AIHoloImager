@@ -67,7 +67,7 @@ namespace AIHoloImager
                     layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
 
                     layer.weight_buff = GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float),
-                        D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} weight_buff", i));
+                        GpuHeap::Default, GpuResourceFlag::None, std::format(L"layer {} weight_buff", i));
                     {
                         const auto py_weight = python_system_.CallObject(*density_nn_weight_method, *layer_args);
 
@@ -78,8 +78,8 @@ namespace AIHoloImager
                     }
                     layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
 
-                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
-                        D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} bias_buff", i));
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
+                        std::format(L"layer {} bias_buff", i));
                     {
                         const auto py_bias = python_system_.CallObject(*density_nn_bias_method, *layer_args);
 
@@ -128,7 +128,7 @@ namespace AIHoloImager
                     layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
 
                     layer.weight_buff = GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float),
-                        D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} weight_buff", i));
+                        GpuHeap::Default, GpuResourceFlag::None, std::format(L"layer {} weight_buff", i));
                     {
                         const auto py_weight = python_system_.CallObject(*deformation_nn_weight_method, *layer_args);
 
@@ -139,8 +139,8 @@ namespace AIHoloImager
                     }
                     layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
 
-                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
-                        D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} bias_buff", i));
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
+                        std::format(L"layer {} bias_buff", i));
                     {
                         const auto py_bias = python_system_.CallObject(*deformation_nn_bias_method, *layer_args);
 
@@ -189,7 +189,7 @@ namespace AIHoloImager
                     layer.output_features = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*py_size, 0));
 
                     layer.weight_buff = GpuBuffer(gpu_system_, layer.input_features * layer.output_features * sizeof(float),
-                        D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} weight_buff", i));
+                        GpuHeap::Default, GpuResourceFlag::None, std::format(L"layer {} weight_buff", i));
                     {
                         const auto py_weight = python_system_.CallObject(*color_nn_weight_method, *layer_args);
 
@@ -200,8 +200,8 @@ namespace AIHoloImager
                     }
                     layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
 
-                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), D3D12_HEAP_TYPE_DEFAULT,
-                        D3D12_RESOURCE_FLAG_NONE, std::format(L"layer {} bias_buff", i));
+                    layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
+                        std::format(L"layer {} bias_buff", i));
                     {
                         const auto py_bias = python_system_.CallObject(*color_nn_bias_method, *layer_args);
 
@@ -318,7 +318,7 @@ namespace AIHoloImager
                 this->MergeTexture(cmd_list, texture_result.pos_tex, texture_result.inv_model, texture_result.color_tex);
 
                 GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
-                    texture_result.color_tex.Format(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"dilated_tmp_tex");
+                    texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
 
                 GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
 
@@ -360,7 +360,7 @@ namespace AIHoloImager
             const auto planes = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_planes, 4));
 
             planes_tex_ = GpuTexture2DArray(gpu_system_, plane_width, plane_height, num_planes_ * num_per_plane_features_, 1,
-                DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, L"planes_tex_");
+                DXGI_FORMAT_R32_FLOAT, GpuResourceFlag::None, L"planes_tex_");
             planes_srv_ = GpuShaderResourceView(gpu_system_, planes_tex_);
 
             const float* data = planes.data();
@@ -377,7 +377,7 @@ namespace AIHoloImager
         {
             const uint32_t num_samples = (GridRes + 1) * (GridRes + 1) * (GridRes + 1);
             GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
-                D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, L"density_deformation_tex");
+                GpuResourceFlag::UnorderedAccess, L"density_deformation_tex");
             GpuUnorderedAccessView density_deformation_uav(gpu_system_, density_deformation_tex);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);

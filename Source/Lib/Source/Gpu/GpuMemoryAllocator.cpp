@@ -19,8 +19,8 @@ namespace AIHoloImager
 {
     GpuMemoryPage::GpuMemoryPage(GpuSystem& gpu_system, bool is_upload, uint32_t size_in_bytes) : is_upload_(is_upload)
     {
-        buffer_ = GpuBuffer(gpu_system, size_in_bytes, is_upload_ ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_READBACK,
-            D3D12_RESOURCE_FLAG_NONE, L"GpuMemoryPage");
+        buffer_ =
+            GpuBuffer(gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, L"GpuMemoryPage");
         cpu_addr_ = buffer_.Map();
         gpu_addr_ = buffer_.GpuVirtualAddress();
     }
