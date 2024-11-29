@@ -6,8 +6,11 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <vector>
 
 #include <directx/d3d12.h>
+
+#include "GpuFormat.hpp"
 
 namespace AIHoloImager
 {
@@ -17,7 +20,7 @@ namespace AIHoloImager
 
         std::string semantic;
         uint32_t semantic_index;
-        DXGI_FORMAT format;
+        GpuFormat format;
         uint32_t slot = 0;
         uint32_t offset = AppendOffset;
     };

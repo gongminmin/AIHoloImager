@@ -8,6 +8,7 @@
 #include <directx/d3d12.h>
 
 #include "Gpu/GpuDescriptorAllocator.hpp"
+#include "Gpu/GpuFormat.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -26,21 +27,21 @@ namespace AIHoloImager
     public:
         GpuShaderResourceView() noexcept;
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, GpuFormat format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, GpuFormat format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, GpuFormat format);
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
         // Typed buffer
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, DXGI_FORMAT format);
+        GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format);
         GpuShaderResourceView(
-            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format);
+            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
         // Structured buffer
         GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size);
         GpuShaderResourceView(
@@ -73,7 +74,7 @@ namespace AIHoloImager
     public:
         GpuRenderTargetView() noexcept;
         GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
         ~GpuRenderTargetView();
 
         GpuRenderTargetView(GpuRenderTargetView&& other) noexcept;
@@ -101,7 +102,7 @@ namespace AIHoloImager
     public:
         GpuDepthStencilView() noexcept;
         GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
         ~GpuDepthStencilView();
 
         GpuDepthStencilView(GpuDepthStencilView&& other) noexcept;
@@ -129,20 +130,20 @@ namespace AIHoloImager
     public:
         GpuUnorderedAccessView() noexcept;
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, GpuFormat format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, GpuFormat format);
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
         // Typed buffer
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, DXGI_FORMAT format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format);
+        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
         // Structured buffer
         GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size);
         GpuUnorderedAccessView(

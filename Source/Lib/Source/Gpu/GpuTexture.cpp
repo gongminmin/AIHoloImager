@@ -8,70 +8,12 @@
 #include <directx/d3d12.h>
 
 #include "GpuCommandList.hpp"
+#include "GpuFormat.hpp"
 #include "GpuSystem.hpp"
 #include "Util/ErrorHandling.hpp"
 
 namespace AIHoloImager
 {
-    uint32_t FormatSize(DXGI_FORMAT fmt) noexcept
-    {
-        switch (fmt)
-        {
-        case DXGI_FORMAT_R8_UNORM:
-            return 1;
-
-        case DXGI_FORMAT_R8G8_UNORM:
-        case DXGI_FORMAT_R16_UINT:
-            return 2;
-
-        case DXGI_FORMAT_R8G8B8A8_UNORM:
-        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-        case DXGI_FORMAT_B8G8R8A8_UNORM:
-        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-        case DXGI_FORMAT_B8G8R8X8_UNORM:
-        case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-        case DXGI_FORMAT_R16G16_SINT:
-        case DXGI_FORMAT_R32_UINT:
-        case DXGI_FORMAT_R32_SINT:
-        case DXGI_FORMAT_R32_FLOAT:
-            return 4;
-
-        case DXGI_FORMAT_R32G32_UINT:
-        case DXGI_FORMAT_R32G32_SINT:
-        case DXGI_FORMAT_R32G32_FLOAT:
-            return 8;
-
-        case DXGI_FORMAT_R32G32B32_UINT:
-        case DXGI_FORMAT_R32G32B32_SINT:
-        case DXGI_FORMAT_R32G32B32_FLOAT:
-            return 12;
-
-        case DXGI_FORMAT_R32G32B32A32_UINT:
-        case DXGI_FORMAT_R32G32B32A32_SINT:
-        case DXGI_FORMAT_R32G32B32A32_FLOAT:
-            return 16;
-
-        default:
-            // TODO: Support more formats
-            Unreachable("Unsupported format");
-        }
-    }
-
-    uint32_t NumPlanes(DXGI_FORMAT fmt) noexcept
-    {
-        switch (fmt)
-        {
-        case DXGI_FORMAT_D24_UNORM_S8_UINT:
-        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-        case DXGI_FORMAT_NV12:
-            // TODO: Support more formats
-            return 2;
-
-        default:
-            return 1;
-        }
-    }
-
     void DecomposeSubResource(uint32_t sub_resource, uint32_t num_mip_levels, uint32_t array_size, uint32_t& mip_slice,
         uint32_t& array_slice, uint32_t& plane_slice) noexcept
     {
@@ -91,8 +33,9 @@ namespace AIHoloImager
     GpuTexture::GpuTexture() = default;
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, D3D12_RESOURCE_DIMENSION dim, uint32_t width, uint32_t height, uint32_t depth,
-        uint32_t array_size, uint32_t mip_levels, DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name)
-        : resource_(gpu_system, nullptr), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON)
+        uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+        : resource_(gpu_system, nullptr), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON),
+          format_(format)
     {
         const D3D12_HEAP_PROPERTIES default_heap_prop = {
             D3D12_HEAP_TYPE_DEFAULT, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
@@ -111,7 +54,7 @@ namespace AIHoloImager
         }
 
         desc_ = {dim, 0, static_cast<uint64_t>(width), height, static_cast<uint16_t>(depth_or_array_size),
-            static_cast<uint16_t>(mip_levels), format, {1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN, ToD3D12ResourceFlags(flags)};
+            static_cast<uint16_t>(mip_levels), ToDxgiFormat(format), {1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN, ToD3D12ResourceFlags(flags)};
         TIFHR(gpu_system.NativeDevice()->CreateCommittedResource(&default_heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, curr_states_[0], nullptr,
             UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         if (!name.empty())
@@ -194,12 +137,12 @@ namespace AIHoloImager
 
     uint32_t GpuTexture::Planes() const noexcept
     {
-        return NumPlanes(desc_.Format);
+        return NumPlanes(format_);
     }
 
-    DXGI_FORMAT GpuTexture::Format() const noexcept
+    GpuFormat GpuTexture::Format() const noexcept
     {
-        return desc_.Format;
+        return format_;
     }
 
     D3D12_RESOURCE_FLAGS GpuTexture::Flags() const noexcept
@@ -446,7 +389,7 @@ namespace AIHoloImager
 
     GpuTexture2D::GpuTexture2D() = default;
 
-    GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, DXGI_FORMAT format,
+    GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format,
         GpuResourceFlag flags, std::wstring_view name)
         : GpuTexture(gpu_system, D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height, 1, 1, mip_levels, format, flags, std::move(name))
     {
@@ -468,7 +411,7 @@ namespace AIHoloImager
     GpuTexture2DArray::GpuTexture2DArray() = default;
 
     GpuTexture2DArray::GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
-        DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name)
+        GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
         : GpuTexture(
               gpu_system, D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height, 1, array_size, mip_levels, format, flags, std::move(name))
     {
@@ -490,7 +433,7 @@ namespace AIHoloImager
     GpuTexture3D::GpuTexture3D() = default;
 
     GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels,
-        DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name)
+        GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
         : GpuTexture(gpu_system, D3D12_RESOURCE_DIMENSION_TEXTURE3D, width, height, depth, 1, mip_levels, format, flags, std::move(name))
     {
     }

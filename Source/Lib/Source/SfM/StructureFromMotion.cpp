@@ -551,7 +551,7 @@ namespace AIHoloImager
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
         GpuComputePipeline undistort_pipeline_;
 
-        static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };
 
     StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)

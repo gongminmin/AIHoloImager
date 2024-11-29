@@ -3,6 +3,7 @@
 
 #include "GpuResourceViews.hpp"
 
+#include "GpuFormat.hpp"
 #include "GpuSystem.hpp"
 #include "GpuTexture.hpp"
 
@@ -11,29 +12,29 @@ namespace AIHoloImager
     GpuShaderResourceView::GpuShaderResourceView() noexcept = default;
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture)
-        : GpuShaderResourceView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
 
-    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, DXGI_FORMAT format)
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, GpuFormat format)
         : GpuShaderResourceView(gpu_system, texture, ~0U, format)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource)
-        : GpuShaderResourceView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture, sub_resource, GpuFormat::Unknown)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(
-        GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+        GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_2d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         if (sub_resource == ~0U)
@@ -54,29 +55,29 @@ namespace AIHoloImager
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array)
-        : GpuShaderResourceView(gpu_system, texture_array, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture_array, GpuFormat::Unknown)
     {
     }
 
-    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, DXGI_FORMAT format)
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, GpuFormat format)
         : GpuShaderResourceView(gpu_system, texture_array, ~0U, format)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource)
-        : GpuShaderResourceView(gpu_system, texture_array, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture_array, sub_resource, GpuFormat::Unknown)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(
-        GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format)
+        GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture_array.Format() : format;
+        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format);
         srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
         srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         if (sub_resource == ~0U)
@@ -98,29 +99,29 @@ namespace AIHoloImager
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture)
-        : GpuShaderResourceView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
 
-    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, DXGI_FORMAT format)
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, GpuFormat format)
         : GpuShaderResourceView(gpu_system, texture, ~0U, format)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource)
-        : GpuShaderResourceView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuShaderResourceView(gpu_system, texture, sub_resource, GpuFormat::Unknown)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(
-        GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+        GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_3d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
         srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         if (sub_resource == ~0U)
@@ -139,20 +140,20 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture(), &srv_desc, cpu_handle_);
     }
 
-    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, DXGI_FORMAT format)
+    GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format)
         : GpuShaderResourceView(gpu_system, buffer, 0, buffer.Size() / FormatSize(format), format)
     {
     }
 
     GpuShaderResourceView::GpuShaderResourceView(
-        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format)
+        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : gpu_system_(&gpu_system), buffer_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = format;
+        srv_desc.Format = ToDxgiFormat(format);
         srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srv_desc.Buffer.FirstElement = first_element;
@@ -231,17 +232,17 @@ namespace AIHoloImager
     GpuRenderTargetView::GpuRenderTargetView() noexcept = default;
 
     GpuRenderTargetView::GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture)
-        : GpuRenderTargetView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuRenderTargetView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
-    GpuRenderTargetView::GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format)
+    GpuRenderTargetView::GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), texture_(&texture)
     {
         desc_block_ = gpu_system.AllocRtvDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
-        rtv_desc.Format = (format == DXGI_FORMAT_UNKNOWN) ? texture.Format() : format;
+        rtv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
         gpu_system.NativeDevice()->CreateRenderTargetView(texture.NativeTexture(), &rtv_desc, cpu_handle_);
     }
@@ -282,17 +283,17 @@ namespace AIHoloImager
     GpuDepthStencilView::GpuDepthStencilView() noexcept = default;
 
     GpuDepthStencilView::GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture)
-        : GpuDepthStencilView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuDepthStencilView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
-    GpuDepthStencilView::GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format)
+    GpuDepthStencilView::GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), texture_(&texture)
     {
         desc_block_ = gpu_system.AllocDsvDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{};
-        dsv_desc.Format = (format == DXGI_FORMAT_UNKNOWN) ? texture.Format() : format;
+        dsv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
         gpu_system.NativeDevice()->CreateDepthStencilView(texture.NativeTexture(), &dsv_desc, cpu_handle_);
     }
@@ -333,28 +334,28 @@ namespace AIHoloImager
     GpuUnorderedAccessView::GpuUnorderedAccessView() noexcept = default;
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture)
-        : GpuUnorderedAccessView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : GpuUnorderedAccessView(gpu_system, texture, 0, format)
     {
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource)
-        : GpuUnorderedAccessView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture, sub_resource, GpuFormat::Unknown)
     {
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_2d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uint32_t array_slice;
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture2D.MipSlice, array_slice, uav_desc.Texture2D.PlaneSlice);
@@ -362,29 +363,29 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array)
-        : GpuUnorderedAccessView(gpu_system, texture_array, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture_array, GpuFormat::Unknown)
     {
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, GpuFormat format)
         : GpuUnorderedAccessView(gpu_system, texture_array, 0, format)
     {
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource)
-        : GpuUnorderedAccessView(gpu_system, texture_array, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture_array, sub_resource, GpuFormat::Unknown)
     {
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
-        GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, DXGI_FORMAT format)
+        GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture_array.Format() : format;
+        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format);
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
         uav_desc.Texture2DArray.ArraySize = 1;
         DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), uav_desc.Texture2DArray.MipSlice,
@@ -393,28 +394,28 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture)
-        : GpuUnorderedAccessView(gpu_system, texture, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture, GpuFormat::Unknown)
     {
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, GpuFormat format)
         : GpuUnorderedAccessView(gpu_system, texture, 0, format)
     {
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource)
-        : GpuUnorderedAccessView(gpu_system, texture, sub_resource, DXGI_FORMAT_UNKNOWN)
+        : GpuUnorderedAccessView(gpu_system, texture, sub_resource, GpuFormat::Unknown)
     {
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), texture_3d_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = format == DXGI_FORMAT_UNKNOWN ? texture.Format() : format;
+        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
         uint32_t array_slice;
         uint32_t plane_slice;
@@ -424,20 +425,20 @@ namespace AIHoloImager
         gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture(), nullptr, &uav_desc, cpu_handle_);
     }
 
-    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, DXGI_FORMAT format)
+    GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format)
         : GpuUnorderedAccessView(gpu_system, buffer, 0, buffer.Size() / FormatSize(format), format)
     {
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
-        GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, DXGI_FORMAT format)
+        GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : gpu_system_(&gpu_system), buffer_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = format;
+        uav_desc.Format = ToDxgiFormat(format);
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
         uav_desc.Buffer.FirstElement = first_element;
         uav_desc.Buffer.NumElements = num_elements;

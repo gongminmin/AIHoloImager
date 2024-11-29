@@ -48,7 +48,7 @@ namespace AIHoloImager
         {
             const GpuBuffer* ib;
             uint32_t offset;
-            DXGI_FORMAT format;
+            GpuFormat format;
         };
 
         struct ShaderBinding

@@ -267,7 +267,7 @@ namespace AIHoloImager
             D3D12_INDEX_BUFFER_VIEW ibv;
             ibv.BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset;
             ibv.SizeInBytes = ib->ib->Size();
-            ibv.Format = ib->format;
+            ibv.Format = ToDxgiFormat(ib->format);
             d3d12_cmd_list->IASetIndexBuffer(&ibv);
         }
         else

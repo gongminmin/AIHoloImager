@@ -32,9 +32,9 @@ namespace AIHoloImager
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
         {
             const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
-                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT},
-                {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT},
-                {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT},
+                {"POSITION", 0, GpuFormat::RGB32_Float},
+                {"NORMAL", 0, GpuFormat::RGB32_Float},
+                {"TEXCOORD", 0, GpuFormat::RG32_Float},
             }));
 
             {
@@ -45,14 +45,13 @@ namespace AIHoloImager
                     {FlattenPs_shader, 0, 0, 0},
                 };
 
-                const DXGI_FORMAT rtv_formats[] = {PositionFmt, NormalFmt};
+                const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
 
                 GpuRenderPipeline::States states;
                 states.cull_mode = GpuRenderPipeline::CullMode::None;
                 states.conservative_raster = true;
                 states.depth_enable = false;
                 states.rtv_formats = rtv_formats;
-                states.dsv_format = DXGI_FORMAT_UNKNOWN;
 
                 flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, {}, states);
             }
@@ -176,7 +175,7 @@ namespace AIHoloImager
             cmd_list.Clear(normal_rtv, clear_clr);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&mesh_vb, 0, sizeof(VertexFormat)}};
-            const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, DXGI_FORMAT_R32_UINT};
+            const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, GpuFormat::R32_Uint};
 
             const GeneralConstantBuffer* cbs[] = {&flatten_cb_};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
@@ -205,8 +204,8 @@ namespace AIHoloImager
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, DXGI_FORMAT_R8G8B8A8_UNORM,
-                GpuResourceFlag::UnorderedAccess, L"accum_color_tex");
+            GpuTexture2D accum_color_tex(
+                gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"accum_color_tex");
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
 
             {
@@ -237,7 +236,7 @@ namespace AIHoloImager
 
                 if ((intrinsic.width != shadow_map_tex.Width(0)) || (intrinsic.height != shadow_map_tex.Height(0)))
                 {
-                    shadow_map_tex = GpuTexture2D(gpu_system_, intrinsic.width, intrinsic.height, 1, DXGI_FORMAT_R32_FLOAT,
+                    shadow_map_tex = GpuTexture2D(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::R32_Float,
                         GpuResourceFlag::DepthStencil, L"shadow_map_tex");
                     shadow_map_srv = GpuShaderResourceView(gpu_system_, shadow_map_tex);
                     shadow_map_dsv = GpuDepthStencilView(gpu_system_, shadow_map_tex, DepthFmt);
@@ -245,7 +244,7 @@ namespace AIHoloImager
 
                 if ((view.image_mask.Width() != photo_tex.Width(0)) || (view.image_mask.Height() != photo_tex.Height(0)))
                 {
-                    photo_tex = GpuTexture2D(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                    photo_tex = GpuTexture2D(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, GpuFormat::RGBA8_UNorm,
                         GpuResourceFlag::None, L"photo_tex");
                     photo_srv = GpuShaderResourceView(gpu_system_, photo_tex);
                 }
@@ -324,7 +323,7 @@ namespace AIHoloImager
             cmd_list.ClearDepth(shadow_map_dsv, 1);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexFormat)}};
-            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
+            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             const GeneralConstantBuffer* cbs[] = {&gen_shadow_map_cb_};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
@@ -433,10 +432,10 @@ namespace AIHoloImager
         ConstantBuffer<ResolveTextureConstantBuffer> resolve_texture_cb_;
         GpuComputePipeline resolve_texture_pipeline_;
 
-        static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
-        static constexpr DXGI_FORMAT PositionFmt = DXGI_FORMAT_R32G32B32A32_FLOAT;
-        static constexpr DXGI_FORMAT NormalFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
-        static constexpr DXGI_FORMAT DepthFmt = DXGI_FORMAT_D32_FLOAT;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat PositionFmt = GpuFormat::RGBA32_Float;
+        static constexpr GpuFormat NormalFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat DepthFmt = GpuFormat::D32_Float;
     };
 
     TextureReconstruction::TextureReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)

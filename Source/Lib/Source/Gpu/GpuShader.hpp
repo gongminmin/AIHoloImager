@@ -8,6 +8,7 @@
 
 #include <directx/d3d12.h>
 
+#include "GpuFormat.hpp"
 #include "GpuSampler.hpp"
 #include "GpuSystem.hpp"
 #include "GpuUtil.hpp"
@@ -52,8 +53,8 @@ namespace AIHoloImager
             CullMode cull_mode = CullMode::ClockWise;
             bool conservative_raster = false;
             bool depth_enable = false;
-            std::span<const DXGI_FORMAT> rtv_formats;
-            DXGI_FORMAT dsv_format;
+            std::span<const GpuFormat> rtv_formats;
+            GpuFormat dsv_format = GpuFormat::Unknown;
         };
 
     public:

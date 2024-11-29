@@ -14,6 +14,7 @@
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
+#include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
@@ -64,8 +65,8 @@ namespace AIHoloImager
         Impl(GpuSystem& gpu_system, PythonSystem& python_system, uint32_t width, uint32_t height)
             : gpu_system_(gpu_system), python_system_(python_system), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 0.1f, 30.0f))
         {
-            constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
-            constexpr DXGI_FORMAT DsFmt = DXGI_FORMAT_D32_FLOAT;
+            constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
+            constexpr GpuFormat DsFmt = GpuFormat::D32_Float;
 
             ssaa_rt_tex_ = GpuTexture2D(gpu_system_, width * SsaaScale, height * SsaaScale, 1, ColorFmt,
                 GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, L"ssaa_rt_tex_");
@@ -94,7 +95,7 @@ namespace AIHoloImager
                     {RenderPs_shader, 0, 1, 0},
                 };
 
-                const DXGI_FORMAT rtv_formats[] = {ssaa_rt_tex_.Format()};
+                const GpuFormat rtv_formats[] = {ssaa_rt_tex_.Format()};
 
                 GpuRenderPipeline::States states;
                 states.cull_mode = GpuRenderPipeline::CullMode::ClockWise;
@@ -105,8 +106,8 @@ namespace AIHoloImager
                 const GpuStaticSampler point_sampler(GpuStaticSampler::Filter::Point, GpuStaticSampler::AddressMode::Clamp);
 
                 const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
-                    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT},
-                    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT},
+                    {"POSITION", 0, GpuFormat::RGB32_Float},
+                    {"TEXCOORD", 0, GpuFormat::RG32_Float},
                 }));
 
                 render_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, std::span(&point_sampler, 1), states);
@@ -136,7 +137,7 @@ namespace AIHoloImager
                 const ShaderInfo shader = {BlendCs_shader, 1, 2, 1};
                 blend_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&bilinear_sampler, 1});
             }
-            bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, DXGI_FORMAT_R32_UINT, GpuResourceFlag::UnorderedAccess, L"bb_tex_");
+            bb_tex_ = GpuTexture2D(gpu_system_, 4, 2, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"bb_tex_");
             bb_srv_ = GpuShaderResourceView(gpu_system_, bb_tex_);
             bb_uav_ = GpuUnorderedAccessView(gpu_system_, bb_tex_);
         }
@@ -158,7 +159,7 @@ namespace AIHoloImager
             GpuTexture2D albedo_gpu_tex;
             {
                 const auto& albedo_tex = mesh.AlbedoTexture();
-                albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, DXGI_FORMAT_R8G8B8A8_UNORM,
+                albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, GpuFormat::RGBA8_UNorm,
                     GpuResourceFlag::None, L"albedo_gpu_tex");
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
@@ -207,7 +208,7 @@ namespace AIHoloImager
 
                 cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 mv_diffusion_gpu_tex = GpuTexture2D(gpu_system_, mv_diffusion_tex.Width(), mv_diffusion_tex.Height(), 1,
-                    DXGI_FORMAT_R8G8B8A8_UNORM, GpuResourceFlag::None, L"mv_diffusion_gpu_tex");
+                    GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"mv_diffusion_gpu_tex");
                 mv_diffusion_gpu_tex.Upload(gpu_system_, cmd_list, 0, mv_diffusion_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }
@@ -262,7 +263,7 @@ namespace AIHoloImager
             cmd_list.ClearDepth(ssaa_dsv_, 1);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexFormat)}};
-            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, DXGI_FORMAT_R32_UINT};
+            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
             const GpuShaderResourceView* srvs[] = {&albedo_srv};

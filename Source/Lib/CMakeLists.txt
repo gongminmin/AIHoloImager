@@ -25,6 +25,8 @@ set(aihi_files
     Source/Gpu/GpuDescriptorAllocator.hpp
     Source/Gpu/GpuDescriptorHeap.cpp
     Source/Gpu/GpuDescriptorHeap.hpp
+    Source/Gpu/GpuFormat.cpp
+    Source/Gpu/GpuFormat.hpp
     Source/Gpu/GpuMemoryAllocator.cpp
     Source/Gpu/GpuMemoryAllocator.hpp
     Source/Gpu/GpuResource.cpp

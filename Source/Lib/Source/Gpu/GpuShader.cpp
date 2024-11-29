@@ -183,9 +183,9 @@ namespace AIHoloImager
         pso_desc.NumRenderTargets = static_cast<uint32_t>(states.rtv_formats.size());
         for (size_t i = 0; i < states.rtv_formats.size(); ++i)
         {
-            pso_desc.RTVFormats[i] = states.rtv_formats[i];
+            pso_desc.RTVFormats[i] = ToDxgiFormat(states.rtv_formats[i]);
         }
-        pso_desc.DSVFormat = states.dsv_format;
+        pso_desc.DSVFormat = ToDxgiFormat(states.dsv_format);
         pso_desc.SampleDesc.Count = 1;
         pso_desc.SampleDesc.Quality = 0;
         pso_desc.NodeMask = 0;

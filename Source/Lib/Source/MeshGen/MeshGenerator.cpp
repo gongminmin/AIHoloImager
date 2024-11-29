@@ -75,7 +75,7 @@ namespace AIHoloImager
                             layer.weight_buff.Size());
                         cmd_list.Copy(layer.weight_buff, weight_upload_buff);
                     }
-                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, GpuFormat::R32_Float);
 
                     layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
                         std::format(L"layer {} bias_buff", i));
@@ -87,7 +87,7 @@ namespace AIHoloImager
                             layer.bias_buff.Size());
                         cmd_list.Copy(layer.bias_buff, bias_upload_buff);
                     }
-                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, GpuFormat::R32_Float);
                 }
                 {
                     density_nn_cb_ = ConstantBuffer<DensityNnConstantBuffer>(gpu_system_, 1, L"density_nn_cb_");
@@ -136,7 +136,7 @@ namespace AIHoloImager
                             layer.weight_buff.Size());
                         cmd_list.Copy(layer.weight_buff, weight_upload_buff);
                     }
-                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, GpuFormat::R32_Float);
 
                     layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
                         std::format(L"layer {} bias_buff", i));
@@ -148,7 +148,7 @@ namespace AIHoloImager
                             layer.bias_buff.Size());
                         cmd_list.Copy(layer.bias_buff, bias_upload_buff);
                     }
-                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, GpuFormat::R32_Float);
                 }
                 {
                     deformation_nn_cb_ = ConstantBuffer<DeformationNnConstantBuffer>(gpu_system_, 1, L"deformation_nn_cb_");
@@ -197,7 +197,7 @@ namespace AIHoloImager
                             layer.weight_buff.Size());
                         cmd_list.Copy(layer.weight_buff, weight_upload_buff);
                     }
-                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.weight_srv = GpuShaderResourceView(gpu_system_, layer.weight_buff, GpuFormat::R32_Float);
 
                     layer.bias_buff = GpuBuffer(gpu_system_, layer.output_features * sizeof(float), GpuHeap::Default, GpuResourceFlag::None,
                         std::format(L"layer {} bias_buff", i));
@@ -209,7 +209,7 @@ namespace AIHoloImager
                             layer.bias_buff.Size());
                         cmd_list.Copy(layer.bias_buff, bias_upload_buff);
                     }
-                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, DXGI_FORMAT_R32_FLOAT);
+                    layer.bias_srv = GpuShaderResourceView(gpu_system_, layer.bias_buff, GpuFormat::R32_Float);
                 }
                 {
                     merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
@@ -359,7 +359,7 @@ namespace AIHoloImager
             const auto planes = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_planes, 4));
 
             planes_tex_ = GpuTexture2DArray(gpu_system_, plane_width, plane_height, num_planes_ * num_per_plane_features_, 1,
-                DXGI_FORMAT_R32_FLOAT, GpuResourceFlag::None, L"planes_tex_");
+                GpuFormat::R32_Float, GpuResourceFlag::None, L"planes_tex_");
             planes_srv_ = GpuShaderResourceView(gpu_system_, planes_tex_);
 
             const float* data = planes.data();
@@ -375,7 +375,7 @@ namespace AIHoloImager
         Mesh GenMesh()
         {
             const uint32_t num_samples = (GridRes + 1) * (GridRes + 1) * (GridRes + 1);
-            GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            GpuTexture3D density_deformation_tex(gpu_system_, GridRes + 1, GridRes + 1, GridRes + 1, 1, GpuFormat::RGBA32_Float,
                 GpuResourceFlag::UnorderedAccess, L"density_deformation_tex");
             GpuUnorderedAccessView density_deformation_uav(gpu_system_, density_deformation_tex);
 

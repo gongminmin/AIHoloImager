@@ -16,8 +16,8 @@
     #include <windows.h>
 #endif
 #include <directx/d3d12.h>
-#include <directx/dxgiformat.h>
 
+#include "GpuFormat.hpp"
 #include "GpuResource.hpp"
 #include "GpuUtil.hpp"
 #include "Util/ComPtr.hpp"
@@ -35,7 +35,7 @@ namespace AIHoloImager
     public:
         GpuTexture();
         GpuTexture(GpuSystem& gpu_system, D3D12_RESOURCE_DIMENSION dim, uint32_t width, uint32_t height, uint32_t depth,
-            uint32_t array_size, uint32_t mip_levels, DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name = L"");
+            uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
         GpuTexture(
             GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
         virtual ~GpuTexture() noexcept;
@@ -53,7 +53,7 @@ namespace AIHoloImager
         uint32_t ArraySize() const noexcept;
         uint32_t MipLevels() const noexcept;
         uint32_t Planes() const noexcept;
-        DXGI_FORMAT Format() const noexcept;
+        GpuFormat Format() const noexcept;
         D3D12_RESOURCE_FLAGS Flags() const noexcept;
 
         void Reset();
@@ -70,6 +70,7 @@ namespace AIHoloImager
         GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
         D3D12_RESOURCE_DESC desc_{};
         mutable std::vector<D3D12_RESOURCE_STATES> curr_states_;
+        GpuFormat format_;
     };
 
     class GpuTexture2D final : public GpuTexture
@@ -78,7 +79,7 @@ namespace AIHoloImager
 
     public:
         GpuTexture2D();
-        GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, DXGI_FORMAT format, GpuResourceFlag flags,
+        GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags,
             std::wstring_view name = L"");
 
         GpuTexture2D(GpuTexture2D&& other) noexcept;
@@ -94,7 +95,7 @@ namespace AIHoloImager
     public:
         GpuTexture2DArray();
         GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
-            DXGI_FORMAT format, GpuResourceFlag flags, std::wstring_view name = L"");
+            GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
 
         GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
         GpuTexture2DArray& operator=(GpuTexture2DArray&& other) noexcept;
@@ -108,7 +109,7 @@ namespace AIHoloImager
 
     public:
         GpuTexture3D();
-        GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, DXGI_FORMAT format,
+        GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, GpuFormat format,
             GpuResourceFlag flags, std::wstring_view name = L"");
 
         GpuTexture3D(GpuTexture3D&& other) noexcept;
@@ -117,8 +118,6 @@ namespace AIHoloImager
         GpuTexture3D Share() const;
     };
 
-    uint32_t FormatSize(DXGI_FORMAT fmt) noexcept;
-    uint32_t NumPlanes(DXGI_FORMAT fmt) noexcept;
     void DecomposeSubResource(uint32_t sub_resource, uint32_t num_mip_levels, uint32_t array_size, uint32_t& mip_slice,
         uint32_t& array_slice, uint32_t& plane_slice) noexcept;
     uint32_t CalcSubresource(

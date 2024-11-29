@@ -308,7 +308,7 @@ namespace AIHoloImager
                 std::memcpy(edge_table_buff_.Map(), EdgeTable, sizeof(EdgeTable));
                 edge_table_buff_.Unmap(GpuRange{0, edge_table_buff_.Size()});
             }
-            edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, DXGI_FORMAT_R16_UINT);
+            edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, GpuFormat::R16_Uint);
 
             triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Upload,
                 GpuResourceFlag::None, L"triangle_table_buff");
@@ -323,7 +323,7 @@ namespace AIHoloImager
                 }
                 triangle_table_buff_.Unmap(GpuRange{0, triangle_table_buff_.Size()});
             }
-            triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, DXGI_FORMAT_R16_UINT);
+            triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, GpuFormat::R16_Uint);
 
             {
                 calc_cube_indices_cb_ = ConstantBuffer<CalcCubeIndicesConstantBuffer>(gpu_system_, 1, L"calc_cube_indices_cb_");
@@ -361,20 +361,20 @@ namespace AIHoloImager
 
             // [num_non_empty_cubes, num_vertices, num_indices]
             GpuBuffer counter_buff(gpu_system_, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"counter_buff");
-            GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, DXGI_FORMAT_R32_UINT);
+            GpuUnorderedAccessView counter_uav(gpu_system_, counter_buff, GpuFormat::R32_Uint);
             const uint32_t zeros[] = {0, 0, 0, 0};
             cmd_list.Clear(counter_uav, zeros);
 
             GpuBuffer cube_offsets_buff(
                 gpu_system_, total_cubes * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"cube_offsets_buff");
-            GpuShaderResourceView cube_offsets_srv(gpu_system_, cube_offsets_buff, DXGI_FORMAT_R32_UINT);
+            GpuShaderResourceView cube_offsets_srv(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
             {
                 calc_cube_indices_cb_->size = size;
                 calc_cube_indices_cb_->total_cubes = total_cubes;
                 calc_cube_indices_cb_->isovalue = isovalue;
                 calc_cube_indices_cb_.UploadToGpu();
 
-                GpuUnorderedAccessView cube_offsets_uav(gpu_system_, cube_offsets_buff, DXGI_FORMAT_R32_UINT);
+                GpuUnorderedAccessView cube_offsets_uav(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
 
                 constexpr uint32_t BlockDim = 256;
 
@@ -411,9 +411,9 @@ namespace AIHoloImager
                 process_non_empty_cubes_cb_->isovalue = isovalue;
                 process_non_empty_cubes_cb_.UploadToGpu();
 
-                GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system_, non_empty_cube_ids_buff, DXGI_FORMAT_R32_UINT);
-                GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system_, non_empty_cube_indices_buff, DXGI_FORMAT_R32_UINT);
-                GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system_, vertex_index_offsets_buff, DXGI_FORMAT_R32G32_UINT);
+                GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
                 constexpr uint32_t BlockDim = 256;
 
@@ -451,16 +451,16 @@ namespace AIHoloImager
                 gen_vertices_indices_cb_->scale = scale;
                 gen_vertices_indices_cb_.UploadToGpu();
 
-                GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, DXGI_FORMAT_R32_UINT);
-                GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, DXGI_FORMAT_R32_UINT);
-                GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, DXGI_FORMAT_R32G32_UINT);
+                GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
+                GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
+                GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
                 GpuBuffer mesh_vertices_buff(
                     gpu_system_, mesh_vertices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(
                     gpu_system_, mesh_indices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_indices_buff");
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
-                GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, DXGI_FORMAT_R32_UINT);
+                GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, GpuFormat::R32_Uint);
 
                 constexpr uint32_t BlockDim = 256;
 

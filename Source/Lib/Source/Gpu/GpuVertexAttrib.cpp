@@ -5,7 +5,7 @@
 
 #include <map>
 
-#include "GpuTexture.hpp"
+#include "GpuFormat.hpp"
 
 namespace AIHoloImager
 {
@@ -17,7 +17,7 @@ namespace AIHoloImager
             semantics_[i] = attribs[i].semantic;
 
             input_elems_[i].SemanticIndex = attribs[i].semantic_index;
-            input_elems_[i].Format = attribs[i].format;
+            input_elems_[i].Format = ToDxgiFormat(attribs[i].format);
             input_elems_[i].InputSlot = attribs[i].slot;
             input_elems_[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
             input_elems_[i].InstanceDataStepRate = 0;

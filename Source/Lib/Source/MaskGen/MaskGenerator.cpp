@@ -100,14 +100,14 @@ namespace AIHoloImager
                 downsampled_gpu_tex_ = GpuTexture2D(
                     gpu_system_, U2NetInputDim, U2NetInputDim, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"downsampled_gpu_tex_");
                 image_max_gpu_tex_ =
-                    GpuTexture2D(gpu_system_, 1, 1, 1, DXGI_FORMAT_R32_UINT, GpuResourceFlag::UnorderedAccess, L"image_max_gpu_tex_");
-                normalized_gpu_tex_ = GpuTexture2D(gpu_system_, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, DXGI_FORMAT_R32_FLOAT,
+                    GpuTexture2D(gpu_system_, 1, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"image_max_gpu_tex_");
+                normalized_gpu_tex_ = GpuTexture2D(gpu_system_, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::UnorderedAccess, L"normalized_gpu_tex_");
 
-                pred_gpu_tex_ = GpuTexture2D(gpu_system_, U2NetInputDim, U2NetInputDim, 1, DXGI_FORMAT_R32_FLOAT,
-                    GpuResourceFlag::UnorderedAccess, L"pred_gpu_tex_");
+                pred_gpu_tex_ = GpuTexture2D(
+                    gpu_system_, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float, GpuResourceFlag::UnorderedAccess, L"pred_gpu_tex_");
                 pred_min_max_gpu_tex_ =
-                    GpuTexture2D(gpu_system_, 2, 1, 1, DXGI_FORMAT_R32_UINT, GpuResourceFlag::UnorderedAccess, L"pred_min_max_gpu_tex_");
+                    GpuTexture2D(gpu_system_, 2, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"pred_min_max_gpu_tex_");
                 mask_gpu_tex_ = GpuTexture2D(gpu_system_, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, L"mask_gpu_tex_");
                 mask_pingpong_gpu_tex_ =
                     GpuTexture2D(gpu_system_, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, L"mask_pingpong_gpu_tex_");
@@ -115,7 +115,7 @@ namespace AIHoloImager
                 if (crop)
                 {
                     bbox_gpu_tex_ =
-                        GpuTexture2D(gpu_system_, 4, 1, 1, DXGI_FORMAT_R32_UINT, GpuResourceFlag::UnorderedAccess, L"bbox_gpu_tex_");
+                        GpuTexture2D(gpu_system_, 4, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"bbox_gpu_tex_");
                 }
             }
 
@@ -525,8 +525,8 @@ namespace AIHoloImager
         };
         GpuComputePipeline merge_mask_pipeline_;
 
-        static constexpr DXGI_FORMAT MaskFmt = DXGI_FORMAT_R8_UNORM;
-        static constexpr DXGI_FORMAT ColorFmt = DXGI_FORMAT_R8G8B8A8_UNORM;
+        static constexpr GpuFormat MaskFmt = GpuFormat::R8_UNorm;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
         static constexpr uint32_t U2NetInputDim = 320;
         static constexpr uint32_t U2NetInputChannels = 3;
     };
