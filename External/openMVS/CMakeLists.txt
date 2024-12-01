@@ -10,18 +10,13 @@ if((NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/OpenMVS_Windows_x64) OR (NOT IS_DIREC
     file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/OpenMVS_Windows_x64.7z DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/OpenMVS_Windows_x64)
 endif()
 
-get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-if(is_multi_config)
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
-else()
-    set(output_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
+set(deployed_files )
 
-set(deploy_files
+set(copy_files
     bz2.dll
     boost_iostreams-vc143-mt-x64-1_83.dll
     boost_program_options-vc143-mt-x64-1_83.dll
-    boost_serialization-vc143-mt-x64-1_83.dll    
+    boost_serialization-vc143-mt-x64-1_83.dll
     DensifyPointCloud.exe
     gmp-10.dll
     Iex-3_1.dll
@@ -45,20 +40,18 @@ set(deploy_files
     tiff.dll
     zstd.dll
 )
-set(depends_files)
-foreach(file ${deploy_files})
-    add_custom_command(OUTPUT ${output_dir}/${file}
-        COMMAND ${CMAKE_COMMAND} -E create_hardlink
-            ${CMAKE_CURRENT_BINARY_DIR}/OpenMVS_Windows_x64/${file}
-            ${output_dir}/${file}
-        COMMENT "Deploying ${file}..."
+foreach(src_file ${copy_files})
+    add_custom_command(OUTPUT ${aihi_output_dir}/${src_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink OpenMVS_Windows_x64/${src_file} ${aihi_output_dir}/${src_file}
+        COMMENT "Deploying ${src_file}..."
+        DEPENDS OpenMVS_Windows_x64/${src_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
     )
-    list(APPEND depends_files ${output_dir}/${file})
+
+    list(APPEND deployed_files ${aihi_output_dir}/${src_file})
 endforeach()
 
-add_custom_target(DeployOpenMVS ALL
-    DEPENDS ${depends_files}
-    WORKING_DIRECTORY ${output_dir}
-)
+add_custom_target(DeployOpenMVS DEPENDS ${deployed_files})
 
 set_target_properties(DeployOpenMVS PROPERTIES FOLDER "External")

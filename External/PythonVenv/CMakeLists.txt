@@ -3,7 +3,7 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-set(deploy_files )
+set(deployed_files )
 
 set(py_files
     accelerate/commands/config/cluster.py
@@ -2562,7 +2562,7 @@ foreach(src_file ${py_files})
         VERBATIM COMMAND_EXPAND_LISTS
     )
 
-    list(APPEND deploy_files ${dst_file})
+    list(APPEND deployed_files ${dst_file})
 endforeach()
 
 set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-win_amd64.pyd)
@@ -2654,7 +2654,7 @@ foreach(src_file ${copy_files})
         VERBATIM COMMAND_EXPAND_LISTS
     )
 
-    list(APPEND deploy_files ${dst_file})
+    list(APPEND deployed_files ${dst_file})
 endforeach()
 
 set(py_files
@@ -2905,7 +2905,7 @@ foreach(src_file ${py_files})
         VERBATIM COMMAND_EXPAND_LISTS
     )
 
-    list(APPEND deploy_files ${dst_file})
+    list(APPEND deployed_files ${dst_file})
 endforeach()
 
 set(copy_files
@@ -2945,7 +2945,7 @@ foreach(src_file ${copy_files})
         VERBATIM COMMAND_EXPAND_LISTS
     )
 
-    list(APPEND deploy_files ${dst_file})
+    list(APPEND deployed_files ${dst_file})
 endforeach()
 
 set(copy_files
@@ -2966,10 +2966,10 @@ foreach(src_file ${copy_files})
         VERBATIM COMMAND_EXPAND_LISTS
     )
 
-    list(APPEND deploy_files ${dst_file})
+    list(APPEND deployed_files ${dst_file})
 endforeach()
 
-add_custom_target(DeployPython DEPENDS ${deploy_files} requirements.txt)
+add_custom_target(DeployPython DEPENDS ${deployed_files} requirements.txt)
 
 target_sources(DeployPython
     PRIVATE
