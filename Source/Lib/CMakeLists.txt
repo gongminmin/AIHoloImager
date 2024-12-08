@@ -45,7 +45,6 @@ set(aihi_files
     Source/Gpu/GpuVertexAttrib.cpp
     Source/Gpu/GpuVertexAttrib.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
-    Source/MaskGen/Shader/CalcRoiCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
     Source/MaskGen/Shader/GaussianBlurCs.hlsl
@@ -141,7 +140,6 @@ macro(AddShaderFile file_name shader_type entry_point)
 endmacro()
 
 AddShaderFile(Source/MaskGen/Shader/CalcBBoxCs.hlsl "cs" "main")
-AddShaderFile(Source/MaskGen/Shader/CalcRoiCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/ErosionDilationCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/GaussianBlurCs.hlsl "cs" "main")

@@ -465,7 +465,7 @@ namespace AIHoloImager
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        mask_gen.Generate(cmd_list, undistort_gpu_tex);
+                        mask_gen.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
 
                         undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 

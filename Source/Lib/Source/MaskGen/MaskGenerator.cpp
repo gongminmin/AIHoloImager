@@ -16,7 +16,6 @@
 #include "Gpu/GpuTexture.hpp"
 
 #include "CompiledShader/MaskGen/CalcBBoxCs.h"
-#include "CompiledShader/MaskGen/CalcRoiCs.h"
 #include "CompiledShader/MaskGen/DownsampleCs.h"
 #include "CompiledShader/MaskGen/ErosionDilationCs.h"
 #include "CompiledShader/MaskGen/GaussianBlurCs.h"
@@ -55,10 +54,6 @@ namespace AIHoloImager
                 calc_bbox_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {CalcRoiCs_shader, 1, 0, 1};
-                calc_roi_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
-            }
-            {
                 const ShaderInfo shader = {StatPredCs_shader, 1, 1, 1};
                 stat_pred_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
@@ -86,7 +81,7 @@ namespace AIHoloImager
             python_system_.CallObject(*mask_generator_destroy_method);
         }
 
-        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex)
+        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, glm::uvec4& roi)
         {
             const uint32_t width = image_gpu_tex.Width(0);
             const uint32_t height = image_gpu_tex.Height(0);
@@ -119,7 +114,8 @@ namespace AIHoloImager
                 }
             }
 
-            this->GenMask(cmd_list, image_gpu_tex, 0, 0, width, height, !crop);
+            roi = glm::uvec4(0, 0, width, height);
+            this->GenMask(cmd_list, image_gpu_tex, roi, !crop);
             if (crop)
             {
                 auto calc_bbox_cb = ConstantBuffer<StatPredConstantBuffer>(gpu_system_, 1, L"calc_bbox_cb");
@@ -143,29 +139,28 @@ namespace AIHoloImager
                     const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                     cmd_list.Compute(calc_bbox_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
                 }
-                {
-                    const GeneralConstantBuffer* cbs[] = {&calc_bbox_cb};
-                    GpuUnorderedAccessView* uavs[] = {&bbox_uav};
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, {}, uavs};
-                    cmd_list.Compute(calc_roi_pipeline_, 1, 1, 1, shader_binding);
-                }
 
                 // TODO: Use indirect dispatch to avoid the read back
-                uint32_t bbox[4];
-                bbox_gpu_tex_.Readback(gpu_system_, cmd_list, 0, bbox);
+                bbox_gpu_tex_.Readback(gpu_system_, cmd_list, 0, &roi);
 
-                this->GenMask(cmd_list, image_gpu_tex, bbox[0], bbox[1], bbox[2], bbox[3], true);
+                const glm::uvec2 bb_min(roi.x, roi.y);
+                const glm::uvec2 bb_max(roi.z, roi.w);
+                const uint32_t crop_extent = std::max(std::max(bb_max.x - bb_min.x, bb_max.y - bb_min.y) + 16, U2NetInputDim) / 2;
+                const glm::uvec2 crop_center = (bb_min + bb_max) / 2U;
+                const glm::uvec4 square_roi = glm::clamp(glm::ivec4(crop_center - crop_extent, crop_center + crop_extent + 1U),
+                    glm::ivec4(0, 0, 0, 0), glm::ivec4(width, height, width, height));
+
+                this->GenMask(cmd_list, image_gpu_tex, square_roi, true);
             }
         }
 
     private:
-        void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, uint32_t roi_left, uint32_t roi_top, uint32_t roi_right,
-            uint32_t roi_bottom, bool blur)
+        void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, const glm::uvec4& roi, bool blur)
         {
             constexpr uint32_t BlockDim = 16;
 
-            const uint32_t roi_width = roi_right - roi_left;
-            const uint32_t roi_height = roi_bottom - roi_top;
+            const uint32_t roi_width = roi.z - roi.x;
+            const uint32_t roi_height = roi.w - roi.y;
 
             constexpr uint32_t InitMinMax[2] = {~0U, 0U};
             pred_min_max_gpu_tex_.Upload(gpu_system_, cmd_list, 0, InitMinMax);
@@ -175,10 +170,7 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system_, downsampled_x_gpu_tex_);
 
                 auto downsample_x_cb = ConstantBuffer<ResizeConstantBuffer>(gpu_system_, 1, L"downsample_x_cb");
-                downsample_x_cb->src_roi.x = roi_left;
-                downsample_x_cb->src_roi.y = roi_top;
-                downsample_x_cb->src_roi.z = roi_right;
-                downsample_x_cb->src_roi.w = roi_bottom;
+                downsample_x_cb->src_roi = roi;
                 downsample_x_cb->dest_size.x = U2NetInputDim;
                 downsample_x_cb->dest_size.y = roi_height;
                 downsample_x_cb->scale = static_cast<float>(roi_width) / U2NetInputDim;
@@ -445,7 +437,7 @@ namespace AIHoloImager
                 auto merge_mask_cb = ConstantBuffer<MergeMaskConstantBuffer>(gpu_system_, 1, L"merge_mask_cb");
                 merge_mask_cb->texture_size.x = width;
                 merge_mask_cb->texture_size.y = height;
-                merge_mask_cb->roi = glm::uvec4(roi_left, roi_top, roi_right, roi_bottom);
+                merge_mask_cb->roi = roi;
                 merge_mask_cb.UploadToGpu();
 
                 const GeneralConstantBuffer* cbs[] = {&merge_mask_cb};
@@ -484,7 +476,6 @@ namespace AIHoloImager
         GpuComputePipeline stat_image_pipeline_;
         GpuComputePipeline stat_pred_pipeline_;
         GpuComputePipeline calc_bbox_pipeline_;
-        GpuComputePipeline calc_roi_pipeline_;
 
         static constexpr uint32_t ResizeKernelRadius = 1;
         struct ResizeConstantBuffer
@@ -541,8 +532,8 @@ namespace AIHoloImager
     MaskGenerator::MaskGenerator(MaskGenerator&& other) noexcept = default;
     MaskGenerator& MaskGenerator::operator=(MaskGenerator&& other) noexcept = default;
 
-    void MaskGenerator::Generate(GpuCommandList& cmd_list, GpuTexture2D& image)
+    void MaskGenerator::Generate(GpuCommandList& cmd_list, GpuTexture2D& image, glm::uvec4& roi)
     {
-        impl_->Generate(cmd_list, image);
+        impl_->Generate(cmd_list, image, roi);
     }
 } // namespace AIHoloImager

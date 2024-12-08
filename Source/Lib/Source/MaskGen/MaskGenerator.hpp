@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <glm/vec4.hpp>
+
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
@@ -22,7 +24,7 @@ namespace AIHoloImager
 
         MaskGenerator& operator=(MaskGenerator&& other) noexcept;
 
-        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image);
+        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image, glm::uvec4& roi);
 
     private:
         class Impl;

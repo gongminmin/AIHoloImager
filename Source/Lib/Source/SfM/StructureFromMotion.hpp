@@ -10,6 +10,7 @@
 #include <glm/mat3x3.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -26,6 +27,7 @@ namespace AIHoloImager
         struct View
         {
             Texture image_mask;
+            glm::uvec4 roi;
 
             uint32_t intrinsic_id;
 
