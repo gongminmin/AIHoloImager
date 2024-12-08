@@ -1940,6 +1940,7 @@ set(py_files
     torch/_subclasses/fake_utils.py
     torch/_subclasses/functional_tensor.py
     torch/_subclasses/meta_utils.py
+    torch/_subclasses/schema_check_mode.py
     torch/_subclasses/__init__.py
     torch/_vendor/packaging/version.py
     torch/_vendor/packaging/_structures.py
