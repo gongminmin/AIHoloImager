@@ -291,6 +291,27 @@ namespace AIHoloImager
 
             auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
+            Texture merged_tex(texture_size, texture_size, 4);
+            {
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                this->MergeTexture(cmd_list, texture_result.pos_tex, texture_result.inv_model, texture_result.color_tex);
+
+                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
+                    texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
+
+                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
+
+                dilated_gpu_tex->Readback(gpu_system_, cmd_list, 0, merged_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
+            }
+
+            mesh.AlbedoTexture() = std::move(merged_tex);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
+#endif
+
             {
                 const glm::mat4x4 adjust_mtx =
                     RegularizeTransform(-recon_input.obb.center, glm::inverse(recon_input.obb.orientation), glm::vec3(1)) * model_mtx;
@@ -309,23 +330,6 @@ namespace AIHoloImager
                     normal = glm::vec3(n);
                 }
             }
-
-            Texture merged_tex(texture_size, texture_size, 4);
-            {
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-                this->MergeTexture(cmd_list, texture_result.pos_tex, texture_result.inv_model, texture_result.color_tex);
-
-                GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
-                    texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
-
-                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
-
-                dilated_gpu_tex->Readback(gpu_system_, cmd_list, 0, merged_tex.Data());
-                gpu_system_.Execute(std::move(cmd_list));
-            }
-
-            mesh.AlbedoTexture() = std::move(merged_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMesh.glb");
