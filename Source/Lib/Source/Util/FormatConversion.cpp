@@ -21,6 +21,15 @@ namespace AIHoloImager
         case ElementFormat::RGBA8_UNorm:
             return GpuFormat::RGBA8_UNorm;
 
+        case ElementFormat::R32_Float:
+            return GpuFormat::R32_Float;
+        case ElementFormat::RG32_Float:
+            return GpuFormat::RG32_Float;
+        case ElementFormat::RGB32_Float:
+            return GpuFormat::RGB32_Float;
+        case ElementFormat::RGBA32_Float:
+            return GpuFormat::RGBA32_Float;
+
         default:
             Unreachable("Invalid format");
         }
@@ -39,6 +48,15 @@ namespace AIHoloImager
             return ElementFormat::RG8_UNorm;
         case GpuFormat::RGBA8_UNorm:
             return ElementFormat::RGBA8_UNorm;
+
+        case GpuFormat::R32_Float:
+            return ElementFormat::R32_Float;
+        case GpuFormat::RG32_Float:
+            return ElementFormat::RG32_Float;
+        case GpuFormat::RGB32_Float:
+            return ElementFormat::RGB32_Float;
+        case GpuFormat::RGBA32_Float:
+            return ElementFormat::RGBA32_Float;
 
         default:
             Unreachable("Invalid format");

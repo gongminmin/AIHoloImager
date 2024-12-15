@@ -119,9 +119,17 @@ namespace AIHoloImager
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                Texture pos_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA32_Float);
+                flatten_pos_tex.Readback(gpu_system_, cmd_list, 0, pos_tex.Data());
+
                 Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA8_UNorm);
                 flatten_normal_tex.Readback(gpu_system_, cmd_list, 0, normal_tex.Data());
+
                 gpu_system_.Execute(std::move(cmd_list));
+
+                pos_tex.ConvertInPlace(ElementFormat::RGB32_Float);
+                SaveTexture(pos_tex, output_dir / "FlattenPos.pfm");
 
                 SaveTexture(normal_tex, output_dir / "FlattenNormal.png");
             }

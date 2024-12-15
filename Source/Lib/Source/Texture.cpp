@@ -4,6 +4,8 @@
 #include "AIHoloImager/Texture.hpp"
 
 #include <cstring>
+#include <format>
+#include <fstream>
 #include <utility>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -79,40 +81,70 @@ namespace AIHoloImager
             }
             else
             {
-                const uint32_t channels = FormatChannels(format_);
-
-                if (format == ElementFormat::RGBA8_UNorm)
+                if (FormatChannelSize(format_) == 1)
                 {
+                    const uint32_t channels = FormatChannels(format_);
+
+                    if ((format == ElementFormat::RGBA8_UNorm))
+                    {
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
-                    for (uint32_t i = 0; i < width_ * height_; ++i)
+                        for (uint32_t i = 0; i < width_ * height_; ++i)
+                        {
+                            memcpy(&dst[i * 4], &src[i * channels], channels);
+                            dst[i * 4 + 3] = std::byte(0xFF);
+                        }
+
+                        return;
+                    }
+                    else if (format == ElementFormat::RGB8_UNorm)
                     {
-                        memcpy(&dst[i * 4], &src[i * channels], channels);
-                        dst[i * 4 + 3] = std::byte(0xFF);
+                        const uint32_t copy_channels = std::min(channels, 3u);
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                        for (uint32_t i = 0; i < width_ * height_; ++i)
+                        {
+                            memcpy(&dst[i * 3], &src[i * channels], copy_channels);
+                            if (copy_channels < 3)
+                            {
+                                memset(&dst[i * 3 + copy_channels], 0, 3 - copy_channels);
+                            }
+                        }
+
+                        return;
                     }
                 }
-                else if (format == ElementFormat::RGB8_UNorm)
+                else if ((format == ElementFormat::R32_Float) || (format == ElementFormat::RGB32_Float))
                 {
-                    const uint32_t copy_channels = std::min(channels, 3u);
+                    const uint32_t src_channels = FormatChannels(format_);
+                    const uint32_t dst_channels = FormatChannels(format);
+                    const uint32_t ch_size = FormatChannelSize(format_);
+
+                    const float* src_float = reinterpret_cast<const float*>(data_.data());
+                    float* dst_float = reinterpret_cast<float*>(dst_data.data());
+
+                    const uint32_t copy_channels = std::min(src_channels, dst_channels);
 
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
                     for (uint32_t i = 0; i < width_ * height_; ++i)
                     {
-                        memcpy(&dst[i * 3], &src[i * channels], copy_channels);
+                        memcpy(&dst_float[i * dst_channels], &src_float[i * src_channels], copy_channels * ch_size);
                         if (copy_channels < 3)
                         {
-                            memset(&dst[i * 3 + copy_channels], 0, 3 - copy_channels);
+                            memset(&dst[i * dst_channels + copy_channels], 0, (dst_channels - copy_channels) * ch_size);
                         }
                     }
+
+                    return;
                 }
-                else
-                {
-                    // TODO: Support more formats
-                    Unreachable("Unsupported conversion");
-                }
+
+                // TODO: Support more formats
+                Unreachable("Unsupported conversion");
             }
         }
 
@@ -222,18 +254,46 @@ namespace AIHoloImager
             return;
         }
 
-        const uint32_t num_channels = FormatChannels(tex.Format());
+        const ElementFormat format = tex.Format();
+        const uint32_t num_channels = FormatChannels(format);
 
         const auto output_ext = path.extension();
-        if (output_ext == ".jpg")
+        if (FormatChannelSize(format) == 1)
         {
-            stbi_write_jpg(
-                path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels, tex.Data(), 90);
+            if (output_ext == ".jpg")
+            {
+                stbi_write_jpg(
+                    path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels, tex.Data(), 90);
+                return;
+            }
+            else if (output_ext == ".png")
+            {
+                stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels,
+                    tex.Data(), static_cast<int>(tex.Width() * num_channels));
+                return;
+            }
         }
-        else
+        else if ((format == ElementFormat::R32_Float) || (format == ElementFormat::RGB32_Float))
         {
-            stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels, tex.Data(),
-                static_cast<int>(tex.Width() * num_channels));
+            if (output_ext == ".pfm")
+            {
+                std::ofstream pfm_fs(path, std::ios_base::binary);
+                const std::string header =
+                    std::format("P{}\n{} {}\n-1.0\n", format == ElementFormat::R32_Float ? 'f' : 'F', tex.Width(), tex.Height());
+                pfm_fs.write(header.c_str(), header.size());
+
+                const uint32_t row_size = tex.Width() * FormatSize(format);
+                const std::byte* data = tex.Data() + (tex.Height() - 1) * row_size;
+                for (uint32_t y = 0; y < tex.Height(); ++y)
+                {
+                    pfm_fs.write(reinterpret_cast<const char*>(data), row_size);
+                    data -= row_size;
+                }
+
+                return;
+            }
         }
+
+        Unreachable("Unsupported format");
     }
 } // namespace AIHoloImager
