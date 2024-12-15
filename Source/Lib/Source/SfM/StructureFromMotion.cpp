@@ -443,7 +443,7 @@ namespace AIHoloImager
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        Ensure4Channel(result_view.image_mask);
+                        result_view.image_mask.ConvertInPlace(ElementFormat::RGBA8_UNorm);
 
                         if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
                             (distort_gpu_tex.Height(0) != result_view.image_mask.Height()))

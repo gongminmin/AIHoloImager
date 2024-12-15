@@ -20,6 +20,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MvDiffusion/MultiViewDiffusion.hpp"
+#include "Util/FormatConversion.hpp"
 
 #include "CompiledShader/MvRenderer/BlendCs.h"
 #include "CompiledShader/MvRenderer/CalcDiffusionBoxCs.h"
@@ -185,7 +186,8 @@ namespace AIHoloImager
 
             GpuTexture2D mv_diffusion_gpu_tex;
             {
-                Texture init_view_cpu_tex = Texture(init_view_tex_.Width(0), init_view_tex_.Height(0), FormatSize(init_view_tex_.Format()));
+                Texture init_view_cpu_tex =
+                    Texture(init_view_tex_.Width(0), init_view_tex_.Height(0), ToElementFormat(init_view_tex_.Format()));
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 init_view_tex_.Readback(gpu_system_, cmd_list, 0, init_view_cpu_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
@@ -194,13 +196,13 @@ namespace AIHoloImager
                 SaveTexture(init_view_cpu_tex, output_dir / "InitView.png");
 #endif
 
-                Ensure3Channel(init_view_cpu_tex);
+                init_view_cpu_tex.ConvertInPlace(ElementFormat::RGB8_UNorm);
                 Texture mv_diffusion_tex;
                 {
                     MultiViewDiffusion mv_diffusion(python_system_);
                     mv_diffusion_tex = mv_diffusion.Generate(init_view_cpu_tex);
                 }
-                Ensure4Channel(mv_diffusion_tex);
+                mv_diffusion_tex.ConvertInPlace(ElementFormat::RGBA8_UNorm);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveTexture(mv_diffusion_tex, output_dir / "Diffusion.png");
@@ -222,12 +224,12 @@ namespace AIHoloImager
                 Downsample(cmd_list, multi_view_texs_[i], multi_view_uavs_[i]);
 
                 ret.multi_view_images[i] =
-                    Texture(multi_view_texs_[i].Width(0), multi_view_texs_[i].Height(0), FormatSize(multi_view_texs_[i].Format()));
+                    Texture(multi_view_texs_[i].Width(0), multi_view_texs_[i].Height(0), ToElementFormat(multi_view_texs_[i].Format()));
 
                 multi_view_texs_[i].Readback(gpu_system_, cmd_list, 0, ret.multi_view_images[i].Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
-                Ensure3Channel(ret.multi_view_images[i]);
+                ret.multi_view_images[i].ConvertInPlace(ElementFormat::RGB8_UNorm);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveTexture(ret.multi_view_images[i], output_dir / std::format("View{}.png", i));

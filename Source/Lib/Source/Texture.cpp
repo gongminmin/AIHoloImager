@@ -11,13 +11,15 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#include "Util/ErrorHandling.hpp"
+
 namespace AIHoloImager
 {
     class Texture::Impl
     {
     public:
-        Impl(uint32_t width, uint32_t height, uint32_t num_channels)
-            : width_(width), height_(height), num_channels_(num_channels), data_(width * height * num_channels)
+        Impl(uint32_t width, uint32_t height, ElementFormat format)
+            : width_(width), height_(height), format_(format), data_(width * height * FormatSize(format))
         {
         }
 
@@ -29,16 +31,16 @@ namespace AIHoloImager
         {
             return height_;
         }
-        uint32_t NumChannels() const noexcept
+        ElementFormat Format() const noexcept
         {
-            return num_channels_;
+            return format_;
         }
 
-        uint8_t* Data() noexcept
+        std::byte* Data() noexcept
         {
             return data_.data();
         }
-        const uint8_t* Data() const noexcept
+        const std::byte* Data() const noexcept
         {
             return data_.data();
         }
@@ -48,16 +50,82 @@ namespace AIHoloImager
             return static_cast<uint32_t>(data_.size());
         }
 
+        Texture Convert(ElementFormat format) const
+        {
+            Texture ret(width_, height_, format);
+            this->ConvertData(ret.impl_->data_, format);
+            return ret;
+        }
+
+        void ConvertInPlace(ElementFormat format)
+        {
+            std::vector<std::byte> new_data;
+            this->ConvertData(new_data, format);
+            data_ = std::move(new_data);
+            format_ = format;
+        }
+
+    private:
+        void ConvertData(std::vector<std::byte>& dst_data, ElementFormat format) const
+        {
+            dst_data.resize(width_ * height_ * FormatSize(format));
+
+            const std::byte* src = data_.data();
+            std::byte* dst = dst_data.data();
+
+            if (format == format_)
+            {
+                std::memcpy(dst, src, data_.size());
+            }
+            else
+            {
+                const uint32_t channels = FormatChannels(format_);
+
+                if (format == ElementFormat::RGBA8_UNorm)
+                {
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                    for (uint32_t i = 0; i < width_ * height_; ++i)
+                    {
+                        memcpy(&dst[i * 4], &src[i * channels], channels);
+                        dst[i * 4 + 3] = std::byte(0xFF);
+                    }
+                }
+                else if (format == ElementFormat::RGB8_UNorm)
+                {
+                    const uint32_t copy_channels = std::min(channels, 3u);
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+                    for (uint32_t i = 0; i < width_ * height_; ++i)
+                    {
+                        memcpy(&dst[i * 3], &src[i * channels], copy_channels);
+                        if (copy_channels < 3)
+                        {
+                            memset(&dst[i * 3 + copy_channels], 0, 3 - copy_channels);
+                        }
+                    }
+                }
+                else
+                {
+                    // TODO: Support more formats
+                    Unreachable("Unsupported conversion");
+                }
+            }
+        }
+
     private:
         uint32_t width_ = 0;
         uint32_t height_ = 0;
-        uint32_t num_channels_ = 0;
+        ElementFormat format_ = ElementFormat::Unknown;
 
-        std::vector<uint8_t> data_;
+        std::vector<std::byte> data_;
     };
 
     Texture::Texture() = default;
-    Texture::Texture(uint32_t width, uint32_t height, uint32_t num_channels) : impl_(std::make_unique<Impl>(width, height, num_channels))
+    Texture::Texture(uint32_t width, uint32_t height, ElementFormat format) : impl_(std::make_unique<Impl>(width, height, format))
     {
     }
     Texture::Texture(const Texture& rhs) : impl_(rhs.impl_ ? std::make_unique<Impl>(*rhs.impl_) : nullptr)
@@ -103,16 +171,16 @@ namespace AIHoloImager
     {
         return impl_->Height();
     }
-    uint32_t Texture::NumChannels() const noexcept
+    ElementFormat Texture::Format() const noexcept
     {
-        return impl_->NumChannels();
+        return impl_->Format();
     }
 
-    uint8_t* Texture::Data() noexcept
+    std::byte* Texture::Data() noexcept
     {
         return impl_->Data();
     }
-    const uint8_t* Texture::Data() const noexcept
+    const std::byte* Texture::Data() const noexcept
     {
         return impl_->Data();
     }
@@ -122,12 +190,22 @@ namespace AIHoloImager
         return impl_->DataSize();
     }
 
+    Texture Texture::Convert(ElementFormat format) const
+    {
+        return impl_->Convert(format);
+    }
+
+    void Texture::ConvertInPlace(ElementFormat format)
+    {
+        impl_->ConvertInPlace(format);
+    }
+
     Texture LoadTexture(const std::filesystem::path& path)
     {
         int width, height;
         uint8_t* data = stbi_load(path.string().c_str(), &width, &height, nullptr, 4);
 
-        Texture tex(width, height, 4);
+        Texture tex(width, height, ElementFormat::RGBA8_UNorm);
         if (data != nullptr)
         {
             std::memcpy(tex.Data(), data, tex.DataSize());
@@ -144,67 +222,18 @@ namespace AIHoloImager
             return;
         }
 
+        const uint32_t num_channels = FormatChannels(tex.Format());
+
         const auto output_ext = path.extension();
         if (output_ext == ".jpg")
         {
             stbi_write_jpg(
-                path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(), tex.Data(), 90);
+                path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels, tex.Data(), 90);
         }
         else
         {
-            stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), tex.NumChannels(),
-                tex.Data(), static_cast<int>(tex.Width() * tex.NumChannels()));
-        }
-    }
-
-    void Ensure4Channel(Texture& tex)
-    {
-        const uint32_t channels = tex.NumChannels();
-        if (channels != 4)
-        {
-            Texture ret(tex.Width(), tex.Height(), 4);
-
-            const uint8_t* src = tex.Data();
-            uint8_t* dst = ret.Data();
-
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
-            {
-                memcpy(&dst[i * 4], &src[i * channels], channels);
-                dst[i * 4 + 3] = 0xFF;
-            }
-
-            tex = std::move(ret);
-        }
-    }
-
-    void Ensure3Channel(Texture& tex)
-    {
-        const uint32_t channels = tex.NumChannels();
-        if (channels != 3)
-        {
-            Texture ret(tex.Width(), tex.Height(), 3);
-
-            const uint8_t* src = tex.Data();
-            uint8_t* dst = ret.Data();
-
-            const uint32_t copy_channels = std::min(channels, 3u);
-
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < tex.Width() * tex.Height(); ++i)
-            {
-                memcpy(&dst[i * 3], &src[i * channels], copy_channels);
-                if (copy_channels < 3)
-                {
-                    memset(&dst[i * 3 + copy_channels], 0, 3 - copy_channels);
-                }
-            }
-
-            tex = std::move(ret);
+            stbi_write_png(path.string().c_str(), static_cast<int>(tex.Width()), static_cast<int>(tex.Height()), num_channels, tex.Data(),
+                static_cast<int>(tex.Width() * num_channels));
         }
     }
 } // namespace AIHoloImager

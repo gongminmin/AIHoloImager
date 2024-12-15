@@ -65,7 +65,7 @@ namespace AIHoloImager
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            Texture tex(texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 4);
+            Texture tex(texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), ElementFormat::RGBA8_UNorm);
             texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, tex.Data());
             gpu_system_.Execute(std::move(cmd_list));
 
@@ -133,11 +133,11 @@ namespace AIHoloImager
                 const auto mask_path = image_path.parent_path() / (image_path.stem().string() + ".mask.png");
                 image.maskName = mask_path.string();
 
-                Texture image_part(view.image_mask.Width(), view.image_mask.Height(), 3);
-                Texture mask_part(view.image_mask.Width(), view.image_mask.Height(), 1);
-                const uint8_t* src = view.image_mask.Data();
-                uint8_t* image_dst = image_part.Data();
-                uint8_t* mask_dst = mask_part.Data();
+                Texture image_part(view.image_mask.Width(), view.image_mask.Height(), ElementFormat::RGB8_UNorm);
+                Texture mask_part(view.image_mask.Width(), view.image_mask.Height(), ElementFormat::R8_UNorm);
+                const std::byte* src = view.image_mask.Data();
+                std::byte* image_dst = image_part.Data();
+                std::byte* mask_dst = mask_part.Data();
                 for (uint32_t j = 0; j < view.image_mask.Width() * view.image_mask.Height(); ++j)
                 {
                     image_dst[j * 3 + 0] = src[j * 4 + 0];

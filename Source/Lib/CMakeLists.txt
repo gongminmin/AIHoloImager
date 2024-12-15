@@ -10,9 +10,11 @@ add_custom_command(OUTPUT ${camera_database_dst}
 
 set(aihi_files
     Include/AIHoloImager/AIHoloImager.hpp
+    Include/AIHoloImager/ElementFormat.hpp
     Include/AIHoloImager/Mesh.hpp
     Include/AIHoloImager/Texture.hpp
     Source/AIHoloImager.cpp
+    Source/ElementFormat.cpp
     Source/Mesh.cpp
     Source/Texture.cpp
     Source/pch.hpp
@@ -103,6 +105,8 @@ set(aihi_files
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
     Source/Util/ErrorHandling.hpp
+    Source/Util/FormatConversion.cpp
+    Source/Util/FormatConversion.hpp
     Source/Util/Noncopyable.hpp
     Source/Util/BoundingBox.cpp
     Source/Util/BoundingBox.hpp

@@ -246,7 +246,7 @@ namespace AIHoloImager
             assert(input_images.size() == NumMvImages);
             assert(input_images[0].Width() == MvImageDim);
             assert(input_images[0].Height() == MvImageDim);
-            assert(input_images[0].NumChannels() == MvImageChannels);
+            assert(FormatChannels(input_images[0].Format()) == MvImageChannels);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "Texture";
@@ -291,7 +291,7 @@ namespace AIHoloImager
 
             auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
-            Texture merged_tex(texture_size, texture_size, 4);
+            Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 

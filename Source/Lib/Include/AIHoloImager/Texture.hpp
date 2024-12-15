@@ -7,13 +7,15 @@
 #include <filesystem>
 #include <memory>
 
+#include "AIHoloImager/ElementFormat.hpp"
+
 namespace AIHoloImager
 {
     class Texture
     {
     public:
         Texture();
-        Texture(uint32_t width, uint32_t height, uint32_t num_channels);
+        Texture(uint32_t width, uint32_t height, ElementFormat format);
         Texture(const Texture& rhs);
         Texture(Texture&& rhs) noexcept;
         ~Texture() noexcept;
@@ -25,11 +27,14 @@ namespace AIHoloImager
 
         uint32_t Width() const noexcept;
         uint32_t Height() const noexcept;
-        uint32_t NumChannels() const noexcept;
+        ElementFormat Format() const noexcept;
 
-        uint8_t* Data() noexcept;
-        const uint8_t* Data() const noexcept;
+        std::byte* Data() noexcept;
+        const std::byte* Data() const noexcept;
         uint32_t DataSize() const noexcept;
+
+        Texture Convert(ElementFormat format) const;
+        void ConvertInPlace(ElementFormat format);
 
     private:
         class Impl;
@@ -38,7 +43,4 @@ namespace AIHoloImager
 
     Texture LoadTexture(const std::filesystem::path& path);
     void SaveTexture(const Texture& tex, const std::filesystem::path& path);
-
-    void Ensure4Channel(Texture& tex);
-    void Ensure3Channel(Texture& tex);
 } // namespace AIHoloImager

@@ -32,7 +32,7 @@ namespace AIHoloImager
 
                 python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(input_image.Width()));
                 python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(input_image.Height()));
-                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(input_image.NumChannels()));
+                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(FormatChannels(input_image.Format())));
 
                 python_system_.SetTupleItem(*args, 4, python_system_.MakeObject(num_steps));
             }
@@ -44,7 +44,7 @@ namespace AIHoloImager
             const uint32_t height = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*mv_image_tuple, 2));
             const uint32_t num_channels = python_system_.Cast<uint32_t>(*python_system_.GetTupleItem(*mv_image_tuple, 3));
 
-            Texture mv_image(width, height, num_channels);
+            Texture mv_image(width, height, num_channels == 3 ? ElementFormat::RGB8_UNorm : ElementFormat::RGBA8_UNorm);
             const auto mv_image_span = python_system_.ToBytes(*mv_image_data);
             assert(mv_image_span.size() == mv_image.DataSize());
             std::memcpy(mv_image.Data(), mv_image_span.data(), mv_image_span.size());

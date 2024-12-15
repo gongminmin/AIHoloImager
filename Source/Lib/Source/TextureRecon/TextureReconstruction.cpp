@@ -119,7 +119,7 @@ namespace AIHoloImager
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), 4);
+                Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA8_UNorm);
                 flatten_normal_tex.Readback(gpu_system_, cmd_list, 0, normal_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
@@ -136,7 +136,7 @@ namespace AIHoloImager
                 SaveMesh(mesh, output_dir / "MeshTextured.glb");
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                Texture projective_tex(texture_size, texture_size, 4);
+                Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 result.color_tex.Readback(gpu_system_, cmd_list, 0, projective_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
@@ -303,7 +303,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), 4);
+                    Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
                     accum_color_tex.Readback(gpu_system_, cmd_list, 0, color_tex.Data());
                     SaveTexture(color_tex, tmp_dir / "Texture" / std::format("Projective_{}.png", i));
                 }
