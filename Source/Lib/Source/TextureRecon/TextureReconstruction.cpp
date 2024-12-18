@@ -258,44 +258,14 @@ namespace AIHoloImager
                 }
                 photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
 
-                const glm::vec3 camera_pos = view.center;
-                const glm::vec3 camera_up_vec = -view.rotation[1];
-                const glm::vec3 camera_forward_vec = view.rotation[2];
-                const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
-
-                glm::vec3 corners[8];
-                Obb::GetCorners(world_obb, corners);
-
-                const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
-
-                float min_z_es = std::numeric_limits<float>::max();
-                float max_z_es = std::numeric_limits<float>::lowest();
-                for (const auto& corner : corners)
-                {
-                    const glm::vec4 pos(corner.x, corner.y, corner.z, 1);
-                    const float z = glm::dot(pos, z_col);
-                    min_z_es = std::min(min_z_es, z);
-                    max_z_es = std::max(max_z_es, z);
-                }
-
-                const float center_es_z = (max_z_es + min_z_es) / 2;
-                const float extent_es_z = (max_z_es - min_z_es) / 2 * 1.05f;
-
-                const float near_plane = center_es_z + extent_es_z;
-                const float far_plane = center_es_z - extent_es_z;
-
-                const double fy = intrinsic.k[1].y;
-                const float fov = static_cast<float>(2 * std::atan(intrinsic.height / (2 * fy)));
-                const glm::mat4x4 proj_mtx =
-                    glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, -near_plane, -far_plane);
+                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
+                const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
+                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
 
                 gen_shadow_map_cb_->mvp = glm::transpose(proj_mtx * view_mtx * model_mtx);
                 gen_shadow_map_cb_.UploadToGpu();
 
-                const glm::vec2 offset = {
-                    intrinsic.k[0].z - intrinsic.width / 2,
-                    intrinsic.k[1].z - intrinsic.height / 2,
-                };
+                const glm::vec2 offset = CalcViewportOffset(intrinsic);
 
                 shadow_map_tex.Transition(cmd_list, GpuResourceState::DepthWrite);
 

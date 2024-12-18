@@ -8,6 +8,8 @@
 #include <map>
 #include <stdexcept>
 
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
@@ -568,5 +570,53 @@ namespace AIHoloImager
         const std::filesystem::path& image_dir, bool sequential, const std::filesystem::path& tmp_dir)
     {
         return impl_->Process(image_dir, sequential, tmp_dir);
+    }
+
+    glm::mat4x4 CalcViewMatrix(const StructureFromMotion::View& view)
+    {
+        const glm::vec3 camera_pos = view.center;
+        const glm::vec3 camera_up_vec = -view.rotation[1];
+        const glm::vec3 camera_forward_vec = view.rotation[2];
+        return glm::lookAtRH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
+    }
+
+    glm::mat4x4 CalcProjMatrix(const StructureFromMotion::PinholeIntrinsic& intrinsic, float near_plane, float far_plane)
+    {
+        const double fy = intrinsic.k[1].y;
+        const float fov = static_cast<float>(2 * std::atan(intrinsic.height / (2 * fy)));
+        return glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
+    }
+
+    glm::vec2 CalcNearFarPlane(const glm::mat4x4& view_mtx, const Obb& obb)
+    {
+        glm::vec3 corners[8];
+        Obb::GetCorners(obb, corners);
+
+        const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
+
+        float min_z_es = std::numeric_limits<float>::max();
+        float max_z_es = std::numeric_limits<float>::lowest();
+        for (const auto& corner : corners)
+        {
+            const glm::vec4 pos(corner.x, corner.y, corner.z, 1);
+            const float z = glm::dot(pos, z_col);
+            min_z_es = std::min(min_z_es, z);
+            max_z_es = std::max(max_z_es, z);
+        }
+
+        const float center_es_z = (max_z_es + min_z_es) / 2;
+        const float extent_es_z = (max_z_es - min_z_es) / 2 * 1.05f;
+
+        const float near_plane = center_es_z + extent_es_z;
+        const float far_plane = center_es_z - extent_es_z;
+        return glm::vec2(-near_plane, -far_plane);
+    }
+
+    glm::vec2 CalcViewportOffset(const StructureFromMotion::PinholeIntrinsic& intrinsic)
+    {
+        return {
+            intrinsic.k[0].z - intrinsic.width / 2,
+            intrinsic.k[1].z - intrinsic.height / 2,
+        };
     }
 } // namespace AIHoloImager

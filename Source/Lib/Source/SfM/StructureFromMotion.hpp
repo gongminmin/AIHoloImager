@@ -15,6 +15,7 @@
 #include "AIHoloImager/Texture.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Python/PythonSystem.hpp"
+#include "Util/BoundingBox.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -77,4 +78,9 @@ namespace AIHoloImager
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    glm::mat4x4 CalcViewMatrix(const StructureFromMotion::View& view);
+    glm::mat4x4 CalcProjMatrix(const StructureFromMotion::PinholeIntrinsic& intrinsic, float near_plane, float far_plane);
+    glm::vec2 CalcNearFarPlane(const glm::mat4x4& view_mtx, const Obb& obb);
+    glm::vec2 CalcViewportOffset(const StructureFromMotion::PinholeIntrinsic& intrinsic);
 } // namespace AIHoloImager
