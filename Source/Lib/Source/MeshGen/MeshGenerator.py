@@ -24,7 +24,7 @@ class MeshGenerator:
         model_ckpt_path = this_py_dir.joinpath(f"Models/instant_mesh_large.ckpt")
         if not model_ckpt_path.exists():
             print("Downloading pre-trained mesh generator model...")
-            Util.DownloadFile(f"https://huggingface.co/TencentARC/InstantMesh/resolve/main/{model_ckpt_path.name}", model_ckpt_path);
+            Util.DownloadFile(f"https://huggingface.co/TencentARC/InstantMesh/resolve/main/{model_ckpt_path.name}", model_ckpt_path)
 
         loaded_state_dict = torch.load(model_ckpt_path, map_location = "cpu", weights_only = True)["state_dict"]
 

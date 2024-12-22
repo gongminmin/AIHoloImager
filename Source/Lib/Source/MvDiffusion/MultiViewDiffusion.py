@@ -16,6 +16,9 @@ class MultiViewDiffusion:
 
         Util.SeedRandom(42)
 
+        import os
+        os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
+
         this_py_dir = Path(__file__).parent.resolve()
         pipeline_path = this_py_dir.joinpath("InstantMesh/zero123plus")
 
@@ -50,7 +53,7 @@ class MultiViewDiffusion:
         unet_ckpt_path = this_py_dir.joinpath("Models/diffusion_pytorch_model.bin")
         if not unet_ckpt_path.exists():
             print("Downloading pre-trained multi-view diffusion model...")
-            Util.DownloadFile(f"https://huggingface.co/TencentARC/InstantMesh/resolve/main/{unet_ckpt_path.name}", unet_ckpt_path);
+            Util.DownloadFile(f"https://huggingface.co/TencentARC/InstantMesh/resolve/main/{unet_ckpt_path.name}", unet_ckpt_path)
 
         state_dict = torch.load(unet_ckpt_path, map_location = "cpu", weights_only = True)
         self.pipeline.unet.load_state_dict(state_dict, strict = True)
