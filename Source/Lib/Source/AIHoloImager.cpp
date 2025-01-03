@@ -60,7 +60,7 @@ namespace AIHoloImager
             {
                 timer.Restart();
                 MeshReconstruction mesh_recon(exe_dir_, gpu_system_);
-                mesh_recon_result = mesh_recon.Process(sfm_result, true, 512, tmp_dir_);
+                mesh_recon_result = mesh_recon.Process(sfm_result, 512, tmp_dir_);
                 mesh_recon_time = timer.Elapsed();
             }
 
@@ -82,10 +82,10 @@ namespace AIHoloImager
                 mesh_gen_time = timer.Elapsed();
             }
 
-            std::cout << "Structure from motion time: " << sfm_time << " s\n";
-            std::cout << "Mesh reconstruction time: " << mesh_recon_time << " s\n";
-            std::cout << "Multi-view rendering time: " << mv_renderer_time << " s\n";
-            std::cout << "Mesh generation time: " << mesh_gen_time << " s\n";
+            std::cout << "Structure from motion time: " << sfm_time.count() << " s\n";
+            std::cout << "Mesh reconstruction time: " << mesh_recon_time.count() << " s\n";
+            std::cout << "Multi-view rendering time: " << mv_renderer_time.count() << " s\n";
+            std::cout << "Mesh generation time: " << mesh_gen_time.count() << " s\n";
 
             return result_mesh;
         }

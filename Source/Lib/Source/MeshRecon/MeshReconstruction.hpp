@@ -36,8 +36,7 @@ namespace AIHoloImager
 
         MeshReconstruction& operator=(MeshReconstruction&& other) noexcept;
 
-        Result Process(const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size,
-            const std::filesystem::path& tmp_dir);
+        Result Process(const StructureFromMotion::Result& sfm_input, uint32_t max_texture_size, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

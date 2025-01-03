@@ -28,8 +28,7 @@ namespace AIHoloImager
         {
         }
 
-        Result Process(
-            const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+        Result Process(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir_);
@@ -38,10 +37,7 @@ namespace AIHoloImager
             mvs_name = this->PointCloudDensification(mvs_name);
 
             std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
-            if (refine_mesh)
-            {
-                mesh_name = this->MeshRefinement(mvs_name, mesh_name);
-            }
+            mesh_name = this->MeshRefinement(mvs_name, mesh_name);
 
             Result ret;
 
@@ -64,7 +60,6 @@ namespace AIHoloImager
             auto texture_result = texture_recon_.Process(mesh, glm::identity<glm::mat4x4>(), obb, sfm_input, texture_size, tmp_dir);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
             Texture tex(texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), ElementFormat::RGBA8_UNorm);
             texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, tex.Data());
             gpu_system_.Execute(std::move(cmd_list));
@@ -202,7 +197,7 @@ namespace AIHoloImager
             const std::string output_mvs_name = mvs_name + "_Dense";
 
             const std::string cmd = std::format("{} {}.mvs -o {}.mvs --resolution-level 1 --number-views 8 --process-priority 0 "
-                                                "--remove-dmaps 1 --ignore-mask-label 0 -w {}",
+                                                "--remove-dmaps 0 --ignore-mask-label 0 -w {}",
                 (exe_dir_ / "DensifyPointCloud").string(), mvs_name, output_mvs_name, working_dir_.string());
             const int ret = std::system(cmd.c_str());
             if (ret != 0)
@@ -264,9 +259,9 @@ namespace AIHoloImager
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;
 
     MeshReconstruction::Result MeshReconstruction::Process(
-        const StructureFromMotion::Result& sfm_input, bool refine_mesh, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
+        const StructureFromMotion::Result& sfm_input, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(sfm_input, refine_mesh, max_texture_size, tmp_dir);
+        return impl_->Process(sfm_input, max_texture_size, tmp_dir);
     }
 
     glm::mat4x4 RegularizeTransform(const glm::vec3& translate, const glm::quat& rotation, const glm::vec3& scale)
