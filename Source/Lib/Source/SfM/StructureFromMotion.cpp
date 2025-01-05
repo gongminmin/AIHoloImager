@@ -98,8 +98,9 @@ namespace AIHoloImager
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
-            SfM_Data sfm_data = this->IntrinsicAnalysis(input_path);
-            FeatureRegions regions = this->FeatureExtraction(sfm_data);
+            std::vector<Texture> images;
+            SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
+            FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
             const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
             const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
 
@@ -108,11 +109,11 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return this->ExportResult(processed_sfm_data);
+            return this->ExportResult(processed_sfm_data, std::move(images));
         }
 
     private:
-        SfM_Data IntrinsicAnalysis(const std::filesystem::path& image_dir) const
+        SfM_Data IntrinsicAnalysis(const std::filesystem::path& image_dir, std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
@@ -134,6 +135,7 @@ namespace AIHoloImager
                 }
             }
             std::sort(input_image_paths.begin(), input_image_paths.end());
+            images.reserve(input_image_paths.size());
 
             SfM_Data sfm_data;
             sfm_data.s_root_path = image_dir.string();
@@ -217,6 +219,9 @@ namespace AIHoloImager
 
                     views[view->id_view] = std::move(view);
                 }
+
+                auto& image = images.emplace_back(LoadTexture(image_file_path));
+                image.Convert(ElementFormat::RGBA8_UNorm);
             }
 
             // Group camera that share common properties, leads to more faster & stable BA.
@@ -225,7 +230,7 @@ namespace AIHoloImager
             return sfm_data;
         }
 
-        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data) const
+        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data, const std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
@@ -235,23 +240,28 @@ namespace AIHoloImager
             feature_regions.regions_type = image_describer.Allocate();
             feature_regions.feature_regions.resize(sfm_data.views.size());
 
-            const std::filesystem::path image_dir = sfm_data.s_root_path;
-
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic)
 #endif
             for (int i = 0; i < static_cast<int>(sfm_data.views.size()); ++i)
             {
-                Views::const_iterator iter = sfm_data.views.begin();
-                std::advance(iter, i);
+                const auto& image = images[i];
+                const uint8_t* image_data = reinterpret_cast<const uint8_t*>(image.Data());
+                const uint32_t width = image.Width();
+                const uint32_t height = image.Height();
+                assert(image.Format() == ElementFormat::RGBA8_UNorm);
 
-                const auto& view = *(iter->second);
-                const auto view_file = image_dir / view.s_Img_path;
-
-                Image<unsigned char> image_gray;
-                if (!ReadImage(view_file.string().c_str(), &image_gray))
+                Image<unsigned char> image_gray(width, height);
+                for (uint32_t y = 0; y < height; ++y)
                 {
-                    continue;
+                    for (uint32_t x = 0; x < width; ++x)
+                    {
+                        const uint32_t offset = (y * width + x) * 4;
+                        const uint8_t r = image_data[offset + 0];
+                        const uint8_t g = image_data[offset + 1];
+                        const uint8_t b = image_data[offset + 2];
+                        image_gray(y, x) = static_cast<uint8_t>(std::clamp(static_cast<int>(0.299f * r + 0.587f * g + 0.114f * b), 0, 255));
+                    }
                 }
 
                 feature_regions.feature_regions[i] = image_describer.Describe(image_gray);
@@ -385,7 +395,7 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(const SfM_Data& sfm_data)
+        Result ExportResult(const SfM_Data& sfm_data, std::vector<Texture>&& images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -416,16 +426,9 @@ namespace AIHoloImager
             MaskGenerator mask_gen(gpu_system_, python_system_);
 
             ret.views.reserve(sfm_data.views.size());
-            const std::filesystem::path image_dir = sfm_data.s_root_path;
             std::map<IndexT, uint32_t> view_id_mapping;
             for (const auto& mvg_view : sfm_data.views)
             {
-                const auto src_image = image_dir / mvg_view.second->s_Img_path;
-                if (!std::filesystem::is_regular_file(src_image))
-                {
-                    throw std::runtime_error(std::format("Cannot read the corresponding image: {}", src_image.string()));
-                }
-
                 if (sfm_data.IsPoseAndIntrinsicDefined(mvg_view.second.get()))
                 {
                     view_id_mapping.emplace(mvg_view.first, static_cast<uint32_t>(ret.views.size()));
@@ -440,7 +443,7 @@ namespace AIHoloImager
                     const auto& center = mvg_pose.center();
                     result_view.center = {center.x(), center.y(), center.z()};
 
-                    result_view.image_mask = LoadTexture(src_image);
+                    result_view.image_mask = std::move(images[mvg_view.first]);
 
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
