@@ -34,7 +34,7 @@ namespace AIHoloImager
             std::filesystem::create_directories(working_dir_);
 
             std::string mvs_name = this->ToOpenMvs(sfm_input);
-            mvs_name = this->PointCloudDensification(mvs_name);
+            mvs_name = this->PointCloudDensification(mvs_name, sfm_input);
 
             std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
             mesh_name = this->MeshRefinement(mvs_name, mesh_name);
@@ -192,8 +192,14 @@ namespace AIHoloImager
             return out_mvs_file.stem().string();
         }
 
-        std::string PointCloudDensification(const std::string& mvs_name)
+        std::string PointCloudDensification(const std::string& mvs_name, const StructureFromMotion::Result& sfm_input)
         {
+            // If the dmap files are not removed, the new ones will merged with old ones, causing degradation of the point cloud quality
+            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            {
+                std::filesystem::remove(working_dir_ / std::format("depth{:04}.dmap", i));
+            }
+
             const std::string output_mvs_name = mvs_name + "_Dense";
 
             const std::string cmd = std::format("{} {}.mvs -o {}.mvs --resolution-level 1 --number-views 8 --process-priority 0 "
