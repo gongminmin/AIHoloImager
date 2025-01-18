@@ -56,6 +56,7 @@
     #pragma warning(pop)
 #endif
 
+#include "Delighter/Delighter.hpp"
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSampler.hpp"
@@ -424,6 +425,7 @@ namespace AIHoloImager
             GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
             MaskGenerator mask_gen(gpu_system_, python_system_);
+            Delighter delighter(python_system_);
 
             ret.views.reserve(sfm_data.views.size());
             std::map<IndexT, uint32_t> view_id_mapping;
@@ -476,6 +478,8 @@ namespace AIHoloImager
 
                         gpu_system_.Execute(std::move(cmd_list));
                         gpu_system_.WaitForGpu();
+
+                        delighter.ProcessInPlace(result_view.image_mask, result_view.roi);
                     }
                 }
                 else

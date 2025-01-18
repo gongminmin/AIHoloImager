@@ -46,6 +46,9 @@ set(aihi_files
     Source/Gpu/GpuUtil.hpp
     Source/Gpu/GpuVertexAttrib.cpp
     Source/Gpu/GpuVertexAttrib.hpp
+    Source/Delighter/Delighter.cpp
+    Source/Delighter/Delighter.hpp
+    Source/Delighter/Delighter.py
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
@@ -217,6 +220,7 @@ target_link_libraries(AIHoloImagerLib
 )
 
 set(py_files
+    Source/Delighter/Delighter.py
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Lrm.py
