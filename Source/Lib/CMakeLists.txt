@@ -94,6 +94,7 @@ set(aihi_files
     Source/MvRenderer/Shader/RenderPs.hlsl
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
+    Source/Python/PythonSystem.py
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
@@ -225,6 +226,7 @@ set(py_files
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Lrm.py
     Source/MvDiffusion/MultiViewDiffusion.py
+    Source/Python/PythonSystem.py
     Source/Util/Util.py
 )
 foreach(py_file ${py_files})

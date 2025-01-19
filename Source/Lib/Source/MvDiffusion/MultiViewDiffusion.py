@@ -14,11 +14,6 @@ class MultiViewDiffusion:
     def __init__(self):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        Util.SeedRandom(42)
-
-        import os
-        os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
-
         this_py_dir = Path(__file__).parent.resolve()
         pipeline_path = this_py_dir.joinpath("InstantMesh/zero123plus")
 
@@ -33,8 +28,8 @@ class MultiViewDiffusion:
                     torch_dtype = torch.float16,
                 )
                 reload_from_network = False
-            except:
-                print(f"Failed. Retry from network.")
+            except Exception as e:
+                print(f"Failed. Retry from network. ", e)
 
         if reload_from_network:
             self.pipeline = DiffusionPipeline.from_pretrained(
@@ -45,6 +40,12 @@ class MultiViewDiffusion:
 
             pretrained_dir.mkdir(parents = True, exist_ok = True)
             self.pipeline.save_pretrained(pretrained_dir)
+
+        try:
+            import xformers
+            self.pipeline.enable_xformers_memory_efficient_attention()
+        except Exception as e:
+            print("COULDN'T enable xformers. Run multi-view diffusion without it. ", e)
 
         self.pipeline.scheduler = EulerAncestralDiscreteScheduler.from_config(
             self.pipeline.scheduler.config, timestep_spacing = "trailing"
@@ -74,5 +75,9 @@ class MultiViewDiffusion:
             assert(num_channels == 4)
             mode = "RGBA"
         input_image = Image.frombuffer(mode, (width, height), input_image_data)
-        image = np.array(self.pipeline(input_image, num_inference_steps = num_steps).images[0])
-        return (image.tobytes(), image.shape[1], image.shape[0], image.shape[2])
+        result_image = self.pipeline(input_image, num_inference_steps = num_steps, output_type = "pt").images[0]
+
+        result_image = (result_image * 255).byte()
+        result_image = result_image.permute(1, 2, 0)
+
+        return (result_image.cpu().numpy().tobytes(), result_image.shape[1], result_image.shape[0], result_image.shape[2])

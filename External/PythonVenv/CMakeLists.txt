@@ -508,8 +508,8 @@ set(py_files
     onnx/utils.py
     onnx/version.py
     onnx/version_converter.py
-    onnx/__init__.py
     onnx/_custom_element_types.py
+    onnx/__init__.py
     onnx2torch/node_converters/activations.py
     onnx2torch/node_converters/arg_extrema.py
     onnx2torch/node_converters/average_pool.py
@@ -2628,6 +2628,9 @@ set(copy_files
     torchvision/zlib.dll
     torchvision/models/densenet.py
     transformers/__init__.py
+    xformers/_C.pyd
+    xformers/_C_flashattention.pyd
+    xformers/cpp_lib.json
     accelerate-0.30.1.dist-info/METADATA
     filelock-3.16.1.dist-info/METADATA
     huggingface_hub-0.26.2.dist-info/METADATA
@@ -2643,6 +2646,7 @@ set(copy_files
     torch-2.4.1+cu124.dist-info/METADATA
     tqdm-4.67.0.dist-info/METADATA
     transformers-4.38.0.dist-info/METADATA
+    xformers-0.0.28.post1.dist-info/METADATA
 )
 foreach(src_file ${copy_files})
     set(src_file "Lib/site-packages/${src_file}")

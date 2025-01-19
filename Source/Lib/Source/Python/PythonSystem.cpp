@@ -72,6 +72,10 @@ namespace AIHoloImager
 
     PythonSystem::PythonSystem(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
+        auto py_sys = this->Import("PythonSystem");
+        auto init_py_sys_method = this->GetAttr(*py_sys, "InitPySys");
+
+        this->CallObject(*init_py_sys_method);
     }
 
     PythonSystem::~PythonSystem() noexcept = default;
