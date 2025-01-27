@@ -49,6 +49,13 @@ set(aihi_files
     Source/Delighter/Delighter.cpp
     Source/Delighter/Delighter.hpp
     Source/Delighter/Delighter.py
+    Source/Delighter/ModMidas/Effnet/Conv2dLayers.py
+    Source/Delighter/ModMidas/Effnet/EfficientNet.py
+    Source/Delighter/ModMidas/Effnet/__init__.py
+    Source/Delighter/ModMidas/Blocks.py
+    Source/Delighter/ModMidas/MidasNet.py
+    Source/Delighter/ModMidas/Wsl.py
+    Source/Delighter/ModMidas/__init__.py
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
@@ -222,6 +229,13 @@ target_link_libraries(AIHoloImagerLib
 
 set(py_files
     Source/Delighter/Delighter.py
+    Source/Delighter/ModMidas/Effnet/Conv2dLayers.py
+    Source/Delighter/ModMidas/Effnet/EfficientNet.py
+    Source/Delighter/ModMidas/Effnet/__init__.py
+    Source/Delighter/ModMidas/Blocks.py
+    Source/Delighter/ModMidas/MidasNet.py
+    Source/Delighter/ModMidas/Wsl.py
+    Source/Delighter/ModMidas/__init__.py
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Lrm.py
@@ -230,14 +244,18 @@ set(py_files
     Source/Util/Util.py
 )
 foreach(py_file ${py_files})
+    string(REPLACE "/" ";" path_list ${py_file})
+    list(REMOVE_AT path_list 0 1)
+    list(REMOVE_AT path_list -1)
+    string(REPLACE ";" "/" rel_dir "${path_list}")
     get_filename_component(py_file_dir ${py_file} DIRECTORY)
     get_filename_component(py_file_name ${py_file} NAME)
     get_filename_component(py_file_stem ${py_file} NAME_WE)
-    set(py_file_dst "${aihi_output_dir}/${py_file_stem}.pyc")
+    set(py_file_dst "${aihi_output_dir}/${rel_dir}/${py_file_stem}.pyc")
     add_custom_command(OUTPUT ${py_file_dst}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${py_file}
         COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
-        COMMENT "Compiling ${py_file_name} ..."
+        COMMENT "Compiling ${rel_dir}/${py_file_name} ..."
         MAIN_DEPENDENCY ${py_file}
         DEPENDS ${py_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

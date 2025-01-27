@@ -2606,6 +2606,7 @@ set(copy_files
     torch/lib/cudnn_engines_runtime_compiled64_9.dll
     torch/lib/cudnn_graph64_9.dll
     torch/lib/cudnn_heuristic64_9.dll
+    torch/lib/cudnn_ops64_9.dll
     torch/lib/cufft64_11.dll
     torch/lib/cusolver64_11.dll
     torch/lib/cusparse64_12.dll
