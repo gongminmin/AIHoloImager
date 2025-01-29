@@ -145,7 +145,7 @@ namespace AIHoloImager
 
                 const glm::uvec2 bb_min(roi.x, roi.y);
                 const glm::uvec2 bb_max(roi.z, roi.w);
-                const uint32_t crop_extent = std::max(std::max(bb_max.x - bb_min.x, bb_max.y - bb_min.y) + 16, U2NetInputDim) / 2;
+                const uint32_t crop_extent = std::max(std::max(bb_max.x - bb_min.x, bb_max.y - bb_min.y) + 64, U2NetInputDim) / 2;
                 const glm::uvec2 crop_center = (bb_min + bb_max) / 2U;
                 const glm::uvec4 square_roi = glm::clamp(glm::ivec4(crop_center - crop_extent, crop_center + crop_extent + 1U),
                     glm::ivec4(0, 0, 0, 0), glm::ivec4(width, height, width, height));

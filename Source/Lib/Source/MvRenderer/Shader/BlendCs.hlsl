@@ -38,8 +38,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         int32_t2 rendered_center = rendered_diffusion_center.xy;
         int32_t2 diffusion_center = rendered_diffusion_center.zw;
 
-        uint32_t2 diffusion_coord = atlas_offset + clamp(int32_t2(round((int32_t2(dtid.xy) - rendered_center) * scale) + diffusion_center), 0, view_size - 1);
-        float3 diffusion_point_color = diffusion_tex.Load(uint32_t3(diffusion_coord, 0)).rgb;
+        float2 diffusion_coord = atlas_offset + clamp((int32_t2(dtid.xy) - rendered_center) * scale + diffusion_center, 0, view_size - 1);
+        float3 diffusion_point_color = diffusion_tex.Load(uint32_t3(round(diffusion_coord), 0)).rgb;
         if (any(diffusion_point_color < ValidThreshold))
         {
             float3 diffusion_linear_color = diffusion_tex.SampleLevel(bilinear_sampler, diffusion_coord * diffusion_inv_size, 0).rgb;
