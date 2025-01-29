@@ -8,7 +8,9 @@ cbuffer param_cb : register(b0)
     float4x4 camera_view_proj;
     float4x4 camera_view;
     float4x4 camera_view_it;
-    float2 offset;
+    float2 vp_offset;
+    float2 delighted_offset;
+    float2 delighted_scale;
     uint32_t texture_size;
 };
 
@@ -55,14 +57,14 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         float3 normal_es = normalize(mul(normal_ws.xyz * 2 - 1, (float3x3)camera_view_it));
         if (normal_es.z > 0)
         {
-            float2 coord = float2(pos_ss.x, -pos_ss.y) * 0.5f + 0.5f + offset;
+            float2 coord = float2(pos_ss.x, -pos_ss.y) * 0.5f + 0.5f + vp_offset;
             if (pos_ss.z < depth_tex.SampleLevel(point_sampler, coord, 0) * 1.02f)
             {
                 float4 pos_es = mul(pos_ws, camera_view);
                 pos_es /= pos_es.w;
                 float3 ray_es = normalize(pos_es.xyz);
 
-                float4 color = photo_tex.SampleLevel(bilinear_sampler, coord, 0);
+                float4 color = photo_tex.SampleLevel(bilinear_sampler, (coord - delighted_offset) * delighted_scale, 0);
                 float confidence = -ray_es.z * normal_es.z * color.a;
                 float prev_confidence = accum_color_tex[dtid.xy].a;
                 if (confidence > prev_confidence)

@@ -30,6 +30,9 @@ namespace AIHoloImager
             Texture image_mask;
             glm::uvec4 roi;
 
+            Texture delighted_image;
+            glm::uvec2 delighted_offset;
+
             uint32_t intrinsic_id;
 
             glm::dmat3x3 rotation;

@@ -250,13 +250,13 @@ namespace AIHoloImager
                     shadow_map_dsv = GpuDepthStencilView(gpu_system_, shadow_map_tex, DepthFmt);
                 }
 
-                if ((view.image_mask.Width() != photo_tex.Width(0)) || (view.image_mask.Height() != photo_tex.Height(0)))
+                if ((view.delighted_image.Width() != photo_tex.Width(0)) || (view.delighted_image.Height() != photo_tex.Height(0)))
                 {
-                    photo_tex = GpuTexture2D(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, GpuFormat::RGBA8_UNorm,
-                        GpuResourceFlag::None, L"photo_tex");
+                    photo_tex = GpuTexture2D(gpu_system_, view.delighted_image.Width(), view.delighted_image.Height(), 1,
+                        GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"photo_tex");
                     photo_srv = GpuShaderResourceView(gpu_system_, photo_tex);
                 }
-                photo_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
+                photo_tex.Upload(gpu_system_, cmd_list, 0, view.delighted_image.Data());
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
@@ -265,17 +265,18 @@ namespace AIHoloImager
                 gen_shadow_map_cb_->mvp = glm::transpose(proj_mtx * view_mtx * model_mtx);
                 gen_shadow_map_cb_.UploadToGpu();
 
-                const glm::vec2 offset = CalcViewportOffset(intrinsic);
+                const glm::vec2 vp_offset = CalcViewportOffset(intrinsic);
 
                 shadow_map_tex.Transition(cmd_list, GpuResourceState::DepthWrite);
 
-                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, offset, intrinsic, shadow_map_dsv);
+                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, vp_offset, intrinsic, shadow_map_dsv);
 
                 shadow_map_tex.Transition(cmd_list, GpuResourceState::Common);
                 accum_color_tex.Transition(cmd_list, GpuResourceState::UnorderedAccess);
 
-                this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
-                    photo_srv, shadow_map_srv, accum_color_uav);
+                this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, vp_offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
+                    photo_srv, view.delighted_offset, glm::uvec2(view.delighted_image.Width(), view.delighted_image.Height()),
+                    shadow_map_srv, accum_color_uav);
 
                 accum_color_tex.Transition(cmd_list, GpuResourceState::Common);
 
@@ -295,8 +296,8 @@ namespace AIHoloImager
             return this->ResolveTexture(texture_size, accum_color_tex);
         }
 
-        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, const glm::vec2& offset,
-            const StructureFromMotion::PinholeIntrinsic& intrinsic, GpuDepthStencilView& shadow_map_dsv)
+        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices,
+            const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic, GpuDepthStencilView& shadow_map_dsv)
         {
             cmd_list.ClearDepth(shadow_map_dsv, 1);
 
@@ -309,15 +310,17 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuViewport viewport = {offset.x, offset.y, static_cast<float>(intrinsic.width), static_cast<float>(intrinsic.height)};
+            const GpuViewport viewport = {
+                vp_offset.x, vp_offset.y, static_cast<float>(intrinsic.width), static_cast<float>(intrinsic.height)};
 
             cmd_list.Render(gen_shadow_map_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, {}, &shadow_map_dsv,
                 std::span(&viewport, 1), {});
         }
 
         void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
-            const glm::vec2& offset, const StructureFromMotion::PinholeIntrinsic& intrinsic, const GpuShaderResourceView& flatten_pos_srv,
-            const GpuShaderResourceView& flatten_normal_srv, const GpuShaderResourceView& projective_map_srv,
+            const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic,
+            const GpuShaderResourceView& flatten_pos_srv, const GpuShaderResourceView& flatten_normal_srv,
+            const GpuShaderResourceView& projective_map_srv, const glm::uvec2& delighted_offset, const glm::uvec2& delighted_size,
             const GpuShaderResourceView& shadow_map_srv, GpuUnorderedAccessView& accum_color_uav)
         {
             constexpr uint32_t BlockDim = 16;
@@ -325,7 +328,11 @@ namespace AIHoloImager
             project_tex_cb_->camera_view_proj = glm::transpose(proj_mtx * view_mtx);
             project_tex_cb_->camera_view = glm::transpose(view_mtx);
             project_tex_cb_->camera_view_it = glm::inverse(view_mtx);
-            project_tex_cb_->offset = glm::vec2(offset.x / intrinsic.width, offset.y / intrinsic.height);
+            project_tex_cb_->vp_offset = glm::vec2(vp_offset.x / intrinsic.width, vp_offset.y / intrinsic.height);
+            project_tex_cb_->delighted_offset = glm::vec2(
+                static_cast<float>(delighted_offset.x) / intrinsic.width, static_cast<float>(delighted_offset.y) / intrinsic.height);
+            project_tex_cb_->delighted_scale =
+                glm::vec2(static_cast<float>(intrinsic.width) / delighted_size.x, static_cast<float>(intrinsic.height) / delighted_size.y);
             project_tex_cb_->texture_size = texture_size;
             project_tex_cb_.UploadToGpu();
 
@@ -395,7 +402,9 @@ namespace AIHoloImager
             glm::mat4x4 camera_view_proj;
             glm::mat4x4 camera_view;
             glm::mat4x4 camera_view_it;
-            glm::vec2 offset;
+            glm::vec2 vp_offset;
+            glm::vec2 delighted_offset;
+            glm::vec2 delighted_scale;
             uint32_t texture_size;
             uint32_t padding;
         };

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
@@ -22,7 +23,7 @@ namespace AIHoloImager
 
         Delighter& operator=(Delighter&& other) noexcept;
 
-        void ProcessInPlace(Texture& inout_image, const glm::uvec4& roi);
+        Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset);
 
     private:
         class Impl;

@@ -130,15 +130,26 @@ namespace AIHoloImager
 
                 Texture image_part(view.image_mask.Width(), view.image_mask.Height(), ElementFormat::RGB8_UNorm);
                 Texture mask_part(view.image_mask.Width(), view.image_mask.Height(), ElementFormat::R8_UNorm);
-                const std::byte* src = view.image_mask.Data();
+                std::memset(image_part.Data(), 0, image_part.DataSize());
+                std::memset(mask_part.Data(), 0, mask_part.DataSize());
+
+                const std::byte* src = view.delighted_image.Data();
                 std::byte* image_dst = image_part.Data();
                 std::byte* mask_dst = mask_part.Data();
-                for (uint32_t j = 0; j < view.image_mask.Width() * view.image_mask.Height(); ++j)
+                const uint32_t image_width = view.image_mask.Width();
+                const uint32_t cropped_width = view.delighted_image.Width();
+                const uint32_t cropped_height = view.delighted_image.Height();
+                for (uint32_t y = 0; y < cropped_height; ++y)
                 {
-                    image_dst[j * 3 + 0] = src[j * 4 + 0];
-                    image_dst[j * 3 + 1] = src[j * 4 + 1];
-                    image_dst[j * 3 + 2] = src[j * 4 + 2];
-                    mask_dst[j] = src[j * 4 + 3];
+                    for (uint32_t x = 0; x < cropped_width; ++x)
+                    {
+                        const uint32_t src_offset = y * cropped_width + x;
+                        const uint32_t dst_offset = (view.delighted_offset.y + y) * image_width + (view.delighted_offset.x + x);
+                        image_dst[dst_offset * 3 + 0] = src[src_offset * 4 + 0];
+                        image_dst[dst_offset * 3 + 1] = src[src_offset * 4 + 1];
+                        image_dst[dst_offset * 3 + 2] = src[src_offset * 4 + 2];
+                        mask_dst[dst_offset] = src[src_offset * 4 + 3];
+                    }
                 }
 
                 SaveTexture(image_part, image_path);

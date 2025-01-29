@@ -479,7 +479,8 @@ namespace AIHoloImager
                         gpu_system_.Execute(std::move(cmd_list));
                         gpu_system_.WaitForGpu();
 
-                        delighter.ProcessInPlace(result_view.image_mask, result_view.roi);
+                        result_view.delighted_image =
+                            delighter.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);
                     }
                 }
                 else

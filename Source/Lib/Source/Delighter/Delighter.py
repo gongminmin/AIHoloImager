@@ -181,9 +181,7 @@ class Delighter:
         result_image = (result_image * 255).byte()
         result_image = result_image.permute(1, 2, 0)
 
-        image[:, :, 0 : 3] = result_image
-
-        return image.cpu().numpy().tobytes()
+        return result_image.cpu().numpy().tobytes()
 
     def LoadModels(self, paths):
         self.models = [None] * 4

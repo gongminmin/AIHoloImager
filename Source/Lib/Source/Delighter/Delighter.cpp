@@ -22,10 +22,10 @@ namespace AIHoloImager
             python_system_.CallObject(*delighter_destroy_method);
         }
 
-        void ProcessInPlace(Texture& inout_image, const glm::uvec4& roi)
+        Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
         {
-            const uint32_t width = inout_image.Width();
-            const uint32_t height = inout_image.Height();
+            const uint32_t width = image.Width();
+            const uint32_t height = image.Height();
 
             constexpr uint32_t Gap = 32;
             glm::uvec4 expanded_roi;
@@ -34,15 +34,17 @@ namespace AIHoloImager
             expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(roi.z)) + Gap, width);
             expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(roi.w)) + Gap, height);
 
+            offset = glm::uvec2(expanded_roi.x, expanded_roi.y);
+
             const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
             const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
-            const uint32_t fmt_size = FormatSize(inout_image.Format());
-            Texture roi_image(roi_width, roi_height, inout_image.Format());
+            const uint32_t fmt_size = FormatSize(image.Format());
+            Texture roi_image(roi_width, roi_height, image.Format());
             {
                 std::byte* dst = roi_image.Data();
-                const std::byte* src = &inout_image.Data()[(expanded_roi.y * inout_image.Width() + expanded_roi.x) * fmt_size];
+                const std::byte* src = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
                 const uint32_t dst_row_pitch = roi_width * fmt_size;
-                const uint32_t src_row_pitch = inout_image.Width() * fmt_size;
+                const uint32_t src_row_pitch = width * fmt_size;
                 for (uint32_t y = 0; y < roi_height; ++y)
                 {
                     std::memcpy(dst, src, dst_row_pitch);
@@ -53,9 +55,9 @@ namespace AIHoloImager
 
             auto args = python_system_.MakeTuple(4);
             {
-                auto image = python_system_.MakeObject(
+                auto py_image = python_system_.MakeObject(
                     std::span<const std::byte>(reinterpret_cast<const std::byte*>(roi_image.Data()), roi_image.DataSize()));
-                python_system_.SetTupleItem(*args, 0, std::move(image));
+                python_system_.SetTupleItem(*args, 0, std::move(py_image));
 
                 python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(roi_width));
                 python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(roi_height));
@@ -63,18 +65,24 @@ namespace AIHoloImager
             }
 
             const auto output_roi_image = python_system_.CallObject(*delighter_process_method_, *args);
+
+            Texture out_image(roi_width, roi_height, ElementFormat::RGBA8_UNorm);
+            std::byte* dst = reinterpret_cast<std::byte*>(out_image.Data());
+            const std::byte* src = python_system_.ToBytes(*output_roi_image).data();
+            const std::byte* src_mask = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
+            for (uint32_t y = 0; y < roi_height; ++y)
             {
-                std::byte* dst = &inout_image.Data()[(expanded_roi.y * inout_image.Width() + expanded_roi.x) * fmt_size];
-                const std::byte* src = python_system_.ToBytes(*output_roi_image).data();
-                const uint32_t dst_row_pitch = inout_image.Width() * fmt_size;
-                const uint32_t src_row_pitch = roi_width * fmt_size;
-                for (uint32_t y = 0; y < roi_height; ++y)
+                for (uint32_t x = 0; x < roi_width; ++x)
                 {
-                    std::memcpy(dst, src, src_row_pitch);
-                    dst += dst_row_pitch;
-                    src += src_row_pitch;
+                    const uint32_t img_offset = y * roi_width + x;
+                    dst[img_offset * 4 + 0] = src[img_offset * 3 + 0];
+                    dst[img_offset * 4 + 1] = src[img_offset * 3 + 1];
+                    dst[img_offset * 4 + 2] = src[img_offset * 3 + 2];
+                    dst[img_offset * 4 + 3] = src_mask[(y * width + x) * fmt_size + 3];
                 }
             }
+
+            return out_image;
         }
 
     private:
@@ -95,8 +103,8 @@ namespace AIHoloImager
     Delighter::Delighter(Delighter&& other) noexcept = default;
     Delighter& Delighter::operator=(Delighter&& other) noexcept = default;
 
-    void Delighter::ProcessInPlace(Texture& inout_image, const glm::uvec4& roi)
+    Texture Delighter::Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
     {
-        impl_->ProcessInPlace(inout_image, roi);
+        return impl_->Process(image, roi, offset);
     }
 } // namespace AIHoloImager
