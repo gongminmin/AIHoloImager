@@ -53,7 +53,8 @@ namespace AIHoloImager
                 states.depth_enable = false;
                 states.rtv_formats = rtv_formats;
 
-                flatten_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, {}, states);
+                flatten_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
                 gen_shadow_map_cb_ = ConstantBuffer<GenShadowMapConstantBuffer>(gpu_system_, 1, L"gen_shadow_map_cb_");
@@ -69,7 +70,8 @@ namespace AIHoloImager
                 states.rtv_formats = {};
                 states.dsv_format = DepthFmt;
 
-                gen_shadow_map_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, {}, states);
+                gen_shadow_map_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
                 project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, 1, L"project_tex_cb_");

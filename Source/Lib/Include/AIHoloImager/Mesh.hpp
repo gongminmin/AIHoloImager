@@ -18,6 +18,7 @@ namespace AIHoloImager
             Position,
             TexCoord,
             Normal,
+            Color,
         };
 
         static constexpr uint32_t AppendOffset = ~0U;

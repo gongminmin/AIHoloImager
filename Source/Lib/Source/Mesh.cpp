@@ -8,6 +8,7 @@
 #include <glm/geometric.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <assimp/Exporter.hpp>
 #include <assimp/GltfMaterial.h>
@@ -645,6 +646,10 @@ namespace AIHoloImager
             {
                 vertex_attribs.push_back({VertexAttrib::Semantic::TexCoord, i, ai_mesh->mNumUVComponents[i]});
             }
+            for (uint32_t i = 0; i < ai_mesh->GetNumColorChannels(); ++i)
+            {
+                vertex_attribs.push_back({VertexAttrib::Semantic::Color, i, 4});
+            }
 
             mesh = Mesh(VertexDesc(vertex_attribs), ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
 
@@ -665,6 +670,11 @@ namespace AIHoloImager
             {
                 texcoord_attrib_indices[i] = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, i);
             }
+            std::vector<uint32_t> color_attrib_indices(ai_mesh->GetNumColorChannels());
+            for (uint32_t i = 0; i < ai_mesh->GetNumColorChannels(); ++i)
+            {
+                color_attrib_indices[i] = vertex_desc.FindAttrib(VertexAttrib::Semantic::Color, i);
+            }
             for (unsigned int vi = 0; vi < ai_mesh->mNumVertices; ++vi)
             {
                 if (pos_attrib_index != VertexDesc::InvalidIndex)
@@ -681,6 +691,11 @@ namespace AIHoloImager
                 {
                     std::memcpy(mesh.VertexDataPtr(vi, texcoord_attrib_indices[j]), &ai_mesh->mTextureCoords[j][vi].x,
                         ai_mesh->mNumUVComponents[j] * sizeof(float));
+                }
+                for (uint32_t j = 0; j < color_attrib_indices.size(); ++j)
+                {
+                    mesh.VertexData<glm::vec4>(vi, color_attrib_indices[j]) = {
+                        ai_mesh->mColors[j][vi].r, ai_mesh->mColors[j][vi].g, ai_mesh->mColors[j][vi].b, ai_mesh->mColors[j][vi].a};
                 }
             }
 
@@ -764,7 +779,7 @@ namespace AIHoloImager
         auto& ai_mesh = *ai_scene.mMeshes[0];
 
         ai_mesh.mMaterialIndex = 0;
-        ai_mesh.mPrimitiveTypes = aiPrimitiveType_TRIANGLE;
+        ai_mesh.mPrimitiveTypes = mesh.IndexBuffer().empty() ? aiPrimitiveType_POINT : aiPrimitiveType_TRIANGLE;
 
         ai_mesh.mName.Set(path.stem().string().c_str());
 
@@ -784,6 +799,17 @@ namespace AIHoloImager
 
             texcoord_attribs.push_back(texcoord_attrib);
         }
+        std::vector<uint32_t> color_attribs;
+        for (uint32_t i = 0; i < 8; ++i)
+        {
+            const uint32_t color_attrib = vertex_desc.FindAttrib(VertexAttrib::Semantic::Color, i);
+            if (color_attrib == VertexDesc::InvalidIndex)
+            {
+                break;
+            }
+
+            color_attribs.push_back(color_attrib);
+        }
 
         if (pos_attrib != VertexDesc::InvalidIndex)
         {
@@ -799,6 +825,13 @@ namespace AIHoloImager
             {
                 ai_mesh.mTextureCoords[i] = new aiVector3D[ai_mesh.mNumVertices];
                 ai_mesh.mNumUVComponents[i] = vertex_desc.Attribs()[texcoord_attribs[i]].channels;
+            }
+        }
+        for (uint32_t i = 0; i < color_attribs.size(); ++i)
+        {
+            if (color_attribs[i] != VertexDesc::InvalidIndex)
+            {
+                ai_mesh.mColors[i] = new aiColor4D[ai_mesh.mNumVertices];
             }
         }
 
@@ -825,19 +858,37 @@ namespace AIHoloImager
                     }
                 }
             }
+            for (uint32_t j = 0; j < color_attribs.size(); ++j)
+            {
+                if (color_attribs[j] != VertexDesc::InvalidIndex)
+                {
+                    const float* color = mesh.VertexDataPtr(i, color_attribs[j]);
+                    float* dst = &ai_mesh.mColors[j][i].r;
+                    const uint32_t channels = std::min(4U, vertex_desc.Attribs()[color_attribs[j]].channels);
+                    std::memcpy(dst, color, channels * sizeof(float));
+                    if (channels < 3)
+                    {
+                        std::memset(dst + channels, 0, (3 - channels) * sizeof(float));
+                    }
+                    dst[3] = 1;
+                }
+            }
         }
 
-        ai_mesh.mNumFaces = static_cast<uint32_t>(mesh.IndexBuffer().size() / 3);
-        ai_mesh.mFaces = new aiFace[ai_mesh.mNumFaces];
-        for (uint32_t j = 0; j < ai_mesh.mNumFaces; ++j)
+        if (!mesh.IndexBuffer().empty())
         {
-            auto& ai_face = ai_mesh.mFaces[j];
-            ai_face.mIndices = new unsigned int[3];
-            ai_face.mNumIndices = 3;
+            ai_mesh.mNumFaces = static_cast<uint32_t>(mesh.IndexBuffer().size() / 3);
+            ai_mesh.mFaces = new aiFace[ai_mesh.mNumFaces];
+            for (uint32_t j = 0; j < ai_mesh.mNumFaces; ++j)
+            {
+                auto& ai_face = ai_mesh.mFaces[j];
+                ai_face.mIndices = new unsigned int[3];
+                ai_face.mNumIndices = 3;
 
-            ai_face.mIndices[0] = mesh.Index(j * 3 + 0);
-            ai_face.mIndices[1] = mesh.Index(j * 3 + 1);
-            ai_face.mIndices[2] = mesh.Index(j * 3 + 2);
+                ai_face.mIndices[0] = mesh.Index(j * 3 + 0);
+                ai_face.mIndices[1] = mesh.Index(j * 3 + 1);
+                ai_face.mIndices[2] = mesh.Index(j * 3 + 2);
+            }
         }
 
         ai_scene.mRootNode = new aiNode;
@@ -871,7 +922,13 @@ namespace AIHoloImager
             }
         }
 
+        Assimp::ExportProperties export_properties;
+        if (mesh.IndexBuffer().empty())
+        {
+            export_properties.SetPropertyBool(AI_CONFIG_EXPORT_POINT_CLOUDS, true);
+        }
+
         Assimp::Exporter exporter;
-        exporter.Export(&ai_scene, format_id.c_str(), path.string().c_str(), 0);
+        exporter.Export(&ai_scene, format_id.c_str(), path.string().c_str(), 0, &export_properties);
     }
 } // namespace AIHoloImager

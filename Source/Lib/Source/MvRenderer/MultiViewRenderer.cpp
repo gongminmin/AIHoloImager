@@ -111,7 +111,8 @@ namespace AIHoloImager
                     {"TEXCOORD", 0, GpuFormat::RG32_Float},
                 }));
 
-                render_pipeline_ = GpuRenderPipeline(gpu_system_, shaders, vertex_attribs, std::span(&point_sampler, 1), states);
+                render_pipeline_ = GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders,
+                    vertex_attribs, std::span(&point_sampler, 1), states);
             }
 
             {

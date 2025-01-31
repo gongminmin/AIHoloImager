@@ -11,7 +11,7 @@
 namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
-    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages],
+    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, const ShaderInfo shaders[NumShaderStages],
         const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
@@ -179,7 +179,18 @@ namespace AIHoloImager
         pso_desc.InputLayout.pInputElementDescs = input_elems.data();
         pso_desc.InputLayout.NumElements = static_cast<uint32_t>(input_elems.size());
         pso_desc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
-        pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        switch (topology)
+        {
+        case PrimitiveTopology::PointList:
+            pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+            topology_ = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+            break;
+        case PrimitiveTopology::TriangleList:
+        default:
+            pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            topology_ = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            break;
+        }
         pso_desc.NumRenderTargets = static_cast<uint32_t>(states.rtv_formats.size());
         for (size_t i = 0; i < states.rtv_formats.size(); ++i)
         {
@@ -206,6 +217,11 @@ namespace AIHoloImager
     ID3D12PipelineState* GpuRenderPipeline::NativePipelineState() const noexcept
     {
         return pso_.Object().Get();
+    }
+
+    D3D_PRIMITIVE_TOPOLOGY GpuRenderPipeline::NativePrimitiveTopology() const noexcept
+    {
+        return topology_;
     }
 
 

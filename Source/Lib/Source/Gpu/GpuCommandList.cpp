@@ -287,7 +287,7 @@ namespace AIHoloImager
             dsv->Transition(*this);
         }
 
-        d3d12_cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        d3d12_cmd_list->IASetPrimitiveTopology(pipeline.NativePrimitiveTopology());
 
         d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
         d3d12_cmd_list->SetGraphicsRootSignature(pipeline.NativeRootSignature());

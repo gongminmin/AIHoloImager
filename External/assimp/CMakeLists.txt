@@ -1,4 +1,4 @@
-UpdateExternalLib("assimp" "https://github.com/assimp/assimp.git" "9519a62dd20799c5493c638d1ef5a6f484e5faf1" "master" "v5.0.0")
+UpdateExternalLib("assimp" "https://github.com/assimp/assimp.git" "53b5dba4df171373fddb5ce7f00db6399c0aeeaa" "master" "v5.0.0")
 
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)

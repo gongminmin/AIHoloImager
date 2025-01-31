@@ -57,10 +57,17 @@ namespace AIHoloImager
             GpuFormat dsv_format = GpuFormat::Unknown;
         };
 
+        // TODO: Support more topology
+        enum class PrimitiveTopology
+        {
+            PointList,
+            TriangleList,
+        };
+
     public:
         GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, const ShaderInfo shaders[NumShaderStages], const GpuVertexAttribs& vertex_attribs,
-            std::span<const GpuStaticSampler> samplers, const States& states);
+        GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, const ShaderInfo shaders[NumShaderStages],
+            const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states);
         ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
@@ -68,10 +75,12 @@ namespace AIHoloImager
 
         ID3D12RootSignature* NativeRootSignature() const noexcept;
         ID3D12PipelineState* NativePipelineState() const noexcept;
+        D3D_PRIMITIVE_TOPOLOGY NativePrimitiveTopology() const noexcept;
 
     private:
         GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
         GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
+        D3D_PRIMITIVE_TOPOLOGY topology_;
     };
 
     class GpuComputePipeline
