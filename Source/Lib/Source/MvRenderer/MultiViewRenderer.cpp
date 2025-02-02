@@ -146,7 +146,7 @@ namespace AIHoloImager
 
         Result Render(const Mesh& mesh, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
-            assert(mesh.MeshVertexDesc().Stride() == sizeof(VertexFormat));
+            const uint32_t vertex_stride = mesh.MeshVertexDesc().Stride();
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"vb");
@@ -180,7 +180,7 @@ namespace AIHoloImager
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_srv, 0, 45, CameraDist);
+                RenderToSsaa(cmd_list, vb, vertex_stride, ib, num_indices, albedo_gpu_srv, 0, 45, CameraDist);
                 Downsample(cmd_list, init_view_tex_, init_view_uav_);
                 gpu_system_.Execute(std::move(cmd_list));
             }
@@ -220,7 +220,7 @@ namespace AIHoloImager
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, ib, num_indices, albedo_gpu_srv, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                RenderToSsaa(cmd_list, vb, vertex_stride, ib, num_indices, albedo_gpu_srv, Azimuths[i], Elevations[i], CameraDist, MvScale);
                 BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
                 Downsample(cmd_list, multi_view_texs_[i], multi_view_uavs_[i]);
 
@@ -241,7 +241,7 @@ namespace AIHoloImager
         }
 
     private:
-        void RenderToSsaa(GpuCommandList& cmd_list, GpuBuffer& vb, GpuBuffer& ib, uint32_t num_indices,
+        void RenderToSsaa(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, const GpuBuffer& ib, uint32_t num_indices,
             const GpuShaderResourceView& albedo_srv, float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
         {
             const glm::vec3 camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
@@ -265,7 +265,7 @@ namespace AIHoloImager
             cmd_list.Clear(ssaa_rtv_, clear_clr);
             cmd_list.ClearDepth(ssaa_dsv_, 1);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, sizeof(VertexFormat)}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
@@ -380,11 +380,6 @@ namespace AIHoloImager
 
         glm::mat4x4 proj_mtx_;
 
-        struct VertexFormat
-        {
-            glm::vec3 pos;
-            glm::vec2 texcoord;
-        };
         struct RenderConstantBuffer
         {
             glm::mat4x4 mvp;
