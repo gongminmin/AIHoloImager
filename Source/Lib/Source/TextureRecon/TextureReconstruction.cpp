@@ -207,7 +207,7 @@ namespace AIHoloImager
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt,
+            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA16_Float,
                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "TextureReconstruction.accum_color_tex");
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex, ToLinearFormat(accum_color_tex.Format()));
 
@@ -241,11 +241,11 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm_SRGB);
+                    /*Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm_SRGB);
                     const auto rb_future = cmd_list.ReadBackAsync(accum_color_tex, 0, color_tex.Data(), color_tex.DataSize());
                     gpu_system_.ExecuteAndReset(cmd_list);
                     rb_future.wait();
-                    SaveTexture(color_tex, aihi_.TmpDir() / "Texture" / std::format("Projective_{}.png", i));
+                    SaveTexture(color_tex, aihi_.TmpDir() / "Texture" / std::format("Projective_{}.png", i));*/
                 }
 #endif
             }
