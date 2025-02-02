@@ -28,7 +28,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     }
     else
     {
-        color.a = 1;
+        color /= color.a;
     }
 
     color_tex[dtid.xy] = color;
