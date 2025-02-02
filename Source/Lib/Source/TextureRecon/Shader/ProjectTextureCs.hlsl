@@ -66,10 +66,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
                 float4 color = photo_tex.SampleLevel(bilinear_sampler, (coord - delighted_offset) * delighted_scale, 0);
                 float confidence = -ray_es.z * normal_es.z * color.a;
-                float prev_confidence = accum_color_tex[dtid.xy].a;
-                if (confidence > prev_confidence)
+                if (confidence > 0.1f)
                 {
-                    accum_color_tex[dtid.xy] = float4(color.rgb, confidence);
+                    accum_color_tex[dtid.xy] += float4(color.rgb, 1) * confidence;
                 }
             }
         }
