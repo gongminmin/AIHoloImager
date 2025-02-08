@@ -391,96 +391,91 @@ set(py_files
     mpmath/usertools.py
     mpmath/visualization.py
     mpmath/__init__.py
-    numpy/compat/py3k.py
-    numpy/compat/__init__.py
-    numpy/core/arrayprint.py
-    numpy/core/defchararray.py
-    numpy/core/einsumfunc.py
-    numpy/core/fromnumeric.py
-    numpy/core/function_base.py
-    numpy/core/getlimits.py
-    numpy/core/memmap.py
-    numpy/core/multiarray.py
-    numpy/core/numeric.py
-    numpy/core/numerictypes.py
-    numpy/core/overrides.py
-    numpy/core/records.py
-    numpy/core/shape_base.py
-    numpy/core/umath.py
-    numpy/core/_add_newdocs.py
-    numpy/core/_add_newdocs_scalars.py
-    numpy/core/_asarray.py
-    numpy/core/_dtype.py
-    numpy/core/_dtype_ctypes.py
-    numpy/core/_exceptions.py
-    numpy/core/_internal.py
-    numpy/core/_machar.py
-    numpy/core/_methods.py
-    numpy/core/_string_helpers.py
-    numpy/core/_type_aliases.py
-    numpy/core/_ufunc_config.py
-    numpy/core/__init__.py
     numpy/fft/helper.py
+    numpy/fft/_helper.py
     numpy/fft/_pocketfft.py
     numpy/fft/__init__.py
-    numpy/lib/arraypad.py
-    numpy/lib/arraysetops.py
-    numpy/lib/arrayterator.py
+    numpy/lib/array_utils.py
     numpy/lib/format.py
-    numpy/lib/function_base.py
-    numpy/lib/histograms.py
-    numpy/lib/index_tricks.py
+    numpy/lib/introspect.py
     numpy/lib/mixins.py
-    numpy/lib/nanfunctions.py
     numpy/lib/npyio.py
-    numpy/lib/polynomial.py
     numpy/lib/scimath.py
-    numpy/lib/shape_base.py
     numpy/lib/stride_tricks.py
-    numpy/lib/twodim_base.py
-    numpy/lib/type_check.py
-    numpy/lib/ufunclike.py
-    numpy/lib/utils.py
+    numpy/lib/_arraypad_impl.py
+    numpy/lib/_arraysetops_impl.py
+    numpy/lib/_arrayterator_impl.py
+    numpy/lib/_array_utils_impl.py
     numpy/lib/_datasource.py
+    numpy/lib/_function_base_impl.py
+    numpy/lib/_histograms_impl.py
+    numpy/lib/_index_tricks_impl.py
     numpy/lib/_iotools.py
+    numpy/lib/_nanfunctions_impl.py
+    numpy/lib/_npyio_impl.py
+    numpy/lib/_polynomial_impl.py
+    numpy/lib/_scimath_impl.py
+    numpy/lib/_shape_base_impl.py
+    numpy/lib/_stride_tricks_impl.py
+    numpy/lib/_twodim_base_impl.py
+    numpy/lib/_type_check_impl.py
+    numpy/lib/_ufunclike_impl.py
+    numpy/lib/_utils_impl.py
     numpy/lib/_version.py
     numpy/lib/__init__.py
     numpy/linalg/linalg.py
+    numpy/linalg/_linalg.py
     numpy/linalg/__init__.py
-    numpy/ma/core.py
-    numpy/ma/extras.py
-    numpy/ma/__init__.py
     numpy/matrixlib/defmatrix.py
     numpy/matrixlib/__init__.py
-    numpy/polynomial/chebyshev.py
-    numpy/polynomial/hermite.py
-    numpy/polynomial/hermite_e.py
-    numpy/polynomial/laguerre.py
-    numpy/polynomial/legendre.py
-    numpy/polynomial/polynomial.py
-    numpy/polynomial/polyutils.py
-    numpy/polynomial/_polybase.py
-    numpy/polynomial/__init__.py
     numpy/random/_pickle.py
     numpy/random/__init__.py
-    numpy/_core/_multiarray_umath.py
+    numpy/_core/arrayprint.py
+    numpy/_core/einsumfunc.py
+    numpy/_core/fromnumeric.py
+    numpy/_core/function_base.py
+    numpy/_core/getlimits.py
+    numpy/_core/memmap.py
+    numpy/_core/multiarray.py
+    numpy/_core/numeric.py
+    numpy/_core/numerictypes.py
+    numpy/_core/overrides.py
+    numpy/_core/printoptions.py
+    numpy/_core/records.py
+    numpy/_core/shape_base.py
+    numpy/_core/umath.py
+    numpy/_core/_add_newdocs.py
+    numpy/_core/_add_newdocs_scalars.py
+    numpy/_core/_asarray.py
+    numpy/_core/_dtype.py
+    numpy/_core/_dtype_ctypes.py
+    numpy/_core/_exceptions.py
+    numpy/_core/_internal.py
+    numpy/_core/_machar.py
+    numpy/_core/_methods.py
+    numpy/_core/_string_helpers.py
+    numpy/_core/_type_aliases.py
+    numpy/_core/_ufunc_config.py
     numpy/_core/__init__.py
     numpy/_typing/_array_like.py
     numpy/_typing/_char_codes.py
     numpy/_typing/_dtype_like.py
     numpy/_typing/_nbit.py
+    numpy/_typing/_nbit_base.py
     numpy/_typing/_nested_sequence.py
     numpy/_typing/_scalars.py
     numpy/_typing/_shape.py
+    numpy/_typing/_ufunc.py
     numpy/_typing/__init__.py
     numpy/_utils/_convertions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
-    numpy/ctypeslib.py
     numpy/dtypes.py
     numpy/exceptions.py
     numpy/version.py
+    numpy/_array_api_info.py
     numpy/_distributor_init.py
+    numpy/_expired_attrs_2_0.py
     numpy/_globals.py
     numpy/_pytesttester.py
     numpy/__config__.py
@@ -2570,10 +2565,9 @@ set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-win_amd64.pyd)
 
 set(copy_files
     certifi/cacert.pem
-    numpy/core/_multiarray_umath.${py_suffix}
-    numpy/core/_multiarray_tests.${py_suffix}
+    numpy/_core/_multiarray_umath.${py_suffix}
     numpy/linalg/_umath_linalg.${py_suffix}
-    numpy/fft/_pocketfft_internal.${py_suffix}
+    numpy/fft/_pocketfft_umath.${py_suffix}
     numpy/random/_bounded_integers.${py_suffix}
     numpy/random/_common.${py_suffix}
     numpy/random/_generator.${py_suffix}
@@ -2583,7 +2577,8 @@ set(copy_files
     numpy/random/_sfc64.${py_suffix}
     numpy/random/bit_generator.${py_suffix}
     numpy/random/mtrand.${py_suffix}
-    numpy.libs/libopenblas64__v0.3.23-293-gc2f4bdbb-gcc_10_3_0-2bde3a66a51006b2b53eb373ff767a3f.dll
+    numpy.libs/libscipy_openblas64_-43e11ff0749b8cbe0a615c9cf6737e0e.dll
+    numpy.libs/msvcp140-d64049c6e3865410a7dda6a7e9f0c575.dll
     onnx/onnx_cpp2py_export.${py_suffix}
     PIL/_imaging.${py_suffix}
     regex/_regex.${py_suffix}
@@ -2636,7 +2631,7 @@ set(copy_files
     filelock-3.16.1.dist-info/METADATA
     huggingface_hub-0.26.2.dist-info/METADATA
     idna-3.10.dist-info/METADATA
-    numpy-1.26.4.dist-info/METADATA
+    numpy-2.2.2.dist-info/METADATA
     packaging-24.2.dist-info/METADATA
     pillow-11.0.0.dist-info/METADATA
     PyYAML-6.0.2.dist-info/METADATA
