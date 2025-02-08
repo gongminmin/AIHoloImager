@@ -2627,7 +2627,7 @@ set(copy_files
     xformers/_C.pyd
     xformers/_C_flashattention.pyd
     xformers/cpp_lib.json
-    accelerate-0.30.1.dist-info/METADATA
+    accelerate-1.3.0.dist-info/METADATA
     filelock-3.16.1.dist-info/METADATA
     huggingface_hub-0.26.2.dist-info/METADATA
     idna-3.10.dist-info/METADATA

@@ -123,6 +123,6 @@ psutil==6.1.0
 #jinja2==3.1.4
 #torch==2.4.1+cu124
 #huggingface-hub==0.26.2
-accelerate==0.30.1
+accelerate==1.3.0
 
 einops==0.8.0
