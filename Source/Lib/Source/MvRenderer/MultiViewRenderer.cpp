@@ -93,7 +93,7 @@ namespace AIHoloImager
 
                 const ShaderInfo shaders[] = {
                     {RenderVs_shader, 1, 0, 0},
-                    {RenderPs_shader, 0, 1, 0},
+                    {RenderPs_shader, 0, 0, 0},
                 };
 
                 const GpuFormat rtv_formats[] = {ssaa_rt_tex_.Format()};
@@ -104,15 +104,14 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
                 states.dsv_format = ssaa_ds_tex_.Format();
 
-                const GpuStaticSampler point_sampler(GpuStaticSampler::Filter::Point, GpuStaticSampler::AddressMode::Clamp);
-
                 const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
                     {"POSITION", 0, GpuFormat::RGB32_Float},
-                    {"TEXCOORD", 0, GpuFormat::RG32_Float},
+                    {"NORMAL", 0, GpuFormat::RGB32_Float},
+                    {"COLOR", 0, GpuFormat::RGB32_Float},
                 }));
 
-                render_pipeline_ = GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders,
-                    vertex_attribs, std::span(&point_sampler, 1), states);
+                render_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::PointList, shaders, vertex_attribs, {}, states);
             }
 
             {
@@ -153,22 +152,6 @@ namespace AIHoloImager
             memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
             vb.Unmap(GpuRange{0, vb.Size()});
 
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
-                GpuResourceFlag::None, L"ib");
-            memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
-            ib.Unmap(GpuRange{0, ib.Size()});
-
-            GpuTexture2D albedo_gpu_tex;
-            {
-                const auto& albedo_tex = mesh.AlbedoTexture();
-                albedo_gpu_tex = GpuTexture2D(gpu_system_, albedo_tex.Width(), albedo_tex.Height(), 1, GpuFormat::RGBA8_UNorm,
-                    GpuResourceFlag::None, L"albedo_gpu_tex");
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                albedo_gpu_tex.Upload(gpu_system_, cmd_list, 0, albedo_tex.Data());
-                gpu_system_.Execute(std::move(cmd_list));
-            }
-            GpuShaderResourceView albedo_gpu_srv(gpu_system_, albedo_gpu_tex);
-
             constexpr float CameraDist = 10;
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -176,11 +159,11 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
-            const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
+            const uint32_t num_vertices = mesh.NumVertices();
 
             {
                 GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, vertex_stride, ib, num_indices, albedo_gpu_srv, 0, 45, CameraDist);
+                RenderToSsaa(cmd_list, vb, vertex_stride, num_vertices, 0, 45, CameraDist);
                 Downsample(cmd_list, init_view_tex_, init_view_uav_);
                 gpu_system_.Execute(std::move(cmd_list));
             }
@@ -220,7 +203,7 @@ namespace AIHoloImager
             for (size_t i = 0; i < std::size(Azimuths); ++i)
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                RenderToSsaa(cmd_list, vb, vertex_stride, ib, num_indices, albedo_gpu_srv, Azimuths[i], Elevations[i], CameraDist, MvScale);
+                RenderToSsaa(cmd_list, vb, vertex_stride, num_vertices, Azimuths[i], Elevations[i], CameraDist, MvScale);
                 BlendWithDiffusion(cmd_list, mv_diffusion_gpu_tex, static_cast<uint32_t>(i));
                 Downsample(cmd_list, multi_view_texs_[i], multi_view_uavs_[i]);
 
@@ -241,8 +224,8 @@ namespace AIHoloImager
         }
 
     private:
-        void RenderToSsaa(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, const GpuBuffer& ib, uint32_t num_indices,
-            const GpuShaderResourceView& albedo_srv, float camera_azimuth, float camera_elevation, float camera_dist, float scale = 1)
+        void RenderToSsaa(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, uint32_t num_vertices, float camera_azimuth,
+            float camera_elevation, float camera_dist, float scale = 1)
         {
             const glm::vec3 camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
             const glm::vec3 camera_dir = -glm::normalize(camera_pos);
@@ -259,6 +242,7 @@ namespace AIHoloImager
             const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
             render_cb_->mvp = glm::transpose(proj_mtx_ * view_mtx);
+            render_cb_->mv = glm::transpose(view_mtx);
             render_cb_.UploadToGpu();
 
             const float clear_clr[] = {0, 0, 0, 0};
@@ -266,13 +250,11 @@ namespace AIHoloImager
             cmd_list.ClearDepth(ssaa_dsv_, 1);
 
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
-            const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             const GeneralConstantBuffer* cbs[] = {&render_cb_};
-            const GpuShaderResourceView* srvs[] = {&albedo_srv};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {cbs, {}, {}},
-                {{}, srvs, {}},
+                {{}, {}, {}},
             };
 
             const GpuRenderTargetView* rtvs[] = {&ssaa_rtv_};
@@ -282,8 +264,8 @@ namespace AIHoloImager
                 scale * ssaa_rt_tex_.Width(0), scale * ssaa_rt_tex_.Height(0)};
             const GpuRect scissor_rc = {0, 0, static_cast<int32_t>(ssaa_rt_tex_.Width(0)), static_cast<int32_t>(ssaa_rt_tex_.Height(0))};
 
-            cmd_list.Render(render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, &ssaa_dsv_,
-                std::span(&viewport, 1), std::span(&scissor_rc, 1));
+            cmd_list.Render(render_pipeline_, vb_bindings, nullptr, num_vertices, shader_bindings, rtvs, &ssaa_dsv_, std::span(&viewport, 1),
+                std::span(&scissor_rc, 1));
         }
 
         void Downsample(GpuCommandList& cmd_list, GpuTexture2D& target_tex, GpuUnorderedAccessView& target_uav)
@@ -383,6 +365,7 @@ namespace AIHoloImager
         struct RenderConstantBuffer
         {
             glm::mat4x4 mvp;
+            glm::mat4x4 mv;
         };
         ConstantBuffer<RenderConstantBuffer> render_cb_;
         GpuRenderPipeline render_pipeline_;

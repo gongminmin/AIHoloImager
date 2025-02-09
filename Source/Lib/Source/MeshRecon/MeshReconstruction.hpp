@@ -30,7 +30,7 @@ namespace AIHoloImager
         };
 
     public:
-        MeshReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system);
+        MeshReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system);
         MeshReconstruction(MeshReconstruction&& other) noexcept;
         ~MeshReconstruction() noexcept;
 

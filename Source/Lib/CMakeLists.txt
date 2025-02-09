@@ -86,6 +86,7 @@ set(aihi_files
     Source/MeshGen/Lrm.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
+    Source/MeshRecon/Image2Depth.py
     Source/MeshSimp/MeshSimplification.cpp
     Source/MeshSimp/MeshSimplification.hpp
     Source/MvDiffusion/MultiViewDiffusion.cpp
@@ -239,6 +240,7 @@ set(py_files
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Lrm.py
+    Source/MeshRecon/Image2Depth.py
     Source/MvDiffusion/MultiViewDiffusion.py
     Source/Python/PythonSystem.py
     Source/Util/Util.py

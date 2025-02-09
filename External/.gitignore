@@ -3,6 +3,7 @@ cxxopts/cxxopts/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
 InstantMesh/InstantMesh/
+MoGe/MoGe
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 PythonVenv/PythonVenv/
