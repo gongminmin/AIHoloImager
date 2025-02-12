@@ -1463,6 +1463,8 @@ set(py_files
     torch/nested/_internal/__init__.py
     torch/nested/__init__.py
     torch/nn/attention/__init__.py
+    torch/nn/attention/_utils.py
+    torch/nn/attention/flex_attention.py
     torch/nn/intrinsic/modules/fused.py
     torch/nn/intrinsic/modules/__init__.py
     torch/nn/intrinsic/qat/modules/conv_fused.py
@@ -2239,18 +2241,30 @@ set(py_files
     transformers/generation/__init__.py
     transformers/integrations/aqlm.py
     transformers/integrations/deepspeed.py
+    transformers/integrations/flash_attention.py
+    transformers/integrations/flex_attention.py
+    transformers/integrations/fsdp.py
+    transformers/integrations/ggml.py
+    transformers/integrations/hqq.py
     transformers/integrations/peft.py
+    transformers/integrations/sdpa_attention.py
     transformers/integrations/__init__.py
+    transformers/loss/loss_deformable_detr.py
+    transformers/loss/loss_for_object_detection.py
+    transformers/loss/loss_rt_detr.py
+    transformers/loss/loss_utils.py
+    transformers/loss/__init__.py
     transformers/models/albert/__init__.py
     transformers/models/align/__init__.py
     transformers/models/altclip/__init__.py
+    transformers/models/aria/__init__.py
     transformers/models/audio_spectrogram_transformer/__init__.py
     transformers/models/auto/auto_factory.py
     transformers/models/auto/configuration_auto.py
     transformers/models/auto/image_processing_auto.py
-    transformers/models/auto/modeling_auto.py
     transformers/models/auto/__init__.py
     transformers/models/autoformer/__init__.py
+    transformers/models/bamba/__init__.py
     transformers/models/bark/__init__.py
     transformers/models/bart/__init__.py
     transformers/models/barthez/__init__.py
@@ -2274,6 +2288,7 @@ set(py_files
     transformers/models/byt5/__init__.py
     transformers/models/camembert/__init__.py
     transformers/models/canine/__init__.py
+    transformers/models/chameleon/__init__.py
     transformers/models/chinese_clip/__init__.py
     transformers/models/clap/__init__.py
     transformers/models/clip/configuration_clip.py
@@ -2285,6 +2300,9 @@ set(py_files
     transformers/models/clvp/__init__.py
     transformers/models/codegen/__init__.py
     transformers/models/code_llama/__init__.py
+    transformers/models/cohere/__init__.py
+    transformers/models/cohere2/__init__.py
+    transformers/models/colpali/__init__.py
     transformers/models/conditional_detr/__init__.py
     transformers/models/convbert/__init__.py
     transformers/models/convnext/__init__.py
@@ -2293,7 +2311,9 @@ set(py_files
     transformers/models/cpmant/__init__.py
     transformers/models/ctrl/__init__.py
     transformers/models/cvt/__init__.py
+    transformers/models/dac/__init__.py
     transformers/models/data2vec/__init__.py
+    transformers/models/dbrx/__init__.py
     transformers/models/deberta/__init__.py
     transformers/models/deberta_v2/__init__.py
     transformers/models/decision_transformer/__init__.py
@@ -2301,25 +2321,26 @@ set(py_files
     transformers/models/deit/__init__.py
     transformers/models/deprecated/__init__.py
     transformers/models/depth_anything/__init__.py
-    transformers/models/deta/__init__.py
     transformers/models/detr/__init__.py
     transformers/models/dialogpt/__init__.py
+    transformers/models/diffllama/__init__.py
     transformers/models/dinat/__init__.py
     transformers/models/dinov2/__init__.py
+    transformers/models/dinov2_with_registers/__init__.py
     transformers/models/distilbert/__init__.py
     transformers/models/dit/__init__.py
     transformers/models/donut/__init__.py
     transformers/models/dpr/__init__.py
     transformers/models/dpt/__init__.py
-    transformers/models/efficientformer/__init__.py
     transformers/models/efficientnet/__init__.py
     transformers/models/electra/__init__.py
+    transformers/models/emu3/__init__.py
     transformers/models/encodec/__init__.py
     transformers/models/encoder_decoder/__init__.py
     transformers/models/ernie/__init__.py
-    transformers/models/ernie_m/__init__.py
     transformers/models/esm/__init__.py
     transformers/models/falcon/__init__.py
+    transformers/models/falcon_mamba/__init__.py
     transformers/models/fastspeech2_conformer/__init__.py
     transformers/models/flaubert/__init__.py
     transformers/models/flava/__init__.py
@@ -2329,26 +2350,35 @@ set(py_files
     transformers/models/funnel/__init__.py
     transformers/models/fuyu/__init__.py
     transformers/models/gemma/__init__.py
+    transformers/models/gemma2/__init__.py
     transformers/models/git/__init__.py
+    transformers/models/glm/__init__.py
     transformers/models/glpn/__init__.py
     transformers/models/gpt2/__init__.py
     transformers/models/gptj/__init__.py
-    transformers/models/gptsan_japanese/__init__.py
     transformers/models/gpt_bigcode/__init__.py
     transformers/models/gpt_neo/__init__.py
     transformers/models/gpt_neox/__init__.py
     transformers/models/gpt_neox_japanese/__init__.py
     transformers/models/gpt_sw3/__init__.py
-    transformers/models/graphormer/__init__.py
+    transformers/models/granite/__init__.py
+    transformers/models/granitemoe/__init__.py
+    transformers/models/grounding_dino/__init__.py
     transformers/models/groupvit/__init__.py
     transformers/models/herbert/__init__.py
+    transformers/models/hiera/__init__.py
     transformers/models/hubert/__init__.py
     transformers/models/ibert/__init__.py
     transformers/models/idefics/__init__.py
+    transformers/models/idefics2/__init__.py
+    transformers/models/idefics3/__init__.py
+    transformers/models/ijepa/__init__.py
     transformers/models/imagegpt/__init__.py
     transformers/models/informer/__init__.py
     transformers/models/instructblip/__init__.py
-    transformers/models/jukebox/__init__.py
+    transformers/models/instructblipvideo/__init__.py
+    transformers/models/jamba/__init__.py
+    transformers/models/jetmoe/__init__.py
     transformers/models/kosmos2/__init__.py
     transformers/models/layoutlm/__init__.py
     transformers/models/layoutlmv2/__init__.py
@@ -2359,46 +2389,61 @@ set(py_files
     transformers/models/lilt/__init__.py
     transformers/models/llama/__init__.py
     transformers/models/llava/__init__.py
+    transformers/models/llava_next/__init__.py
+    transformers/models/llava_next_video/__init__.py
+    transformers/models/llava_onevision/__init__.py
     transformers/models/longformer/__init__.py
     transformers/models/longt5/__init__.py
     transformers/models/luke/__init__.py
     transformers/models/lxmert/__init__.py
     transformers/models/m2m_100/__init__.py
+    transformers/models/mamba/__init__.py
+    transformers/models/mamba2/__init__.py
     transformers/models/marian/__init__.py
     transformers/models/markuplm/__init__.py
     transformers/models/mask2former/__init__.py
     transformers/models/maskformer/__init__.py
     transformers/models/mbart/__init__.py
     transformers/models/mbart50/__init__.py
-    transformers/models/mega/__init__.py
     transformers/models/megatron_bert/__init__.py
     transformers/models/megatron_gpt2/__init__.py
     transformers/models/mgp_str/__init__.py
+    transformers/models/mimi/__init__.py
     transformers/models/mistral/__init__.py
     transformers/models/mixtral/__init__.py
+    transformers/models/mllama/__init__.py
     transformers/models/mluke/__init__.py
     transformers/models/mobilebert/__init__.py
     transformers/models/mobilenet_v1/__init__.py
     transformers/models/mobilenet_v2/__init__.py
     transformers/models/mobilevit/__init__.py
     transformers/models/mobilevitv2/__init__.py
+    transformers/models/modernbert/__init__.py
+    transformers/models/moonshine/__init__.py
+    transformers/models/moshi/__init__.py
     transformers/models/mpnet/__init__.py
     transformers/models/mpt/__init__.py
     transformers/models/mra/__init__.py
     transformers/models/mt5/__init__.py
     transformers/models/musicgen/__init__.py
+    transformers/models/musicgen_melody/__init__.py
     transformers/models/mvp/__init__.py
-    transformers/models/nat/__init__.py
-    transformers/models/nezha/__init__.py
+    transformers/models/myt5/__init__.py
+    transformers/models/nemotron/__init__.py
     transformers/models/nllb/__init__.py
     transformers/models/nllb_moe/__init__.py
     transformers/models/nougat/__init__.py
     transformers/models/nystromformer/__init__.py
+    transformers/models/olmo/__init__.py
+    transformers/models/olmo2/__init__.py
+    transformers/models/olmoe/__init__.py
+    transformers/models/omdet_turbo/__init__.py
     transformers/models/oneformer/__init__.py
     transformers/models/openai/__init__.py
     transformers/models/opt/__init__.py
     transformers/models/owlv2/__init__.py
     transformers/models/owlvit/__init__.py
+    transformers/models/paligemma/__init__.py
     transformers/models/patchtsmixer/__init__.py
     transformers/models/patchtst/__init__.py
     transformers/models/pegasus/__init__.py
@@ -2406,17 +2451,23 @@ set(py_files
     transformers/models/perceiver/__init__.py
     transformers/models/persimmon/__init__.py
     transformers/models/phi/__init__.py
+    transformers/models/phi3/__init__.py
+    transformers/models/phimoe/__init__.py
     transformers/models/phobert/__init__.py
     transformers/models/pix2struct/__init__.py
+    transformers/models/pixtral/__init__.py
     transformers/models/plbart/__init__.py
     transformers/models/poolformer/__init__.py
     transformers/models/pop2piano/__init__.py
     transformers/models/prophetnet/__init__.py
     transformers/models/pvt/__init__.py
-    transformers/models/qdqbert/__init__.py
+    transformers/models/pvt_v2/__init__.py
     transformers/models/qwen2/__init__.py
+    transformers/models/qwen2_audio/__init__.py
+    transformers/models/qwen2_moe/__init__.py
+    transformers/models/qwen2_vl/__init__.py
     transformers/models/rag/__init__.py
-    transformers/models/realm/__init__.py
+    transformers/models/recurrent_gemma/__init__.py
     transformers/models/reformer/__init__.py
     transformers/models/regnet/__init__.py
     transformers/models/rembert/__init__.py
@@ -2425,42 +2476,47 @@ set(py_files
     transformers/models/roberta_prelayernorm/__init__.py
     transformers/models/roc_bert/__init__.py
     transformers/models/roformer/__init__.py
+    transformers/models/rt_detr/__init__.py
     transformers/models/rwkv/__init__.py
     transformers/models/sam/__init__.py
     transformers/models/seamless_m4t/__init__.py
     transformers/models/seamless_m4t_v2/__init__.py
     transformers/models/segformer/__init__.py
+    transformers/models/seggpt/__init__.py
     transformers/models/sew/__init__.py
     transformers/models/sew_d/__init__.py
     transformers/models/siglip/__init__.py
     transformers/models/speecht5/__init__.py
     transformers/models/speech_encoder_decoder/__init__.py
     transformers/models/speech_to_text/__init__.py
-    transformers/models/speech_to_text_2/__init__.py
     transformers/models/splinter/__init__.py
     transformers/models/squeezebert/__init__.py
     transformers/models/stablelm/__init__.py
+    transformers/models/starcoder2/__init__.py
+    transformers/models/superpoint/__init__.py
     transformers/models/swiftformer/__init__.py
     transformers/models/swin/__init__.py
     transformers/models/swin2sr/__init__.py
     transformers/models/swinv2/__init__.py
     transformers/models/switch_transformers/__init__.py
-    transformers/models/t5/tokenization_t5_fast.py
     transformers/models/t5/__init__.py
     transformers/models/table_transformer/__init__.py
     transformers/models/tapas/__init__.py
+    transformers/models/textnet/__init__.py
     transformers/models/timesformer/__init__.py
     transformers/models/time_series_transformer/__init__.py
     transformers/models/timm_backbone/__init__.py
+    transformers/models/timm_wrapper/__init__.py
     transformers/models/trocr/__init__.py
-    transformers/models/tvlt/__init__.py
     transformers/models/tvp/__init__.py
+    transformers/models/udop/__init__.py
     transformers/models/umt5/__init__.py
     transformers/models/unispeech/__init__.py
     transformers/models/unispeech_sat/__init__.py
     transformers/models/univnet/__init__.py
     transformers/models/upernet/__init__.py
     transformers/models/videomae/__init__.py
+    transformers/models/video_llava/__init__.py
     transformers/models/vilt/__init__.py
     transformers/models/vipllava/__init__.py
     transformers/models/vision_encoder_decoder/__init__.py
@@ -2471,8 +2527,9 @@ set(py_files
     transformers/models/vit/__init__.py
     transformers/models/vitdet/__init__.py
     transformers/models/vitmatte/__init__.py
+    transformers/models/vitpose/__init__.py
+    transformers/models/vitpose_backbone/__init__.py
     transformers/models/vits/__init__.py
-    transformers/models/vit_hybrid/__init__.py
     transformers/models/vit_mae/__init__.py
     transformers/models/vit_msn/__init__.py
     transformers/models/vivit/__init__.py
@@ -2485,7 +2542,6 @@ set(py_files
     transformers/models/whisper/__init__.py
     transformers/models/xglm/__init__.py
     transformers/models/xlm/__init__.py
-    transformers/models/xlm_prophetnet/__init__.py
     transformers/models/xlm_roberta/__init__.py
     transformers/models/xlm_roberta_xl/__init__.py
     transformers/models/xlnet/__init__.py
@@ -2493,6 +2549,8 @@ set(py_files
     transformers/models/x_clip/__init__.py
     transformers/models/yolos/__init__.py
     transformers/models/yoso/__init__.py
+    transformers/models/zamba/__init__.py
+    transformers/models/zoedepth/__init__.py
     transformers/models/__init__.py
     transformers/onnx/config.py
     transformers/onnx/utils.py
@@ -2502,12 +2560,23 @@ set(py_files
     transformers/quantizers/quantizers_utils.py
     transformers/quantizers/quantizer_aqlm.py
     transformers/quantizers/quantizer_awq.py
+    transformers/quantizers/quantizer_bitnet.py
     transformers/quantizers/quantizer_bnb_4bit.py
     transformers/quantizers/quantizer_bnb_8bit.py
+    transformers/quantizers/quantizer_compressed_tensors.py
+    transformers/quantizers/quantizer_eetq.py
+    transformers/quantizers/quantizer_fbgemm_fp8.py
     transformers/quantizers/quantizer_gptq.py
+    transformers/quantizers/quantizer_higgs.py
+    transformers/quantizers/quantizer_hqq.py
+    transformers/quantizers/quantizer_quanto.py
+    transformers/quantizers/quantizer_torchao.py
+    transformers/quantizers/quantizer_vptq.py
     transformers/quantizers/__init__.py
     transformers/utils/backbone_utils.py
+    transformers/utils/chat_template_utils.py
     transformers/utils/constants.py
+    transformers/utils/deprecation.py
     transformers/utils/doc.py
     transformers/utils/dummy_essentia_and_librosa_and_pretty_midi_and_scipy_and_torch_objects.py
     transformers/utils/dummy_flax_objects.py
@@ -2516,6 +2585,9 @@ set(py_files
     transformers/utils/dummy_sentencepiece_objects.py
     transformers/utils/dummy_tensorflow_text_objects.py
     transformers/utils/dummy_tf_objects.py
+    transformers/utils/dummy_timm_and_torchvision_objects.py
+    transformers/utils/dummy_torchaudio_objects.py
+    transformers/utils/dummy_torchvision_objects.py
     transformers/utils/generic.py
     transformers/utils/hub.py
     transformers/utils/import_utils.py
@@ -2532,11 +2604,14 @@ set(py_files
     transformers/dependency_versions_table.py
     transformers/dynamic_module_utils.py
     transformers/feature_extraction_utils.py
-    transformers/file_utils.py
+    transformers/image_processing_base.py
     transformers/image_processing_utils.py
+    transformers/image_processing_utils_fast.py
     transformers/image_transforms.py
     transformers/image_utils.py
     transformers/modeling_attn_mask_utils.py
+    transformers/modeling_flash_attention_utils.py
+    transformers/modeling_gguf_pytorch_utils.py
     transformers/modeling_outputs.py
     transformers/modeling_utils.py
     transformers/processing_utils.py
@@ -2665,7 +2740,7 @@ set(copy_files
     PIL/_imaging.${py_suffix}
     regex/_regex.${py_suffix}
     safetensors/_safetensors_rust.${py_suffix}
-    tokenizers/tokenizers.${py_suffix}
+    tokenizers/tokenizers.pyd
     torch/_C.${py_suffix}
     torch/functional.py
     torch/_dynamo/config.py
@@ -2707,6 +2782,12 @@ set(copy_files
     torchvision/zlib.dll
     torchvision/models/densenet.py
     transformers/__init__.py
+    transformers/models/clip/configuration_clip.py
+    transformers/models/clip/image_processing_clip.py
+    transformers/models/clip/modeling_clip.py
+    transformers/models/clip/tokenization_clip.py
+    transformers/models/vit/configuration_vit.py
+    transformers/models/vit/image_processing_vit.py
     xformers/_C.pyd
     xformers/_C_flashattention.pyd
     xformers/cpp_lib.json
@@ -2721,10 +2802,10 @@ set(copy_files
     regex-2024.11.6.dist-info/METADATA
     requests-2.32.3.dist-info/METADATA
     safetensors-0.4.5.dist-info/METADATA
-    tokenizers-0.15.2.dist-info/METADATA
+    tokenizers-0.21.0.dist-info/METADATA
     torch-2.6.0+cu124.dist-info/METADATA
     tqdm-4.67.0.dist-info/METADATA
-    transformers-4.38.0.dist-info/METADATA
+    transformers-4.48.3.dist-info/METADATA
     xformers-0.0.29.post2.dist-info/METADATA
 )
 foreach(src_file ${copy_files})

@@ -99,8 +99,8 @@ diffusers==0.31.0
 #tqdm==4.67.0
 #requests==2.32.3
 #huggingface-hub==0.26.2
-tokenizers==0.15.2
-transformers==4.38.0
+tokenizers==0.21.0
+transformers==4.48.3
 
 #urllib3==2.2.3
 #typing-extensions==4.12.2
