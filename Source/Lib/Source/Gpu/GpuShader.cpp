@@ -186,9 +186,13 @@ namespace AIHoloImager
             topology_ = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
             break;
         case PrimitiveTopology::TriangleList:
-        default:
             pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
             topology_ = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            break;
+        case PrimitiveTopology::TriangleStrip:
+        default:
+            pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            topology_ = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
             break;
         }
         pso_desc.NumRenderTargets = static_cast<uint32_t>(states.rtv_formats.size());

@@ -44,7 +44,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     float density = 0;
     float3 deformation = 0;
-    float3 color = 0;
+    float4 color = 0;
     uint32_t count = 0;
     for (uint32_t i = 0; i < 8; ++i)
     {
@@ -58,7 +58,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
                 density += density_features[index];
                 deformation += deformation_features[index];
-                color += color_features[index];
+                color.xyz += color_features[index];
                 ++count;
             }
         }
@@ -68,21 +68,23 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     {
         density /= count;
         deformation /= count;
-        color /= count;
+        color.xyz /= count;
 
         const float DeformationMultiplier = 4.0f;
         deformation = 1.0f / (grid_res * DeformationMultiplier) * tanh(deformation);
         deformation *= size;
 
-        color = Sigmoid(color);
+        color.xyz = Sigmoid(color.xyz);
+        color.w = 1;
     }
     else
     {
         density = 1;
         deformation = 0;
-        color = 0.5f;
+        color.xyz = 0.5f;
+        color.w = 0;
     }
 
     density_deformation_volume[dtid.zyx] = float4(density, deformation);
-    color_volume[dtid.zyx] = float4(color, 1);
+    color_volume[dtid.zyx] = color;
 }

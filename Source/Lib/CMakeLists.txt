@@ -70,12 +70,15 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl
+    Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl
+    Source/MeshGen/Shader/RotatePs.hlsl
+    Source/MeshGen/Shader/RotateVs.hlsl
     Source/MeshGen/Shader/ScatterIndexCs.hlsl
     Source/MeshGen/MarchingCubes.cpp
     Source/MeshGen/MarchingCubes.hpp
@@ -124,17 +127,6 @@ set(aihi_files
     Source/MeshRecon/MeshReconstruction.hpp
     Source/MeshSimp/MeshSimplification.cpp
     Source/MeshSimp/MeshSimplification.hpp
-    Source/MvDiffusion/MultiViewDiffusion.cpp
-    Source/MvDiffusion/MultiViewDiffusion.hpp
-    Source/MvDiffusion/MultiViewDiffusion.py
-    Source/MvRenderer/MultiViewRenderer.cpp
-    Source/MvRenderer/MultiViewRenderer.hpp
-    Source/MvRenderer/Shader/BlendCs.hlsl
-    Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl
-    Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl
-    Source/MvRenderer/Shader/DownsampleCs.hlsl
-    Source/MvRenderer/Shader/RenderVs.hlsl
-    Source/MvRenderer/Shader/RenderPs.hlsl
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
@@ -200,18 +192,15 @@ AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/RotatePs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
-AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
-AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
-AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
-AddShaderFile(Source/MvRenderer/Shader/DownsampleCs.hlsl "cs" "main")
-AddShaderFile(Source/MvRenderer/Shader/RenderVs.hlsl "vs" "main")
-AddShaderFile(Source/MvRenderer/Shader/RenderPs.hlsl "ps" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenVs.hlsl "vs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
@@ -313,7 +302,6 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
-    Source/MvDiffusion/MultiViewDiffusion.py
     Source/Python/PythonSystem.py
     Source/Util/Util.py
 )

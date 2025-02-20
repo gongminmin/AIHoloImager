@@ -20,10 +20,14 @@
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
+#include "Util/FormatConversion.hpp"
 
+#include "CompiledShader/MeshGen/Dilate3DCs.h"
 #include "CompiledShader/MeshGen/DilateCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/MergeTextureCs.h"
+#include "CompiledShader/MeshGen/RotatePs.h"
+#include "CompiledShader/MeshGen/RotateVs.h"
 #include "CompiledShader/MeshGen/ScatterIndexCs.h"
 
 namespace AIHoloImager
@@ -45,6 +49,24 @@ namespace AIHoloImager
             mesh_generator_deformation_features_method_ = python_system_.GetAttr(*mesh_generator_, "DeformationFeatures");
             mesh_generator_color_features_method_ = python_system_.GetAttr(*mesh_generator_, "ColorFeatures");
 
+            {
+                const ShaderInfo shaders[] = {
+                    {RotateVs_shader, 1, 0, 0},
+                    {RotatePs_shader, 0, 1, 0},
+                };
+
+                const GpuFormat rtv_formats[] = {ColorFmt};
+
+                GpuRenderPipeline::States states;
+                states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
+                states.rtv_formats = rtv_formats;
+
+                const GpuStaticSampler bilinear_sampler(
+                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+
+                rotate_pipeline_ = GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleStrip, shaders,
+                    GpuVertexAttribs({}), std::span(&bilinear_sampler, 1), states);
+            }
             {
                 const ShaderInfo shader = {ScatterIndexCs_shader, 1, 1, 1};
                 scatter_index_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -69,6 +91,10 @@ namespace AIHoloImager
                 const ShaderInfo shader = {DilateCs_shader, 1, 1, 1};
                 dilate_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
+            {
+                const ShaderInfo shader = {Dilate3DCs_shader, 1, 1, 1};
+                dilate_3d_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
         }
 
         ~Impl()
@@ -77,23 +103,29 @@ namespace AIHoloImager
             python_system_.CallObject(*mesh_generator_destroy_method);
         }
 
-        Mesh Generate(std::span<const Texture> input_images, uint32_t texture_size, const StructureFromMotion::Result& sfm_input,
-            const MeshReconstruction::Result& recon_input, const std::filesystem::path& tmp_dir)
+        Mesh Generate(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input, uint32_t texture_size,
+            const std::filesystem::path& tmp_dir)
         {
-            assert(input_images.size() == NumMvImages);
-            assert(input_images[0].Width() == MvImageDim);
-            assert(input_images[0].Height() == MvImageDim);
-            assert(FormatChannels(input_images[0].Format()) == MvImageChannels);
-
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "Texture";
             std::filesystem::create_directories(output_dir);
 #endif
 
+            std::cout << "Rotating images...\n";
+
+            std::vector<Texture> rotated_images = this->RotateImages(sfm_input, recon_input);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            for (size_t i = 0; i < rotated_images.size(); ++i)
+            {
+                SaveTexture(rotated_images[i], output_dir / std::format("Rotated_{}.png", i));
+            }
+#endif
+
             std::cout << "Generating mesh from images...\n";
 
             GpuTexture3D color_vol_tex;
-            Mesh mesh = this->GenMesh(input_images, color_vol_tex);
+            Mesh mesh = this->GenMesh(rotated_images, color_vol_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
@@ -173,6 +205,104 @@ namespace AIHoloImager
         }
 
     private:
+        std::vector<Texture> RotateImages(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input)
+        {
+            const glm::vec4 target_up_vec_ws = recon_input.transform * glm::vec4(0, 1, 0, 0);
+
+            std::vector<Texture> rotated_images(sfm_input.views.size());
+            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            {
+                const auto& view = sfm_input.views[i];
+                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+
+                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                GpuTexture2D image_mask_tex(
+                    gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, ColorFmt, GpuResourceFlag::None, L"image_mask_tex");
+                image_mask_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
+                GpuShaderResourceView image_mask_srv(gpu_system_, image_mask_tex);
+
+                ConstantBuffer<RotateConstantBuffer> rotation_cb(gpu_system_, 1, L"rotation_cb");
+
+                const auto& view_mtx = CalcViewMatrix(view);
+                const glm::vec3 forward_vec(0, 0, 1);
+                glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
+                const glm::vec3 old_up_vec(0, 1, 0);
+                const glm::vec3 right_vec = glm::cross(target_up_vec, forward_vec);
+                const glm::vec3 new_up_vec = glm::normalize(glm::cross(forward_vec, right_vec));
+
+                glm::quat rotation;
+                const float dot_product = glm::dot(new_up_vec, old_up_vec);
+                if (dot_product > 0.9999f)
+                {
+                    rotation = glm::quat(1, 0, 0, 0);
+                }
+                else if (dot_product < -0.9999f)
+                {
+                    const glm::vec3 ortho = glm::normalize(glm::vec3(1, 0, 0) - new_up_vec * glm::dot(glm::vec3(1, 0, 0), new_up_vec));
+                    rotation = glm::angleAxis(std::numbers::pi_v<float>, ortho);
+                }
+                else
+                {
+                    const glm::vec3 cross_product = glm::cross(new_up_vec, old_up_vec);
+                    rotation = glm::quat(1 + dot_product, cross_product.x, cross_product.y, cross_product.z);
+                    rotation = glm::normalize(rotation);
+                }
+                rotation_cb->rotation_mtx = glm::transpose(glm::mat4_cast(rotation));
+
+                constexpr uint32_t Gap = 32;
+                glm::uvec4 expanded_roi;
+                expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(view.roi.x)) - Gap, 0U);
+                expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(view.roi.y)) - Gap, 0U);
+                expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(view.roi.z)) + Gap, intrinsic.width);
+                expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(view.roi.w)) + Gap, intrinsic.height);
+
+                const uint32_t size = std::max(expanded_roi.z - expanded_roi.x, expanded_roi.w - expanded_roi.y);
+                const int32_t extent = size / 2;
+                const glm::ivec2 center = glm::ivec2(expanded_roi.x + expanded_roi.z, expanded_roi.y + expanded_roi.w) / 2;
+
+                const glm::vec2 top_left = center - extent;
+                const glm::vec2 bottom_right = center + extent;
+                const glm::vec2 wh(view.image_mask.Width(), view.image_mask.Height());
+                rotation_cb->tc_bounding_box = glm::vec4(top_left / wh, bottom_right / wh);
+
+                rotation_cb.UploadToGpu();
+
+                const float abs_sin_theta = std::sqrt(1 - dot_product * dot_product);
+                const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(dot_product) + abs_sin_theta)));
+                GpuTexture2D rotated_roi_tex(
+                    gpu_system_, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
+                GpuRenderTargetView rotated_roi_rtv(gpu_system_, rotated_roi_tex);
+
+                const float clear_clr[] = {0, 0, 0, 0};
+                cmd_list.Clear(rotated_roi_rtv, clear_clr);
+
+                const GeneralConstantBuffer* cbs[] = {&rotation_cb};
+                const GpuShaderResourceView* srvs[] = {&image_mask_srv};
+                const GpuCommandList::ShaderBinding shader_bindings[] = {
+                    {cbs, {}, {}},
+                    {{}, srvs, {}},
+                };
+
+                const GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
+
+                const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
+                cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
+
+                gpu_system_.ExecuteAndReset(cmd_list);
+                gpu_system_.WaitForGpu();
+
+                auto& rotated_roi_cpu_tex = rotated_images[i];
+
+                rotated_roi_cpu_tex = Texture(rotated_size, rotated_size, ToElementFormat(rotated_roi_tex.Format()));
+                rotated_roi_tex.Readback(gpu_system_, cmd_list, 0, rotated_roi_cpu_tex.Data());
+                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.WaitForGpu();
+            }
+
+            return rotated_images;
+        }
+
         Mesh GenMesh(std::span<const Texture> input_images, GpuTexture3D& color_tex)
         {
             auto args = python_system_.MakeTuple(1);
@@ -301,6 +431,15 @@ namespace AIHoloImager
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
 
                 cmd_list.Compute(gather_volume_pipeline_, DivUp(size, BlockDim), DivUp(size, BlockDim), size, shader_binding);
+            }
+
+            GpuTexture3D dilated_3d_tmp_gpu_tex(gpu_system_, color_tex.Width(0), color_tex.Height(0), color_tex.Depth(0), 1,
+                color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_3d_tmp_gpu_tex");
+
+            GpuTexture3D* dilated_gpu_tex = this->DilateTexture(cmd_list, color_tex, dilated_3d_tmp_gpu_tex);
+            if (dilated_gpu_tex != &color_tex)
+            {
+                color_tex = std::move(*dilated_gpu_tex);
             }
 
             gpu_system_.Execute(std::move(cmd_list));
@@ -560,8 +699,9 @@ namespace AIHoloImager
 
         glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, Obb& world_obb)
         {
-            glm::mat4x4 model_mtx =
-                recon_input.transform * glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+            glm::mat4x4 model_mtx = recon_input.transform *
+                                    glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0)) *
+                                    glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
 
             const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
 
@@ -619,6 +759,45 @@ namespace AIHoloImager
             }
         }
 
+        GpuTexture3D* DilateTexture(GpuCommandList& cmd_list, GpuTexture3D& tex, GpuTexture3D& tmp_tex)
+        {
+            constexpr uint32_t BlockDim = 16;
+
+            ConstantBuffer<DilateConstantBuffer> dilate_cb(gpu_system_, 1, L"dilate_cb");
+            dilate_cb->texture_size = tex.Width(0);
+            dilate_cb.UploadToGpu();
+
+            GpuShaderResourceView tex_srv(gpu_system_, tex);
+            GpuShaderResourceView tmp_tex_srv(gpu_system_, tmp_tex);
+            GpuUnorderedAccessView tex_uav(gpu_system_, tex);
+            GpuUnorderedAccessView tmp_tex_uav(gpu_system_, tmp_tex);
+
+            GpuTexture3D* texs[] = {&tex, &tmp_tex};
+            GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
+            GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
+            for (uint32_t i = 0; i < Dilate3DTimes; ++i)
+            {
+                const uint32_t src = i & 1;
+                const uint32_t dst = src ? 0 : 1;
+
+                const GeneralConstantBuffer* cbs[] = {&dilate_cb};
+                const GpuShaderResourceView* srvs[] = {tex_srvs[src]};
+                GpuUnorderedAccessView* uavs[] = {tex_uavs[dst]};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(dilate_3d_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim),
+                    texs[dst]->Depth(0), shader_binding);
+            }
+
+            if constexpr (Dilate3DTimes & 1)
+            {
+                return &tmp_tex;
+            }
+            else
+            {
+                return &tex;
+            }
+        }
+
     private:
         const std::filesystem::path exe_dir_;
 
@@ -637,6 +816,13 @@ namespace AIHoloImager
 
         MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
+
+        struct RotateConstantBuffer
+        {
+            glm::mat4x4 rotation_mtx;
+            glm::vec4 tc_bounding_box;
+        };
+        GpuRenderPipeline rotate_pipeline_;
 
         struct ScatterIndexConstantBuffer
         {
@@ -672,12 +858,13 @@ namespace AIHoloImager
         ConstantBuffer<DilateConstantBuffer> dilate_cb_;
         GpuComputePipeline dilate_pipeline_;
 
+        GpuComputePipeline dilate_3d_pipeline_;
+
         static constexpr uint32_t DilateTimes = 4;
-        static constexpr uint32_t GridRes = 128;
-        static constexpr float GridScale = 2.1f;
-        static constexpr uint32_t NumMvImages = 6;
-        static constexpr uint32_t MvImageDim = 320;
-        static constexpr uint32_t MvImageChannels = 3;
+        static constexpr uint32_t Dilate3DTimes = 8;
+        static constexpr float GridScale = 2.0f;
+
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };
 
     MeshGenerator::MeshGenerator(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
@@ -690,9 +877,9 @@ namespace AIHoloImager
     MeshGenerator::MeshGenerator(MeshGenerator&& other) noexcept = default;
     MeshGenerator& MeshGenerator::operator=(MeshGenerator&& other) noexcept = default;
 
-    Mesh MeshGenerator::Generate(std::span<const Texture> input_images, uint32_t texture_size, const StructureFromMotion::Result& sfm_input,
-        const MeshReconstruction::Result& recon_input, const std::filesystem::path& tmp_dir)
+    Mesh MeshGenerator::Generate(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input,
+        uint32_t texture_size, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Generate(std::move(input_images), texture_size, sfm_input, recon_input, tmp_dir);
+        return impl_->Generate(sfm_input, recon_input, texture_size, tmp_dir);
     }
 } // namespace AIHoloImager

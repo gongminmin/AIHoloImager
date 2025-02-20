@@ -62,6 +62,7 @@ namespace AIHoloImager
         {
             PointList,
             TriangleList,
+            TriangleStrip,
         };
 
     public:
