@@ -23,3 +23,6 @@ def DownloadFile(url, target_path, chunk_size = 8192):
         with open(target_path, "wb") as file:
             for chunk in response.iter_content(chunk_size = chunk_size):
                 file.write(chunk)
+
+def GenHuggingFaceLink(repo : str, path : str):
+    return f"https://huggingface.co/{repo}/resolve/main/{path}"
