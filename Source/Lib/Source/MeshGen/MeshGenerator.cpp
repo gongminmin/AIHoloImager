@@ -424,7 +424,8 @@ namespace AIHoloImager
         {
             constexpr float Scale = 1e5f;
 
-            uint32_t pos_attrib_index = input_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+            const auto& vertex_desc = input_mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::set<std::array<int32_t, 3>> unique_int_pos;
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
@@ -434,15 +435,12 @@ namespace AIHoloImager
                 unique_int_pos.emplace(std::move(int_pos));
             }
 
-            const VertexAttrib pos_only_vertex_attribs[] = {
-                {VertexAttrib::Semantic::Position, 0, 3},
-            };
-            Mesh ret_mesh(VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(unique_int_pos.size()),
-                static_cast<uint32_t>(input_mesh.IndexBuffer().size()));
+            Mesh ret_mesh(
+                vertex_desc, static_cast<uint32_t>(unique_int_pos.size()), static_cast<uint32_t>(input_mesh.IndexBuffer().size()));
 
-            pos_attrib_index = ret_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             std::vector<std::array<int32_t, 3>> unique_int_pos_vec(unique_int_pos.begin(), unique_int_pos.end());
             std::vector<uint32_t> vertex_mapping(input_mesh.NumVertices(), ~0U);
+            const uint32_t vertex_size = vertex_desc.Stride();
 #ifdef _OPENMP
     #pragma omp parallel
 #endif
@@ -458,7 +456,7 @@ namespace AIHoloImager
                 if (vertex_mapping[i] == ~0U)
                 {
                     vertex_mapping[i] = static_cast<uint32_t>(iter - unique_int_pos_vec.begin());
-                    ret_mesh.VertexData<glm::vec3>(vertex_mapping[i], pos_attrib_index) = pos;
+                    std::memcpy(ret_mesh.VertexDataPtr(vertex_mapping[i], 0), input_mesh.VertexDataPtr(i, 0), vertex_size);
                 }
             }
 
