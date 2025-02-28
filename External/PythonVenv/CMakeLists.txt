@@ -2019,6 +2019,7 @@ set(py_files
     torch/_subclasses/fake_utils.py
     torch/_subclasses/functional_tensor.py
     torch/_subclasses/meta_utils.py
+    torch/_subclasses/schema_check_mode.py # Required by printing tensors
     torch/_subclasses/_fake_tensor_utils.py
     torch/_subclasses/__init__.py
     torch/_vendor/packaging/version.py
