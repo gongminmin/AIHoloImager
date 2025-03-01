@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2005 Minmin Gong
 //
 
 static const uint32_t BlockDim = 16;
@@ -22,5 +22,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     }
 
     color /= (SsaaScale * SsaaScale);
-    tex[dtid.xy] = float4(color.rgb * color.a + (1 - color.a), 1);
+    tex[dtid.xy] = float4(color.rgb * color.a, 1);
 }

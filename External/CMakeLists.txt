@@ -131,6 +131,7 @@ add_subdirectory(zlib)
 
 add_subdirectory(assimp)
 add_subdirectory(cxxopts)
+add_subdirectory(dinov2)
 add_subdirectory(DirectX-Headers)
 add_subdirectory(glm)
 add_subdirectory(InstantMesh)

@@ -1,5 +1,6 @@
 assimp/assimp/
 cxxopts/cxxopts/
+dinov2/dinov2/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
 InstantMesh/InstantMesh/

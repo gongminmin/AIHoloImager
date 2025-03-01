@@ -70,20 +70,56 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl
-    Source/MeshGen/Shader/DeformationNnCs.hlsl
-    Source/MeshGen/Shader/DensityNnCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
+    Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl
-    Source/MeshGen/Shader/TriplaneNeRF.hlslh
+    Source/MeshGen/Shader/ScatterIndexCs.hlsl
     Source/MeshGen/MarchingCubes.cpp
     Source/MeshGen/MarchingCubes.hpp
     Source/MeshGen/MeshGenerator.cpp
     Source/MeshGen/MeshGenerator.hpp
     Source/MeshGen/MeshGenerator.py
-    Source/MeshGen/Lrm.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/Base.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/DecoderVolume.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/__init__.py
+    Source/MeshGen/Trellis/Models/SparseStructureFlow.py
+    Source/MeshGen/Trellis/Models/SparseStructureVae.py
+    Source/MeshGen/Trellis/Models/StructuredLatentFlow.py
+    Source/MeshGen/Trellis/Models/__init__.py
+    Source/MeshGen/Trellis/Modules/Attention/FullAttn.py
+    Source/MeshGen/Trellis/Modules/Attention/Modules.py
+    Source/MeshGen/Trellis/Modules/Attention/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/FullAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/Modules.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/SerializedAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/WindowedAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Conv/ConvSpconv.py
+    Source/MeshGen/Trellis/Modules/Sparse/Conv/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/Blocks.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/Modulated.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Basic.py
+    Source/MeshGen/Trellis/Modules/Sparse/Linear.py
+    Source/MeshGen/Trellis/Modules/Sparse/Nonlinearity.py
+    Source/MeshGen/Trellis/Modules/Sparse/Norm.py
+    Source/MeshGen/Trellis/Modules/Sparse/Spatial.py
+    Source/MeshGen/Trellis/Modules/Sparse/__init__.py
+    Source/MeshGen/Trellis/Modules/Transformer/Blocks.py
+    Source/MeshGen/Trellis/Modules/Transformer/Modulated.py
+    Source/MeshGen/Trellis/Modules/Transformer/__init__.py
+    Source/MeshGen/Trellis/Modules/Norm.py
+    Source/MeshGen/Trellis/Modules/Spatial.py
+    Source/MeshGen/Trellis/Modules/Utils.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/ClassifierFreeGuidanceMixin.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/FlowEuler.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/GuidanceIntervalMixin.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
+    Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
+    Source/MeshGen/Trellis/Pipelines/__init__.py
     Source/MeshRecon/MeshReconstruction.cpp
     Source/MeshRecon/MeshReconstruction.hpp
     Source/MeshSimp/MeshSimplification.cpp
@@ -164,12 +200,12 @@ AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/DeformationNnCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/DensityNnCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcDiffusionBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MvRenderer/Shader/CalcRenderedBoxCs.hlsl "cs" "main")
@@ -238,7 +274,45 @@ set(py_files
     Source/Delighter/ModMidas/__init__.py
     Source/MaskGen/MaskGenerator.py
     Source/MeshGen/MeshGenerator.py
-    Source/MeshGen/Lrm.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/Base.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/DecoderVolume.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/Encoder.py
+    Source/MeshGen/Trellis/Models/StructuredLatentVae/__init__.py
+    Source/MeshGen/Trellis/Models/SparseStructureFlow.py
+    Source/MeshGen/Trellis/Models/SparseStructureVae.py
+    Source/MeshGen/Trellis/Models/StructuredLatentFlow.py
+    Source/MeshGen/Trellis/Models/__init__.py
+    Source/MeshGen/Trellis/Modules/Attention/FullAttn.py
+    Source/MeshGen/Trellis/Modules/Attention/Modules.py
+    Source/MeshGen/Trellis/Modules/Attention/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/FullAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/Modules.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/SerializedAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/WindowedAttn.py
+    Source/MeshGen/Trellis/Modules/Sparse/Attention/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Conv/ConvSpconv.py
+    Source/MeshGen/Trellis/Modules/Sparse/Conv/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/Blocks.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/Modulated.py
+    Source/MeshGen/Trellis/Modules/Sparse/Transformer/__init__.py
+    Source/MeshGen/Trellis/Modules/Sparse/Basic.py
+    Source/MeshGen/Trellis/Modules/Sparse/Linear.py
+    Source/MeshGen/Trellis/Modules/Sparse/Nonlinearity.py
+    Source/MeshGen/Trellis/Modules/Sparse/Norm.py
+    Source/MeshGen/Trellis/Modules/Sparse/Spatial.py
+    Source/MeshGen/Trellis/Modules/Sparse/__init__.py
+    Source/MeshGen/Trellis/Modules/Transformer/Blocks.py
+    Source/MeshGen/Trellis/Modules/Transformer/Modulated.py
+    Source/MeshGen/Trellis/Modules/Transformer/__init__.py
+    Source/MeshGen/Trellis/Modules/Norm.py
+    Source/MeshGen/Trellis/Modules/Spatial.py
+    Source/MeshGen/Trellis/Modules/Utils.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/ClassifierFreeGuidanceMixin.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/FlowEuler.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/GuidanceIntervalMixin.py
+    Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
+    Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
+    Source/MeshGen/Trellis/Pipelines/__init__.py
     Source/MvDiffusion/MultiViewDiffusion.py
     Source/Python/PythonSystem.py
     Source/Util/Util.py
@@ -263,4 +337,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython InstantMesh)
+add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython)
