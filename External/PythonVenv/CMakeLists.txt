@@ -470,6 +470,7 @@ set(py_files
     numpy/_utils/_convertions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
+    numpy/ctypeslib.py # Used when downloading models
     numpy/dtypes.py
     numpy/exceptions.py
     numpy/version.py
