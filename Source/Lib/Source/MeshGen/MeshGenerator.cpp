@@ -105,7 +105,7 @@ namespace AIHoloImager
             const std::filesystem::path& tmp_dir)
         {
 #ifdef AIHI_KEEP_INTERMEDIATES
-            const auto output_dir = tmp_dir / "Texture";
+            const auto output_dir = tmp_dir / "MeshGen";
             std::filesystem::create_directories(output_dir);
 #endif
 
@@ -224,25 +224,25 @@ namespace AIHoloImager
 
                 const auto& view_mtx = CalcViewMatrix(view);
                 const glm::vec3 forward_vec(0, 0, 1);
-                glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
-                const glm::vec3 old_up_vec(0, 1, 0);
-                const glm::vec3 right_vec = glm::cross(target_up_vec, forward_vec);
-                const glm::vec3 new_up_vec = glm::normalize(glm::cross(forward_vec, right_vec));
+                const glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
+                const glm::vec3 old_right_vec(1, 0, 0);
+                const glm::vec3 new_right_vec = glm::cross(target_up_vec, forward_vec);
 
                 glm::quat rotation;
-                const float dot_product = glm::dot(new_up_vec, old_up_vec);
+                const float dot_product = glm::dot(new_right_vec, old_right_vec);
                 if (dot_product > 0.9999f)
                 {
                     rotation = glm::quat(1, 0, 0, 0);
                 }
                 else if (dot_product < -0.9999f)
                 {
-                    const glm::vec3 ortho = glm::normalize(glm::vec3(1, 0, 0) - new_up_vec * glm::dot(glm::vec3(1, 0, 0), new_up_vec));
+                    const glm::vec3 ortho =
+                        glm::normalize(glm::vec3(1, 0, 0) - new_right_vec * glm::dot(glm::vec3(1, 0, 0), new_right_vec));
                     rotation = glm::angleAxis(std::numbers::pi_v<float>, ortho);
                 }
                 else
                 {
-                    const glm::vec3 cross_product = glm::cross(new_up_vec, old_up_vec);
+                    const glm::vec3 cross_product = glm::cross(new_right_vec, old_right_vec);
                     rotation = glm::quat(1 + dot_product, cross_product.x, cross_product.y, cross_product.z);
                     rotation = glm::normalize(rotation);
                 }
@@ -287,15 +287,10 @@ namespace AIHoloImager
                 const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
                 cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
 
-                gpu_system_.ExecuteAndReset(cmd_list);
-                gpu_system_.WaitForGpu();
-
                 auto& rotated_roi_cpu_tex = rotated_images[i];
-
                 rotated_roi_cpu_tex = Texture(rotated_size, rotated_size, ToElementFormat(rotated_roi_tex.Format()));
                 rotated_roi_tex.Readback(gpu_system_, cmd_list, 0, rotated_roi_cpu_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
             }
 
             return rotated_images;
