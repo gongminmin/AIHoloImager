@@ -101,15 +101,6 @@ set(py_files
     cumm/dtypes.py
     cumm/__init__.py
     cumm/__version__.py
-    filelock/asyncio.py
-    filelock/version.py
-    filelock/_api.py
-    filelock/_error.py
-    filelock/_soft.py
-    filelock/_unix.py
-    filelock/_util.py
-    filelock/_windows.py
-    filelock/__init__.py
     google/protobuf/internal/api_implementation.py
     google/protobuf/internal/builder.py
     google/protobuf/internal/containers.py
@@ -125,7 +116,6 @@ set(py_files
     google/protobuf/internal/well_known_types.py
     google/protobuf/internal/wire_format.py
     google/protobuf/internal/__init__.py
-    google/protobuf/pyext/cpp_message.py
     google/protobuf/pyext/__init__.py
     google/protobuf/descriptor.py
     google/protobuf/descriptor_database.py
@@ -1036,7 +1026,6 @@ set(py_files
     torch/backends/mps/__init__.py
     torch/backends/nnpack/__init__.py
     torch/backends/openmp/__init__.py
-    torch/backends/opt_einsum/__init__.py
     torch/backends/quantized/__init__.py
     torch/backends/__init__.py
     torch/compiler/config.py
@@ -1331,8 +1320,6 @@ set(py_files
     torch/nested/_internal/__init__.py
     torch/nested/__init__.py
     torch/nn/attention/__init__.py
-    torch/nn/attention/_utils.py
-    torch/nn/attention/flex_attention.py
     torch/nn/intrinsic/modules/fused.py
     torch/nn/intrinsic/modules/__init__.py
     torch/nn/intrinsic/qat/modules/conv_fused.py
@@ -2086,11 +2073,6 @@ set(py_files
     torchvision/_meta_registrations.py
     torchvision/_utils.py
     torchvision/__init__.py
-    tqdm/contrib/concurrent.py
-    tqdm/contrib/__init__.py
-    tqdm/asyncio.py
-    tqdm/auto.py
-    tqdm/autonotebook.py
     tqdm/cli.py
     tqdm/gui.py
     tqdm/std.py
@@ -2412,7 +2394,6 @@ set(py_files
     code.py
     codeop.py
     colorsys.py
-    configparser.py
     contextlib.py
     contextvars.py
     copy.py
@@ -2425,7 +2406,6 @@ set(py_files
     difflib.py
     dis.py
     enum.py
-    filecmp.py
     fnmatch.py
     fractions.py
     functools.py
@@ -2444,7 +2424,6 @@ set(py_files
     lzma.py
     mimetypes.py
     modulefinder.py
-    netrc.py
     nturl2path.py
     numbers.py
     opcode.py
@@ -2490,7 +2469,6 @@ set(py_files
     _compat_pickle.py
     _compression.py
     _markupbase.py
-    _strptime.py
     _weakrefset.py
     __future__.py
 )
