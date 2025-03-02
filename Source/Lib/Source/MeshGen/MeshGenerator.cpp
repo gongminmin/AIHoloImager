@@ -86,8 +86,6 @@ namespace AIHoloImager
                 merge_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&trilinear_sampler, 1});
             }
             {
-                dilate_cb_ = ConstantBuffer<DilateConstantBuffer>(gpu_system_, 1, L"dilate_cb_");
-
                 const ShaderInfo shader = {DilateCs_shader, 1, 1, 1};
                 dilate_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
@@ -725,8 +723,9 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
-            dilate_cb_->texture_size = tex.Width(0);
-            dilate_cb_.UploadToGpu();
+            ConstantBuffer<DilateConstantBuffer> dilate_cb(gpu_system_, 1, L"dilate_cb");
+            dilate_cb->texture_size = tex.Width(0);
+            dilate_cb.UploadToGpu();
 
             GpuShaderResourceView tex_srv(gpu_system_, tex);
             GpuShaderResourceView tmp_tex_srv(gpu_system_, tmp_tex);
@@ -741,7 +740,7 @@ namespace AIHoloImager
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
 
-                const GeneralConstantBuffer* cbs[] = {&dilate_cb_};
+                const GeneralConstantBuffer* cbs[] = {&dilate_cb};
                 const GpuShaderResourceView* srvs[] = {tex_srvs[src]};
                 GpuUnorderedAccessView* uavs[] = {tex_uavs[dst]};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -855,9 +854,7 @@ namespace AIHoloImager
             uint32_t texture_size;
             uint32_t padding[3];
         };
-        ConstantBuffer<DilateConstantBuffer> dilate_cb_;
         GpuComputePipeline dilate_pipeline_;
-
         GpuComputePipeline dilate_3d_pipeline_;
 
         static constexpr uint32_t DilateTimes = 4;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -8,8 +8,6 @@
 
 #include <glm/mat4x4.hpp>
 
-#include "AIHoloImager/Mesh.hpp"
-#include "Gpu/GpuSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/BoundingBox.hpp"
 #include "Util/Noncopyable.hpp"

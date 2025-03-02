@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "MeshReconstruction.hpp"
@@ -11,6 +11,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+
+#include "AIHoloImager/Mesh.hpp"
 
 namespace AIHoloImager
 {

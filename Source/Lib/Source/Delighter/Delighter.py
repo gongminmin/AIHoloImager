@@ -120,6 +120,7 @@ class Delighter:
         base_url = "https://github.com/compphoto/Intrinsic/releases/download/v2.0/"
         for local_file in model_paths:
             if not local_file.exists():
+                print(f"Downloading pre-trained delighting models {local_file.name}...")
                 Util.DownloadFile(base_url + local_file.name, local_file)
 
         self.LoadModels(model_paths)
