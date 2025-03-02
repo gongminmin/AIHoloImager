@@ -58,8 +58,8 @@ namespace AIHoloImager
             MeshReconstruction::Result mesh_recon_result;
             {
                 timer.Restart();
-                MeshReconstruction mesh_recon(exe_dir_, gpu_system_);
-                mesh_recon_result = mesh_recon.Process(sfm_result, 512, tmp_dir_);
+                MeshReconstruction mesh_recon(exe_dir_);
+                mesh_recon_result = mesh_recon.Process(sfm_result, tmp_dir_);
                 mesh_recon_time = timer.Elapsed();
             }
 

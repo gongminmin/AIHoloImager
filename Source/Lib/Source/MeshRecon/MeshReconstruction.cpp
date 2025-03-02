@@ -8,27 +8,20 @@
 #include <numbers>
 
 #include <InterfaceMVS.h>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-
-#include "Gpu/GpuCommandList.hpp"
-#include "MeshSimp/MeshSimplification.hpp"
-#include "TextureRecon/TextureReconstruction.hpp"
 
 namespace AIHoloImager
 {
     class MeshReconstruction::Impl
     {
     public:
-        Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), texture_recon_(exe_dir_, gpu_system)
+        explicit Impl(const std::filesystem::path& exe_dir) : exe_dir_(exe_dir)
         {
         }
 
-        Result Process(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+        Result Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
         {
             working_dir_ = tmp_dir / "Mvs";
             std::filesystem::create_directories(working_dir_);
@@ -36,56 +29,18 @@ namespace AIHoloImager
             std::string mvs_name = this->ToOpenMvs(sfm_input);
             mvs_name = this->PointCloudDensification(mvs_name, sfm_input);
 
-            std::string mesh_name = this->RoughMeshReconstruction(mvs_name);
-            mesh_name = this->MeshRefinement(mvs_name, mesh_name);
+            const Mesh point_cloud = LoadMesh(working_dir_ / std::format("{}.ply", mvs_name));
+            const auto& vertex_desc = point_cloud.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             Result ret;
 
-            auto& mesh = ret.mesh;
-
-            mesh = LoadMesh(working_dir_ / std::format("{}.ply", mesh_name));
-
-            MeshSimplification mesh_simp;
-            mesh = mesh_simp.Process(mesh, 0.5f);
-
-            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
-
             auto& obb = ret.obb;
-            obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
-
-            mesh.ComputeNormals();
-
-            mesh = mesh.UnwrapUv(texture_size, 0);
-
-            auto texture_result = texture_recon_.Process(mesh, glm::identity<glm::mat4x4>(), obb, sfm_input, texture_size, tmp_dir);
-
-            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-            Texture tex(texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), ElementFormat::RGBA8_UNorm);
-            texture_result.color_tex.Readback(gpu_system_, cmd_list, 0, tex.Data());
-            gpu_system_.Execute(std::move(cmd_list));
-
-            mesh.AlbedoTexture() = std::move(tex);
-
-            const VertexAttrib pos_uv_vertex_attribs[] = {
-                {VertexAttrib::Semantic::Position, 0, 3},
-                {VertexAttrib::Semantic::TexCoord, 0, 2},
-            };
-            mesh.ResetVertexDesc(VertexDesc(pos_uv_vertex_attribs));
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, working_dir_ / "PosUV.glb");
-#endif
+            obb = Obb::FromPoints(&point_cloud.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), point_cloud.NumVertices());
 
             const float inv_max_dim = 1 / std::max({obb.extents.x, obb.extents.y, obb.extents.z});
             const glm::mat4x4 model_mtx = RegularizeTransform(-obb.center, glm::inverse(obb.orientation), glm::vec3(inv_max_dim));
             ret.transform = glm::inverse(model_mtx);
-
-            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
-            {
-                auto& transformed_pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                const glm::vec4 p = model_mtx * glm::vec4(transformed_pos, 1);
-                transformed_pos = glm::vec3(p) / p.w;
-            }
 
             return ret;
         }
@@ -225,48 +180,12 @@ namespace AIHoloImager
             return output_mvs_name;
         }
 
-        std::string RoughMeshReconstruction(const std::string& mvs_name)
-        {
-            const std::string output_mesh_name = mvs_name + "_Mesh";
-
-            const std::string cmd = std::format("{} {}.mvs -o {}.ply --process-priority 0 -w {}", (exe_dir_ / "ReconstructMesh").string(),
-                mvs_name, output_mesh_name, working_dir_.string());
-            const int ret = std::system(cmd.c_str());
-            if (ret != 0)
-            {
-                throw std::runtime_error(std::format("ReconstructMesh fails with {}", ret));
-            }
-
-            return output_mesh_name;
-        }
-
-        std::string MeshRefinement(const std::string& mvs_name, const std::string& mesh_name)
-        {
-            const std::string output_mesh_name = mesh_name + "_Refine";
-
-            const std::string cmd =
-                std::format("{} {}.mvs -m {}.ply -o {}.ply --scales 1 --gradient-step 25.05 --cuda-device -1 --process-priority 0 -w {}",
-                    (exe_dir_ / "RefineMesh").string(), mvs_name, mesh_name, output_mesh_name, working_dir_.string());
-            const int ret = std::system(cmd.c_str());
-            if (ret != 0)
-            {
-                throw std::runtime_error(std::format("RefineMesh fails with {}", ret));
-            }
-
-            return output_mesh_name;
-        }
-
     private:
         const std::filesystem::path exe_dir_;
         std::filesystem::path working_dir_;
-
-        GpuSystem& gpu_system_;
-
-        TextureReconstruction texture_recon_;
     };
 
-    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
-        : impl_(std::make_unique<Impl>(exe_dir, gpu_system))
+    MeshReconstruction::MeshReconstruction(const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
     }
 
@@ -276,9 +195,9 @@ namespace AIHoloImager
     MeshReconstruction& MeshReconstruction::operator=(MeshReconstruction&& other) noexcept = default;
 
     MeshReconstruction::Result MeshReconstruction::Process(
-        const StructureFromMotion::Result& sfm_input, uint32_t max_texture_size, const std::filesystem::path& tmp_dir)
+        const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Process(sfm_input, max_texture_size, tmp_dir);
+        return impl_->Process(sfm_input, tmp_dir);
     }
 
     glm::mat4x4 RegularizeTransform(const glm::vec3& translate, const glm::quat& rotation, const glm::vec3& scale)

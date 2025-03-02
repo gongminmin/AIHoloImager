@@ -23,20 +23,18 @@ namespace AIHoloImager
     public:
         struct Result
         {
-            Mesh mesh;
-
             glm::mat4x4 transform; // From model space to SfM space
             Obb obb;
         };
 
     public:
-        MeshReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system);
+        explicit MeshReconstruction(const std::filesystem::path& exe_dir);
         MeshReconstruction(MeshReconstruction&& other) noexcept;
         ~MeshReconstruction() noexcept;
 
         MeshReconstruction& operator=(MeshReconstruction&& other) noexcept;
 
-        Result Process(const StructureFromMotion::Result& sfm_input, uint32_t max_texture_size, const std::filesystem::path& tmp_dir);
+        Result Process(const StructureFromMotion::Result& sfm_input, const std::filesystem::path& tmp_dir);
 
     private:
         class Impl;

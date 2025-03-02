@@ -18,7 +18,6 @@ set(copy_files
     boost_program_options-vc143-mt-x64-1_83.dll
     boost_serialization-vc143-mt-x64-1_83.dll
     DensifyPointCloud.exe
-    gmp-10.dll
     Iex-3_1.dll
     IlmThread-3_1.dll
     Imath-3_1.dll
@@ -35,8 +34,6 @@ set(copy_files
     opencv_imgcodecs4.dll
     opencv_imgproc4.dll
     OpenEXR-3_1.dll
-    ReconstructMesh.exe
-    RefineMesh.exe
     tiff.dll
     zstd.dll
 )
