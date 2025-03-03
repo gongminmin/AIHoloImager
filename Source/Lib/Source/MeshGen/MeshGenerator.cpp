@@ -138,8 +138,7 @@ namespace AIHoloImager
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-            Obb world_obb;
-            const glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input, world_obb);
+            const glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input);
 
             mesh.ComputeNormals();
 
@@ -153,13 +152,13 @@ namespace AIHoloImager
 
             std::cout << "Generating texture...\n";
 
-            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
+            auto texture_result = texture_recon_.Process(mesh, model_mtx, recon_input.obb, sfm_input, texture_size, tmp_dir);
 
             Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
             {
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, texture_result.inv_model, texture_result.color_tex);
+                this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
 
                 GpuTexture2D dilated_tmp_gpu_tex(gpu_system_, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
                     texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
@@ -179,10 +178,11 @@ namespace AIHoloImager
             {
                 const glm::mat4x4 adjust_mtx =
                     RegularizeTransform(-recon_input.obb.center, glm::inverse(recon_input.obb.orientation), glm::vec3(1)) * model_mtx;
-                const glm::mat4x4 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
+                const glm::mat3x3 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
 
-                const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
-                const uint32_t normal_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Normal, 0);
+                const auto& vertex_desc = mesh.MeshVertexDesc();
+                const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+                const uint32_t normal_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
                 for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
                 {
                     auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
@@ -190,8 +190,7 @@ namespace AIHoloImager
                     pos = glm::vec3(p) / p.w;
 
                     auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
-                    const glm::vec4 n = adjust_it_mtx * glm::vec4(normal, 0);
-                    normal = glm::vec3(n);
+                    normal = adjust_it_mtx * normal;
                 }
             }
 
@@ -518,7 +517,8 @@ namespace AIHoloImager
 
         void RemoveSmallComponents(Mesh& mesh)
         {
-            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             std::vector<uint32_t> num_neighboring_faces(mesh.NumVertices(), 0);
             std::vector<uint32_t> neighboring_face_indices(mesh.IndexBuffer().size());
@@ -664,17 +664,17 @@ namespace AIHoloImager
                     }
                 }
 
-                mesh = mesh.ExtractMesh(mesh.MeshVertexDesc(), extract_indices);
+                mesh = mesh.ExtractMesh(vertex_desc, extract_indices);
             }
         }
 
         void MergeTexture(GpuCommandList& cmd_list, const GpuTexture3D& color_vol_tex, const GpuTexture2D& pos_tex,
-            const glm::mat4x4& inv_model, GpuTexture2D& color_tex)
+            const glm::mat4x4& model_mtx, GpuTexture2D& color_tex)
         {
             GpuUnorderedAccessView merged_uav(gpu_system_, color_tex);
 
             const uint32_t texture_size = color_tex.Width(0);
-            merge_texture_cb_->inv_model = glm::transpose(inv_model);
+            merge_texture_cb_->inv_model = glm::transpose(glm::inverse(model_mtx));
             merge_texture_cb_->texture_size = texture_size;
             merge_texture_cb_.UploadToGpu();
 
@@ -690,16 +690,15 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input, Obb& world_obb)
+        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input)
         {
-            glm::mat4x4 model_mtx = recon_input.transform *
-                                    glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0)) *
-                                    glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+            glm::mat4x4 model_mtx =
+                recon_input.transform * glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
 
-            const uint32_t pos_attrib_index = mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
-            const Obb ai_obb =
-                Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), mesh.MeshVertexDesc().Stride(), mesh.NumVertices());
+            const Obb ai_obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
 
             const Obb transformed_ai_obb = Obb::Transform(ai_obb, model_mtx);
 
@@ -708,10 +707,7 @@ namespace AIHoloImager
             const float scale_z = transformed_ai_obb.extents.z / recon_input.obb.extents.z;
             const float scale = 1 / std::max({scale_x, scale_y, scale_z});
 
-            model_mtx = glm::scale(model_mtx, glm::vec3(scale));
-            world_obb = Obb::Transform(ai_obb, model_mtx);
-
-            return model_mtx;
+            return glm::scale(model_mtx, glm::vec3(scale));
         }
 
         GpuTexture2D* DilateTexture(GpuCommandList& cmd_list, GpuTexture2D& tex, GpuTexture2D& tmp_tex)

@@ -43,6 +43,6 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     float4 pos_os = mul(pos_ws, inv_model);
     pos_os /= pos_os.w;
 
-    const float3 vol_coord = float3(pos_os.z, -pos_os.yx) * inv_scale + 0.5f;
+    const float3 vol_coord = pos_os.zyx * inv_scale + 0.5f;
     merged_tex[dtid.xy] = saturate(color_vol_tex.SampleLevel(trilinear_sampler, vol_coord, 0));
 }

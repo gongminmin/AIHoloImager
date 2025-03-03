@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "TextureReconstruction.hpp"
@@ -155,7 +155,6 @@ namespace AIHoloImager
 #endif
 
             result.pos_tex = std::move(flatten_pos_tex);
-            result.inv_model = glm::inverse(model_mtx);
 
             return result;
         }

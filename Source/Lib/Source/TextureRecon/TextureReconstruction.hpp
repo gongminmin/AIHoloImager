@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -24,9 +24,7 @@ namespace AIHoloImager
         struct Result
         {
             GpuTexture2D color_tex;
-
             GpuTexture2D pos_tex;
-            glm::mat4x4 inv_model;
         };
 
     public:
