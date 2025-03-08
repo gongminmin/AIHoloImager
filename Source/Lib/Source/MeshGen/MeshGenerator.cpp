@@ -16,6 +16,7 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "InvisibleFacesRemover.hpp"
 #include "MarchingCubes.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
@@ -36,8 +37,8 @@ namespace AIHoloImager
     {
     public:
         Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), marching_cubes_(gpu_system_),
-              texture_recon_(exe_dir_, gpu_system_)
+            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), invisible_faces_remover_(gpu_system_),
+              marching_cubes_(gpu_system_), texture_recon_(exe_dir_, gpu_system_)
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
@@ -132,7 +133,7 @@ namespace AIHoloImager
             std::cout << "Simplifying mesh...\n";
 
             MeshSimplification mesh_simp;
-            mesh = mesh_simp.Process(mesh, 0.5f);
+            mesh = mesh_simp.Process(mesh, 0.125f);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
@@ -414,6 +415,9 @@ namespace AIHoloImager
                 GpuUnorderedAccessView density_deformation_uav(gpu_system_, density_deformation_tex);
                 GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
 
+                const float zeros[] = {0, 0, 0, 0};
+                cmd_list.Clear(color_uav, zeros);
+
                 constexpr uint32_t BlockDim = 16;
 
                 const GeneralConstantBuffer* cbs[] = {&gather_volume_cb};
@@ -436,7 +440,8 @@ namespace AIHoloImager
 
             gpu_system_.Execute(std::move(cmd_list));
 
-            const Mesh pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
+            Mesh pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
+            pos_only_mesh = invisible_faces_remover_.Process(pos_only_mesh);
             return this->CleanMesh(pos_only_mesh);
         }
 
@@ -804,6 +809,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_deformation_features_method_;
         PyObjectPtr mesh_generator_color_features_method_;
 
+        InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
 
