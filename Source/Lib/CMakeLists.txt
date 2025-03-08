@@ -69,19 +69,19 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
-    Source/MeshGen/Shader/AccumFacesCs.hlsl
-    Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl
+    Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl
+    Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl
+    Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl
+    Source/MeshGen/Shader/InvisibleFacesRemover/FilterFacesCs.hlsl
+    Source/MeshGen/Shader/InvisibleFacesRemover/MarkFacesCs.hlsl
+    Source/MeshGen/Shader/MarchingCubes/CalcCubeIndicesCs.hlsl
+    Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl
+    Source/MeshGen/Shader/MarchingCubes/MarchingCubesUtil.hlslh
+    Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
-    Source/MeshGen/Shader/FaceIdPs.hlsl
-    Source/MeshGen/Shader/FaceIdVs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
-    Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl
-    Source/MeshGen/Shader/MarchingCubesUtil.hlslh
-    Source/MeshGen/Shader/MarkFacesCs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
-    Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl
-    Source/MeshGen/Shader/FilterFacesCs.hlsl
     Source/MeshGen/Shader/RotatePs.hlsl
     Source/MeshGen/Shader/RotateVs.hlsl
     Source/MeshGen/Shader/ScatterIndexCs.hlsl
@@ -172,11 +172,12 @@ add_library(AIHoloImagerLib STATIC
 
 macro(AddShaderFile file_name shader_type entry_point)
     get_filename_component(file_base_name ${file_name} NAME_WE)
-    get_filename_component(file_dir ${file_name} DIRECTORY)
-    string(REPLACE "/" ";" file_dir_list ${file_dir})
-    list(GET file_dir_list 1 file_dir)
+    string(REPLACE "/" ";" path_list ${file_name})
+    list(REMOVE_AT path_list 0 2)
+    list(REMOVE_AT path_list -1)
+    string(REPLACE ";" "/" rel_dir "${path_list}")
     set(variable_name ${file_base_name}_shader)
-    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${file_dir}/${file_base_name}.h")
+    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${rel_dir}/${file_base_name}.h")
     set(debug_option "-Zi;-Od;-Qembed_debug")
     set(release_option "-O2")
 
@@ -198,18 +199,18 @@ AddShaderFile(Source/MaskGen/Shader/NormalizeImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/AccumFacesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/CalcCubeIndicesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl "ps" "main")
+AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FilterFacesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/MarkFacesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/MarchingCubes/CalcCubeIndicesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/FaceIdVs.hlsl "vs" "main")
-AddShaderFile(Source/MeshGen/Shader/FaceIdPs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GenVerticesIndicesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/MarkFacesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ProcessNonEmptyCubesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/FilterFacesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotatePs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
