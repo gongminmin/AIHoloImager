@@ -17,17 +17,6 @@ set(py_files
     ccimport/source_iter.py
     ccimport/utils.py
     ccimport/__init__.py
-    certifi/core.py
-    certifi/__init__.py
-    charset_normalizer/api.py
-    charset_normalizer/cd.py
-    charset_normalizer/constant.py
-    charset_normalizer/legacy.py
-    charset_normalizer/md.py
-    charset_normalizer/models.py
-    charset_normalizer/utils.py
-    charset_normalizer/version.py
-    charset_normalizer/__init__.py
     cumm/conv/algospec/all.py
     cumm/conv/algospec/simt.py
     cumm/conv/algospec/turing.py
@@ -131,11 +120,6 @@ set(py_files
     google/protobuf/text_format.py
     google/protobuf/unknown_fields.py
     google/protobuf/__init__.py
-    idna/core.py
-    idna/idnadata.py
-    idna/intranges.py
-    idna/package_data.py
-    idna/__init__.py
     lark/parsers/cyk.py
     lark/parsers/earley.py
     lark/parsers/earley_common.py
@@ -455,23 +439,6 @@ set(py_files
     PIL/_util.py
     PIL/_version.py
     PIL/__init__.py
-    requests/adapters.py
-    requests/api.py
-    requests/auth.py
-    requests/certs.py
-    requests/compat.py
-    requests/cookies.py
-    requests/exceptions.py
-    requests/hooks.py
-    requests/models.py
-    requests/packages.py
-    requests/sessions.py
-    requests/status_codes.py
-    requests/structures.py
-    requests/utils.py
-    requests/_internal_utils.py
-    requests/__init__.py
-    requests/__version__.py
     safetensors/torch.py
     safetensors/__init__.py
     spconv/pytorch/constants.py
@@ -2082,35 +2049,6 @@ set(py_files
     tqdm/_monitor.py
     tqdm/_tqdm_pandas.py
     tqdm/__init__.py
-    urllib3/contrib/socks.py
-    urllib3/contrib/__init__.py
-    urllib3/http2/probe.py
-    urllib3/http2/__init__.py
-    urllib3/util/connection.py
-    urllib3/util/proxy.py
-    urllib3/util/request.py
-    urllib3/util/response.py
-    urllib3/util/retry.py
-    urllib3/util/ssltransport.py
-    urllib3/util/ssl_.py
-    urllib3/util/ssl_match_hostname.py
-    urllib3/util/timeout.py
-    urllib3/util/url.py
-    urllib3/util/util.py
-    urllib3/util/wait.py
-    urllib3/util/__init__.py
-    urllib3/connection.py
-    urllib3/connectionpool.py
-    urllib3/exceptions.py
-    urllib3/fields.py
-    urllib3/filepost.py
-    urllib3/poolmanager.py
-    urllib3/response.py
-    urllib3/_base_connection.py
-    urllib3/_collections.py
-    urllib3/_request_methods.py
-    urllib3/_version.py
-    urllib3/__init__.py
     xformers/ops/fmha/attn_bias.py
     xformers/ops/fmha/ck.py
     xformers/ops/fmha/ck_decoder.py
@@ -2172,7 +2110,6 @@ endforeach()
 set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-win_amd64.pyd)
 
 set(copy_files
-    certifi/cacert.pem
     cumm/core_cc.${py_suffix}
     lark/grammars/common.lark
     numpy/_core/_multiarray_umath.${py_suffix}
