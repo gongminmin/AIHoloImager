@@ -3,9 +3,9 @@ cxxopts/cxxopts/
 dinov2/dinov2/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
-InstantMesh/InstantMesh/
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
+openMVS/OpenMVS_*
 PythonVenv/PythonVenv/
 TRELLIS/TRELLIS-image-large/
 stb/stb/
