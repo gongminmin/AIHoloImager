@@ -3,7 +3,7 @@ if(MSVC)
 
     set(CMAKE_CXX_STANDARD 20)
 
-    if(DEFINED ENV{BUILD_BUILDID})
+    if(is_ci_env)
         set(ltcg OFF) # Turn off LTCG for CI to reduce OOM crashes
     else()
         set(ltcg ON)

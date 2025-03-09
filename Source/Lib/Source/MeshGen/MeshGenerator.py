@@ -7,8 +7,6 @@ import numpy as np
 from PIL import Image
 import torch
 
-import Util
-
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
@@ -17,19 +15,8 @@ class MeshGenerator:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        pretrained_dir = this_py_dir.joinpath("Models/TRELLIS-image-large")
-        reload_from_network = True
-        if pretrained_dir.exists():
-            print(f"Load from {pretrained_dir}.")
-            try:
-                self.pipeline = TrellisImageTo3DPipeline.FromPretrained(pretrained_dir, None)
-                reload_from_network = False
-            except Exception as e:
-                print(f"Failed. Retry from network. ", e)
-
-        if reload_from_network:
-            self.pipeline = TrellisImageTo3DPipeline.FromPretrained("JeffreyXiang/TRELLIS-image-large", pretrained_dir)
-
+        pretrained_dir = this_py_dir / "Models/TRELLIS-image-large"
+        self.pipeline = TrellisImageTo3DPipeline.FromPretrained(pretrained_dir)
         self.pipeline.to(self.device)
 
     def Destroy(self):

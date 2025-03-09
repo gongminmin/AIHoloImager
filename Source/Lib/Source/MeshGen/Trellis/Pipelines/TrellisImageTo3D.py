@@ -4,10 +4,8 @@
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/trellis_image_to_3d.py
 
 from contextlib import contextmanager
-import importlib
 from pathlib import Path
 import json
-import os
 from typing import *
 
 import numpy as np
@@ -16,8 +14,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 from torchvision import transforms
-
-import Util
 
 from . import Samplers
 from .. import Models
@@ -56,18 +52,8 @@ class TrellisImageTo3DPipeline:
         ])
 
     @staticmethod
-    def FromPretrained(path : str, local_dir : str) -> "TrellisImageTo3DPipeline":
-        if local_dir != None:
-            local_dir = Path(local_dir)
-            config_file_path = local_dir / "pipeline.json"
-            is_local = config_file_path.exists()
-        else:
-            config_file_path = Path(path) / "pipeline.json"
-            is_local = True
-
-        if not is_local:
-            local_dir.mkdir(parents = True, exist_ok = True)
-            Util.DownloadFile(Util.GenHuggingFaceLink(path, "pipeline.json"), config_file_path)
+    def FromPretrained(path : str) -> "TrellisImageTo3DPipeline":
+        config_file_path = Path(path) / "pipeline.json"
 
         with open(config_file_path, "r") as file:
             args = json.load(file)["args"]
@@ -75,7 +61,7 @@ class TrellisImageTo3DPipeline:
         models = {}
         for key, value in args["models"].items():
             if key not in ("slat_decoder_rf", "slat_decoder_gs"):
-                models[key] = Models.FromPretrained(f"{path}/{value}", local_dir)
+                models[key] = Models.FromPretrained(f"{path}/{value}")
 
         sparse_structure_sampler = getattr(Samplers, args["sparse_structure_sampler"]["name"])(**args["sparse_structure_sampler"]["args"])
         sparse_structure_sampler_params = args["sparse_structure_sampler"]["params"]
