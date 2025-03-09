@@ -7,7 +7,6 @@ import numpy as np
 import torch
 
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
-import Util
 
 def Round32(x):
     return (int(x) + 31) & ~31
@@ -116,13 +115,6 @@ class Delighter:
             this_py_dir / "Models/Intrinsic/stage_2.pt",
             this_py_dir / "Models/Intrinsic/stage_3.pt",
         )
-
-        base_url = "https://github.com/compphoto/Intrinsic/releases/download/v2.0/"
-        for local_file in model_paths:
-            if not local_file.exists():
-                print(f"Downloading pre-trained delighting models {local_file.name}...")
-                Util.DownloadFile(base_url + local_file.name, local_file)
-
         self.LoadModels(model_paths)
 
     def Destroy(self):

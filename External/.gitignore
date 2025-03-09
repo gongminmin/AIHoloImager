@@ -3,6 +3,7 @@ cxxopts/cxxopts/
 dinov2/dinov2/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
+Intrinsic/IntrinsicModels/
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 openMVS/OpenMVS_*

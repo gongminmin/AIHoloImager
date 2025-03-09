@@ -338,4 +338,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployTrellisModels)
+add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployIntrinsicModels DeployTrellisModels)
