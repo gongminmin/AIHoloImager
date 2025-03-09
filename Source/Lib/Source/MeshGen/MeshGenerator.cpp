@@ -6,8 +6,10 @@
 #include <array>
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <numbers>
 #include <set>
+#include <tuple>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -134,6 +136,7 @@ namespace AIHoloImager
 
             MeshSimplification mesh_simp;
             mesh = mesh_simp.Process(mesh, 0.125f);
+            this->FillHoles(mesh);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
@@ -670,6 +673,265 @@ namespace AIHoloImager
                 }
 
                 mesh = mesh.ExtractMesh(vertex_desc, extract_indices);
+            }
+        }
+
+        void FillHoles(Mesh& mesh)
+        {
+            std::vector<std::vector<uint32_t>> holes = this->FindHoles(mesh);
+            std::vector<uint32_t> new_indices;
+            for (auto& hole : holes)
+            {
+                this->TriangulateHole(mesh, hole, new_indices);
+            }
+
+            if (!new_indices.empty())
+            {
+                const uint32_t base = static_cast<uint32_t>(mesh.IndexBuffer().size());
+                mesh.ResizeIndices(base + static_cast<uint32_t>(new_indices.size()));
+                std::memcpy(&mesh.IndexBuffer()[base], new_indices.data(), new_indices.size() * sizeof(new_indices[0]));
+            }
+        }
+
+        std::vector<std::vector<uint32_t>> FindHoles(const Mesh& mesh) const
+        {
+            const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
+            std::map<std::tuple<uint32_t, uint32_t>, uint32_t> edge_count;
+            for (uint32_t i = 0; i < num_indices; i += 3)
+            {
+                const uint32_t v0 = mesh.Index(i + 0);
+                const uint32_t v1 = mesh.Index(i + 1);
+                const uint32_t v2 = mesh.Index(i + 2);
+
+                auto add_edge = [&edge_count](uint32_t lhs, uint32_t rhs) {
+                    if (lhs > rhs)
+                    {
+                        std::swap(lhs, rhs);
+                    }
+                    ++edge_count[{lhs, rhs}];
+                };
+
+                add_edge(v0, v1);
+                add_edge(v1, v2);
+                add_edge(v2, v0);
+            }
+
+            std::vector<std::tuple<uint32_t, uint32_t>> boundary_edges;
+            for (const auto& [edge, count] : edge_count)
+            {
+                if (count == 1)
+                {
+                    boundary_edges.push_back(edge);
+                }
+            }
+
+            std::vector<std::vector<uint32_t>> holes;
+            while (!boundary_edges.empty())
+            {
+                const std::tuple<uint32_t, uint32_t> start_edge = boundary_edges.back();
+                boundary_edges.pop_back();
+                std::vector<uint32_t> loop = {std::get<0>(start_edge), std::get<1>(start_edge)};
+
+                for (;;)
+                {
+                    bool found_next_edge = false;
+                    for (auto iter = boundary_edges.begin(); iter != boundary_edges.end(); ++iter)
+                    {
+                        const bool at_beg = std::get<0>(*iter) == loop.back();
+                        const bool at_end = std::get<1>(*iter) == loop.back();
+                        if (at_beg || at_end)
+                        {
+                            loop.push_back(at_beg ? std::get<1>(*iter) : std::get<0>(*iter));
+                            boundary_edges.erase(iter);
+                            found_next_edge = true;
+                            break;
+                        }
+                    }
+
+                    if (!found_next_edge)
+                    {
+                        break;
+                    }
+                }
+
+                if (loop.size() >= 2)
+                {
+                    if (loop.front() == loop.back())
+                    {
+                        loop.pop_back();
+                    }
+
+                    holes.emplace_back(std::move(loop));
+                }
+            }
+
+            return holes;
+        }
+
+        bool IsEar(const Mesh& mesh, const std::vector<uint32_t>& hole, size_t index)
+        {
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+
+            const size_t num = hole.size();
+            const size_t prev = (index == 0) ? num - 1 : index - 1;
+            const size_t next = (index + 1) % num;
+            const glm::vec3& p0 = mesh.VertexData<glm::vec3>(hole[prev], pos_attrib_index);
+            const glm::vec3& p1 = mesh.VertexData<glm::vec3>(hole[index], pos_attrib_index);
+            const glm::vec3& p2 = mesh.VertexData<glm::vec3>(hole[next], pos_attrib_index);
+
+            const glm::vec3 edge1 = p1 - p0;
+            const glm::vec3 edge2 = p2 - p0;
+            const glm::vec3 normal = glm::cross(edge1, edge2);
+            const float area = normal.z;
+            if (area <= 0)
+            {
+                return false;
+            }
+
+            for (size_t i = 0; i < num; ++i)
+            {
+                if ((i != prev) && (i != index) && (i != next))
+                {
+                    const glm::vec3& p = mesh.VertexData<glm::vec3>(hole[i], pos_attrib_index);
+                    const glm::vec3 w = p - p0;
+
+                    // Compute barycentric coordinates
+                    const float uu = glm::dot(edge1, edge1);
+                    const float uv = glm::dot(edge1, edge2);
+                    const float vv = glm::dot(edge2, edge2);
+                    const float wu = glm::dot(w, edge1);
+                    const float wv = glm::dot(w, edge2);
+
+                    // Denominator for barycentric coordinates
+                    const float denom = uv * uv - uu * vv;
+
+                    // Barycentric coordinates beta and gamma
+                    const float beta = (uv * wv - vv * wu) / denom;
+                    const float gamma = (uv * wu - uu * wv) / denom;
+                    const float alpha = 1.0f - beta - gamma;
+
+                    // Check if point is inside the triangle
+                    // Allow small epsilon for floating-point errors
+                    constexpr float Epsilon = 1e-6f;
+                    if ((alpha >= -Epsilon) && (beta >= -Epsilon) && (gamma >= -Epsilon) && (alpha <= 1.0f + Epsilon) &&
+                        (beta <= 1.0f + Epsilon) && (gamma <= 1.0f + Epsilon) && (std::abs(alpha + beta + gamma - 1.0f) < Epsilon))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        void TriangulateHole(const Mesh& mesh, std::vector<uint32_t>& hole, std::vector<uint32_t>& new_indices)
+        {
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+
+            size_t num = hole.size();
+            if (num < 3)
+            {
+                return;
+            }
+
+            glm::vec3 centroid(0.0f);
+            for (uint32_t idx : hole)
+            {
+                centroid += mesh.VertexData<glm::vec3>(idx, pos_attrib_index);
+            }
+            centroid /= static_cast<float>(num);
+
+            // Compute the average normal (Newell's method)
+            glm::vec3 plane_normal(0.0f);
+            for (size_t i = 0; i < num; ++i)
+            {
+                const glm::vec3& v0 = mesh.VertexData<glm::vec3>(hole[i], pos_attrib_index);
+                const glm::vec3& v1 = mesh.VertexData<glm::vec3>(hole[(i + 1) % num], pos_attrib_index);
+                plane_normal.x += (v0.y - v1.y) * (v0.z + v1.z);
+                plane_normal.y += (v0.z - v1.z) * (v0.x + v1.x);
+                plane_normal.z += (v0.x - v1.x) * (v0.y + v1.y);
+            }
+            if (glm::dot(plane_normal, plane_normal) < 1e-6f)
+            {
+                // Invalid plane, skip triangulation
+                return;
+            }
+            plane_normal = glm::normalize(plane_normal);
+
+            glm::vec3 u = mesh.VertexData<glm::vec3>(hole[1], pos_attrib_index) - mesh.VertexData<glm::vec3>(hole[0], pos_attrib_index);
+            if (glm::dot(u, u) < 1e-6f)
+            {
+                return;
+            }
+            const glm::vec3 v = glm::normalize(glm::cross(plane_normal, u));
+            u = glm::cross(v, plane_normal);
+
+            std::vector<glm::vec2> projected(num);
+            for (size_t i = 0; i < num; ++i)
+            {
+                const glm::vec3 vec = mesh.VertexData<glm::vec3>(hole[i], pos_attrib_index) - centroid;
+                projected[i] = glm::vec2(glm::dot(vec, u), glm::dot(vec, v));
+            }
+
+            float signed_area = 0;
+            for (size_t i = 0; i < num; ++i)
+            {
+                const size_t next = (i + 1) % num;
+                signed_area += projected[i].x * projected[next].y - projected[next].x * projected[i].y;
+            }
+
+            // If area is negative, reverse the hole (clockwise to counterclockwise)
+            if (signed_area < 0)
+            {
+                std::reverse(hole.begin(), hole.end());
+            }
+
+            while (hole.size() > 3)
+            {
+                num = hole.size();
+                bool ear_found = false;
+                for (size_t i = 0; i < num; i++)
+                {
+                    if (this->IsEar(mesh, hole, i))
+                    {
+                        const size_t prev = (i == 0) ? num - 1 : i - 1;
+                        const size_t next = (i + 1) % num;
+                        new_indices.push_back(hole[prev]);
+                        new_indices.push_back(hole[i]);
+                        new_indices.push_back(hole[next]);
+                        hole.erase(hole.begin() + i);
+                        ear_found = true;
+                        break;
+                    }
+                }
+                if (!ear_found)
+                {
+                    break;
+                }
+            }
+
+            if (hole.size() == 3)
+            {
+                new_indices.push_back(hole[0]);
+                new_indices.push_back(hole[1]);
+                new_indices.push_back(hole[2]);
+            }
+
+            for (size_t i = 0; i < new_indices.size(); i += 3)
+            {
+                const glm::vec3& p0 = mesh.VertexData<glm::vec3>(new_indices[i + 0], pos_attrib_index);
+                const glm::vec3& p1 = mesh.VertexData<glm::vec3>(new_indices[i + 1], pos_attrib_index);
+                const glm::vec3& p2 = mesh.VertexData<glm::vec3>(new_indices[i + 2], pos_attrib_index);
+
+                const glm::vec3 edge1 = p1 - p0;
+                const glm::vec3 edge2 = p2 - p0;
+                const glm::vec3 normal = glm::cross(edge1, edge2);
+                if (glm::dot(normal, plane_normal) < 0)
+                {
+                    std::swap(new_indices[i + 1], new_indices[i + 2]);
+                }
             }
         }
 
