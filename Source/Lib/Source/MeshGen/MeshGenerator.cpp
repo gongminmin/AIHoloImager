@@ -29,6 +29,7 @@
 #include "CompiledShader/MeshGen/DilateCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/MergeTextureCs.h"
+#include "CompiledShader/MeshGen/ResizeCs.h"
 #include "CompiledShader/MeshGen/RotatePs.h"
 #include "CompiledShader/MeshGen/RotateVs.h"
 #include "CompiledShader/MeshGen/ScatterIndexCs.h"
@@ -45,7 +46,7 @@ namespace AIHoloImager
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
             mesh_generator_ = python_system_.CallObject(*mesh_generator_class_);
-            mesh_generator_gen_volume_method_ = python_system_.GetAttr(*mesh_generator_, "GenVolume");
+            mesh_generator_gen_features_method_ = python_system_.GetAttr(*mesh_generator_, "GenFeatures");
             mesh_generator_resolution_method_ = python_system_.GetAttr(*mesh_generator_, "Resolution");
             mesh_generator_coords_method_ = python_system_.GetAttr(*mesh_generator_, "Coords");
             mesh_generator_density_features_method_ = python_system_.GetAttr(*mesh_generator_, "DensityFeatures");
@@ -69,6 +70,10 @@ namespace AIHoloImager
 
                 rotate_pipeline_ = GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleStrip, shaders,
                     GpuVertexAttribs({}), std::span(&bilinear_sampler, 1), states);
+            }
+            {
+                const ShaderInfo shader = {ResizeCs_shader, 1, 1, 1};
+                resize_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
                 const ShaderInfo shader = {ScatterIndexCs_shader, 1, 1, 1};
@@ -218,81 +223,133 @@ namespace AIHoloImager
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                GpuTexture2D image_mask_tex(
-                    gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, ColorFmt, GpuResourceFlag::None, L"image_mask_tex");
-                image_mask_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
-                GpuShaderResourceView image_mask_srv(gpu_system_, image_mask_tex);
-
-                ConstantBuffer<RotateConstantBuffer> rotation_cb(gpu_system_, 1, L"rotation_cb");
-
-                const auto& view_mtx = CalcViewMatrix(view);
-                const glm::vec3 forward_vec(0, 0, 1);
-                const glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
-                const glm::vec3 old_right_vec(1, 0, 0);
-                const glm::vec3 new_right_vec = glm::cross(target_up_vec, forward_vec);
-
-                glm::quat rotation;
-                const float dot_product = glm::dot(new_right_vec, old_right_vec);
-                if (dot_product > 0.9999f)
+                GpuTexture2D rotated_roi_tex;
                 {
-                    rotation = glm::quat(1, 0, 0, 0);
+                    GpuTexture2D image_mask_tex(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, ColorFmt,
+                        GpuResourceFlag::None, L"image_mask_tex");
+                    image_mask_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
+                    GpuShaderResourceView image_mask_srv(gpu_system_, image_mask_tex);
+
+                    ConstantBuffer<RotateConstantBuffer> rotation_cb(gpu_system_, 1, L"rotation_cb");
+
+                    const auto& view_mtx = CalcViewMatrix(view);
+                    const glm::vec3 forward_vec(0, 0, 1);
+                    const glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
+                    const glm::vec3 old_right_vec(1, 0, 0);
+                    const glm::vec3 new_right_vec = glm::cross(target_up_vec, forward_vec);
+
+                    glm::quat rotation;
+                    const float dot_product = glm::dot(new_right_vec, old_right_vec);
+                    if (dot_product > 0.9999f)
+                    {
+                        rotation = glm::quat(1, 0, 0, 0);
+                    }
+                    else if (dot_product < -0.9999f)
+                    {
+                        const glm::vec3 ortho =
+                            glm::normalize(glm::vec3(1, 0, 0) - new_right_vec * glm::dot(glm::vec3(1, 0, 0), new_right_vec));
+                        rotation = glm::angleAxis(std::numbers::pi_v<float>, ortho);
+                    }
+                    else
+                    {
+                        const glm::vec3 cross_product = glm::cross(new_right_vec, old_right_vec);
+                        rotation = glm::quat(1 + dot_product, cross_product.x, cross_product.y, cross_product.z);
+                        rotation = glm::normalize(rotation);
+                    }
+                    rotation_cb->rotation_mtx = glm::transpose(glm::mat4_cast(rotation));
+
+                    constexpr uint32_t Gap = 32;
+                    glm::uvec4 expanded_roi;
+                    expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(view.roi.x)) - Gap, 0U);
+                    expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(view.roi.y)) - Gap, 0U);
+                    expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(view.roi.z)) + Gap, intrinsic.width);
+                    expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(view.roi.w)) + Gap, intrinsic.height);
+
+                    const uint32_t size = std::max(expanded_roi.z - expanded_roi.x, expanded_roi.w - expanded_roi.y);
+                    const int32_t extent = size / 2;
+                    const glm::ivec2 center = glm::ivec2(expanded_roi.x + expanded_roi.z, expanded_roi.y + expanded_roi.w) / 2;
+
+                    const glm::vec2 top_left = center - extent;
+                    const glm::vec2 bottom_right = center + extent;
+                    const glm::vec2 wh(view.image_mask.Width(), view.image_mask.Height());
+                    rotation_cb->tc_bounding_box = glm::vec4(top_left / wh, bottom_right / wh);
+
+                    rotation_cb.UploadToGpu();
+
+                    const float abs_sin_theta = std::sqrt(1 - dot_product * dot_product);
+                    const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(dot_product) + abs_sin_theta)));
+                    rotated_roi_tex = GpuTexture2D(
+                        gpu_system_, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
+                    GpuRenderTargetView rotated_roi_rtv(gpu_system_, rotated_roi_tex);
+
+                    const float clear_clr[] = {0, 0, 0, 0};
+                    cmd_list.Clear(rotated_roi_rtv, clear_clr);
+
+                    const GeneralConstantBuffer* cbs[] = {&rotation_cb};
+                    const GpuShaderResourceView* srvs[] = {&image_mask_srv};
+                    const GpuCommandList::ShaderBinding shader_bindings[] = {
+                        {cbs, {}, {}},
+                        {{}, srvs, {}},
+                    };
+
+                    const GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
+
+                    const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
+                    cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
                 }
-                else if (dot_product < -0.9999f)
+
+                const uint32_t rotated_width = rotated_roi_tex.Width(0);
+                const uint32_t rotated_height = rotated_roi_tex.Height(0);
+
+                GpuTexture2D resized_rotated_roi_x_tex(gpu_system_, ResizedImageSize, rotated_height, 1, ColorFmt,
+                    GpuResourceFlag::UnorderedAccess, L"resized_rotated_roi_x_tex");
+                GpuTexture2D resized_rotated_roi_tex(gpu_system_, ResizedImageSize, ResizedImageSize, 1, ColorFmt,
+                    GpuResourceFlag::UnorderedAccess, L"resized_rotated_roi_tex");
                 {
-                    const glm::vec3 ortho =
-                        glm::normalize(glm::vec3(1, 0, 0) - new_right_vec * glm::dot(glm::vec3(1, 0, 0), new_right_vec));
-                    rotation = glm::angleAxis(std::numbers::pi_v<float>, ortho);
+                    constexpr uint32_t BlockDim = 16;
+
+                    GpuShaderResourceView input_srv(gpu_system_, rotated_roi_tex);
+                    GpuUnorderedAccessView output_uav(gpu_system_, resized_rotated_roi_x_tex);
+
+                    auto downsample_x_cb = ConstantBuffer<ResizeConstantBuffer>(gpu_system_, 1, L"downsample_x_cb");
+                    downsample_x_cb->src_roi = glm::uvec4(0, 0, rotated_width, rotated_height);
+                    downsample_x_cb->dest_size = glm::uvec2(ResizedImageSize, rotated_height);
+                    downsample_x_cb->scale = static_cast<float>(rotated_width) / ResizedImageSize;
+                    downsample_x_cb->x_dir = true;
+                    downsample_x_cb.UploadToGpu();
+
+                    const GeneralConstantBuffer* cbs[] = {&downsample_x_cb};
+                    const GpuShaderResourceView* srvs[] = {&input_srv};
+                    GpuUnorderedAccessView* uavs[] = {&output_uav};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    cmd_list.Compute(
+                        resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(rotated_height, BlockDim), 1, shader_binding);
                 }
-                else
                 {
-                    const glm::vec3 cross_product = glm::cross(new_right_vec, old_right_vec);
-                    rotation = glm::quat(1 + dot_product, cross_product.x, cross_product.y, cross_product.z);
-                    rotation = glm::normalize(rotation);
+                    constexpr uint32_t BlockDim = 16;
+
+                    GpuShaderResourceView input_srv(gpu_system_, resized_rotated_roi_x_tex);
+                    GpuUnorderedAccessView output_uav(gpu_system_, resized_rotated_roi_tex);
+
+                    auto downsample_y_cb = ConstantBuffer<ResizeConstantBuffer>(gpu_system_, 1, L"downsample_y_cb");
+                    downsample_y_cb->src_roi = glm::uvec4(0, 0, ResizedImageSize, rotated_height);
+                    downsample_y_cb->dest_size = glm::uvec2(ResizedImageSize, ResizedImageSize);
+                    downsample_y_cb->scale = static_cast<float>(rotated_height) / ResizedImageSize;
+                    downsample_y_cb->x_dir = false;
+                    downsample_y_cb.UploadToGpu();
+
+                    const GeneralConstantBuffer* cbs[] = {&downsample_y_cb};
+                    const GpuShaderResourceView* srvs[] = {&input_srv};
+                    GpuUnorderedAccessView* uavs[] = {&output_uav};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    cmd_list.Compute(
+                        resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(ResizedImageSize, BlockDim), 1, shader_binding);
                 }
-                rotation_cb->rotation_mtx = glm::transpose(glm::mat4_cast(rotation));
 
-                constexpr uint32_t Gap = 32;
-                glm::uvec4 expanded_roi;
-                expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(view.roi.x)) - Gap, 0U);
-                expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(view.roi.y)) - Gap, 0U);
-                expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(view.roi.z)) + Gap, intrinsic.width);
-                expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(view.roi.w)) + Gap, intrinsic.height);
-
-                const uint32_t size = std::max(expanded_roi.z - expanded_roi.x, expanded_roi.w - expanded_roi.y);
-                const int32_t extent = size / 2;
-                const glm::ivec2 center = glm::ivec2(expanded_roi.x + expanded_roi.z, expanded_roi.y + expanded_roi.w) / 2;
-
-                const glm::vec2 top_left = center - extent;
-                const glm::vec2 bottom_right = center + extent;
-                const glm::vec2 wh(view.image_mask.Width(), view.image_mask.Height());
-                rotation_cb->tc_bounding_box = glm::vec4(top_left / wh, bottom_right / wh);
-
-                rotation_cb.UploadToGpu();
-
-                const float abs_sin_theta = std::sqrt(1 - dot_product * dot_product);
-                const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(dot_product) + abs_sin_theta)));
-                GpuTexture2D rotated_roi_tex(
-                    gpu_system_, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
-                GpuRenderTargetView rotated_roi_rtv(gpu_system_, rotated_roi_tex);
-
-                const float clear_clr[] = {0, 0, 0, 0};
-                cmd_list.Clear(rotated_roi_rtv, clear_clr);
-
-                const GeneralConstantBuffer* cbs[] = {&rotation_cb};
-                const GpuShaderResourceView* srvs[] = {&image_mask_srv};
-                const GpuCommandList::ShaderBinding shader_bindings[] = {
-                    {cbs, {}, {}},
-                    {{}, srvs, {}},
-                };
-
-                const GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
-
-                const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
-                cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
-
-                auto& rotated_roi_cpu_tex = rotated_images[i];
-                rotated_roi_cpu_tex = Texture(rotated_size, rotated_size, ToElementFormat(rotated_roi_tex.Format()));
-                rotated_roi_tex.Readback(gpu_system_, cmd_list, 0, rotated_roi_cpu_tex.Data());
+                auto& resized_rotated_roi_cpu_tex = rotated_images[i];
+                resized_rotated_roi_cpu_tex = Texture(
+                    resized_rotated_roi_tex.Width(0), resized_rotated_roi_tex.Height(0), ToElementFormat(resized_rotated_roi_tex.Format()));
+                resized_rotated_roi_tex.Readback(gpu_system_, cmd_list, 0, resized_rotated_roi_cpu_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
             }
 
@@ -301,37 +358,31 @@ namespace AIHoloImager
 
         Mesh GenMesh(std::span<const Texture> input_images, GpuTexture3D& color_tex)
         {
-            auto args = python_system_.MakeTuple(1);
+            auto args = python_system_.MakeTuple(4);
             {
                 const uint32_t num_images = static_cast<uint32_t>(input_images.size());
                 auto imgs_args = python_system_.MakeTuple(num_images);
                 for (uint32_t i = 0; i < num_images; ++i)
                 {
                     const auto& input_image = input_images[i];
-
-                    auto py_image = python_system_.MakeTuple(4);
-
                     auto image_data = python_system_.MakeObject(
                         std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
-                    python_system_.SetTupleItem(*py_image, 0, std::move(image_data));
-                    python_system_.SetTupleItem(*py_image, 1, python_system_.MakeObject(input_image.Width()));
-                    python_system_.SetTupleItem(*py_image, 2, python_system_.MakeObject(input_image.Height()));
-                    python_system_.SetTupleItem(*py_image, 3, python_system_.MakeObject(FormatChannels(input_image.Format())));
-
-                    python_system_.SetTupleItem(*imgs_args, i, std::move(py_image));
+                    python_system_.SetTupleItem(*imgs_args, i, std::move(image_data));
                 }
                 python_system_.SetTupleItem(*args, 0, std::move(imgs_args));
+
+                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(input_images[0].Width()));
+                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(input_images[0].Height()));
+                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(FormatChannels(input_images[0].Format())));
             }
 
-            python_system_.CallObject(*mesh_generator_gen_volume_method_, *args);
+            python_system_.CallObject(*mesh_generator_gen_features_method_, *args);
 
             const auto py_grid_res = python_system_.CallObject(*mesh_generator_resolution_method_);
             const uint32_t grid_res = python_system_.Cast<uint32_t>(*py_grid_res);
 
             const auto py_coords = python_system_.CallObject(*mesh_generator_coords_method_);
             const auto coords = python_system_.ToSpan<const glm::uvec3>(*py_coords);
-
-            const uint32_t size = grid_res + 1;
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -403,6 +454,7 @@ namespace AIHoloImager
             }
             GpuShaderResourceView color_features_srv(gpu_system_, color_features_buff, GpuFormat::RGB32_Float);
 
+            const uint32_t size = grid_res + 1;
             GpuTexture3D density_deformation_tex(
                 gpu_system_, size, size, size, 1, GpuFormat::RGBA16_Float, GpuResourceFlag::UnorderedAccess, L"density_deformation_tex");
             color_tex =
@@ -1064,7 +1116,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_module_;
         PyObjectPtr mesh_generator_class_;
         PyObjectPtr mesh_generator_;
-        PyObjectPtr mesh_generator_gen_volume_method_;
+        PyObjectPtr mesh_generator_gen_features_method_;
         PyObjectPtr mesh_generator_resolution_method_;
         PyObjectPtr mesh_generator_coords_method_;
         PyObjectPtr mesh_generator_density_features_method_;
@@ -1081,6 +1133,15 @@ namespace AIHoloImager
             glm::vec4 tc_bounding_box;
         };
         GpuRenderPipeline rotate_pipeline_;
+
+        struct ResizeConstantBuffer
+        {
+            glm::uvec4 src_roi;
+            glm::uvec2 dest_size;
+            float scale;
+            uint32_t x_dir;
+        };
+        GpuComputePipeline resize_pipeline_;
 
         struct ScatterIndexConstantBuffer
         {
@@ -1119,6 +1180,7 @@ namespace AIHoloImager
         static constexpr uint32_t DilateTimes = 4;
         static constexpr uint32_t Dilate3DTimes = 8;
         static constexpr float GridScale = 2.0f;
+        static constexpr uint32_t ResizedImageSize = 518;
 
         static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };

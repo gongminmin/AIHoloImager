@@ -7,5 +7,6 @@ SamplerState bilinear_sampler : register(s0);
 
 float4 main(float2 texcoord : TEXCOORD0) : SV_Target0
 {
-    return image_tex.Sample(bilinear_sampler, texcoord);
+    const float4 color = image_tex.Sample(bilinear_sampler, texcoord);
+    return float4(color.rgb * color.a, 1);
 }

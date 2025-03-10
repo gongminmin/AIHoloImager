@@ -477,7 +477,6 @@ namespace AIHoloImager
         GpuComputePipeline stat_pred_pipeline_;
         GpuComputePipeline calc_bbox_pipeline_;
 
-        static constexpr uint32_t ResizeKernelRadius = 1;
         struct ResizeConstantBuffer
         {
             glm::uvec4 src_roi;

@@ -9,7 +9,6 @@ import json
 from typing import *
 
 import numpy as np
-from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
@@ -97,38 +96,28 @@ class TrellisImageTo3DPipeline:
             model.to(device)
 
     @torch.no_grad()
-    def EncodeImage(self, image : Union[torch.Tensor, list[Image.Image]]) -> torch.Tensor:
-        if isinstance(image, torch.Tensor):
-            assert image.ndim == 4, "Image tensor should be batched (B, C, H, W)"
-        elif isinstance(image, list):
-            assert all(isinstance(i, Image.Image) for i in image), "Image list should be list of PIL images"
-            image = [i.resize((518, 518), Image.LANCZOS) for i in image]
-            image = [np.array(i.convert('RGB')).astype(np.float32) / 255 for i in image]
-            image = [torch.from_numpy(i).permute(2, 0, 1).float() for i in image]
-            image = torch.stack(image).to(self.device)
-        else:
-            raise ValueError(f"Unsupported type of image: {type(image)}")
-        
-        image = self.image_cond_model_transform(image).to(self.device)
-        features = self.models['image_cond_model'](image, is_training=True)['x_prenorm']
-        patchtokens = functional.layer_norm(features, features.shape[-1:])
-        return patchtokens
+    def EncodeImage(self, images : torch.Tensor) -> torch.Tensor:
+        assert images.ndim == 4, "Image tensor should be batched (B, C, H, W)"
+        images = self.image_cond_model_transform(images).to(self.device)
+        features = self.models['image_cond_model'](images, is_training = True)["x_prenorm"]
+        patch_tokens = functional.layer_norm(features, features.shape[-1 :])
+        return patch_tokens
 
-    def GetCond(self, image: Union[torch.Tensor, list[Image.Image]]) -> dict:
+    def GetCond(self, images : torch.Tensor) -> dict:
         """
         Get the conditioning information for the model.
-    
+
         Args:
-            image (Union[torch.Tensor, list[Image.Image]]): The image prompts.
-    
+            images (torch.Tensor): The image prompts.
+
         Returns:
             dict: The conditioning information
         """
-        cond = self.EncodeImage(image)
+        cond = self.EncodeImage(images)
         neg_cond = torch.zeros_like(cond)
         return {
-            'cond': cond,
-            'neg_cond': neg_cond,
+            "cond" : cond,
+            "neg_cond" : neg_cond,
         }
 
     def SampleSparseStructure(
@@ -246,7 +235,7 @@ class TrellisImageTo3DPipeline:
                 return self._old_inference_model(model, x_t, t, cond=cond_i, **kwargs)
         
         elif mode == "multidiffusion":
-            from .samplers import FlowEulerSampler
+            from .Samplers import FlowEulerSampler
             def _new_inference_model(self, model, x_t, t, cond, neg_cond, cfg_strength, cfg_interval, **kwargs):
                 if cfg_interval[0] <= t <= cfg_interval[1]:
                     preds = []
@@ -275,37 +264,36 @@ class TrellisImageTo3DPipeline:
     @torch.no_grad()
     def Run(
         self,
-        images: Union[Image.Image, List[Image.Image]],
+        images: torch.Tensor,
         num_samples: int = 1,
         seed: int = 42,
         sparse_structure_sampler_params: dict = {},
         slat_sampler_params: dict = {},
-        mode: Literal['stochastic', 'multidiffusion'] = 'stochastic',
+        mode: Literal["stochastic", "multidiffusion"] = "stochastic",
     ) -> list:
         """
         Run the pipeline with multiple images as condition
-    
+
         Args:
-            images (Union[Image.Image, List[Image.Image]]): The image or multi-view images of the assets
+            images (torch.Tensor): The image or multi-view images of the assets
             num_samples (int): The number of samples to generate.
             sparse_structure_sampler_params (dict): Additional parameters for the sparse structure sampler.
             slat_sampler_params (dict): Additional parameters for the structured latent sampler.
         """
-        if isinstance(images, Image.Image):
-            images = [images]
         cond = self.GetCond(images)
-        cond['neg_cond'] = cond['neg_cond'][:1]
+        cond["neg_cond"] = cond["neg_cond"][: 1]
         torch.manual_seed(seed)
-    
-        if len(images) == 1:
+
+        num_images = images.shape[0]
+        if num_images == 1:
             coords = self.SampleSparseStructure(cond, num_samples, sparse_structure_sampler_params)
             slat = self.SampleSlat(cond, coords, slat_sampler_params)
         else:
-            ss_steps = {**self.sparse_structure_sampler_params, **sparse_structure_sampler_params}.get('steps')
-            with self.InjectSamplerMultiImage('sparse_structure_sampler', len(images), ss_steps, mode=mode):
+            ss_steps = {**self.sparse_structure_sampler_params, **sparse_structure_sampler_params}.get("steps")
+            with self.InjectSamplerMultiImage("sparse_structure_sampler", num_images, ss_steps, mode = mode):
                 coords = self.SampleSparseStructure(cond, num_samples, sparse_structure_sampler_params)
-            slat_steps = {**self.slat_sampler_params, **slat_sampler_params}.get('steps')
-            with self.InjectSamplerMultiImage('slat_sampler', len(images), slat_steps, mode=mode):
+            slat_steps = {**self.slat_sampler_params, **slat_sampler_params}.get("steps")
+            with self.InjectSamplerMultiImage("slat_sampler", num_images, slat_steps, mode = mode):
                 slat = self.SampleSlat(cond, coords, slat_sampler_params)
-    
+
         return self.DecodeSlat(slat)

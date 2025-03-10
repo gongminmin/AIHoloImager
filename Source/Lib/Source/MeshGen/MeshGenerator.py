@@ -4,7 +4,6 @@
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 import torch
 
 from Trellis.Pipelines import TrellisImageTo3DPipeline
@@ -25,25 +24,20 @@ class MeshGenerator:
         torch.cuda.empty_cache()
 
     @torch.no_grad()
-    def GenVolume(self, images):
-        pil_images = []
+    def GenFeatures(self, images, width, height, num_channels):
+        torch_images = []
         for image in images:
-            image_data = image[0]
-            width = image[1]
-            height = image[2]
-            num_channels = image[3]
-            if num_channels == 1:
-                mode = "L"
-            elif num_channels == 3:
-                mode = "RGB"
-            else:
-                assert(num_channels == 4)
-                mode = "RGBA"
-            pil_images.append(Image.frombuffer(mode, (width, height), image_data))
-    
-        steps = max(len(pil_images) * 3, 25)
+            image = np.frombuffer(image, dtype = np.uint8, count = height * width * num_channels)
+            image = torch.from_numpy(image.copy()).to(self.device)
+            image = image.reshape(height, width, num_channels)
+            image = image.permute(2, 0, 1)
+            image = image[0 : 3, :, :].float() / 255
+            torch_images.append(image)
+        images = torch.stack(torch_images).contiguous()
+
+        steps = max(images.shape[0] * 3, 25)
         sparse_volume = self.pipeline.Run(
-            pil_images,
+            images,
             seed = 1,
             sparse_structure_sampler_params = {
                 "steps" : steps,

@@ -60,7 +60,6 @@ set(aihi_files
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
     Source/MaskGen/Shader/GaussianBlurCs.hlsl
-    Source/MaskGen/Shader/Lanczos.hlslh
     Source/MaskGen/Shader/MergeMaskCs.hlsl
     Source/MaskGen/Shader/NormalizeImageCs.hlsl
     Source/MaskGen/Shader/UpsampleCs.hlsl
@@ -82,6 +81,7 @@ set(aihi_files
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
+    Source/MeshGen/Shader/ResizeCs.hlsl
     Source/MeshGen/Shader/RotatePs.hlsl
     Source/MeshGen/Shader/RotateVs.hlsl
     Source/MeshGen/Shader/ScatterIndexCs.hlsl
@@ -147,6 +147,7 @@ set(aihi_files
     Source/TextureRecon/Shader/ResolveTextureCs.hlsl
     Source/TextureRecon/TextureReconstruction.cpp
     Source/TextureRecon/TextureReconstruction.hpp
+    Source/Util/Shader/Lanczos.hlslh
     Source/Util/Shader/Nn.hlslh
     Source/Util/ComPtr.hpp
     Source/Util/ErrorHandling.cpp
@@ -210,6 +211,7 @@ AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotatePs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
