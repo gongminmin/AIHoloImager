@@ -1,9 +1,21 @@
+# Copyright (c) 2025 Minmin Gong
+#
+
+def SeedRandom(seed : int):
+    import random
+    random.seed(seed)
+
+    import numpy
+    numpy.random.seed(seed)
+
+    import torch
+    torch.manual_seed(seed)
+
 def InitPySys():
     import os
     os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
 
-    import Util
-    Util.SeedRandom(42)
+    SeedRandom(42)
 
     if os.name == "nt":
         from pathlib import Path

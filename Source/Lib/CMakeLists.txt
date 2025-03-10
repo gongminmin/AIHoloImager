@@ -159,7 +159,6 @@ set(aihi_files
     Source/Util/SmartPtrHelper.hpp
     Source/Util/Timer.cpp
     Source/Util/Timer.hpp
-    Source/Util/Util.py
     Source/Util/Uuid.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
@@ -316,7 +315,6 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
     Source/Python/PythonSystem.py
-    Source/Util/Util.py
 )
 foreach(py_file ${py_files})
     string(REPLACE "/" ";" path_list ${py_file})
