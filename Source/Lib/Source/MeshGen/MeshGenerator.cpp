@@ -219,16 +219,17 @@ namespace AIHoloImager
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
                 const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 GpuTexture2D rotated_roi_tex;
                 {
-                    GpuTexture2D image_mask_tex(gpu_system_, view.image_mask.Width(), view.image_mask.Height(), 1, ColorFmt,
-                        GpuResourceFlag::None, L"image_mask_tex");
-                    image_mask_tex.Upload(gpu_system_, cmd_list, 0, view.image_mask.Data());
-                    GpuShaderResourceView image_mask_srv(gpu_system_, image_mask_tex);
+                    const uint32_t delighted_width = view.delighted_image.Width();
+                    const uint32_t delighted_height = view.delighted_image.Height();
+                    GpuTexture2D delighted_tex(gpu_system_, delighted_width, delighted_height, 1,
+                        ToGpuFormat(view.delighted_image.Format()), GpuResourceFlag::None, L"delighted_tex");
+                    delighted_tex.Upload(gpu_system_, cmd_list, 0, view.delighted_image.Data());
+                    GpuShaderResourceView delighted_srv(gpu_system_, delighted_tex);
 
                     ConstantBuffer<RotateConstantBuffer> rotation_cb(gpu_system_, 1, L"rotation_cb");
 
@@ -258,20 +259,13 @@ namespace AIHoloImager
                     }
                     rotation_cb->rotation_mtx = glm::transpose(glm::mat4_cast(rotation));
 
-                    constexpr uint32_t Gap = 32;
-                    glm::uvec4 expanded_roi;
-                    expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(view.roi.x)) - Gap, 0U);
-                    expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(view.roi.y)) - Gap, 0U);
-                    expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(view.roi.z)) + Gap, intrinsic.width);
-                    expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(view.roi.w)) + Gap, intrinsic.height);
-
-                    const uint32_t size = std::max(expanded_roi.z - expanded_roi.x, expanded_roi.w - expanded_roi.y);
+                    const uint32_t size = std::max(delighted_width, delighted_height);
                     const int32_t extent = size / 2;
-                    const glm::ivec2 center = glm::ivec2(expanded_roi.x + expanded_roi.z, expanded_roi.y + expanded_roi.w) / 2;
+                    const glm::ivec2 center = glm::ivec2(delighted_width, delighted_height) / 2;
 
                     const glm::vec2 top_left = center - extent;
                     const glm::vec2 bottom_right = center + extent;
-                    const glm::vec2 wh(view.image_mask.Width(), view.image_mask.Height());
+                    const glm::vec2 wh(delighted_width, delighted_height);
                     rotation_cb->tc_bounding_box = glm::vec4(top_left / wh, bottom_right / wh);
 
                     rotation_cb.UploadToGpu();
@@ -282,11 +276,11 @@ namespace AIHoloImager
                         gpu_system_, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
                     GpuRenderTargetView rotated_roi_rtv(gpu_system_, rotated_roi_tex);
 
-                    const float clear_clr[] = {0, 0, 0, 0};
+                    const float clear_clr[] = {0, 0, 0, 1};
                     cmd_list.Clear(rotated_roi_rtv, clear_clr);
 
                     const GeneralConstantBuffer* cbs[] = {&rotation_cb};
-                    const GpuShaderResourceView* srvs[] = {&image_mask_srv};
+                    const GpuShaderResourceView* srvs[] = {&delighted_srv};
                     const GpuCommandList::ShaderBinding shader_bindings[] = {
                         {cbs, {}, {}},
                         {{}, srvs, {}},
