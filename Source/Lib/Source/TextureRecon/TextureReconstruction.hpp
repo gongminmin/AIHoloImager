@@ -28,7 +28,7 @@ namespace AIHoloImager
         };
 
     public:
-        TextureReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system);
+        explicit TextureReconstruction(GpuSystem& gpu_system);
         TextureReconstruction(TextureReconstruction&& other) noexcept;
         ~TextureReconstruction() noexcept;
 

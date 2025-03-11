@@ -19,7 +19,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MeshGenerator);
 
     public:
-        MeshGenerator(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system);
+        MeshGenerator(GpuSystem& gpu_system, PythonSystem& python_system);
         MeshGenerator(MeshGenerator&& other) noexcept;
         ~MeshGenerator() noexcept;
 

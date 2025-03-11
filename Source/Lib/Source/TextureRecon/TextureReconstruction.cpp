@@ -29,7 +29,7 @@ namespace AIHoloImager
     class TextureReconstruction::Impl
     {
     public:
-        Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system) : exe_dir_(exe_dir), gpu_system_(gpu_system)
+        explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
             const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
                 {"POSITION", 0, GpuFormat::RGB32_Float},
@@ -372,8 +372,6 @@ namespace AIHoloImager
         }
 
     private:
-        const std::filesystem::path exe_dir_;
-
         GpuSystem& gpu_system_;
 
         struct FlattenConstantBuffer
@@ -419,8 +417,7 @@ namespace AIHoloImager
         static constexpr GpuFormat DepthFmt = GpuFormat::D32_Float;
     };
 
-    TextureReconstruction::TextureReconstruction(const std::filesystem::path& exe_dir, GpuSystem& gpu_system)
-        : impl_(std::make_unique<Impl>(exe_dir, gpu_system))
+    TextureReconstruction::TextureReconstruction(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
     {
     }
 

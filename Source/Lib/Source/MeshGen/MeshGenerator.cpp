@@ -39,9 +39,9 @@ namespace AIHoloImager
     class MeshGenerator::Impl
     {
     public:
-        Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), invisible_faces_remover_(gpu_system_),
-              marching_cubes_(gpu_system_), texture_recon_(exe_dir_, gpu_system_)
+        Impl(GpuSystem& gpu_system, PythonSystem& python_system)
+            : gpu_system_(gpu_system), python_system_(python_system), invisible_faces_remover_(gpu_system_), marching_cubes_(gpu_system_),
+              texture_recon_(gpu_system_)
         {
             mesh_generator_module_ = python_system_.Import("MeshGenerator");
             mesh_generator_class_ = python_system_.GetAttr(*mesh_generator_module_, "MeshGenerator");
@@ -1102,8 +1102,6 @@ namespace AIHoloImager
         }
 
     private:
-        const std::filesystem::path exe_dir_;
-
         GpuSystem& gpu_system_;
         PythonSystem& python_system_;
 
@@ -1179,8 +1177,8 @@ namespace AIHoloImager
         static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };
 
-    MeshGenerator::MeshGenerator(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-        : impl_(std::make_unique<Impl>(exe_dir, gpu_system, python_system))
+    MeshGenerator::MeshGenerator(GpuSystem& gpu_system, PythonSystem& python_system)
+        : impl_(std::make_unique<Impl>(gpu_system, python_system))
     {
     }
 

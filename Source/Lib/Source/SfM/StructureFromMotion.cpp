@@ -86,7 +86,8 @@ namespace AIHoloImager
 
     public:
         explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system)
+            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), mask_gen_(gpu_system_, python_system_),
+              delighter_(python_system_)
         {
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
 
@@ -424,8 +425,6 @@ namespace AIHoloImager
 
             GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
-            MaskGenerator mask_gen(gpu_system_, python_system_);
-            Delighter delighter(python_system_);
 
             ret.views.reserve(sfm_data.views.size());
             std::map<IndexT, uint32_t> view_id_mapping;
@@ -472,7 +471,7 @@ namespace AIHoloImager
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        mask_gen.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
+                        mask_gen_.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
 
                         undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 
@@ -480,7 +479,7 @@ namespace AIHoloImager
                         gpu_system_.WaitForGpu();
 
                         result_view.delighted_image =
-                            delighter.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);
+                            delighter_.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);
                     }
                 }
                 else
@@ -560,6 +559,9 @@ namespace AIHoloImager
         };
         ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
         GpuComputePipeline undistort_pipeline_;
+
+        MaskGenerator mask_gen_;
+        Delighter delighter_;
 
         static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };
