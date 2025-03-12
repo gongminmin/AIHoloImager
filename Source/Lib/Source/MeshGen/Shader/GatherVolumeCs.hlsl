@@ -10,9 +10,9 @@ cbuffer param_cb : register(b0)
 };
 
 Texture3D<uint32_t> index_volume : register(t0);
-Buffer<float> density_features : register(t1);
-Buffer<float3> deformation_features : register(t2);
-Buffer<float3> color_features : register(t3);
+Buffer<float16_t> density_features : register(t1);
+Buffer<float16_t> deformation_features : register(t2);
+Buffer<float16_t> color_features : register(t3);
 
 RWTexture3D<float4> density_deformation_volume : register(u0);
 RWTexture3D<unorm float4> color_volume : register(u1);
@@ -56,8 +56,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
                 const uint32_t index = (sparse_index - 1) * 8 + (7 - i);
 
                 density += density_features[index];
-                deformation += deformation_features[index];
-                color += float4(color_features[index], 1);
+                deformation += float3(deformation_features[index * 3 + 0], deformation_features[index * 3 + 1], deformation_features[index * 3 + 2]);
+                color += float4(color_features[index * 3 + 0], color_features[index * 3 + 1], color_features[index * 3 + 2], 1);
             }
         }
     }

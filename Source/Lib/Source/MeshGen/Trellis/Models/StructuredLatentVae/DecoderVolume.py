@@ -17,7 +17,7 @@ class SparseVolumeExtractResult:
     def __init__(self, resolution : int, x : sp.SparseTensor):
         self.resolution = resolution
         self.coords = x.coords[:, 1 :].to(torch.int32)
-        self.feats = x.feats.to(torch.float32)
+        self.feats = x.feats.to(torch.float16)
 
 class SparseSubdivideBlock3d(nn.Module):
     """

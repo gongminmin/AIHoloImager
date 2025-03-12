@@ -411,42 +411,42 @@ namespace AIHoloImager
             }
 
             const auto py_density_features = python_system_.CallObject(*mesh_generator_density_features_method_);
-            const auto density_features = python_system_.ToSpan<const float>(*py_density_features);
+            const auto density_features = python_system_.ToSpan<const uint16_t>(*py_density_features);
 
             const auto py_deformation_features = python_system_.CallObject(*mesh_generator_deformation_features_method_);
-            const auto deformation_features = python_system_.ToSpan<const glm::vec3>(*py_deformation_features);
+            const auto deformation_features = python_system_.ToSpan<const glm::u16vec3>(*py_deformation_features);
 
             const auto py_color_features = python_system_.CallObject(*mesh_generator_color_features_method_);
-            const auto color_features = python_system_.ToSpan<const glm::vec3>(*py_color_features);
+            const auto color_features = python_system_.ToSpan<const glm::u16vec3>(*py_color_features);
 
-            GpuBuffer density_features_buff(gpu_system_, static_cast<uint32_t>(density_features.size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::None, L"density_features_buff");
+            GpuBuffer density_features_buff(gpu_system_, static_cast<uint32_t>(density_features.size() * sizeof(uint16_t)),
+                GpuHeap::Default, GpuResourceFlag::None, L"density_features_buff");
             {
                 GpuUploadBuffer density_features_upload_buff(gpu_system_, density_features_buff.Size(), L"density_features_upload_buff");
-                std::memcpy(density_features_upload_buff.MappedData<float>(), density_features.data(), density_features_buff.Size());
+                std::memcpy(density_features_upload_buff.MappedData<uint16_t>(), density_features.data(), density_features_buff.Size());
                 cmd_list.Copy(density_features_buff, density_features_upload_buff);
             }
-            GpuShaderResourceView density_features_srv(gpu_system_, density_features_buff, GpuFormat::R32_Float);
+            GpuShaderResourceView density_features_srv(gpu_system_, density_features_buff, GpuFormat::R16_Float);
 
-            GpuBuffer deformation_features_buff(gpu_system_, static_cast<uint32_t>(deformation_features.size() * sizeof(glm::vec3)),
+            GpuBuffer deformation_features_buff(gpu_system_, static_cast<uint32_t>(deformation_features.size() * sizeof(glm::u16vec3)),
                 GpuHeap::Default, GpuResourceFlag::None, L"deformation_features_buff");
             {
                 GpuUploadBuffer deformation_features_upload_buff(
                     gpu_system_, deformation_features_buff.Size(), L"deformation_features_upload_buff");
-                std::memcpy(deformation_features_upload_buff.MappedData<glm::vec3>(), deformation_features.data(),
+                std::memcpy(deformation_features_upload_buff.MappedData<glm::u16vec3>(), deformation_features.data(),
                     deformation_features_buff.Size());
                 cmd_list.Copy(deformation_features_buff, deformation_features_upload_buff);
             }
-            GpuShaderResourceView deformation_features_srv(gpu_system_, deformation_features_buff, GpuFormat::RGB32_Float);
+            GpuShaderResourceView deformation_features_srv(gpu_system_, deformation_features_buff, GpuFormat::R16_Float);
 
-            GpuBuffer color_features_buff(gpu_system_, static_cast<uint32_t>(color_features.size() * sizeof(glm::vec3)), GpuHeap::Default,
-                GpuResourceFlag::None, L"color_features_buff");
+            GpuBuffer color_features_buff(gpu_system_, static_cast<uint32_t>(color_features.size() * sizeof(glm::u16vec3)),
+                GpuHeap::Default, GpuResourceFlag::None, L"color_features_buff");
             {
                 GpuUploadBuffer color_features_upload_buff(gpu_system_, color_features_buff.Size(), L"color_features_upload_buff");
-                std::memcpy(color_features_upload_buff.MappedData<glm::vec3>(), color_features.data(), color_features_buff.Size());
+                std::memcpy(color_features_upload_buff.MappedData<glm::u16vec3>(), color_features.data(), color_features_buff.Size());
                 cmd_list.Copy(color_features_buff, color_features_upload_buff);
             }
-            GpuShaderResourceView color_features_srv(gpu_system_, color_features_buff, GpuFormat::RGB32_Float);
+            GpuShaderResourceView color_features_srv(gpu_system_, color_features_buff, GpuFormat::R16_Float);
 
             const uint32_t size = grid_res + 1;
             GpuTexture3D density_deformation_tex(
