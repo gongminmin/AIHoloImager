@@ -276,7 +276,6 @@ set(py_files
     numpy/_utils/_convertions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
-    numpy/ctypeslib.py # Used when downloading models
     numpy/dtypes.py
     numpy/exceptions.py
     numpy/version.py
@@ -2253,7 +2252,6 @@ set(py_files
     email/__init__.py
     encodings/aliases.py
     encodings/gbk.py
-    encodings/idna.py
     encodings/raw_unicode_escape.py
     encodings/unicode_escape.py
     encodings/utf_8.py
@@ -2262,8 +2260,6 @@ set(py_files
     html/parser.py
     html/__init__.py
     http/client.py
-    http/cookiejar.py
-    http/cookies.py
     http/__init__.py
     importlib/metadata/_adapters.py
     importlib/metadata/_collections.py
@@ -2273,14 +2269,11 @@ set(py_files
     importlib/metadata/_text.py
     importlib/metadata/__init__.py
     importlib/resources/abc.py
-    importlib/resources/readers.py
     importlib/resources/_adapters.py
     importlib/resources/_common.py
-    importlib/resources/_itertools.py
     importlib/resources/_legacy.py
     importlib/resources/__init__.py
     importlib/abc.py
-    importlib/readers.py
     importlib/_abc.py
     importlib/__init__.py
     json/decoder.py
@@ -2386,7 +2379,6 @@ set(py_files
     socket.py
     ssl.py
     string.py
-    stringprep.py
     struct.py
     subprocess.py
     sysconfig.py
