@@ -43,7 +43,15 @@ class TrellisImageTo3DPipeline:
         self.slat_normalization = slat_normalization
 
         this_py_dir = Path(__file__).parent.resolve()
-        dinov2_model = torch.hub.load(this_py_dir.parents[1] / "dinov2", image_cond_model, source = "local", pretrained = True)
+        dinov2_model = torch.hub.load(this_py_dir.parents[1] / "dinov2", image_cond_model, source = "local", pretrained = False)
+
+        compact_arch_name = "vitl"
+        patch_size = 14
+        num_register_tokens = 4
+        model_full_name = f"dinov2_{compact_arch_name}{patch_size}_reg{num_register_tokens}"
+        pth_file_name = this_py_dir.parents[1] / "Models/dinov2" / f"{model_full_name}_pretrain.pth"
+        dinov2_model.load_state_dict(torch.load(pth_file_name, map_location = "cpu", weights_only = True))
+
         dinov2_model.eval()
         self.models["image_cond_model"] = dinov2_model
         self.image_cond_model_transform = transforms.Compose([

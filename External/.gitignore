@@ -1,6 +1,7 @@
 assimp/assimp/
 cxxopts/cxxopts/
 dinov2/dinov2/
+dinov2/Dinov2Models/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
 Intrinsic/IntrinsicModels/

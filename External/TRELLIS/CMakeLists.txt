@@ -46,5 +46,6 @@ foreach(src_file ${copy_files})
 endforeach()
 
 add_custom_target(DeployTrellisModels DEPENDS ${deployed_files})
+add_dependencies(DeployTrellisModels DeployDinov2Models)
 
 set_target_properties(DeployTrellisModels PROPERTIES FOLDER "External")

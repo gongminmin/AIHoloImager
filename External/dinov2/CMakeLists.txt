@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Minmin Gong
+#
+
 UpdateExternalLib("dinov2" "https://github.com/facebookresearch/dinov2.git" "e1277af2ba9496fbadf7aec6eba56e8d882d1e35")
 
 set(py_files
@@ -65,3 +68,32 @@ add_library(dinov2 INTERFACE
 )
 
 set_target_properties(dinov2 PROPERTIES FOLDER "External")
+
+if(is_ci_env)
+    add_custom_target(DeployDinov2Models)
+else()
+    set(url "https://dl.fbaipublicfiles.com/dinov2/")
+    set(local_dir "${CMAKE_CURRENT_SOURCE_DIR}/Dinov2Models/")
+
+    set(compact_arch_name "vitl")
+    set(patch_size 14)
+    set(num_register_tokens 4)
+    set(model_base_name "dinov2_${compact_arch_name}${patch_size}")
+
+    set(file_name "${model_base_name}_reg${num_register_tokens}_pretrain.pth")
+    DownloadFile("${url}${model_base_name}/${file_name}" "${local_dir}${file_name}")
+
+    set(pth_file Dinov2Models/${file_name})
+    set(output_file ${aihi_output_dir}/Models/dinov2/${file_name})
+    add_custom_command(OUTPUT ${output_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink ${pth_file} ${output_file}
+        COMMENT "Deploying ${pth_file}..."
+        DEPENDS ${pth_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+
+    add_custom_target(DeployDinov2Models DEPENDS ${output_file})
+endif()
+
+set_target_properties(DeployDinov2Models PROPERTIES FOLDER "External")
