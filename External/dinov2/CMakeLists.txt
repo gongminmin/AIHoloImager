@@ -67,8 +67,6 @@ add_library(dinov2 INTERFACE
     ${dinov2_files}
 )
 
-set_target_properties(dinov2 PROPERTIES FOLDER "External")
-
 if(is_ci_env)
     add_custom_target(DeployDinov2Models)
 else()
@@ -96,4 +94,4 @@ else()
     add_custom_target(DeployDinov2Models DEPENDS ${output_file})
 endif()
 
-set_target_properties(DeployDinov2Models PROPERTIES FOLDER "External")
+set_target_properties(dinov2 DeployDinov2Models PROPERTIES FOLDER "External/dinov2")
