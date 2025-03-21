@@ -38,7 +38,6 @@ class MeshGenerator:
         steps = max(images.shape[0] * 3, 25)
         sparse_volume = self.pipeline.Run(
             images,
-            seed = 1,
             sparse_structure_sampler_params = {
                 "steps" : steps,
                 "cfg_strength" : 7.5,

@@ -274,7 +274,6 @@ class TrellisImageTo3DPipeline:
         self,
         images: torch.Tensor,
         num_samples: int = 1,
-        seed: int = 42,
         sparse_structure_sampler_params: dict = {},
         slat_sampler_params: dict = {},
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
@@ -290,7 +289,6 @@ class TrellisImageTo3DPipeline:
         """
         cond = self.GetCond(images)
         cond["neg_cond"] = cond["neg_cond"][: 1]
-        torch.manual_seed(seed)
 
         num_images = images.shape[0]
         if num_images == 1:
