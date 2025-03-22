@@ -14,6 +14,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "DiffOptimizer.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
@@ -25,6 +26,7 @@
 #include "Util/BoundingBox.hpp"
 #include "Util/FormatConversion.hpp"
 
+#include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
 #include "CompiledShader/MeshGen/Dilate3DCs.h"
 #include "CompiledShader/MeshGen/DilateCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
@@ -83,10 +85,10 @@ namespace AIHoloImager
                 const ShaderInfo shader = {GatherVolumeCs_shader, 1, 4, 2};
                 gather_volume_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
-            {
-                const GpuStaticSampler trilinear_sampler(
-                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
+            const GpuStaticSampler trilinear_sampler(
+                {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+            {
                 merge_texture_cb_ = ConstantBuffer<MergeTextureConstantBuffer>(gpu_system_, 1, L"merge_texture_cb_");
                 merge_texture_cb_->inv_scale = 1 / GridScale;
 
@@ -100,6 +102,13 @@ namespace AIHoloImager
             {
                 const ShaderInfo shader = {Dilate3DCs_shader, 1, 1, 1};
                 dilate_3d_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+            }
+            {
+                apply_vertex_color_cb_ = ConstantBuffer<ApplyVertexColorConstantBuffer>(gpu_system_, 1, L"apply_vertex_color_cb_");
+                apply_vertex_color_cb_->inv_scale = 1 / GridScale;
+
+                const ShaderInfo shader = {ApplyVertexColorCs_shader, 1, 2, 1};
+                apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{&trilinear_sampler, 1});
             }
         }
 
@@ -137,6 +146,21 @@ namespace AIHoloImager
             SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
 #endif
 
+            Mesh pos_color_mesh = this->ApplyVertexColor(mesh, color_vol_tex);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(pos_color_mesh, output_dir / "AiMeshPosColor.glb");
+#endif
+
+            glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input);
+
+            std::cout << "Optimizing transform...\n";
+
+            {
+                DiffOptimizer optimizer(python_system_);
+                optimizer.Optimize(pos_color_mesh, model_mtx, recon_input.obb, sfm_input);
+            }
+
             std::cout << "Simplifying mesh...\n";
 
             MeshSimplification mesh_simp;
@@ -147,7 +171,9 @@ namespace AIHoloImager
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-            const glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input);
+#ifdef AIHI_KEEP_INTERMEDIATES
+            SaveMesh(mesh, output_dir / "AiMeshOptimized.glb");
+#endif
 
             mesh.ComputeNormals();
 
@@ -722,6 +748,70 @@ namespace AIHoloImager
             }
         }
 
+        Mesh ApplyVertexColor(const Mesh& mesh, const GpuTexture3D& color_vol_tex)
+        {
+            const uint32_t num_vertices = mesh.NumVertices();
+            apply_vertex_color_cb_->num_vertices = num_vertices;
+            apply_vertex_color_cb_.UploadToGpu();
+
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+
+            GpuBuffer pos_vb(
+                gpu_system_, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Upload, GpuResourceFlag::None, L"pos_vb");
+            {
+                glm::vec3* pos_data = reinterpret_cast<glm::vec3*>(pos_vb.Map());
+                for (uint32_t i = 0; i < num_vertices; ++i)
+                {
+                    pos_data[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                }
+                pos_vb.Unmap(GpuRange{0, pos_vb.Size()});
+            }
+
+            GpuShaderResourceView pos_srv(gpu_system_, pos_vb, GpuFormat::RGB32_Float);
+            GpuShaderResourceView color_vol_srv(gpu_system_, color_vol_tex);
+
+            GpuBuffer color_vb(gpu_system_, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess, L"pos_color_vb");
+            GpuUnorderedAccessView color_uav(gpu_system_, color_vb, GpuFormat::R32_Float);
+
+            constexpr uint32_t BlockDim = 256;
+
+            GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            const GeneralConstantBuffer* cbs[] = {&apply_vertex_color_cb_};
+            const GpuShaderResourceView* srvs[] = {&color_vol_srv, &pos_srv};
+            GpuUnorderedAccessView* uavs[] = {&color_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(apply_vertex_color_pipeline_, DivUp(num_vertices, BlockDim), 1, 1, shader_binding);
+
+            GpuReadbackBuffer color_read_back_vb(
+                gpu_system_, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), L"color_read_back_vb");
+            cmd_list.Copy(color_read_back_vb, color_vb);
+
+            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.WaitForGpu();
+
+            const VertexAttrib pos_color_vertex_attribs[] = {
+                {VertexAttrib::Semantic::Position, 0, 3},
+                {VertexAttrib::Semantic::Color, 0, 3},
+            };
+            constexpr uint32_t OutputPosAttribIndex = 0;
+            constexpr uint32_t OutputColorAttribIndex = 1;
+
+            Mesh pos_color_mesh(VertexDesc(pos_color_vertex_attribs), mesh.NumVertices(), static_cast<uint32_t>(mesh.IndexBuffer().size()));
+            const auto* colors = color_read_back_vb.MappedData<glm::vec3>();
+            for (uint32_t i = 0; i < num_vertices; ++i)
+            {
+                pos_color_mesh.VertexData<glm::vec3>(i, OutputPosAttribIndex) = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                pos_color_mesh.VertexData<glm::vec3>(i, OutputColorAttribIndex) = colors[i];
+            }
+
+            pos_color_mesh.IndexBuffer(mesh.IndexBuffer());
+
+            return pos_color_mesh;
+        }
+
         void FillHoles(Mesh& mesh)
         {
             std::vector<std::vector<uint32_t>> holes = this->FindHoles(mesh);
@@ -1168,6 +1258,15 @@ namespace AIHoloImager
         };
         GpuComputePipeline dilate_pipeline_;
         GpuComputePipeline dilate_3d_pipeline_;
+
+        struct ApplyVertexColorConstantBuffer
+        {
+            uint32_t num_vertices;
+            float inv_scale;
+            uint32_t padding[2];
+        };
+        ConstantBuffer<ApplyVertexColorConstantBuffer> apply_vertex_color_cb_;
+        GpuComputePipeline apply_vertex_color_pipeline_;
 
         static constexpr uint32_t DilateTimes = 4;
         static constexpr uint32_t Dilate3DTimes = 8;

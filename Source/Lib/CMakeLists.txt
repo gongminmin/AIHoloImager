@@ -77,6 +77,7 @@ set(aihi_files
     Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubes/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl
+    Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
@@ -85,6 +86,9 @@ set(aihi_files
     Source/MeshGen/Shader/RotatePs.hlsl
     Source/MeshGen/Shader/RotateVs.hlsl
     Source/MeshGen/Shader/ScatterIndexCs.hlsl
+    Source/MeshGen/DiffOptimizer.cpp
+    Source/MeshGen/DiffOptimizer.hpp
+    Source/MeshGen/DiffOptimizer.py
     Source/MeshGen/InvisibleFacesRemover.cpp
     Source/MeshGen/InvisibleFacesRemover.hpp
     Source/MeshGen/MarchingCubes.cpp
@@ -207,6 +211,7 @@ AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/MarkFacesCs.hlsl "cs" 
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/CalcCubeIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
@@ -316,6 +321,7 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
+    Source/MeshGen/DiffOptimizer.py
     Source/Python/PythonSystem.py
 )
 foreach(py_file ${py_files})
@@ -338,4 +344,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels)
+add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels nvdiffrast)

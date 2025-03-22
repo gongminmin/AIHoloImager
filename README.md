@@ -16,6 +16,7 @@ AIHoloImager currently supports only Windows. To get started, use CMake to gener
 * [Visual Studio 2022](https://www.visualstudio.com/downloads).
 * [CMake](https://www.cmake.org/download/). Version 3.20 or up. It's highly recommended to choose "Add CMake to the system PATH for all users" during installation.
 * [Python](https://www.python.org/downloads/). Version 3.10 or up.
+* [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit). Version 12.4 or up.
 
 # License
 

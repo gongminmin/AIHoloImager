@@ -2080,6 +2080,109 @@ set(py_files
     xformers/_cpp_lib.py
     xformers/__init__.py
     typing_extensions.py
+
+    # Required by torch.utils.cpp_extension
+    _distutils_hack/override.py
+    _distutils_hack/__init__.py
+    setuptools/command/build_ext.py
+    setuptools/command/__init__.py
+    setuptools/config/expand.py
+    setuptools/config/pyprojecttoml.py
+    setuptools/config/setupcfg.py
+    setuptools/config/_apply_pyprojecttoml.py
+    setuptools/config/__init__.py
+    setuptools/_distutils/command/bdist.py
+    setuptools/_distutils/command/bdist_dumb.py
+    setuptools/_distutils/command/bdist_rpm.py
+    setuptools/_distutils/command/build.py
+    setuptools/_distutils/command/build_clib.py
+    setuptools/_distutils/command/build_ext.py
+    setuptools/_distutils/command/build_py.py
+    setuptools/_distutils/command/build_scripts.py
+    setuptools/_distutils/command/check.py
+    setuptools/_distutils/command/clean.py
+    setuptools/_distutils/command/install.py
+    setuptools/_distutils/command/install_data.py
+    setuptools/_distutils/command/install_headers.py
+    setuptools/_distutils/command/install_lib.py
+    setuptools/_distutils/command/install_scripts.py
+    setuptools/_distutils/command/sdist.py
+    setuptools/_distutils/command/_framework_compat.py
+    setuptools/_distutils/command/__init__.py
+    setuptools/_distutils/compat/numpy.py
+    setuptools/_distutils/compat/py39.py
+    setuptools/_distutils/compat/__init__.py
+    setuptools/_distutils/compilers/C/base.py
+    setuptools/_distutils/compilers/C/errors.py
+    setuptools/_distutils/archive_util.py
+    setuptools/_distutils/ccompiler.py
+    setuptools/_distutils/cmd.py
+    setuptools/_distutils/core.py
+    setuptools/_distutils/debug.py
+    setuptools/_distutils/dir_util.py
+    setuptools/_distutils/dist.py
+    setuptools/_distutils/errors.py
+    setuptools/_distutils/extension.py
+    setuptools/_distutils/fancy_getopt.py
+    setuptools/_distutils/filelist.py
+    setuptools/_distutils/file_util.py
+    setuptools/_distutils/log.py
+    setuptools/_distutils/spawn.py
+    setuptools/_distutils/sysconfig.py
+    setuptools/_distutils/text_file.py
+    setuptools/_distutils/util.py
+    setuptools/_distutils/_log.py
+    setuptools/_distutils/_modified.py
+    setuptools/_distutils/__init__.py
+    setuptools/_vendor/jaraco/functools/__init__.py
+    setuptools/_vendor/jaraco/text/__init__.py
+    setuptools/_vendor/jaraco/context.py
+    setuptools/_vendor/more_itertools/more.py
+    setuptools/_vendor/more_itertools/recipes.py
+    setuptools/_vendor/more_itertools/__init__.py
+    setuptools/_vendor/packaging/licenses/_spdx.py
+    setuptools/_vendor/packaging/licenses/__init__.py
+    setuptools/_vendor/packaging/markers.py
+    setuptools/_vendor/packaging/requirements.py
+    setuptools/_vendor/packaging/specifiers.py
+    setuptools/_vendor/packaging/tags.py
+    setuptools/_vendor/packaging/utils.py
+    setuptools/_vendor/packaging/version.py
+    setuptools/_vendor/packaging/_elffile.py
+    setuptools/_vendor/packaging/_manylinux.py
+    setuptools/_vendor/packaging/_musllinux.py
+    setuptools/_vendor/packaging/_parser.py
+    setuptools/_vendor/packaging/_structures.py
+    setuptools/_vendor/packaging/_tokenizer.py
+    setuptools/_vendor/packaging/__init__.py
+    setuptools/depends.py
+    setuptools/discovery.py
+    setuptools/dist.py
+    setuptools/errors.py
+    setuptools/extension.py
+    setuptools/logging.py
+    setuptools/monkey.py
+    setuptools/version.py
+    setuptools/warnings.py
+    setuptools/_core_metadata.py
+    setuptools/_entry_points.py
+    setuptools/_imp.py
+    setuptools/_importlib.py
+    setuptools/_itertools.py
+    setuptools/_normalization.py
+    setuptools/_path.py
+    setuptools/_reqs.py
+    setuptools/_static.py
+    setuptools/__init__.py
+    torch/utils/cpp_extension.py
+    torch/utils/file_baton.py
+    torch/utils/_cpp_extension_versioner.py
+    torch/utils/hipify/constants.py
+    torch/utils/hipify/cuda_to_hip_mappings.py
+    torch/utils/hipify/hipify_python.py
+    torch/utils/hipify/version.py
+    torch/utils/hipify/__init__.py
+    torch/_appdirs.py
 )
 if(WIN32)
     set(py_files ${py_files}
@@ -2172,6 +2275,9 @@ set(copy_files
     xformers/_C.pyd
     xformers/_C_flashattention.pyd
     xformers/cpp_lib.json
+
+    # Required by torch.utils.cpp_extension
+    "setuptools/_vendor/jaraco/text/Lorem ipsum.txt"
 )
 if(WIN32)
     set(copy_files ${copy_files}
@@ -2400,6 +2506,15 @@ set(py_files
     _markupbase.py
     _weakrefset.py
     __future__.py
+
+    # Required by torch.utils.cpp_extension
+    email/headerregistry.py
+    email/_header_value_parser.py
+    importlib/readers.py
+    importlib/resources/readers.py
+    importlib/resources/_itertools.py
+    configparser.py
+    getopt.py
 )
 if(Python3_VERSION VERSION_GREATER_EQUAL "3.12")
     set(py_files ${py_files}
