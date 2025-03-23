@@ -118,6 +118,12 @@ foreach(plugin ${plugins})
     set_target_properties(${plugin}
         PROPERTIES
             SUFFIX ".pyd"
+            POSTFIX ""
+            DEBUG_POSTFIX ""
+            MINSIZEREL_POSTFIX ""
+            RELWITHDEBINFO_POSTFIX ""
+            RELEASE_POSTFIX ""
+            MSVC_RUNTIME_LIBRARY "MultiThreadedDLL" # Hack to skip _DEBUG so Python won't link to its debug lib
     )
 
     add_dependencies(${plugin} DeployPython)

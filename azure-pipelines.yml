@@ -18,8 +18,8 @@ stages:
   - job: Build
     strategy:
       matrix:
-        #Windows_vc143_Debug:
-        #  configuration: Debug
+        Windows_vc143_Debug:
+          configuration: Debug
         Windows_vc143_Release:
           configuration: Release
 
