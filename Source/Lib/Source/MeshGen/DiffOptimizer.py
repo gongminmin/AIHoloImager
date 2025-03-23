@@ -77,7 +77,7 @@ class DiffOptimizer:
 
     def Optimize(self,
                  vtx_positions, vtx_colors, num_vertices, indices, num_indices,
-                 view_images, image_width, image_height, view_proj_mtxs, transform_offsets, num_views,
+                 view_images, view_proj_mtxs, transform_offsets, num_views,
                  scale, rotation, translation):
         torch.cuda.empty_cache()
 
@@ -113,12 +113,15 @@ class DiffOptimizer:
 
         rois = torch.empty(num_views, 4, dtype = torch.int32, device = "cpu")
         crop_images = []
+        resolutions = []
         for i in range(0, num_views):
             cropped_data = view_images[i][0]
             cropped_x = view_images[i][1]
             cropped_y = view_images[i][2]
             cropped_width = view_images[i][3]
             cropped_height = view_images[i][4]
+            image_width = view_images[i][5]
+            image_height = view_images[i][6]
 
             roi_image = np.frombuffer(cropped_data, dtype = np.uint8, count = cropped_height * cropped_width * self.image_channels)
             roi_image = torch.from_numpy(roi_image.copy())
@@ -134,21 +137,20 @@ class DiffOptimizer:
             if self.downsampling:
                 rois[i] = (rois[i] + 1) // 2
                 transform_offsets[i] = (transform_offsets[i] + 1) // 2
+                resolution = ((image_height + 1) // 2, (image_width + 1) // 2)
                 image = self.DownsampleImage(image.unsqueeze(0)).squeeze(0)
+            else:
+                resolution = (image_height, image_width)
 
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()
             crop_img = crop_img * torch.clamp(crop_img[..., -1 : ], 0, 1)
             crop_images.append(crop_img)
-
-        if self.downsampling:
-            resolution = ((image_height + 1) // 2, (image_width + 1) // 2)
-        else:
-            resolution = (image_height, image_width)
+            resolutions.append(resolution)
 
         vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
-        scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, transform_offsets, rois, resolution)
+        scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, transform_offsets, rois, resolutions)
         return (scale.cpu().numpy().tobytes(), rotation.cpu().numpy().tobytes(), translation.cpu().numpy().tobytes())
 
     def DownsampleImage(self, img):
@@ -183,7 +185,7 @@ class DiffOptimizer:
                      scale, rotation, translation,
                      vtx_positions, vtx_colors, indices,
                      crop_images, view_proj_mtxs, transform_offsets, rois,
-                     resolution, num_iter = 2000):
+                     resolutions, num_iter = 2000):
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
@@ -210,7 +212,7 @@ class DiffOptimizer:
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
-            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, resolution, rois[img_idx])
+            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, resolutions[img_idx], rois[img_idx])
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)
