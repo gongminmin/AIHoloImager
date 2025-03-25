@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -26,7 +26,7 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input);
+        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input);
 
     private:
         class Impl;

@@ -152,13 +152,20 @@ namespace AIHoloImager
             SaveMesh(pos_color_mesh, output_dir / "AiMeshPosColor.glb");
 #endif
 
-            glm::mat4x4 model_mtx = this->CalcModelMatrix(mesh, recon_input);
+            Obb obb;
+            {
+                const auto& vertex_desc = mesh.MeshVertexDesc();
+                const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+                obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
+            }
+
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb);
 
             std::cout << "Optimizing transform...\n";
 
             {
                 DiffOptimizer optimizer(python_system_);
-                optimizer.Optimize(pos_color_mesh, model_mtx, recon_input.obb, sfm_input);
+                optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
             }
 
             std::cout << "Simplifying mesh...\n";
@@ -187,7 +194,8 @@ namespace AIHoloImager
 
             std::cout << "Generating texture...\n";
 
-            auto texture_result = texture_recon_.Process(mesh, model_mtx, recon_input.obb, sfm_input, texture_size, tmp_dir);
+            const Obb world_obb = Obb::Transform(obb, model_mtx);
+            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
 
             Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
             {
@@ -212,7 +220,7 @@ namespace AIHoloImager
 
             {
                 const glm::mat4x4 adjust_mtx =
-                    RegularizeTransform(-recon_input.obb.center, glm::inverse(recon_input.obb.orientation), glm::vec3(1)) * model_mtx;
+                    RegularizeTransform(-world_obb.center, glm::inverse(world_obb.orientation), glm::vec3(1)) * model_mtx;
                 const glm::mat3x3 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
 
                 const auto& vertex_desc = mesh.MeshVertexDesc();
@@ -1093,24 +1101,68 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 CalcModelMatrix(const Mesh& mesh, const MeshReconstruction::Result& recon_input)
+        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb)
         {
-            glm::mat4x4 model_mtx =
-                recon_input.transform * glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+            glm::vec3 init_translation(0, 0, 0);
+            uint32_t num = 0;
+            for (const auto& landmark : sfm_input.structure)
+            {
+                for (const auto& ob : landmark.obs)
+                {
+                    const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                    const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
 
-            const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+                    const auto& view = sfm_input.views[ob.view_id];
+                    const std::byte* image_mask_data = view.image_mask.Data();
+                    const uint32_t fmt_size = FormatSize(view.image_mask.Format());
+                    const uint32_t row_pitch = view.image_mask.Width() * fmt_size;
+                    if (image_mask_data[y * row_pitch + x * fmt_size + 3] > std::byte(0x7F))
+                    {
+                        init_translation += landmark.point;
+                        ++num;
+                    }
+                }
+            }
+            init_translation /= static_cast<float>(num);
 
-            const Obb ai_obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
+            const glm::mat4 init_model_mtx = glm::translate(glm::identity<glm::mat4x4>(), init_translation) *
+                                             glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
+                                             glm::mat4_cast(glm::inverse(obb.orientation));
 
-            const Obb transformed_ai_obb = Obb::Transform(ai_obb, model_mtx);
+            glm::vec3 corners[8];
+            Obb::GetCorners(obb, corners);
 
-            const float scale_x = transformed_ai_obb.extents.x / recon_input.obb.extents.x;
-            const float scale_y = transformed_ai_obb.extents.y / recon_input.obb.extents.y;
-            const float scale_z = transformed_ai_obb.extents.z / recon_input.obb.extents.z;
-            const float scale = 1 / std::max({scale_x, scale_y, scale_z});
+            float scale = 1e10f;
+            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            {
+                const auto& view = sfm_input.views[i];
+                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-            return glm::scale(model_mtx, glm::vec3(scale));
+                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
+                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
+                const glm::mat4x4 mvp_mtx = proj_mtx * view_mtx * init_model_mtx;
+
+                constexpr float RoiScale = 1.6f;
+                const float roi_fx = RoiScale * 2.0f * view.delighted_image.Width() / view.image_mask.Width();
+                const float roi_fy = RoiScale * 2.0f * view.delighted_image.Height() / view.image_mask.Height();
+                const float roi_fz = RoiScale;
+
+                glm::vec3 aabb_min_ps(+1e10f, +1e10f, +1e10f);
+                glm::vec3 aabb_max_ps(-1e10f, -1e10f, -1e10f);
+                for (const auto& corner : corners)
+                {
+                    const glm::vec4 pos_ps = mvp_mtx * glm::vec4(corner - obb.center, 1);
+                    const glm::vec3 pos_ps3 = glm::vec3(pos_ps) / pos_ps.w;
+
+                    aabb_min_ps = glm::min(aabb_min_ps, pos_ps3);
+                    aabb_max_ps = glm::max(aabb_max_ps, pos_ps3);
+                }
+
+                const glm::vec3 aabb_extents = aabb_max_ps - aabb_min_ps;
+                scale = std::min({scale, roi_fx / aabb_extents.x, roi_fy / aabb_extents.y, roi_fz / aabb_extents.z});
+            }
+
+            return glm::scale(init_model_mtx, glm::vec3(scale));
         }
 
         GpuTexture2D* DilateTexture(GpuCommandList& cmd_list, GpuTexture2D& tex, GpuTexture2D& tmp_tex)

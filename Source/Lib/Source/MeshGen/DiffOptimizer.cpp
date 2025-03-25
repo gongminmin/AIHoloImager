@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "DiffOptimizer.hpp"
@@ -28,7 +28,7 @@ namespace AIHoloImager
             python_system_.CallObject(*diff_optimizer_destroy_method);
         }
 
-        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input)
+        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
         {
             glm::vec3 scale;
             scale.x = glm::length(glm::vec3(model_mtx[0]));
@@ -67,8 +67,7 @@ namespace AIHoloImager
                 const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
-                const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
-                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
+                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
 
                 view_proj_mtxs[i] = proj_mtx * view_mtx;
 
@@ -161,8 +160,8 @@ namespace AIHoloImager
     DiffOptimizer::DiffOptimizer(DiffOptimizer&& other) noexcept = default;
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
-    void DiffOptimizer::Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input)
+    void DiffOptimizer::Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
     {
-        impl_->Optimize(mesh, model_mtx, world_obb, sfm_input);
+        impl_->Optimize(mesh, model_mtx, sfm_input);
     }
 } // namespace AIHoloImager
