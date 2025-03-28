@@ -134,8 +134,6 @@ set(aihi_files
     Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
-    Source/MeshRecon/MeshReconstruction.cpp
-    Source/MeshRecon/MeshReconstruction.hpp
     Source/MeshSimp/MeshSimplification.cpp
     Source/MeshSimp/MeshSimplification.hpp
     Source/Python/PythonSystem.cpp
@@ -344,4 +342,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployOpenMVS DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels nvdiffrast)
+add_dependencies(AIHoloImagerLib DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels nvdiffrast)

@@ -11,11 +11,21 @@
 #include <set>
 #include <tuple>
 
+#ifdef _MSC_VER
+    #pragma warning(push)
+    #pragma warning(disable : 5054) // Ignore operator between enums of different types
+#endif
+#include <Eigen/Core>
+#ifdef _MSC_VER
+    #pragma warning(pop)
+#endif
+#include <Eigen/Eigenvalues>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #ifndef GLM_ENABLE_EXPERIMENTAL
     #define GLM_ENABLE_EXPERIMENTAL
 #endif
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec3.hpp>
 
@@ -123,8 +133,7 @@ namespace AIHoloImager
             python_system_.CallObject(*mesh_generator_destroy_method);
         }
 
-        Mesh Generate(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input, uint32_t texture_size,
-            const std::filesystem::path& tmp_dir)
+        Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "MeshGen";
@@ -133,7 +142,8 @@ namespace AIHoloImager
 
             std::cout << "Rotating images...\n";
 
-            std::vector<Texture> rotated_images = this->RotateImages(sfm_input, recon_input);
+            const glm::vec3 up_vec = this->SceneUpVector(sfm_input);
+            std::vector<Texture> rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             for (size_t i = 0; i < rotated_images.size(); ++i)
@@ -164,7 +174,7 @@ namespace AIHoloImager
                 obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb);
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, up_vec);
 
             std::cout << "Optimizing transform...\n";
 
@@ -220,8 +230,16 @@ namespace AIHoloImager
 #endif
 
             {
-                const glm::mat4x4 adjust_mtx =
-                    RegularizeTransform(-world_obb.center, glm::inverse(world_obb.orientation), glm::vec3(1)) * model_mtx;
+                glm::vec3 scale;
+                glm::quat rotation;
+                glm::vec3 translation;
+                glm::vec3 skew;
+                glm::vec4 perspective;
+                glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
+
+                const glm::mat4x4 adjust_mtx = glm::recompose(scale,
+                    glm::angleAxis(-std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) * glm::inverse(obb.orientation),
+                    glm::zero<glm::vec3>(), skew, perspective);
                 const glm::mat3x3 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
 
                 const auto& vertex_desc = mesh.MeshVertexDesc();
@@ -246,9 +264,100 @@ namespace AIHoloImager
         }
 
     private:
-        std::vector<Texture> RotateImages(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input)
+        glm::vec4 FitPlane(const std::span<const glm::vec3> points)
         {
-            const glm::vec4 target_up_vec_ws = recon_input.transform * glm::vec4(0, 1, 0, 0);
+            // Step 1: Compute the centroid of the points
+            glm::vec3 centroid(0.0f);
+            for (const auto& point : points)
+            {
+                centroid += point;
+            }
+            centroid /= static_cast<float>(points.size());
+
+            // Step 2: Compute the covariance matrix
+            Eigen::Matrix3f covariance = Eigen::Matrix3f::Zero();
+            for (const auto& point : points)
+            {
+                const glm::vec3 centered = point - centroid;
+                covariance(0, 0) += centered.x * centered.x;
+                covariance(0, 1) += centered.x * centered.y;
+                covariance(0, 2) += centered.x * centered.z;
+                covariance(1, 0) += centered.y * centered.x;
+                covariance(1, 1) += centered.y * centered.y;
+                covariance(1, 2) += centered.y * centered.z;
+                covariance(2, 0) += centered.z * centered.x;
+                covariance(2, 1) += centered.z * centered.y;
+                covariance(2, 2) += centered.z * centered.z;
+            }
+            covariance /= static_cast<float>(points.size());
+
+            // Step 3: Perform eigenvalue decomposition
+            const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(covariance);
+            const Eigen::Vector3f normal = solver.eigenvectors().col(0); // Smallest eigenvalue
+
+            const glm::vec3 plane_normal = glm::normalize(glm::vec3(normal.x(), normal.y(), normal.z()));
+            return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
+        }
+
+        glm::vec3 SceneUpVector(const StructureFromMotion::Result& sfm_input)
+        {
+            std::vector<bool> point_used(sfm_input.structure.size(), false);
+            std::vector<glm::vec3> plane_points;
+            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            {
+                const auto& view = sfm_input.views[i];
+                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+
+                const std::byte* image_mask_data = view.image_mask.Data();
+                const uint32_t fmt_size = FormatSize(view.image_mask.Format());
+                const uint32_t row_pitch = intrinsic.width * fmt_size;
+
+                constexpr uint32_t Gap = 32;
+                const uint32_t beg_x = view.delighted_offset.x - Gap;
+                const uint32_t beg_y = view.delighted_offset.y + view.delighted_image.Height() / 2;
+                const uint32_t end_x = view.delighted_offset.x + view.delighted_image.Width() + Gap;
+                const uint32_t end_y = view.delighted_offset.y + view.delighted_image.Height() + Gap;
+
+                std::vector<bool> plane_mask(intrinsic.width * intrinsic.height, false);
+                for (uint32_t y = beg_y; y < end_y; ++y)
+                {
+                    for (uint32_t x = beg_x; x < end_x; ++x)
+                    {
+                        const uint32_t mask_offset = y * intrinsic.width + x;
+                        plane_mask[mask_offset] = image_mask_data[y * row_pitch + x * fmt_size + 3] <= std::byte(0x7F);
+                    }
+                }
+
+                for (size_t j = 0; j < sfm_input.structure.size(); ++j)
+                {
+                    const auto& landmark = sfm_input.structure[j];
+                    for (const auto& ob : landmark.obs)
+                    {
+                        if (ob.view_id == i)
+                        {
+                            const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                            const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+
+                            if (plane_mask[y * intrinsic.width + x])
+                            {
+                                if (!point_used[j])
+                                {
+                                    plane_points.push_back(landmark.point);
+                                    point_used[j] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const glm::vec4 plane = this->FitPlane(plane_points);
+            return glm::vec3(-plane.x, -plane.y, -plane.z);
+        }
+
+        std::vector<Texture> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
+        {
+            const glm::vec4 target_up_vec_ws = glm::vec4(up_vec.x, up_vec.y, up_vec.z, 0);
 
             std::vector<Texture> rotated_images(sfm_input.views.size());
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
@@ -1086,7 +1195,7 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb)
+        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& up_vec)
         {
             glm::vec3 init_translation(0, 0, 0);
             uint32_t num = 0;
@@ -1110,9 +1219,10 @@ namespace AIHoloImager
             }
             init_translation /= static_cast<float>(num);
 
-            const glm::mat4 init_model_mtx = glm::translate(glm::identity<glm::mat4x4>(), init_translation) *
-                                             glm::rotate(glm::identity<glm::mat4x4>(), -std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) *
-                                             glm::mat4_cast(glm::inverse(obb.orientation));
+            const glm::mat4 init_model_mtx =
+                glm::translate(glm::identity<glm::mat4x4>(), init_translation) *
+                glm::mat4_cast(glm::rotation(glm::vec3(0, 1, 0), -up_vec) *
+                               glm::angleAxis(std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) * glm::inverse(obb.orientation));
 
             glm::vec3 corners[8];
             Obb::GetCorners(obb, corners);
@@ -1323,9 +1433,8 @@ namespace AIHoloImager
     MeshGenerator::MeshGenerator(MeshGenerator&& other) noexcept = default;
     MeshGenerator& MeshGenerator::operator=(MeshGenerator&& other) noexcept = default;
 
-    Mesh MeshGenerator::Generate(const StructureFromMotion::Result& sfm_input, const MeshReconstruction::Result& recon_input,
-        uint32_t texture_size, const std::filesystem::path& tmp_dir)
+    Mesh MeshGenerator::Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
     {
-        return impl_->Generate(sfm_input, recon_input, texture_size, tmp_dir);
+        return impl_->Generate(sfm_input, texture_size, tmp_dir);
     }
 } // namespace AIHoloImager
