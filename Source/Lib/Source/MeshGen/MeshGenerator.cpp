@@ -13,6 +13,11 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+    #define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/quaternion.hpp>
+#include <glm/vec3.hpp>
 
 #include "DiffOptimizer.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -178,10 +183,6 @@ namespace AIHoloImager
             SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMeshOptimized.glb");
-#endif
-
             mesh.ComputeNormals();
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -273,24 +274,7 @@ namespace AIHoloImager
                     const glm::vec3 old_right_vec(1, 0, 0);
                     const glm::vec3 new_right_vec = glm::cross(target_up_vec, forward_vec);
 
-                    glm::quat rotation;
-                    const float dot_product = glm::dot(new_right_vec, old_right_vec);
-                    if (dot_product > 0.9999f)
-                    {
-                        rotation = glm::quat(1, 0, 0, 0);
-                    }
-                    else if (dot_product < -0.9999f)
-                    {
-                        const glm::vec3 ortho =
-                            glm::normalize(glm::vec3(1, 0, 0) - new_right_vec * glm::dot(glm::vec3(1, 0, 0), new_right_vec));
-                        rotation = glm::angleAxis(std::numbers::pi_v<float>, ortho);
-                    }
-                    else
-                    {
-                        const glm::vec3 cross_product = glm::cross(new_right_vec, old_right_vec);
-                        rotation = glm::quat(1 + dot_product, cross_product.x, cross_product.y, cross_product.z);
-                        rotation = glm::normalize(rotation);
-                    }
+                    const glm::quat rotation = glm::normalize(glm::rotation(new_right_vec, old_right_vec));
                     rotation_cb->rotation_mtx = glm::transpose(glm::mat4_cast(rotation));
 
                     const uint32_t size = std::max(delighted_width, delighted_height);
@@ -304,8 +288,9 @@ namespace AIHoloImager
 
                     rotation_cb.UploadToGpu();
 
-                    const float abs_sin_theta = std::sqrt(1 - dot_product * dot_product);
-                    const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(dot_product) + abs_sin_theta)));
+                    const float cos_theta = glm::dot(new_right_vec, old_right_vec);
+                    const float abs_sin_theta = std::sqrt(1 - cos_theta * cos_theta);
+                    const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(cos_theta) + abs_sin_theta)));
                     rotated_roi_tex = GpuTexture2D(
                         gpu_system_, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
                     GpuRenderTargetView rotated_roi_rtv(gpu_system_, rotated_roi_tex);

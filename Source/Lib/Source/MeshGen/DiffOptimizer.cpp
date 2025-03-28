@@ -8,6 +8,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+    #define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace AIHoloImager
 {
@@ -31,17 +35,11 @@ namespace AIHoloImager
         void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
         {
             glm::vec3 scale;
-            scale.x = glm::length(glm::vec3(model_mtx[0]));
-            scale.y = glm::length(glm::vec3(model_mtx[1]));
-            scale.z = glm::length(glm::vec3(model_mtx[2]));
-
-            glm::vec3 translation = glm::vec3(model_mtx[3]);
-
-            glm::mat3 rotation_mtx;
-            rotation_mtx[0] = glm::vec3(model_mtx[0]) / scale.x;
-            rotation_mtx[1] = glm::vec3(model_mtx[1]) / scale.y;
-            rotation_mtx[2] = glm::vec3(model_mtx[2]) / scale.z;
-            glm::quat rotation = glm::quat_cast(rotation_mtx);
+            glm::quat rotation;
+            glm::vec3 translation;
+            glm::vec3 skew;
+            glm::vec4 perspective;
+            glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
             const auto& vertex_desc = mesh.MeshVertexDesc();
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
@@ -135,11 +133,10 @@ namespace AIHoloImager
             const auto scale_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 0));
             const auto rotate_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 1));
             const auto translate_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 2));
-            const glm::mat4 scale_mtx = glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale_opt[0], scale_opt[1], scale_opt[2]));
-            const glm::mat4 rotate_mtx = glm::mat4_cast(glm::quat(rotate_opt[3], rotate_opt[0], rotate_opt[1], rotate_opt[2]));
-            const glm::mat4 trans_mtx =
-                glm::translate(glm::identity<glm::mat4x4>(), glm::vec3(translate_opt[0], translate_opt[1], translate_opt[2]));
-            model_mtx = trans_mtx * rotate_mtx * scale_mtx;
+            scale = glm::vec3(scale_opt[0], scale_opt[1], scale_opt[2]);
+            rotation = glm::quat(rotate_opt[3], rotate_opt[0], rotate_opt[1], rotate_opt[2]);
+            translation = glm::vec3(translate_opt[0], translate_opt[1], translate_opt[2]);
+            model_mtx = glm::recompose(scale, rotation, translation, skew, perspective);
         }
 
     private:
