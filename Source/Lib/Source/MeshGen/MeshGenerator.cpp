@@ -142,7 +142,8 @@ namespace AIHoloImager
 
             std::cout << "Rotating images...\n";
 
-            const glm::vec3 up_vec = this->SceneUpVector(sfm_input);
+            const glm::vec3 centroid = this->ForegroundObjectCentroid(sfm_input);
+            const glm::vec3 up_vec = this->SceneUpVector(sfm_input, centroid);
             std::vector<Texture> rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -174,7 +175,7 @@ namespace AIHoloImager
                 obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, up_vec);
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, centroid, up_vec);
 
             std::cout << "Optimizing transform...\n";
 
@@ -299,7 +300,34 @@ namespace AIHoloImager
             return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
         }
 
-        glm::vec3 SceneUpVector(const StructureFromMotion::Result& sfm_input)
+        glm::vec3 ForegroundObjectCentroid(const StructureFromMotion::Result& sfm_input)
+        {
+            glm::vec3 centroid(0.0f);
+            uint32_t num = 0;
+            for (const auto& landmark : sfm_input.structure)
+            {
+                for (const auto& ob : landmark.obs)
+                {
+                    const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                    const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+
+                    const auto& view = sfm_input.views[ob.view_id];
+                    const std::byte* image_mask_data = view.image_mask.Data();
+                    const uint32_t fmt_size = FormatSize(view.image_mask.Format());
+                    const uint32_t row_pitch = view.image_mask.Width() * fmt_size;
+                    if (image_mask_data[y * row_pitch + x * fmt_size + 3] > std::byte(0x7F))
+                    {
+                        centroid += landmark.point;
+                        ++num;
+                    }
+                }
+            }
+            centroid /= static_cast<float>(num);
+
+            return centroid;
+        }
+
+        glm::vec3 SceneUpVector(const StructureFromMotion::Result& sfm_input, const glm::vec3& centroid)
         {
             std::vector<bool> point_used(sfm_input.structure.size(), false);
             std::vector<glm::vec3> plane_points;
@@ -351,8 +379,13 @@ namespace AIHoloImager
                 }
             }
 
-            const glm::vec4 plane = this->FitPlane(plane_points);
-            return glm::vec3(-plane.x, -plane.y, -plane.z);
+            glm::vec4 plane = this->FitPlane(plane_points);
+            if (glm::dot(glm::vec3(plane), centroid) + plane.w < 0)
+            {
+                plane = -plane;
+            }
+
+            return glm::vec3(plane);
         }
 
         std::vector<Texture> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
@@ -1195,32 +1228,11 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& up_vec)
+        glm::mat4x4 GuessModelMatrix(
+            const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& centroid, const glm::vec3& up_vec)
         {
-            glm::vec3 init_translation(0, 0, 0);
-            uint32_t num = 0;
-            for (const auto& landmark : sfm_input.structure)
-            {
-                for (const auto& ob : landmark.obs)
-                {
-                    const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
-                    const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
-
-                    const auto& view = sfm_input.views[ob.view_id];
-                    const std::byte* image_mask_data = view.image_mask.Data();
-                    const uint32_t fmt_size = FormatSize(view.image_mask.Format());
-                    const uint32_t row_pitch = view.image_mask.Width() * fmt_size;
-                    if (image_mask_data[y * row_pitch + x * fmt_size + 3] > std::byte(0x7F))
-                    {
-                        init_translation += landmark.point;
-                        ++num;
-                    }
-                }
-            }
-            init_translation /= static_cast<float>(num);
-
             const glm::mat4 init_model_mtx =
-                glm::translate(glm::identity<glm::mat4x4>(), init_translation) *
+                glm::translate(glm::identity<glm::mat4x4>(), centroid) *
                 glm::mat4_cast(glm::rotation(glm::vec3(0, 1, 0), -up_vec) *
                                glm::angleAxis(std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) * glm::inverse(obb.orientation));
 
