@@ -3,8 +3,7 @@
 
 #pragma once
 
-#include <cstdint>
-#include <filesystem>
+#include <memory>
 
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuSystem.hpp"

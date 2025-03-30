@@ -10,6 +10,7 @@
 #include <numbers>
 #include <set>
 #include <tuple>
+#include <type_traits>
 
 #ifdef _MSC_VER
     #pragma warning(push)
@@ -1108,7 +1109,7 @@ namespace AIHoloImager
             }
 
             glm::vec3 centroid(0.0f);
-            for (uint32_t idx : hole)
+            for (const uint32_t idx : hole)
             {
                 centroid += mesh.VertexData<glm::vec3>(idx, pos_attrib_index);
             }
@@ -1272,9 +1273,12 @@ namespace AIHoloImager
             return glm::scale(init_model_mtx, glm::vec3(scale));
         }
 
-        GpuTexture2D* DilateTexture(GpuCommandList& cmd_list, GpuTexture2D& tex, GpuTexture2D& tmp_tex)
+        template <typename GpuTextureT>
+        GpuTextureT* DilateTexture(GpuCommandList& cmd_list, GpuTextureT& tex, GpuTextureT& tmp_tex)
         {
             constexpr uint32_t BlockDim = 16;
+            constexpr uint32_t DilateTimes = std::is_same_v<GpuTextureT, GpuTexture2D> ? Dilate2DTimes : Dilate3DTimes;
+            const GpuComputePipeline& dilate_pipeline = std::is_same_v<GpuTextureT, GpuTexture2D> ? dilate_pipeline_ : dilate_3d_pipeline_;
 
             ConstantBuffer<DilateConstantBuffer> dilate_cb(gpu_system_, 1, L"dilate_cb");
             dilate_cb->texture_size = tex.Width(0);
@@ -1285,7 +1289,7 @@ namespace AIHoloImager
             GpuUnorderedAccessView tex_uav(gpu_system_, tex);
             GpuUnorderedAccessView tmp_tex_uav(gpu_system_, tmp_tex);
 
-            GpuTexture2D* texs[] = {&tex, &tmp_tex};
+            GpuTextureT* texs[] = {&tex, &tmp_tex};
             GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
             GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
             for (uint32_t i = 0; i < DilateTimes; ++i)
@@ -1297,50 +1301,11 @@ namespace AIHoloImager
                 const GpuShaderResourceView* srvs[] = {tex_srvs[src]};
                 GpuUnorderedAccessView* uavs[] = {tex_uavs[dst]};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(
-                    dilate_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), 1, shader_binding);
-            }
-
-            if constexpr (DilateTimes & 1)
-            {
-                return &tmp_tex;
-            }
-            else
-            {
-                return &tex;
-            }
-        }
-
-        GpuTexture3D* DilateTexture(GpuCommandList& cmd_list, GpuTexture3D& tex, GpuTexture3D& tmp_tex)
-        {
-            constexpr uint32_t BlockDim = 16;
-
-            ConstantBuffer<DilateConstantBuffer> dilate_cb(gpu_system_, 1, L"dilate_cb");
-            dilate_cb->texture_size = tex.Width(0);
-            dilate_cb.UploadToGpu();
-
-            GpuShaderResourceView tex_srv(gpu_system_, tex);
-            GpuShaderResourceView tmp_tex_srv(gpu_system_, tmp_tex);
-            GpuUnorderedAccessView tex_uav(gpu_system_, tex);
-            GpuUnorderedAccessView tmp_tex_uav(gpu_system_, tmp_tex);
-
-            GpuTexture3D* texs[] = {&tex, &tmp_tex};
-            GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
-            GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
-            for (uint32_t i = 0; i < Dilate3DTimes; ++i)
-            {
-                const uint32_t src = i & 1;
-                const uint32_t dst = src ? 0 : 1;
-
-                const GeneralConstantBuffer* cbs[] = {&dilate_cb};
-                const GpuShaderResourceView* srvs[] = {tex_srvs[src]};
-                GpuUnorderedAccessView* uavs[] = {tex_uavs[dst]};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(dilate_3d_pipeline_, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim),
+                cmd_list.Compute(dilate_pipeline, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim),
                     texs[dst]->Depth(0), shader_binding);
             }
 
-            if constexpr (Dilate3DTimes & 1)
+            if constexpr (DilateTimes & 1)
             {
                 return &tmp_tex;
             }
@@ -1427,7 +1392,7 @@ namespace AIHoloImager
         ConstantBuffer<ApplyVertexColorConstantBuffer> apply_vertex_color_cb_;
         GpuComputePipeline apply_vertex_color_pipeline_;
 
-        static constexpr uint32_t DilateTimes = 4;
+        static constexpr uint32_t Dilate2DTimes = 4;
         static constexpr uint32_t Dilate3DTimes = 8;
         static constexpr float GridScale = 2.0f;
         static constexpr uint32_t ResizedImageSize = 518;

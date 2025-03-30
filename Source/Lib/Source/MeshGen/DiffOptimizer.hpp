@@ -10,7 +10,6 @@
 #include "AIHoloImager/Mesh.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
-#include "Util/BoundingBox.hpp"
 #include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
