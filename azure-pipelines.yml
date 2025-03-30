@@ -35,6 +35,20 @@ stages:
           choco install cuda --version=12.4.1.551
         displayName: 'Install'
 
+      - task: Cache@2
+        inputs:
+          key: 'Build | External/**/CMakeLists.txt | $(configuration)'
+          restoreKeys: 'Build | $(configuration)'
+          path: Build
+        displayName: Cache Build
+
+      - task: Cache@2
+        inputs:
+          key: 'External | External/**/CMakeLists.txt | $(configuration)'
+          restoreKeys: 'External'
+          path: External
+        displayName: Cache External
+
       - bash: |
           git config --global user.email "dummy@example.com"
           git config --global user.name "Dummy Name"
@@ -45,3 +59,9 @@ stages:
           cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_CUDA_COMPILER="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin\nvcc.exe"
           cmake --build Build -j
         displayName: 'Build'
+
+      - bash: |
+          rm -rf Build/bin
+          rm -rf Build/Source
+          rm -rf External/PythonVenv/PythonVenv
+        displayName: 'Remove intermediate files'
