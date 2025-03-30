@@ -2268,7 +2268,10 @@ set(copy_files
     torchvision/_C.pyd
     torchvision/image.pyd
     torchvision/jpeg8.dll
+    torchvision/libjpeg.dll
     torchvision/libpng16.dll
+    torchvision/libsharpyuv.dll
+    torchvision/libwebp.dll
     torchvision/nvjpeg64_12.dll
     torchvision/zlib.dll
     torchvision/models/densenet.py
