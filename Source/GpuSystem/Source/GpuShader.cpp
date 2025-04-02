@@ -64,6 +64,10 @@ namespace AIHoloImager
                     visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                     break;
 
+                case ShaderStage::Geometry:
+                    visibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+                    break;
+
                 default:
                     visibility = D3D12_SHADER_VISIBILITY_ALL;
                     break;
@@ -135,6 +139,11 @@ namespace AIHoloImager
             case ShaderStage::Pixel:
                 pso_desc.PS.pShaderBytecode = shader.bytecode.data();
                 pso_desc.PS.BytecodeLength = shader.bytecode.size();
+                break;
+
+            case ShaderStage::Geometry:
+                pso_desc.GS.pShaderBytecode = shader.bytecode.data();
+                pso_desc.GS.BytecodeLength = shader.bytecode.size();
                 break;
 
             default:

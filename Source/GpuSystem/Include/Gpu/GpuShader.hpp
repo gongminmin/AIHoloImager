@@ -35,6 +35,7 @@ namespace AIHoloImager
         {
             Vertex = 0,
             Pixel,
+            Geometry,
 
             Num,
         };
