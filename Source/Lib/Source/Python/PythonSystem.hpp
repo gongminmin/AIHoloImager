@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -11,7 +11,7 @@
 #define Py_BUILD_CORE
 #include <Python.h>
 
-#include "Util/Noncopyable.hpp"
+#include "Base/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

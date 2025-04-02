@@ -7,8 +7,8 @@
 #include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Python/PythonSystem.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

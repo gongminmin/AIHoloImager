@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -13,10 +13,10 @@
 #include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Python/PythonSystem.hpp"
 #include "Util/BoundingBox.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

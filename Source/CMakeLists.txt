@@ -13,5 +13,7 @@ if(MSVC)
     endif()
 endif()
 
+add_subdirectory(Base)
+add_subdirectory(GpuSystem)
 add_subdirectory(Lib)
 add_subdirectory(App)

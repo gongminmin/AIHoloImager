@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "AIHoloImager/Texture.hpp"
@@ -13,7 +13,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#include "Util/ErrorHandling.hpp"
+#include "Base/ErrorHandling.hpp"
 
 namespace AIHoloImager
 {

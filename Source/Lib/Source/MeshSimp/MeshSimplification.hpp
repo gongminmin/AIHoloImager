@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "AIHoloImager/Mesh.hpp"
-#include "Util/Noncopyable.hpp"
+#include "Base/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

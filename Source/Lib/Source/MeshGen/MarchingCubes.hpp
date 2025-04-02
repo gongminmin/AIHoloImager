@@ -1,12 +1,12 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

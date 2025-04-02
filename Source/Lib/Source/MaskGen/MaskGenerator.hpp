@@ -1,15 +1,15 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
 
 #include <glm/vec4.hpp>
 
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "Python/PythonSystem.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

@@ -6,8 +6,8 @@
 #include <memory>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

@@ -8,11 +8,11 @@
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/BoundingBox.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

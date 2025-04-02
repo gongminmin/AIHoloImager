@@ -8,9 +8,9 @@
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "Base/Noncopyable.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
-#include "Util/Noncopyable.hpp"
 
 namespace AIHoloImager
 {

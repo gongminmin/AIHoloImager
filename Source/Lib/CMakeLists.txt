@@ -18,34 +18,6 @@ set(aihi_files
     Source/Mesh.cpp
     Source/Texture.cpp
     Source/pch.hpp
-    Source/Gpu/GpuBuffer.cpp
-    Source/Gpu/GpuBuffer.hpp
-    Source/Gpu/GpuBufferHelper.hpp
-    Source/Gpu/GpuCommandList.cpp
-    Source/Gpu/GpuCommandList.hpp
-    Source/Gpu/GpuDescriptorAllocator.cpp
-    Source/Gpu/GpuDescriptorAllocator.hpp
-    Source/Gpu/GpuDescriptorHeap.cpp
-    Source/Gpu/GpuDescriptorHeap.hpp
-    Source/Gpu/GpuFormat.cpp
-    Source/Gpu/GpuFormat.hpp
-    Source/Gpu/GpuMemoryAllocator.cpp
-    Source/Gpu/GpuMemoryAllocator.hpp
-    Source/Gpu/GpuResource.cpp
-    Source/Gpu/GpuResource.hpp
-    Source/Gpu/GpuResourceViews.cpp
-    Source/Gpu/GpuResourceViews.hpp
-    Source/Gpu/GpuSampler.cpp
-    Source/Gpu/GpuSampler.hpp
-    Source/Gpu/GpuShader.cpp
-    Source/Gpu/GpuShader.hpp
-    Source/Gpu/GpuSystem.cpp
-    Source/Gpu/GpuSystem.hpp
-    Source/Gpu/GpuTexture.cpp
-    Source/Gpu/GpuTexture.hpp
-    Source/Gpu/GpuUtil.hpp
-    Source/Gpu/GpuVertexAttrib.cpp
-    Source/Gpu/GpuVertexAttrib.hpp
     Source/Delighter/Delighter.cpp
     Source/Delighter/Delighter.hpp
     Source/Delighter/Delighter.py
@@ -151,18 +123,10 @@ set(aihi_files
     Source/TextureRecon/TextureReconstruction.hpp
     Source/Util/Shader/Lanczos.hlslh
     Source/Util/Shader/Nn.hlslh
-    Source/Util/ComPtr.hpp
-    Source/Util/ErrorHandling.cpp
-    Source/Util/ErrorHandling.hpp
-    Source/Util/FormatConversion.cpp
-    Source/Util/FormatConversion.hpp
-    Source/Util/Noncopyable.hpp
     Source/Util/BoundingBox.cpp
     Source/Util/BoundingBox.hpp
-    Source/Util/SmartPtrHelper.hpp
-    Source/Util/Timer.cpp
-    Source/Util/Timer.hpp
-    Source/Util/Uuid.hpp
+    Source/Util/FormatConversion.cpp
+    Source/Util/FormatConversion.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
 source_group("Source" FILES ${camera_database_src})
@@ -256,10 +220,6 @@ target_precompile_headers(AIHoloImagerLib
 target_link_libraries(AIHoloImagerLib
     PRIVATE
         assimp
-        d3d12
-        dxgi
-        dxguid
-        DirectX-Headers
         glm
         openMVG_exif
         openMVG_matching_image_collection
@@ -267,6 +227,8 @@ target_link_libraries(AIHoloImagerLib
         Python3::Python
         stb
         xatlas
+        AIHoloImagerBase
+        AIHoloImagerGpuSystem
 )
 
 set(py_files
