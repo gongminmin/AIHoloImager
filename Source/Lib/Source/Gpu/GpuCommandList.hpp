@@ -87,8 +87,8 @@ namespace AIHoloImager
         void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
 
         void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
-            const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
-            const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
+            std::span<const ShaderBinding> shader_bindings, std::span<const GpuRenderTargetView*> rtvs, const GpuDepthStencilView* dsv,
+            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);

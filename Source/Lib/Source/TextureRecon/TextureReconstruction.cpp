@@ -59,7 +59,6 @@ namespace AIHoloImager
 
                 const ShaderInfo shaders[] = {
                     {GenShadowMapVs_shader, 1, 0, 0},
-                    {{}, 0, 0, 0},
                 };
 
                 GpuRenderPipeline::States states;

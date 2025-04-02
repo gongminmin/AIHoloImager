@@ -11,22 +11,20 @@
 namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
-    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, const ShaderInfo shaders[NumShaderStages],
+    GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
         const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         uint32_t num_desc_ranges = 0;
-        for (uint32_t s = 0; s < NumShaderStages; ++s)
+        for (const auto& shader : shaders)
         {
-            const auto& shader = shaders[s];
             num_desc_ranges += (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
         }
 
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
-        for (uint32_t s = 0; s < NumShaderStages; ++s)
+        for (const auto& shader : shaders)
         {
-            const auto& shader = shaders[s];
             if (shader.num_srvs != 0)
             {
                 ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader.num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
@@ -40,9 +38,8 @@ namespace AIHoloImager
         }
 
         uint32_t num_root_params = num_desc_ranges;
-        for (uint32_t s = 0; s < NumShaderStages; ++s)
+        for (const auto& shader : shaders)
         {
-            const auto& shader = shaders[s];
             num_root_params += shader.num_cbs;
         }
 
@@ -52,7 +49,7 @@ namespace AIHoloImager
             root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
             uint32_t root_index = 0;
             range_index = 0;
-            for (uint32_t s = 0; s < NumShaderStages; ++s)
+            for (size_t s = 0; s < shaders.size(); ++s)
             {
                 const auto& shader = shaders[s];
 
@@ -125,7 +122,7 @@ namespace AIHoloImager
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc{};
         pso_desc.pRootSignature = root_sig_.Object().Get();
-        for (uint32_t s = 0; s < NumShaderStages; ++s)
+        for (size_t s = 0; s < shaders.size(); ++s)
         {
             const auto& shader = shaders[s];
             switch (static_cast<ShaderStage>(s))

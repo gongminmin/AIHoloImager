@@ -38,7 +38,6 @@ namespace AIHoloImager
 
             Num,
         };
-        static constexpr uint32_t NumShaderStages = static_cast<uint32_t>(ShaderStage::Num);
 
         enum class CullMode
         {
@@ -67,7 +66,7 @@ namespace AIHoloImager
 
     public:
         GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, const ShaderInfo shaders[NumShaderStages],
+        GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
             const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states);
         ~GpuRenderPipeline();
 

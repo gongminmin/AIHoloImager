@@ -233,7 +233,7 @@ namespace AIHoloImager
     }
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
-        uint32_t num, const ShaderBinding shader_bindings[GpuRenderPipeline::NumShaderStages], std::span<const GpuRenderTargetView*> rtvs,
+        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<const GpuRenderTargetView*> rtvs,
         const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
@@ -293,9 +293,8 @@ namespace AIHoloImager
         d3d12_cmd_list->SetGraphicsRootSignature(pipeline.NativeRootSignature());
 
         uint32_t num_descs = 0;
-        for (uint32_t s = 0; s < GpuRenderPipeline::NumShaderStages; ++s)
+        for (const auto& binding : shader_bindings)
         {
-            const auto& binding = shader_bindings[s];
             num_descs += static_cast<uint32_t>(binding.srvs.size() + binding.uavs.size());
         }
 
@@ -312,9 +311,8 @@ namespace AIHoloImager
         uint32_t heap_base = 0;
         uint32_t root_index = 0;
 
-        for (uint32_t s = 0; s < GpuRenderPipeline::NumShaderStages; ++s)
+        for (const auto& binding : shader_bindings)
         {
-            const auto& binding = shader_bindings[s];
             if (!binding.srvs.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
