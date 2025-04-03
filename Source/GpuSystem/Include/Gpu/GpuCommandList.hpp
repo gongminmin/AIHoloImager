@@ -60,7 +60,7 @@ namespace AIHoloImager
 
     public:
         GpuCommandList() noexcept;
-        GpuCommandList(GpuSystem& gpu_system, ID3D12CommandAllocator* cmd_allocator, GpuSystem::CmdQueueType type);
+        GpuCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type);
         ~GpuCommandList();
 
         GpuCommandList(GpuCommandList&& other) noexcept;
@@ -96,10 +96,16 @@ namespace AIHoloImager
         void Copy(GpuTexture2D& dest, const GpuTexture2D& src);
 
         void Close();
-        void Reset(ID3D12CommandAllocator* cmd_allocator);
+        void Reset(GpuCommandAllocatorInfo& cmd_alloc_info);
+
+        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept
+        {
+            return cmd_alloc_info_;
+        }
 
     private:
         GpuSystem* gpu_system_ = nullptr;
+        GpuCommandAllocatorInfo* cmd_alloc_info_ = nullptr;
 
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         ComPtr<ID3D12CommandList> cmd_list_;

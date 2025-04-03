@@ -18,10 +18,11 @@ namespace AIHoloImager
 {
     GpuCommandList::GpuCommandList() noexcept = default;
 
-    GpuCommandList::GpuCommandList(GpuSystem& gpu_system, ID3D12CommandAllocator* cmd_allocator, GpuSystem::CmdQueueType type)
-        : gpu_system_(&gpu_system), type_(type)
+    GpuCommandList::GpuCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
+        : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
+        auto* cmd_allocator = cmd_alloc_info.cmd_allocator.Get();
         switch (type)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -548,19 +549,22 @@ namespace AIHoloImager
             Unreachable();
         }
         closed_ = true;
+        cmd_alloc_info_ = nullptr;
     }
 
-    void GpuCommandList::Reset(ID3D12CommandAllocator* cmd_allocator)
+    void GpuCommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
     {
+        cmd_alloc_info_ = &cmd_alloc_info;
+        auto* d3d12_cmd_alloc = cmd_alloc_info.cmd_allocator.Get();
         switch (type_)
         {
         case GpuSystem::CmdQueueType::Render:
         case GpuSystem::CmdQueueType::Compute:
-            static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get())->Reset(cmd_allocator, nullptr);
+            static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get())->Reset(d3d12_cmd_alloc, nullptr);
             break;
 
         case GpuSystem::CmdQueueType::VideoEncode:
-            static_cast<ID3D12VideoEncodeCommandList*>(cmd_list_.Get())->Reset(cmd_allocator);
+            static_cast<ID3D12VideoEncodeCommandList*>(cmd_list_.Get())->Reset(d3d12_cmd_alloc);
             break;
 
         default:

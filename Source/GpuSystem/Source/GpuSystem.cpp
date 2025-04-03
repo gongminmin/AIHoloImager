@@ -145,15 +145,10 @@ namespace AIHoloImager
             const D3D12_COMMAND_QUEUE_DESC queue_qesc{type, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0};
             TIFHR(device_->CreateCommandQueue(&queue_qesc, UuidOf<ID3D12CommandQueue>(), cmd_queues_[i].cmd_queue.PutVoid()));
             cmd_queues_[i].cmd_queue->SetName(std::format(L"cmd_queue {}", i).c_str());
-
-            for (auto& allocator : cmd_queues_[i].cmd_allocators)
-            {
-                TIFHR(device_->CreateCommandAllocator(type, UuidOf<ID3D12CommandAllocator>(), allocator.PutVoid()));
-            }
         }
 
-        TIFHR(device_->CreateFence(fence_vals_[frame_index_], D3D12_FENCE_FLAG_NONE, UuidOf<ID3D12Fence>(), fence_.PutVoid()));
-        ++fence_vals_[frame_index_];
+        TIFHR(device_->CreateFence(fence_val_, D3D12_FENCE_FLAG_NONE, UuidOf<ID3D12Fence>(), fence_.PutVoid()));
+        ++fence_val_;
 
         fence_event_ = MakeWin32UniqueHandle(::CreateEvent(nullptr, FALSE, FALSE, nullptr));
         Verify(fence_event_.get() != INVALID_HANDLE_VALUE);
@@ -178,11 +173,8 @@ namespace AIHoloImager
 
         for (auto& cmd_queue : cmd_queues_)
         {
-            cmd_queue.cmd_list_pool.clear();
-            for (auto& alloc : cmd_queue.cmd_allocators)
-            {
-                alloc = nullptr;
-            }
+            cmd_queue.free_cmd_lists.clear();
+            cmd_queue.cmd_allocator_infos.clear();
             cmd_queue.cmd_queue = nullptr;
         }
 
@@ -202,57 +194,28 @@ namespace AIHoloImager
         return cmd_queues_[static_cast<uint32_t>(type)].cmd_queue.Get();
     }
 
-    uint32_t GpuSystem::FrameIndex() const noexcept
-    {
-        return frame_index_;
-    }
-
-    void GpuSystem::MoveToNextFrame()
-    {
-        const uint64_t curr_fence_value = fence_vals_[frame_index_];
-        for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
-        {
-            TIFHR(cmd_queues_[i].cmd_queue->Signal(fence_.Get(), curr_fence_value));
-        }
-
-        frame_index_ = (frame_index_ + 1) % FrameCount;
-
-        if (fence_->GetCompletedValue() < fence_vals_[frame_index_])
-        {
-            TIFHR(fence_->SetEventOnCompletion(fence_vals_[frame_index_], fence_event_.get()));
-            ::WaitForSingleObjectEx(fence_event_.get(), INFINITE, FALSE);
-        }
-
-        this->ClearStallResources();
-
-        fence_vals_[frame_index_] = curr_fence_value + 1;
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
-        {
-            TIFHR(this->CurrentCommandAllocator(static_cast<CmdQueueType>(i))->Reset());
-        }
-    }
-
     GpuCommandList GpuSystem::CreateCommandList(GpuSystem::CmdQueueType type)
     {
-        auto* cmd_allocator = this->CurrentCommandAllocator(type);
-        if (cmd_queues_[static_cast<uint32_t>(type)].cmd_list_pool.empty())
+        GpuCommandList cmd_list;
+        auto& alloc_info = this->CurrentCommandAllocator(type);
+        auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        if (cmd_queue.free_cmd_lists.empty())
         {
-            return GpuCommandList(*this, cmd_allocator, type);
+            cmd_list = GpuCommandList(*this, alloc_info, type);
         }
         else
         {
-            GpuCommandList cmd_list = std::move(cmd_queues_[static_cast<uint32_t>(type)].cmd_list_pool.front());
-            cmd_queues_[static_cast<uint32_t>(type)].cmd_list_pool.pop_front();
-            cmd_list.Reset(cmd_allocator);
-            return cmd_list;
+            cmd_list = std::move(cmd_queue.free_cmd_lists.front());
+            cmd_queue.free_cmd_lists.pop_front();
+            cmd_list.Reset(alloc_info);
         }
+        return cmd_list;
     }
 
     uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
-        cmd_queues_[static_cast<uint32_t>(cmd_list.Type())].cmd_list_pool.emplace_back(std::move(cmd_list));
+        cmd_queues_[static_cast<uint32_t>(cmd_list.Type())].free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
@@ -285,12 +248,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block)
     {
-        return rtv_desc_allocator_.Deallocate(std::move(desc_block), fence_vals_[frame_index_]);
+        return rtv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
     }
 
     void GpuSystem::ReallocRtvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
     {
-        return rtv_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
+        return rtv_desc_allocator_.Reallocate(desc_block, fence_val_, size);
     }
 
     GpuDescriptorBlock GpuSystem::AllocDsvDescBlock(uint32_t size)
@@ -300,12 +263,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocDsvDescBlock(GpuDescriptorBlock&& desc_block)
     {
-        return dsv_desc_allocator_.Deallocate(std::move(desc_block), fence_vals_[frame_index_]);
+        return dsv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
     }
 
     void GpuSystem::ReallocDsvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
     {
-        return dsv_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
+        return dsv_desc_allocator_.Reallocate(desc_block, fence_val_, size);
     }
 
     GpuDescriptorBlock GpuSystem::AllocCbvSrvUavDescBlock(uint32_t size)
@@ -315,12 +278,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
     {
-        return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_vals_[frame_index_]);
+        return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
     }
 
     void GpuSystem::ReallocCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
     {
-        return cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
+        return cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_val_, size);
     }
 
     GpuDescriptorBlock GpuSystem::AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
@@ -330,12 +293,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
     {
-        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_vals_[frame_index_]);
+        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
     }
 
     void GpuSystem::ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
     {
-        return shader_visible_cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_vals_[frame_index_], size);
+        return shader_visible_cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_val_, size);
     }
 
     GpuMemoryBlock GpuSystem::AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -345,12 +308,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocUploadMemBlock(GpuMemoryBlock&& mem_block)
     {
-        return upload_mem_allocator_.Deallocate(std::move(mem_block), fence_vals_[frame_index_]);
+        return upload_mem_allocator_.Deallocate(std::move(mem_block), fence_val_);
     }
 
     void GpuSystem::ReallocUploadMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
     {
-        return upload_mem_allocator_.Reallocate(mem_block, fence_vals_[frame_index_], size_in_bytes, alignment);
+        return upload_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
     }
 
     GpuMemoryBlock GpuSystem::AllocReadbackMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -360,12 +323,12 @@ namespace AIHoloImager
 
     void GpuSystem::DeallocReadbackMemBlock(GpuMemoryBlock&& mem_block)
     {
-        return readback_mem_allocator_.Deallocate(std::move(mem_block), fence_vals_[frame_index_]);
+        return readback_mem_allocator_.Deallocate(std::move(mem_block), fence_val_);
     }
 
     void GpuSystem::ReallocReadbackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
     {
-        return readback_mem_allocator_.Reallocate(mem_block, fence_vals_[frame_index_], size_in_bytes, alignment);
+        return readback_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
     }
 
     void GpuSystem::WaitForGpu(uint64_t fence_value)
@@ -376,7 +339,7 @@ namespace AIHoloImager
             {
                 if (cmd_queue.cmd_queue)
                 {
-                    const uint64_t wait_fence_value = (fence_value == MaxFenceValue) ? fence_vals_[frame_index_] : fence_value;
+                    const uint64_t wait_fence_value = (fence_value == MaxFenceValue) ? fence_val_ : fence_value;
                     if (SUCCEEDED(cmd_queue.cmd_queue->Signal(fence_.Get(), wait_fence_value)))
                     {
                         if (fence_->GetCompletedValue() < wait_fence_value)
@@ -385,7 +348,7 @@ namespace AIHoloImager
                             {
                                 ::WaitForSingleObjectEx(fence_event_.get(), INFINITE, FALSE);
 
-                                fence_vals_[frame_index_] = wait_fence_value + 1;
+                                fence_val_ = wait_fence_value + 1;
                                 if (fence_value != MaxFenceValue)
                                 {
                                     ++fence_value;
@@ -413,22 +376,17 @@ namespace AIHoloImager
         for (auto& cmd_queue : cmd_queues_)
         {
             cmd_queue.cmd_queue.Reset();
-            for (auto& cmd_allocator : cmd_queue.cmd_allocators)
-            {
-                cmd_allocator.Reset();
-            }
-            cmd_queue.cmd_list_pool.clear();
+            cmd_queue.cmd_allocator_infos.clear();
+            cmd_queue.free_cmd_lists.clear();
         }
 
         fence_.Reset();
         device_.Reset();
-
-        frame_index_ = 0;
     }
 
     void GpuSystem::Recycle(ComPtr<ID3D12DeviceChild>&& resource)
     {
-        stall_resources_.emplace_back(std::move(resource), fence_vals_[frame_index_]);
+        stall_resources_.emplace_back(std::move(resource), fence_val_);
     }
 
     void GpuSystem::ClearStallResources()
@@ -455,16 +413,50 @@ namespace AIHoloImager
         shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
     }
 
-    ID3D12CommandAllocator* GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type) const noexcept
+    GpuCommandAllocatorInfo& GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type)
     {
-        return cmd_queues_[static_cast<uint32_t>(type)].cmd_allocators[frame_index_].Get();
+        auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        const uint64_t completed_fence = fence_->GetCompletedValue();
+        for (auto& alloc : cmd_queue.cmd_allocator_infos)
+        {
+            if (alloc->fence_val <= completed_fence)
+            {
+                alloc->cmd_allocator->Reset();
+                return *alloc;
+            }
+        }
+
+        D3D12_COMMAND_LIST_TYPE d3d12_type;
+        switch (type)
+        {
+        case CmdQueueType::Render:
+            d3d12_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            break;
+
+        case CmdQueueType::Compute:
+            d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            break;
+
+        case CmdQueueType::VideoEncode:
+            d3d12_type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+            break;
+
+        default:
+            Unreachable();
+        }
+
+        auto& alloc = *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>());
+        TIFHR(device_->CreateCommandAllocator(d3d12_type, UuidOf<ID3D12CommandAllocator>(), alloc.cmd_allocator.PutVoid()));
+        return alloc;
     }
 
     uint64_t GpuSystem::ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value)
     {
+        auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
         cmd_list.Close();
 
-        ID3D12CommandQueue* cmd_queue = cmd_queues_[static_cast<uint32_t>(cmd_list.Type())].cmd_queue.Get();
+        const uint32_t type = static_cast<uint32_t>(cmd_list.Type());
+        ID3D12CommandQueue* cmd_queue = cmd_queues_[type].cmd_queue.Get();
 
         if (wait_fence_value != MaxFenceValue)
         {
@@ -474,9 +466,11 @@ namespace AIHoloImager
         ID3D12CommandList* cmd_lists[] = {cmd_list.NativeCommandListBase()};
         cmd_queue->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
 
-        const uint64_t curr_fence_value = fence_vals_[frame_index_];
+        const uint64_t curr_fence_value = fence_val_;
         TIFHR(cmd_queue->Signal(fence_.Get(), curr_fence_value));
-        fence_vals_[frame_index_] = curr_fence_value + 1;
+        fence_val_ = curr_fence_value + 1;
+
+        cmd_alloc_info.fence_val = fence_val_;
 
         return curr_fence_value;
     }

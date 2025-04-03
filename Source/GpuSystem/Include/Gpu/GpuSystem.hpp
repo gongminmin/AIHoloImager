@@ -24,12 +24,17 @@
 
 namespace AIHoloImager
 {
+    struct GpuCommandAllocatorInfo
+    {
+        ComPtr<ID3D12CommandAllocator> cmd_allocator;
+        uint64_t fence_val = 0;
+    };
+
     class GpuSystem final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuSystem)
 
     public:
-        static constexpr uint32_t FrameCount = 3;
         static constexpr uint64_t MaxFenceValue = ~0ull;
 
         enum class CmdQueueType : uint32_t
@@ -50,10 +55,6 @@ namespace AIHoloImager
 
         ID3D12Device* NativeDevice() const noexcept;
         ID3D12CommandQueue* NativeCommandQueue(CmdQueueType type) const noexcept;
-
-        uint32_t FrameIndex() const noexcept;
-
-        void MoveToNextFrame();
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
@@ -91,7 +92,7 @@ namespace AIHoloImager
         void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
 
     private:
-        ID3D12CommandAllocator* CurrentCommandAllocator(CmdQueueType type) const noexcept;
+        GpuCommandAllocatorInfo& CurrentCommandAllocator(CmdQueueType type);
         uint64_t ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value);
         void ClearStallResources();
 
@@ -101,16 +102,14 @@ namespace AIHoloImager
         struct CmdQueue
         {
             ComPtr<ID3D12CommandQueue> cmd_queue;
-            ComPtr<ID3D12CommandAllocator> cmd_allocators[FrameCount];
-            std::list<GpuCommandList> cmd_list_pool;
+            std::vector<std::unique_ptr<GpuCommandAllocatorInfo>> cmd_allocator_infos;
+            std::list<GpuCommandList> free_cmd_lists;
         };
         CmdQueue cmd_queues_[static_cast<uint32_t>(CmdQueueType::Num)];
 
         ComPtr<ID3D12Fence> fence_;
-        uint64_t fence_vals_[FrameCount]{};
+        uint64_t fence_val_ = 0;
         Win32UniqueHandle fence_event_;
-
-        uint32_t frame_index_ = 0;
 
         GpuMemoryAllocator upload_mem_allocator_;
         GpuMemoryAllocator readback_mem_allocator_;
