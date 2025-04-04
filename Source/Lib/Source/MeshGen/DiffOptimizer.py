@@ -4,6 +4,7 @@
 import random
 
 import numpy as np
+import nvdiffrast.torch as dr
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
@@ -62,8 +63,7 @@ class DiffOptimizer:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        import nvdiffrast.torch as dr
-        self.context = dr.RasterizeGLContext(device = self.device)
+        self.context = dr.RasterizeGLContext(device = self.device, output_db = False)
 
         self.image_channels = 4
         self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float32, device = self.device) / 64
@@ -158,20 +158,16 @@ class DiffOptimizer:
         img = img.permute(0, 2, 3, 1)
         return img
 
-    def TransformPos(self, mtx, pos):
-        pos_w = torch.cat([pos, torch.ones([pos.shape[0], 1], device = self.device)], axis = 1)
-        return torch.matmul(pos_w, mtx)
-
-    def Render(self, model_mtx, view_proj_mtx, vp_offset, vtx_positions, vtx_colors, indices, resolution, roi):
-        import nvdiffrast.torch as dr
-
+    def Render(self, model_mtx, view_proj_mtx, vp_offset, vtx_positions, vtx_colors, indices, topology_hash, resolution, roi):
         mvp_mtx = torch.matmul(model_mtx, view_proj_mtx).to(self.device)
 
-        pos_clip = self.TransformPos(mvp_mtx, vtx_positions).unsqueeze(0)
-        rast_out, _ = dr.rasterize(self.context, pos_clip, indices, resolution = resolution)
+        pos_w = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], device = self.device)], axis = 1)
+        pos_clip = torch.matmul(pos_w, mvp_mtx).unsqueeze(0)
+
+        rast_out, _ = dr.rasterize(self.context, pos_clip, indices, resolution = resolution, grad_db = False)
 
         image, _ = dr.interpolate(vtx_colors.unsqueeze(0), rast_out, indices)
-        image = dr.antialias(image, rast_out, pos_clip, indices)
+        image = dr.antialias(image, rast_out, pos_clip, indices, topology_hash)
 
         image = image * torch.clamp(rast_out[..., -1 : ], 0, 1)
         image = image.squeeze(0)
@@ -206,13 +202,15 @@ class DiffOptimizer:
         rotation_best = rotation_opt.detach().clone()
         translation_best = translation_opt.detach().clone()
 
+        topology_hash = dr.antialias_construct_topology_hash(indices)
+
         loss_sum = torch.zeros(1, dtype = torch.float32, device = self.device)
         n = 0
         for it in range(num_iter + 1):
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
-            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, resolutions[img_idx], rois[img_idx])
+            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, topology_hash, resolutions[img_idx], rois[img_idx])
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)
