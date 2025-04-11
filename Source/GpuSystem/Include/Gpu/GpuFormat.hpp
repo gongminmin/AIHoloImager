@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
@@ -9,6 +9,15 @@
 
 namespace AIHoloImager
 {
+    enum class GpuBaseFormat
+    {
+        Unknown,
+        UNorm,
+        Uint,
+        Sint,
+        Float,
+    };
+
     enum class GpuFormat
     {
         Unknown,
@@ -53,8 +62,11 @@ namespace AIHoloImager
         NV12,
     };
 
-    uint32_t FormatSize(GpuFormat fmt) noexcept;
+    uint32_t FormatSize(GpuFormat fmt);
+    GpuBaseFormat BaseFormat(GpuFormat fmt);
+    uint32_t FormatChannels(GpuFormat fmt);
+    uint32_t FormatChannelSize(GpuFormat fmt);
     uint32_t NumPlanes(GpuFormat fmt) noexcept;
 
-    DXGI_FORMAT ToDxgiFormat(GpuFormat fmt) noexcept;
+    DXGI_FORMAT ToDxgiFormat(GpuFormat fmt);
 } // namespace AIHoloImager
