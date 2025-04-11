@@ -20,7 +20,7 @@ RWBuffer<float> color_vertex_buff : register(u0);
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     [branch]
-    if (any(dtid.x >= num_vertices))
+    if (dtid.x >= num_vertices)
     {
         return;
     }

@@ -62,15 +62,14 @@ class DiffOptimizer:
         self.downsampling = True
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         self.context = dr.RasterizeGLContext(device = self.device, output_db = False)
 
         self.image_channels = 4
-        self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float32, device = self.device) / 64
+        self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float16, device = self.device) / 64
         self.kernel = self.kernel.expand(self.image_channels, 1, self.kernel.shape[0], self.kernel.shape[1])
-        self.kernel = self.kernel.to(torch.float16)
 
     def Destroy(self):
+        del self.kernel
         del self.context
         del self.device
         torch.cuda.empty_cache()
@@ -165,16 +164,14 @@ class DiffOptimizer:
         pos_clip = torch.matmul(pos_w, mvp_mtx).unsqueeze(0)
 
         rast_out, _ = dr.rasterize(self.context, pos_clip, indices, resolution = resolution, grad_db = False)
-
         image, _ = dr.interpolate(vtx_colors.unsqueeze(0), rast_out, indices)
         image = dr.antialias(image, rast_out, pos_clip, indices, topology_hash)
 
-        image = image * torch.clamp(rast_out[..., -1 : ], 0, 1)
+        image = image.to(torch.float16)
         image = image.squeeze(0)
         image = torch.roll(image, shifts = (-vp_offset[1], vp_offset[0]), dims = (0, 1))
         image = torch.flip(image, dims = (0, ))
         image = image[roi[1] : roi[3], roi[0] : roi[2], :]
-        image = image.to(torch.float16)
         return image.contiguous()
 
     def FitTransform(self,
