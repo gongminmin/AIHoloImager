@@ -339,21 +339,26 @@ namespace AIHoloImager
             {
                 if (cmd_queue.cmd_queue)
                 {
-                    const uint64_t wait_fence_value = (fence_value == MaxFenceValue) ? fence_val_ : fence_value;
-                    if (SUCCEEDED(cmd_queue.cmd_queue->Signal(fence_.Get(), wait_fence_value)))
+                    uint64_t wait_fence_value;
+                    if (fence_value == MaxFenceValue)
                     {
-                        if (fence_->GetCompletedValue() < wait_fence_value)
+                        wait_fence_value = fence_val_;
+                        if (FAILED(cmd_queue.cmd_queue->Signal(fence_.Get(), fence_val_)))
                         {
-                            if (SUCCEEDED(fence_->SetEventOnCompletion(wait_fence_value, fence_event_.get())))
-                            {
-                                ::WaitForSingleObjectEx(fence_event_.get(), INFINITE, FALSE);
+                            continue;
+                        }
+                        ++fence_val_;
+                    }
+                    else
+                    {
+                        wait_fence_value = fence_value;
+                    }
 
-                                fence_val_ = wait_fence_value + 1;
-                                if (fence_value != MaxFenceValue)
-                                {
-                                    ++fence_value;
-                                }
-                            }
+                    if (fence_->GetCompletedValue() < wait_fence_value)
+                    {
+                        if (SUCCEEDED(fence_->SetEventOnCompletion(wait_fence_value, fence_event_.get())))
+                        {
+                            ::WaitForSingleObjectEx(fence_event_.get(), INFINITE, FALSE);
                         }
                     }
                 }
@@ -471,6 +476,8 @@ namespace AIHoloImager
         fence_val_ = curr_fence_value + 1;
 
         cmd_alloc_info.fence_val = fence_val_;
+
+        this->ClearStallResources();
 
         return curr_fence_value;
     }
