@@ -92,6 +92,15 @@ namespace AIHoloImager
         void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
 
     private:
+        struct CmdQueue
+        {
+            ComPtr<ID3D12CommandQueue> cmd_queue;
+            std::vector<std::unique_ptr<GpuCommandAllocatorInfo>> cmd_allocator_infos;
+            std::list<GpuCommandList> free_cmd_lists;
+        };
+
+    private:
+        CmdQueue& GetOrCreateCommandQueue(CmdQueueType type);
         GpuCommandAllocatorInfo& CurrentCommandAllocator(CmdQueueType type);
         uint64_t ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value);
         void ClearStallResources();
@@ -99,12 +108,6 @@ namespace AIHoloImager
     private:
         ComPtr<ID3D12Device> device_;
 
-        struct CmdQueue
-        {
-            ComPtr<ID3D12CommandQueue> cmd_queue;
-            std::vector<std::unique_ptr<GpuCommandAllocatorInfo>> cmd_allocator_infos;
-            std::list<GpuCommandList> free_cmd_lists;
-        };
         CmdQueue cmd_queues_[static_cast<uint32_t>(CmdQueueType::Num)];
 
         ComPtr<ID3D12Fence> fence_;

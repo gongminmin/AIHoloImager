@@ -121,32 +121,6 @@ namespace AIHoloImager
             }
         }
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
-        {
-            D3D12_COMMAND_LIST_TYPE type;
-            switch (static_cast<CmdQueueType>(i))
-            {
-            case CmdQueueType::Render:
-                type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-                break;
-
-            case CmdQueueType::Compute:
-                type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-                break;
-
-            case CmdQueueType::VideoEncode:
-                type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
-                break;
-
-            default:
-                Unreachable();
-            }
-
-            const D3D12_COMMAND_QUEUE_DESC queue_qesc{type, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0};
-            TIFHR(device_->CreateCommandQueue(&queue_qesc, UuidOf<ID3D12CommandQueue>(), cmd_queues_[i].cmd_queue.PutVoid()));
-            cmd_queues_[i].cmd_queue->SetName(std::format(L"cmd_queue {}", i).c_str());
-        }
-
         TIFHR(device_->CreateFence(fence_val_, D3D12_FENCE_FLAG_NONE, UuidOf<ID3D12Fence>(), fence_.PutVoid()));
         ++fence_val_;
 
@@ -198,7 +172,7 @@ namespace AIHoloImager
     {
         GpuCommandList cmd_list;
         auto& alloc_info = this->CurrentCommandAllocator(type);
-        auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         if (cmd_queue.free_cmd_lists.empty())
         {
             cmd_list = GpuCommandList(*this, alloc_info, type);
@@ -215,7 +189,7 @@ namespace AIHoloImager
     uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
-        cmd_queues_[static_cast<uint32_t>(cmd_list.Type())].free_cmd_lists.emplace_back(std::move(cmd_list));
+        this->GetOrCreateCommandQueue(cmd_list.Type()).free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
@@ -418,9 +392,41 @@ namespace AIHoloImager
         shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
     }
 
-    GpuCommandAllocatorInfo& GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type)
+    GpuSystem::CmdQueue& GpuSystem::GetOrCreateCommandQueue(CmdQueueType type)
     {
         auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        if (!cmd_queue.cmd_queue)
+        {
+            D3D12_COMMAND_LIST_TYPE d3d12_type;
+            switch (type)
+            {
+            case CmdQueueType::Render:
+                d3d12_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+                break;
+
+            case CmdQueueType::Compute:
+                d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+                break;
+
+            case CmdQueueType::VideoEncode:
+                d3d12_type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+                break;
+
+            default:
+                Unreachable();
+            }
+
+            const D3D12_COMMAND_QUEUE_DESC queue_desc{d3d12_type, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0};
+            TIFHR(device_->CreateCommandQueue(&queue_desc, UuidOf<ID3D12CommandQueue>(), cmd_queue.cmd_queue.PutVoid()));
+            cmd_queue.cmd_queue->SetName(std::format(L"cmd_queue {}", static_cast<uint32_t>(type)).c_str());
+        }
+
+        return cmd_queue;
+    }
+
+    GpuCommandAllocatorInfo& GpuSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type)
+    {
+        auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
@@ -460,8 +466,7 @@ namespace AIHoloImager
         auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
         cmd_list.Close();
 
-        const uint32_t type = static_cast<uint32_t>(cmd_list.Type());
-        ID3D12CommandQueue* cmd_queue = cmd_queues_[type].cmd_queue.Get();
+        ID3D12CommandQueue* cmd_queue = this->GetOrCreateCommandQueue(cmd_list.Type()).cmd_queue.Get();
 
         if (wait_fence_value != MaxFenceValue)
         {
