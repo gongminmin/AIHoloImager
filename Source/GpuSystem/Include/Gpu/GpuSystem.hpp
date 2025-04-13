@@ -122,11 +122,6 @@ namespace AIHoloImager
         std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
     };
 
-    D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,
-        uint32_t num_descriptor_ranges, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept;
-    D3D12_ROOT_PARAMETER CreateRootParameterAsConstantBufferView(
-        uint32_t shader_register, uint32_t register_space = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept;
-
     constexpr uint32_t DivUp(uint32_t a, uint32_t b) noexcept
     {
         return (a + b - 1) / b;

@@ -1,68 +1,16 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2005 Minmin Gong
 //
 
 #pragma once
 
 #include <cstdint>
-#include <type_traits>
 
 #include <directx/d3d12.h>
 
+#include "Base/Enum.hpp"
+
 namespace AIHoloImager
 {
-#define ENUM_CLASS_BITWISE_OPERATORS(Enum)                                                     \
-    constexpr Enum operator|(Enum lhs, Enum rhs)                                               \
-    {                                                                                          \
-        using Underlying = typename std::underlying_type_t<Enum>;                              \
-        return static_cast<Enum>(static_cast<Underlying>(lhs) | static_cast<Underlying>(rhs)); \
-    }                                                                                          \
-    constexpr Enum operator&(Enum lhs, Enum rhs)                                               \
-    {                                                                                          \
-        using Underlying = typename std::underlying_type_t<Enum>;                              \
-        return static_cast<Enum>(static_cast<Underlying>(lhs) & static_cast<Underlying>(rhs)); \
-    }                                                                                          \
-    constexpr Enum operator^(Enum lhs, Enum rhs)                                               \
-    {                                                                                          \
-        using Underlying = typename std::underlying_type_t<Enum>;                              \
-        return static_cast<Enum>(static_cast<Underlying>(lhs) ^ static_cast<Underlying>(rhs)); \
-    }                                                                                          \
-    constexpr Enum operator~(Enum rhs)                                                         \
-    {                                                                                          \
-        using Underlying = typename std::underlying_type_t<Enum>;                              \
-        return static_cast<Enum>(~static_cast<Underlying>(rhs));                               \
-    }                                                                                          \
-    constexpr Enum& operator|=(Enum& lhs, Enum rhs)                                            \
-    {                                                                                          \
-        lhs = lhs | rhs;                                                                       \
-        return lhs;                                                                            \
-    }                                                                                          \
-    constexpr Enum& operator&=(Enum& lhs, Enum rhs)                                            \
-    {                                                                                          \
-        lhs = lhs & rhs;                                                                       \
-        return lhs;                                                                            \
-    }                                                                                          \
-    constexpr Enum& operator^=(Enum& lhs, Enum rhs)                                            \
-    {                                                                                          \
-        lhs = lhs ^ rhs;                                                                       \
-        return lhs;                                                                            \
-    }
-
-    template <typename T>
-    constexpr bool EnumHasAny(T e, T v)
-    {
-        return (e & v) != static_cast<T>(0);
-    }
-    template <typename T>
-    constexpr bool EnumHasAll(T e, T v)
-    {
-        return (e & v) == v;
-    }
-    template <typename T>
-    constexpr bool EnumHasNone(T e, T v)
-    {
-        return (e & v) == static_cast<T>(0);
-    }
-
     enum class GpuHeap
     {
         Default,
@@ -81,7 +29,7 @@ namespace AIHoloImager
     };
     ENUM_CLASS_BITWISE_OPERATORS(GpuResourceFlag);
 
-    D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags);
+    D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags) noexcept;
 
     enum class GpuResourceState
     {

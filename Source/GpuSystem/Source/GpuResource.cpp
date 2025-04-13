@@ -23,7 +23,7 @@ namespace AIHoloImager
         }
     }
 
-    D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags)
+    D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags) noexcept
     {
         D3D12_RESOURCE_FLAGS d3d12_flag = D3D12_RESOURCE_FLAG_NONE;
         if (EnumHasAny(flags, GpuResourceFlag::RenderTarget))
