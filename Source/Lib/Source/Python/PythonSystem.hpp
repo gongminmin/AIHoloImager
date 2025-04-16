@@ -53,6 +53,7 @@ namespace AIHoloImager
         PyObjectPtr MakeObject(float value);
         PyObjectPtr MakeObject(std::wstring_view str);
         PyObjectPtr MakeObject(std::span<const std::byte> mem);
+        PyObjectPtr MakeObject(void* ptr);
 
         PyObjectPtr MakeTuple(uint32_t size);
         void SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item);

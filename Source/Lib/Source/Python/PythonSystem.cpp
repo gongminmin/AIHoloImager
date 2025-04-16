@@ -128,6 +128,11 @@ namespace AIHoloImager
         return MakePyObjectPtr(PyBytes_FromStringAndSize(reinterpret_cast<const char*>(mem.data()), mem.size()));
     }
 
+    PyObjectPtr PythonSystem::MakeObject(void* ptr)
+    {
+        return MakePyObjectPtr(PyLong_FromUnsignedLongLong(reinterpret_cast<uint64_t>(ptr)));
+    }
+
     PyObjectPtr PythonSystem::MakeTuple(uint32_t size)
     {
         return MakePyObjectPtr(PyTuple_New(size));
