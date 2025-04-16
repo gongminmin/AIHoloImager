@@ -26,10 +26,12 @@ namespace AIHoloImager
         RenderTarget = 1U << 0,
         DepthStencil = 1U << 1,
         UnorderedAccess = 1U << 2,
+        Shareable = 1U << 3,
     };
     ENUM_CLASS_BITWISE_OPERATORS(GpuResourceFlag);
 
     D3D12_RESOURCE_FLAGS ToD3D12ResourceFlags(GpuResourceFlag flags) noexcept;
+    D3D12_HEAP_FLAGS ToD3D12HeapFlags(GpuResourceFlag flags) noexcept;
 
     enum class GpuResourceState
     {

@@ -19,6 +19,7 @@
 
 #include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Base/SmartPtrHelper.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/GpuUtil.hpp"
@@ -66,11 +67,14 @@ namespace AIHoloImager
         void CopyFrom(GpuSystem& gpu_system, GpuCommandList& cmd_list, const GpuTexture& other, uint32_t sub_resource, uint32_t dst_x,
             uint32_t dst_y, uint32_t dst_z, const D3D12_BOX& src_box);
 
+        HANDLE SharedHandle() const noexcept;
+
     protected:
         GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
         D3D12_RESOURCE_DESC desc_{};
         mutable std::vector<D3D12_RESOURCE_STATES> curr_states_;
         GpuFormat format_;
+        Win32UniqueHandle shared_handle_;
     };
 
     class GpuTexture2D final : public GpuTexture

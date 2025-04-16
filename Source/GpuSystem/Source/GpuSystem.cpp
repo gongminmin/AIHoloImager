@@ -31,7 +31,7 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 
 namespace AIHoloImager
 {
-    GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_debug)
+    GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
         : upload_mem_allocator_(*this, true), readback_mem_allocator_(*this, false),
           rtv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
@@ -121,11 +121,19 @@ namespace AIHoloImager
             }
         }
 
-        TIFHR(device_->CreateFence(fence_val_, D3D12_FENCE_FLAG_NONE, UuidOf<ID3D12Fence>(), fence_.PutVoid()));
+        TIFHR(device_->CreateFence(
+            fence_val_, enable_sharing ? D3D12_FENCE_FLAG_SHARED : D3D12_FENCE_FLAG_NONE, UuidOf<ID3D12Fence>(), fence_.PutVoid()));
         ++fence_val_;
 
         fence_event_ = MakeWin32UniqueHandle(::CreateEvent(nullptr, FALSE, FALSE, nullptr));
         Verify(fence_event_.get() != INVALID_HANDLE_VALUE);
+
+        if (enable_sharing)
+        {
+            HANDLE shared_handle;
+            TIFHR(device_->CreateSharedHandle(fence_.Get(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
+            shared_fence_handle_.reset(shared_handle);
+        }
     }
 
     GpuSystem::~GpuSystem()
@@ -166,6 +174,11 @@ namespace AIHoloImager
     ID3D12CommandQueue* GpuSystem::NativeCommandQueue(CmdQueueType type) const noexcept
     {
         return cmd_queues_[static_cast<uint32_t>(type)].cmd_queue.Get();
+    }
+
+    HANDLE GpuSystem::SharedFenceHandle() const noexcept
+    {
+        return shared_fence_handle_.get();
     }
 
     GpuCommandList GpuSystem::CreateCommandList(GpuSystem::CmdQueueType type)

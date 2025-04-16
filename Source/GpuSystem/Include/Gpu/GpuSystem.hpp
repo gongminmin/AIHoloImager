@@ -47,7 +47,8 @@ namespace AIHoloImager
         };
 
     public:
-        GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device = nullptr, bool enable_debug = false);
+        GpuSystem(
+            std::function<bool(ID3D12Device* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false);
         ~GpuSystem();
 
         GpuSystem(GpuSystem&& other) noexcept;
@@ -55,6 +56,8 @@ namespace AIHoloImager
 
         ID3D12Device* NativeDevice() const noexcept;
         ID3D12CommandQueue* NativeCommandQueue(CmdQueueType type) const noexcept;
+
+        HANDLE SharedFenceHandle() const noexcept;
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
@@ -113,6 +116,7 @@ namespace AIHoloImager
         ComPtr<ID3D12Fence> fence_;
         uint64_t fence_val_ = 0;
         Win32UniqueHandle fence_event_;
+        Win32UniqueHandle shared_fence_handle_;
 
         GpuMemoryAllocator upload_mem_allocator_;
         GpuMemoryAllocator readback_mem_allocator_;

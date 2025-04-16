@@ -37,6 +37,8 @@ namespace AIHoloImager
         : resource_(gpu_system, nullptr), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON),
           format_(format)
     {
+        ID3D12Device* d3d12_device = gpu_system.NativeDevice();
+
         const D3D12_HEAP_PROPERTIES default_heap_prop = {
             D3D12_HEAP_TYPE_DEFAULT, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
 
@@ -55,11 +57,18 @@ namespace AIHoloImager
 
         desc_ = {dim, 0, static_cast<uint64_t>(width), height, static_cast<uint16_t>(depth_or_array_size),
             static_cast<uint16_t>(mip_levels), ToDxgiFormat(format), {1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN, ToD3D12ResourceFlags(flags)};
-        TIFHR(gpu_system.NativeDevice()->CreateCommittedResource(&default_heap_prop, D3D12_HEAP_FLAG_NONE, &desc_, curr_states_[0], nullptr,
+        TIFHR(d3d12_device->CreateCommittedResource(&default_heap_prop, ToD3D12HeapFlags(flags), &desc_, curr_states_[0], nullptr,
             UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         if (!name.empty())
         {
             resource_->SetName(std::wstring(name).c_str());
+        }
+
+        if (EnumHasAny(flags, GpuResourceFlag::Shareable))
+        {
+            HANDLE shared_handle;
+            TIFHR(d3d12_device->CreateSharedHandle(this->NativeTexture(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
+            shared_handle_.reset(shared_handle);
         }
     }
 
@@ -384,6 +393,11 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyTextureRegion(&dst, dst_x, dst_y, dst_z, &src, &src_box);
 
         gpu_system.ExecuteAndReset(cmd_list);
+    }
+
+    HANDLE GpuTexture::SharedHandle() const noexcept
+    {
+        return shared_handle_.get();
     }
 
 

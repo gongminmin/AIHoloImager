@@ -9,6 +9,7 @@
 
 #include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Base/SmartPtrHelper.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/GpuUtil.hpp"
 
@@ -55,11 +56,14 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
+        HANDLE SharedHandle() const noexcept;
+
     protected:
         GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
         D3D12_RESOURCE_DESC desc_{};
         D3D12_HEAP_TYPE heap_type_{};
         mutable D3D12_RESOURCE_STATES curr_state_{};
+        Win32UniqueHandle shared_handle_;
     };
 
     class GpuUploadBuffer final : public GpuBuffer

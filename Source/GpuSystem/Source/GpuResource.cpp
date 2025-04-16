@@ -42,6 +42,16 @@ namespace AIHoloImager
         return d3d12_flag;
     }
 
+    D3D12_HEAP_FLAGS ToD3D12HeapFlags(GpuResourceFlag flags) noexcept
+    {
+        D3D12_HEAP_FLAGS heap_flags = D3D12_HEAP_FLAG_NONE;
+        if (EnumHasAny(flags, GpuResourceFlag::Shareable))
+        {
+            heap_flags |= D3D12_HEAP_FLAG_SHARED;
+        }
+        return heap_flags;
+    }
+
     D3D12_RESOURCE_STATES ToD3D12ResourceState(GpuResourceState state)
     {
         switch (state)
