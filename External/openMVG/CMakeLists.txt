@@ -1,6 +1,9 @@
-UpdateExternalLib("openMVG" "https://github.com/openMVG/openMVG.git" "6d6b1dd70bded094ba06024e481dd5a5c662dc83" "" "" need_patch)
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib("openMVG" "https://github.com/openMVG/openMVG.git" "c92ed1be7c25068c0cdc0927e876a9ec92e97ce8" "" "" need_patch)
 if(need_patch)
-    foreach(patch "0001-Build-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE" "0002-Exif-Sensor-DB-Add-Samsung-Galaxy-S23-main-camera" "0003-Exif-Code-improvements-to-Exif_IO_EasyExif" "0004-Enable-to-load-from-memory-data-in-Matches_Provider-")
+    foreach(patch "0001-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE_DIR" "0002-Enable-to-load-from-memory-data-in-Matches_Provider-" "0003-Remove-pragma-warning-once-so-that-these-warnings-ca")
         ApplyPatch("openMVG" "${CMAKE_CURRENT_SOURCE_DIR}/Patches/${patch}.patch")
     endforeach()
 endif()
@@ -14,6 +17,7 @@ set(OpenMVG_BUILD_SOFTWARES OFF CACHE BOOL "" FORCE)
 set(OpenMVG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(OpenMVG_USE_LIGT OFF CACHE BOOL "" FORCE)
 set(OPENMVG_USE_OPENMP ON CACHE BOOL "" FORCE)
+set(OpenMVG_USE_RERUN OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(openMVG/src EXCLUDE_FROM_ALL)
 

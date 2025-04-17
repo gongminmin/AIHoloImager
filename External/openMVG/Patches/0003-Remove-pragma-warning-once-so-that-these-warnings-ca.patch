@@ -1,0 +1,77 @@
+From 7ae6ac2138bd8f0d2d5bc1d0f9ca7e41e6b31ad0 Mon Sep 17 00:00:00 2001
+From: Minmin Gong <gongminmin@msn.com>
+Date: Wed, 16 Apr 2025 23:12:59 -0700
+Subject: [PATCH 3/3] Remove `#pragma warning(once)` so that these warnings can
+ be disabled outside
+
+---
+ src/openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp   | 4 ----
+ .../features/sift/hierarchical_gaussian_scale_space.hpp      | 4 ----
+ src/openMVG/features/sift/sift_DescriptorExtractor.hpp       | 4 ----
+ src/openMVG/features/sift/sift_KeypointExtractor.hpp         | 5 -----
+ 4 files changed, 17 deletions(-)
+
+diff --git a/src/openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp b/src/openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp
+index 6d906a21..58c9be57 100644
+--- a/src/openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp
++++ b/src/openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp
+@@ -37,10 +37,6 @@ Changes are:
+ #include "openMVG/features/sift/sift_KeypointExtractor.hpp"
+ #include "openMVG/system/logger.hpp"
+ 
+-#ifdef _MSC_VER
+-#pragma warning( once : 4244 )
+-#endif
+-
+ namespace openMVG {
+ namespace features {
+ 
+diff --git a/src/openMVG/features/sift/hierarchical_gaussian_scale_space.hpp b/src/openMVG/features/sift/hierarchical_gaussian_scale_space.hpp
+index 1e9b3cbe..23806ca4 100644
+--- a/src/openMVG/features/sift/hierarchical_gaussian_scale_space.hpp
++++ b/src/openMVG/features/sift/hierarchical_gaussian_scale_space.hpp
+@@ -18,10 +18,6 @@
+ #include "openMVG/numeric/numeric.h"
+ #include "openMVG/system/logger.hpp"
+ 
+-#ifdef _MSC_VER
+-#pragma warning( once : 4244 )
+-#endif
+-
+ namespace openMVG{
+ namespace features{
+ 
+diff --git a/src/openMVG/features/sift/sift_DescriptorExtractor.hpp b/src/openMVG/features/sift/sift_DescriptorExtractor.hpp
+index 59e1939c..e04c59e1 100644
+--- a/src/openMVG/features/sift/sift_DescriptorExtractor.hpp
++++ b/src/openMVG/features/sift/sift_DescriptorExtractor.hpp
+@@ -27,10 +27,6 @@ The implementation is based on
+ #include "openMVG/features/sift/sift_keypoint.hpp"
+ #include "openMVG/image/image_container.hpp"
+ 
+-#ifdef _MSC_VER
+-#pragma warning( once : 4267 4244 )
+-#endif
+-
+ namespace openMVG{
+ namespace features{
+ namespace sift{
+diff --git a/src/openMVG/features/sift/sift_KeypointExtractor.hpp b/src/openMVG/features/sift/sift_KeypointExtractor.hpp
+index 649a9d49..6eee3150 100644
+--- a/src/openMVG/features/sift/sift_KeypointExtractor.hpp
++++ b/src/openMVG/features/sift/sift_KeypointExtractor.hpp
+@@ -25,11 +25,6 @@ The implementation is based on
+ #include "openMVG/features/sift/sift_keypoint.hpp"
+ #include "openMVG/image/image_container.hpp"
+ 
+-#ifdef _MSC_VER
+-#pragma warning( once : 4267 ) //warning C4267: 'argument' : conversion from 'size_t' to 'const int', possible loss of data
+-#pragma warning( once : 4244 ) //warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+-#endif
+-
+ namespace openMVG{
+ namespace features{
+ namespace sift{
+-- 
+2.43.0.windows.1
+
