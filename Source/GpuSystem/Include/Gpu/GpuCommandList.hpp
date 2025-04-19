@@ -91,6 +91,7 @@ namespace AIHoloImager
             std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
+        void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);
         void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);
         void Copy(GpuTexture2D& dest, const GpuTexture2D& src);
@@ -102,6 +103,9 @@ namespace AIHoloImager
         {
             return cmd_alloc_info_;
         }
+
+    private:
+        GpuDescriptorBlock BindPipeline(const GpuComputePipeline& pipeline, const ShaderBinding& shader_binding);
 
     private:
         GpuSystem* gpu_system_ = nullptr;

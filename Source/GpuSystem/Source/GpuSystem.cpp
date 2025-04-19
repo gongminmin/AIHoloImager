@@ -20,6 +20,7 @@ DEFINE_UUID_OF(IDXGIFactory6);
 DEFINE_UUID_OF(IDXGIInfoQueue);
 DEFINE_UUID_OF(ID3D12CommandAllocator);
 DEFINE_UUID_OF(ID3D12CommandQueue);
+DEFINE_UUID_OF(ID3D12CommandSignature);
 DEFINE_UUID_OF(ID3D12DescriptorHeap);
 DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
@@ -133,6 +134,20 @@ namespace AIHoloImager
             HANDLE shared_handle;
             TIFHR(device_->CreateSharedHandle(fence_.Get(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
             shared_fence_handle_.reset(shared_handle);
+        }
+
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC indirect_param;
+            indirect_param.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+            D3D12_COMMAND_SIGNATURE_DESC cmd_signature_desc;
+            cmd_signature_desc.ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS);
+            cmd_signature_desc.NumArgumentDescs = 1;
+            cmd_signature_desc.pArgumentDescs = &indirect_param;
+            cmd_signature_desc.NodeMask = 1;
+
+            TIFHR(device_->CreateCommandSignature(
+                &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), dispatch_indirect_signature_.PutVoid()));
         }
     }
 
@@ -498,5 +513,10 @@ namespace AIHoloImager
         this->ClearStallResources();
 
         return curr_fence_value;
+    }
+
+    ID3D12CommandSignature* GpuSystem::NativeDispatchIndirectSignature() const noexcept
+    {
+        return dispatch_indirect_signature_.Get();
     }
 } // namespace AIHoloImager

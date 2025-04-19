@@ -94,6 +94,8 @@ namespace AIHoloImager
 
         void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
 
+        ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
+
     private:
         struct CmdQueue
         {
@@ -127,6 +129,8 @@ namespace AIHoloImager
         GpuDescriptorAllocator shader_visible_cbv_srv_uav_desc_allocator_;
 
         std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
+
+        ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
     };
 
     constexpr uint32_t DivUp(uint32_t a, uint32_t b) noexcept

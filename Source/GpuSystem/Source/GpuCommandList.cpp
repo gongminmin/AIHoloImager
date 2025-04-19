@@ -502,6 +502,21 @@ namespace AIHoloImager
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
+    void GpuCommandList::ComputeIndirect(
+        const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding)
+    {
+        assert(gpu_system_ != nullptr);
+
+        indirect_args.Transition(*this, GpuResourceState::Common);
+
+        GpuDescriptorBlock srv_uav_desc_block = this->BindPipeline(pipeline, shader_binding);
+
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+        d3d12_cmd_list->ExecuteIndirect(gpu_system_->NativeDispatchIndirectSignature(), 1, indirect_args.NativeBuffer(), 0, nullptr, 0);
+
+        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+    }
+
     void GpuCommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
@@ -571,5 +586,75 @@ namespace AIHoloImager
             Unreachable();
         }
         closed_ = false;
+    }
+
+    GpuDescriptorBlock GpuCommandList::BindPipeline(const GpuComputePipeline& pipeline, const ShaderBinding& shader_binding)
+    {
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
+        d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
+
+        const uint32_t num_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
+        GpuDescriptorBlock srv_uav_desc_block;
+        if (num_descs > 0)
+        {
+            srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_descs);
+
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
+            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
+        }
+        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
+
+        uint32_t heap_base = 0;
+        uint32_t root_index = 0;
+
+        if (!shader_binding.srvs.empty())
+        {
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+            for (const auto* srv : shader_binding.srvs)
+            {
+                if (srv != nullptr)
+                {
+                    srv->Transition(*this);
+
+                    auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
+                    srv->CopyTo(srv_cpu_handle);
+                }
+
+                ++heap_base;
+            }
+
+            ++root_index;
+        }
+
+        if (!shader_binding.uavs.empty())
+        {
+            d3d12_cmd_list->SetComputeRootDescriptorTable(
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+            for (const auto* uav : shader_binding.uavs)
+            {
+                if (uav != nullptr)
+                {
+                    uav->Transition(*this);
+
+                    auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
+                    uav->CopyTo(uav_cpu_handle);
+                }
+
+                ++heap_base;
+            }
+
+            ++root_index;
+        }
+
+        for (const auto* cb : shader_binding.cbs)
+        {
+            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cb->GpuVirtualAddress());
+            ++root_index;
+        }
+
+        return srv_uav_desc_block;
     }
 } // namespace AIHoloImager
