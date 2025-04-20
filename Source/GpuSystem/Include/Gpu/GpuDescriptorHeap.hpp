@@ -33,6 +33,8 @@ namespace AIHoloImager
         GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept;
         GpuDescriptorHeap& operator=(GpuDescriptorHeap&& other) noexcept;
 
+        void Name(std::wstring_view name);
+
         ID3D12DescriptorHeap* NativeDescriptorHeap() const noexcept;
 
         explicit operator bool() const noexcept;

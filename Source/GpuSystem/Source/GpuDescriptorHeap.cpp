@@ -37,15 +37,17 @@ namespace AIHoloImager
         desc_.Flags = flags;
         desc_.NodeMask = 0;
         TIFHR(gpu_system.NativeDevice()->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
-        if (!name.empty())
-        {
-            heap_->SetName(std::wstring(std::move(name)).c_str());
-        }
+        this->Name(std::move(name));
     }
 
     GpuDescriptorHeap::~GpuDescriptorHeap() noexcept = default;
     GpuDescriptorHeap::GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept = default;
     GpuDescriptorHeap& GpuDescriptorHeap::operator=(GpuDescriptorHeap&& other) noexcept = default;
+
+    void GpuDescriptorHeap::Name(std::wstring_view name)
+    {
+        heap_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
+    }
 
     GpuDescriptorHeap::operator bool() const noexcept
     {

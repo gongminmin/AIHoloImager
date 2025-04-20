@@ -59,10 +59,7 @@ namespace AIHoloImager
             static_cast<uint16_t>(mip_levels), ToDxgiFormat(format), {1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN, ToD3D12ResourceFlags(flags)};
         TIFHR(d3d12_device->CreateCommittedResource(&default_heap_prop, ToD3D12HeapFlags(flags), &desc_, curr_states_[0], nullptr,
             UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
-        if (!name.empty())
-        {
-            resource_->SetName(std::wstring(name).c_str());
-        }
+        this->Name(std::move(name));
 
         if (EnumHasAny(flags, GpuResourceFlag::Shareable))
         {
@@ -79,10 +76,7 @@ namespace AIHoloImager
         if (resource_)
         {
             desc_ = resource_->GetDesc();
-            if (!name.empty())
-            {
-                resource_->SetName(std::wstring(name).c_str());
-            }
+            this->Name(std::move(name));
 
             curr_states_.assign(this->MipLevels() * this->Planes(), ToD3D12ResourceState(curr_state));
         }
@@ -92,6 +86,11 @@ namespace AIHoloImager
 
     GpuTexture::GpuTexture(GpuTexture&& other) noexcept = default;
     GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept = default;
+
+    void GpuTexture::Name(std::wstring_view name)
+    {
+        resource_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
+    }
 
     GpuTexture::operator bool() const noexcept
     {

@@ -30,10 +30,7 @@ namespace AIHoloImager
             D3D12_TEXTURE_LAYOUT_ROW_MAJOR, ToD3D12ResourceFlags(flags)};
         TIFHR(d3d12_device->CreateCommittedResource(
             &heap_prop, ToD3D12HeapFlags(flags), &desc_, curr_state_, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
-        if (!name.empty())
-        {
-            resource_->SetName(std::wstring(std::move(name)).c_str());
-        }
+        this->Name(std::move(name));
 
         if (EnumHasAny(flags, GpuResourceFlag::Shareable))
         {
@@ -53,10 +50,7 @@ namespace AIHoloImager
             heap_type_ = heap_prop.Type;
 
             desc_ = resource_->GetDesc();
-            if (!name.empty())
-            {
-                resource_->SetName(std::wstring(std::move(name)).c_str());
-            }
+            this->Name(std::move(name));
         }
     }
 
@@ -64,6 +58,11 @@ namespace AIHoloImager
 
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
+
+    void GpuBuffer::Name(std::wstring_view name)
+    {
+        resource_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
+    }
 
     GpuBuffer GpuBuffer::Share() const
     {

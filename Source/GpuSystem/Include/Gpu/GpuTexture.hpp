@@ -44,6 +44,8 @@ namespace AIHoloImager
         GpuTexture(GpuTexture&& other) noexcept;
         GpuTexture& operator=(GpuTexture&& other) noexcept;
 
+        void Name(std::wstring_view name);
+
         ID3D12Resource* NativeTexture() const noexcept;
 
         explicit operator bool() const noexcept;

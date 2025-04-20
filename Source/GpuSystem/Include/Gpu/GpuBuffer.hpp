@@ -38,6 +38,8 @@ namespace AIHoloImager
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
+        void Name(std::wstring_view name);
+
         GpuBuffer Share() const;
 
         explicit operator bool() const noexcept;
