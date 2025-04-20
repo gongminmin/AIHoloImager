@@ -476,7 +476,7 @@ namespace AIHoloImager
                         undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
 
                         gpu_system_.Execute(std::move(cmd_list));
-                        gpu_system_.WaitForGpu();
+                        gpu_system_.CpuWait();
 
                         result_view.delighted_image =
                             delighter_.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);

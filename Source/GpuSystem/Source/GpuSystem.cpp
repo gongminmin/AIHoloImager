@@ -153,7 +153,7 @@ namespace AIHoloImager
 
     GpuSystem::~GpuSystem()
     {
-        this->WaitForGpu();
+        this->CpuWait();
 
         shader_visible_cbv_srv_uav_desc_allocator_.Clear();
         cbv_srv_uav_desc_allocator_.Clear();
@@ -333,7 +333,7 @@ namespace AIHoloImager
         return readback_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
     }
 
-    void GpuSystem::WaitForGpu(uint64_t fence_value)
+    void GpuSystem::CpuWait(uint64_t fence_value)
     {
         if (fence_ && (fence_event_.get() != INVALID_HANDLE_VALUE))
         {
@@ -368,6 +368,27 @@ namespace AIHoloImager
         }
 
         this->ClearStallResources();
+    }
+
+    void GpuSystem::GpuWait(CmdQueueType type, uint64_t fence_value)
+    {
+        uint64_t wait_fence_value;
+        if (fence_value == MaxFenceValue)
+        {
+            wait_fence_value = fence_val_;
+            ++fence_val_;
+        }
+        else
+        {
+            fence_val_ = std::max(fence_val_, fence_value);
+            wait_fence_value = fence_val_;
+        }
+        this->GetOrCreateCommandQueue(type).cmd_queue->Wait(fence_.Get(), wait_fence_value);
+    }
+
+    uint64_t GpuSystem::FenceValue() const noexcept
+    {
+        return fence_val_;
     }
 
     void GpuSystem::HandleDeviceLost()

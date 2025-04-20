@@ -201,7 +201,7 @@ namespace AIHoloImager
             flatten_normal_tex.Transition(cmd_list, GpuResourceState::Common);
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
         }
 
         GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib,
@@ -287,7 +287,7 @@ namespace AIHoloImager
 #endif
 
                 gpu_system_.Execute(std::move(cmd_list));
-                gpu_system_.WaitForGpu();
+                gpu_system_.CpuWait();
             }
             std::cout << "\n";
 

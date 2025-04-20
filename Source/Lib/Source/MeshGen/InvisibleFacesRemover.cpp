@@ -206,7 +206,7 @@ namespace AIHoloImager
             cmd_list.Copy(filtered_counter_read_back_buff_, filtered_counter_buff_);
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
 
             const uint32_t filtered_count = *filtered_counter_read_back_buff_.MappedData<uint32_t>();
             const uint32_t* filtered_indices_ptr = filtered_index_read_back_buff.MappedData<uint32_t>();

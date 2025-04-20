@@ -926,7 +926,7 @@ namespace AIHoloImager
             cmd_list.Copy(color_read_back_vb, color_vb);
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
 
             const VertexAttrib pos_color_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},

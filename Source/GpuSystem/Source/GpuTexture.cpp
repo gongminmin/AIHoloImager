@@ -352,7 +352,7 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
 
         gpu_system.ExecuteAndReset(cmd_list);
-        gpu_system.WaitForGpu();
+        gpu_system.CpuWait();
 
         assert(layout.Footprint.RowPitch >= width * format_size);
 

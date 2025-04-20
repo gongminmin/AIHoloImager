@@ -389,7 +389,7 @@ namespace AIHoloImager
             cmd_list.Copy(counter_cpu_buff, 0, counter_buff, 0, sizeof(uint32_t));
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
 
             const uint32_t num_non_empty_cubes = *counter_cpu_buff.MappedData<uint32_t>();
             if (num_non_empty_cubes == 0)
@@ -428,7 +428,7 @@ namespace AIHoloImager
             cmd_list.Copy(counter_cpu_buff, 0, counter_buff, sizeof(uint32_t), sizeof(glm::uvec2));
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
 
             const auto& counter = *counter_cpu_buff.MappedData<glm::uvec2>();
             const uint32_t num_vertices = counter.x;
@@ -477,7 +477,7 @@ namespace AIHoloImager
             vertex_index_offsets_buff.Reset();
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.WaitForGpu();
+            gpu_system_.CpuWait();
 
             std::memcpy(mesh.VertexBuffer().data(), mesh_vertices_cpu_buff.MappedData(), mesh_vertices_cpu_buff.Size());
             std::memcpy(mesh.IndexBuffer().data(), mesh_indices_cpu_buff.MappedData(), mesh_indices_cpu_buff.Size());

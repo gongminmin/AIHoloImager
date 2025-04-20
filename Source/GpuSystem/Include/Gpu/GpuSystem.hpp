@@ -88,7 +88,9 @@ namespace AIHoloImager
         void DeallocReadbackMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocReadbackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void WaitForGpu(uint64_t fence_value = MaxFenceValue);
+        void CpuWait(uint64_t fence_value = MaxFenceValue);
+        void GpuWait(CmdQueueType type, uint64_t fence_value = MaxFenceValue);
+        uint64_t FenceValue() const noexcept;
 
         void HandleDeviceLost();
 
