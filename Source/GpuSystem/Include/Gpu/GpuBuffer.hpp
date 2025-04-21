@@ -7,11 +7,8 @@
 
 #include <directx/d3d12.h>
 
-#include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Base/SmartPtrHelper.hpp"
 #include "Gpu/GpuResource.hpp"
-#include "Gpu/GpuUtil.hpp"
 
 namespace AIHoloImager
 {
@@ -25,7 +22,7 @@ namespace AIHoloImager
     };
     D3D12_RANGE ToD3D12Range(const GpuRange& range);
 
-    class GpuBuffer
+    class GpuBuffer : public GpuResource
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBuffer)
 
@@ -38,11 +35,7 @@ namespace AIHoloImager
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
-        void Name(std::wstring_view name);
-
         GpuBuffer Share() const;
-
-        explicit operator bool() const noexcept;
 
         ID3D12Resource* NativeBuffer() const noexcept;
 
@@ -58,14 +51,9 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
-        HANDLE SharedHandle() const noexcept;
-
     protected:
-        GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
-        D3D12_RESOURCE_DESC desc_{};
         D3D12_HEAP_TYPE heap_type_{};
         mutable D3D12_RESOURCE_STATES curr_state_{};
-        Win32UniqueHandle shared_handle_;
     };
 
     class GpuUploadBuffer final : public GpuBuffer

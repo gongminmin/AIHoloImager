@@ -34,8 +34,7 @@ namespace AIHoloImager
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, D3D12_RESOURCE_DIMENSION dim, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
-        : resource_(gpu_system, nullptr), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON),
-          format_(format)
+        : GpuResource(gpu_system), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON), format_(format)
     {
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
 
@@ -61,17 +60,12 @@ namespace AIHoloImager
             UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         this->Name(std::move(name));
 
-        if (EnumHasAny(flags, GpuResourceFlag::Shareable))
-        {
-            HANDLE shared_handle;
-            TIFHR(d3d12_device->CreateSharedHandle(this->NativeTexture(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
-            shared_handle_.reset(shared_handle);
-        }
+        this->CreateSharedHandle(gpu_system, flags);
     }
 
     GpuTexture::GpuTexture(
         GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
-        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false))
+        : GpuResource(gpu_system, native_resource)
     {
         if (resource_)
         {
@@ -87,19 +81,9 @@ namespace AIHoloImager
     GpuTexture::GpuTexture(GpuTexture&& other) noexcept = default;
     GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept = default;
 
-    void GpuTexture::Name(std::wstring_view name)
-    {
-        resource_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
-    }
-
-    GpuTexture::operator bool() const noexcept
-    {
-        return resource_ ? true : false;
-    }
-
     ID3D12Resource* GpuTexture::NativeTexture() const noexcept
     {
-        return resource_.Object().Get();
+        return this->NativeResource();
     }
 
     uint32_t GpuTexture::Width(uint32_t mip) const noexcept
@@ -160,8 +144,7 @@ namespace AIHoloImager
 
     void GpuTexture::Reset()
     {
-        resource_.Reset();
-        desc_ = {};
+        GpuResource::Reset();
         curr_states_.clear();
     }
 
@@ -392,11 +375,6 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyTextureRegion(&dst, dst_x, dst_y, dst_z, &src, &src_box);
 
         gpu_system.ExecuteAndReset(cmd_list);
-    }
-
-    HANDLE GpuTexture::SharedHandle() const noexcept
-    {
-        return shared_handle_.get();
     }
 
 

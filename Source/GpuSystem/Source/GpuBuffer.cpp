@@ -19,7 +19,7 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer() noexcept = default;
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
-        : resource_(gpu_system, nullptr), heap_type_(ToD3D12HeapType(heap)),
+        : GpuResource(gpu_system), heap_type_(ToD3D12HeapType(heap)),
           curr_state_(heap == GpuHeap::ReadBack ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON)
     {
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
@@ -32,16 +32,11 @@ namespace AIHoloImager
             &heap_prop, ToD3D12HeapFlags(flags), &desc_, curr_state_, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
         this->Name(std::move(name));
 
-        if (EnumHasAny(flags, GpuResourceFlag::Shareable))
-        {
-            HANDLE shared_handle;
-            TIFHR(d3d12_device->CreateSharedHandle(this->NativeBuffer(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
-            shared_handle_.reset(shared_handle);
-        }
+        this->CreateSharedHandle(gpu_system, flags);
     }
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name)
-        : resource_(gpu_system, ComPtr<ID3D12Resource>(native_resource, false)), curr_state_(ToD3D12ResourceState(curr_state))
+        : GpuResource(gpu_system, native_resource), curr_state_(ToD3D12ResourceState(curr_state))
     {
         if (resource_)
         {
@@ -59,11 +54,6 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
 
-    void GpuBuffer::Name(std::wstring_view name)
-    {
-        resource_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
-    }
-
     GpuBuffer GpuBuffer::Share() const
     {
         GpuBuffer buffer;
@@ -74,14 +64,9 @@ namespace AIHoloImager
         return buffer;
     }
 
-    GpuBuffer::operator bool() const noexcept
-    {
-        return resource_ ? true : false;
-    }
-
     ID3D12Resource* GpuBuffer::NativeBuffer() const noexcept
     {
-        return resource_.Object().Get();
+        return this->NativeResource();
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS GpuBuffer::GpuVirtualAddress() const noexcept
@@ -123,8 +108,7 @@ namespace AIHoloImager
 
     void GpuBuffer::Reset()
     {
-        resource_.Reset();
-        desc_ = {};
+        GpuResource::Reset();
         heap_type_ = {};
         curr_state_ = {};
     }
@@ -153,11 +137,6 @@ namespace AIHoloImager
         }
 
         curr_state_ = d3d12_target_state;
-    }
-
-    HANDLE GpuBuffer::SharedHandle() const noexcept
-    {
-        return shared_handle_.get();
     }
 
 
