@@ -610,52 +610,36 @@ namespace AIHoloImager
     {
         const GpuBaseFormat base_fmt = BaseFormat(format);
         const uint32_t num_channels = FormatChannels(format);
-        cudaChannelFormatDesc format_desc;
+
+        cudaChannelFormatKind kind;
+        int ch_bytes;
         switch (base_fmt)
         {
         case GpuBaseFormat::Float:
-            switch (num_channels)
-            {
-            case 1:
-                format_desc = cudaCreateChannelDesc<float>();
-                break;
-            case 2:
-                format_desc = cudaCreateChannelDesc<float2>();
-                break;
-            case 3:
-                format_desc = cudaCreateChannelDesc<float3>();
-                break;
-            case 4:
-            default:
-                format_desc = cudaCreateChannelDesc<float4>();
-                break;
-            }
+            kind = cudaChannelFormatKindFloat;
+            ch_bytes = sizeof(float);
             break;
 
         case GpuBaseFormat::Sint:
+            kind = cudaChannelFormatKindSigned;
+            ch_bytes = sizeof(int32_t);
+            break;
+
         case GpuBaseFormat::Uint:
-            switch (num_channels)
-            {
-            case 1:
-                format_desc = cudaCreateChannelDesc<uint32_t>();
-                break;
-            case 2:
-                format_desc = cudaCreateChannelDesc<uint2>();
-                break;
-            case 3:
-                format_desc = cudaCreateChannelDesc<uint3>();
-                break;
-            case 4:
-            default:
-                format_desc = cudaCreateChannelDesc<uint4>();
-                break;
-            }
+            kind = cudaChannelFormatKindUnsigned;
+            ch_bytes = sizeof(uint32_t);
             break;
 
         default:
             Unreachable("Invalid format");
         }
 
-        return format_desc;
+        int channel_size[4] = {};
+        for (uint32_t i = 0; i < num_channels; ++i)
+        {
+            channel_size[i] = ch_bytes * 8;
+        }
+
+        return cudaCreateChannelDesc(channel_size[0], channel_size[1], channel_size[2], channel_size[3], kind);
     }
 } // namespace AIHoloImager
