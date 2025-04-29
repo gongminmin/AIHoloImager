@@ -5,7 +5,7 @@
 set( "/WX")
 foreach(flag_var
     CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
-    string(REPLACE "/WX" "/WX-" ${flag_var} ${${flag_var}})
+    string(REPLACE "/WX" "/WX:NO" ${flag_var} ${${flag_var}})
 endforeach()
 
 set(CMAKE_CUDA_ARCHITECTURES "86;89")
