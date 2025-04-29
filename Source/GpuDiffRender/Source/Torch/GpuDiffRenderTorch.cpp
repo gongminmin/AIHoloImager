@@ -26,7 +26,7 @@ namespace AIHoloImager
         : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), gpu_dr_(gpu_system_), torch_device_(torch_device)
     {
         uses_cuda_copy_ = false;
-        if (torch_device.is_cuda())
+        if (torch_device.is_cuda() && cuda_rt_)
         {
             int device_index = 0;
             if (torch_device.has_index())
@@ -34,8 +34,8 @@ namespace AIHoloImager
                 device_index = torch_device.index();
             }
 
-            cudaDeviceProp device_prop{};
-            cudaGetDeviceProperties(&device_prop, device_index);
+            MiniCudaRt::DeviceProp device_prop{};
+            cuda_rt_.GetDeviceProperties(&device_prop, device_index);
 
             const LUID gpu_luid = gpu_system_.NativeDevice()->GetAdapterLuid();
 
@@ -44,13 +44,13 @@ namespace AIHoloImager
 
         if (uses_cuda_copy_)
         {
-            cudaExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
-            ext_semaphore_handle_desc.type = cudaExternalSemaphoreHandleTypeD3D12Fence;
+            MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
+            ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
             ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle();
             ext_semaphore_handle_desc.flags = 0;
-            cudaImportExternalSemaphore(&ext_semaphore_, &ext_semaphore_handle_desc);
+            cuda_rt_.ImportExternalSemaphore(&ext_semaphore_, &ext_semaphore_handle_desc);
 
-            cudaStreamCreate(&copy_stream_);
+            cuda_rt_.StreamCreate(&copy_stream_);
         }
     }
 
@@ -58,8 +58,8 @@ namespace AIHoloImager
     {
         if (uses_cuda_copy_)
         {
-            cudaDestroyExternalSemaphore(ext_semaphore_);
-            cudaStreamDestroy(copy_stream_);
+            cuda_rt_.DestroyExternalSemaphore(ext_semaphore_);
+            cuda_rt_.StreamDestroy(copy_stream_);
         }
     }
 
@@ -347,20 +347,20 @@ namespace AIHoloImager
                 copy_buff = &buff;
             }
 
-            cudaExternalMemory_t ext_mem = this->ImportFromResource(buff);
+            MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(buff);
 
-            cudaExternalMemoryBufferDesc ext_mem_buffer_desc{};
+            MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
             ext_mem_buffer_desc.size = size;
             ext_mem_buffer_desc.offset = 0;
             ext_mem_buffer_desc.flags = 0;
 
             void* ext_mem_ptr;
-            cudaExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc);
+            cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc);
 
-            cudaMemcpyAsync(ext_mem_ptr, tensor.const_data_ptr(), size, cudaMemcpyDeviceToDevice, copy_stream_);
+            cuda_rt_.MemcpyAsync(ext_mem_ptr, tensor.const_data_ptr(), size, MiniCudaRt::MemcpyKind::DeviceToDevice, copy_stream_);
 
-            cudaFree(ext_mem_ptr);
-            cudaDestroyExternalMemory(ext_mem);
+            cuda_rt_.Free(ext_mem_ptr);
+            cuda_rt_.DestroyExternalMemory(ext_mem);
 
             const uint64_t fence_val = gpu_system_.FenceValue() + 1;
             this->SignalExternalSemaphore(fence_val);
@@ -410,34 +410,34 @@ namespace AIHoloImager
 
         if (uses_cuda_copy_)
         {
-            cudaExternalMemory_t ext_mem = this->ImportFromResource(tex);
+            MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
-            cudaExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
+            MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
             ext_mem_mip_desc.extent = {width, height, 1};
-            ext_mem_mip_desc.formatDesc = this->FormatDesc(format);
-            ext_mem_mip_desc.numLevels = 1;
-            ext_mem_mip_desc.flags = cudaArraySurfaceLoadStore;
+            ext_mem_mip_desc.format_desc = this->FormatDesc(format);
+            ext_mem_mip_desc.num_levels = 1;
+            ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
 
-            cudaMipmappedArray_t cu_mip_array;
-            cudaExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc);
+            MiniCudaRt::MipmappedArray_t cu_mip_array;
+            cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc);
 
-            cudaArray_t cu_array;
-            cudaGetMipmappedArrayLevel(&cu_array, cu_mip_array, 0);
+            MiniCudaRt::Array_t cu_array;
+            cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0);
 
             tensor = tensor.contiguous();
 
-            cudaMemcpy3DParms p{};
-            p.srcPtr.ptr = tensor.mutable_data_ptr();
-            p.srcPtr.pitch = width * FormatSize(format);
-            p.srcPtr.xsize = width;
-            p.srcPtr.ysize = height;
-            p.dstArray = cu_array;
+            MiniCudaRt::Memcpy3DParams p{};
+            p.src_ptr.ptr = tensor.mutable_data_ptr();
+            p.src_ptr.pitch = width * FormatSize(format);
+            p.src_ptr.x_size = width;
+            p.src_ptr.y_size = height;
+            p.dst_array = cu_array;
             p.extent = ext_mem_mip_desc.extent;
-            p.kind = cudaMemcpyDeviceToDevice;
-            cudaMemcpy3DAsync(&p, copy_stream_);
+            p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
+            cuda_rt_.Memcpy3DAsync(&p, copy_stream_);
 
-            cudaFreeMipmappedArray(cu_mip_array);
-            cudaDestroyExternalMemory(ext_mem);
+            cuda_rt_.FreeMipmappedArray(cu_mip_array);
+            cuda_rt_.DestroyExternalMemory(ext_mem);
 
             const uint64_t fence_val = gpu_system_.FenceValue() + 1;
             this->SignalExternalSemaphore(fence_val);
@@ -460,23 +460,23 @@ namespace AIHoloImager
             uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
             this->WaitExternalSemaphore(fence_val);
 
-            cudaExternalMemory_t ext_mem = this->ImportFromResource(buff);
+            MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(buff);
 
-            cudaExternalMemoryBufferDesc ext_mem_buffer_desc{};
+            MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
             ext_mem_buffer_desc.size = buff.Size();
             ext_mem_buffer_desc.offset = 0;
             ext_mem_buffer_desc.flags = 0;
 
             void* ext_mem_ptr;
-            cudaExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc);
+            cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc);
 
             opts = opts.device(torch_device_);
             tensor = torch::empty(size, opts);
 
-            cudaMemcpyAsync(tensor.mutable_data_ptr(), ext_mem_ptr, buff.Size(), cudaMemcpyDeviceToDevice, copy_stream_);
+            cuda_rt_.MemcpyAsync(tensor.mutable_data_ptr(), ext_mem_ptr, buff.Size(), MiniCudaRt::MemcpyKind::DeviceToDevice, copy_stream_);
 
-            cudaFree(ext_mem_ptr);
-            cudaDestroyExternalMemory(ext_mem);
+            cuda_rt_.Free(ext_mem_ptr);
+            cuda_rt_.DestroyExternalMemory(ext_mem);
 
             ++fence_val;
             this->SignalExternalSemaphore(fence_val);
@@ -529,35 +529,35 @@ namespace AIHoloImager
             uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
             this->WaitExternalSemaphore(fence_val);
 
-            cudaExternalMemory_t ext_mem = this->ImportFromResource(tex);
+            MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
-            cudaExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
+            MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
             ext_mem_mip_desc.extent = {width, height, 1};
-            ext_mem_mip_desc.formatDesc = this->FormatDesc(fmt);
-            ext_mem_mip_desc.numLevels = 1;
-            ext_mem_mip_desc.flags = cudaArraySurfaceLoadStore;
+            ext_mem_mip_desc.format_desc = this->FormatDesc(fmt);
+            ext_mem_mip_desc.num_levels = 1;
+            ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
 
-            cudaMipmappedArray_t cu_mip_array;
-            cudaExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc);
+            MiniCudaRt::MipmappedArray_t cu_mip_array;
+            cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc);
 
-            cudaArray_t cu_array;
-            cudaGetMipmappedArrayLevel(&cu_array, cu_mip_array, 0);
+            MiniCudaRt::Array_t cu_array;
+            cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0);
 
             opts = opts.device(torch_device_);
             tensor = torch::empty({1, height, width, num_channels}, opts);
 
-            cudaMemcpy3DParms p{};
-            p.srcArray = cu_array;
-            p.dstPtr.ptr = tensor.mutable_data_ptr();
-            p.dstPtr.pitch = width * FormatSize(fmt);
-            p.dstPtr.xsize = width;
-            p.dstPtr.ysize = height;
+            MiniCudaRt::Memcpy3DParams p{};
+            p.src_array = cu_array;
+            p.dst_ptr.ptr = tensor.mutable_data_ptr();
+            p.dst_ptr.pitch = width * FormatSize(fmt);
+            p.dst_ptr.x_size = width;
+            p.dst_ptr.y_size = height;
             p.extent = ext_mem_mip_desc.extent;
-            p.kind = cudaMemcpyDeviceToDevice;
-            cudaMemcpy3DAsync(&p, copy_stream_);
+            p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
+            cuda_rt_.Memcpy3DAsync(&p, copy_stream_);
 
-            cudaFreeMipmappedArray(cu_mip_array);
-            cudaDestroyExternalMemory(ext_mem);
+            cuda_rt_.FreeMipmappedArray(cu_mip_array);
+            cuda_rt_.DestroyExternalMemory(ext_mem);
 
             ++fence_val;
             this->SignalExternalSemaphore(fence_val);
@@ -574,59 +574,59 @@ namespace AIHoloImager
         return tensor;
     }
 
-    cudaExternalMemory_t GpuDiffRenderTorch::ImportFromResource(const GpuResource& resource)
+    MiniCudaRt::ExternalMemory_t GpuDiffRenderTorch::ImportFromResource(const GpuResource& resource)
     {
         ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
         const auto res_desc = resource.NativeResource()->GetDesc();
         const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &res_desc);
 
-        cudaExternalMemoryHandleDesc ext_mem_handle_desc{};
-        ext_mem_handle_desc.type = cudaExternalMemoryHandleTypeD3D12Resource;
+        MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};
+        ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
         ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
         ext_mem_handle_desc.size = alloc_info.SizeInBytes;
-        ext_mem_handle_desc.flags = cudaExternalMemoryDedicated;
+        ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
 
-        cudaExternalMemory_t ext_mem;
-        cudaImportExternalMemory(&ext_mem, &ext_mem_handle_desc);
+        MiniCudaRt::ExternalMemory_t ext_mem;
+        cuda_rt_.ImportExternalMemory(&ext_mem, &ext_mem_handle_desc);
         return ext_mem;
     }
 
     void GpuDiffRenderTorch::WaitExternalSemaphore(uint64_t fence_val)
     {
-        cudaExternalSemaphoreWaitParams ext_semaphore_wait_params{};
+        MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{};
         ext_semaphore_wait_params.params.fence.value = fence_val;
-        cudaWaitExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_wait_params, 1, copy_stream_);
+        cuda_rt_.WaitExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_wait_params, 1, copy_stream_);
     }
 
     void GpuDiffRenderTorch::SignalExternalSemaphore(uint64_t fence_val)
     {
-        cudaExternalSemaphoreSignalParams ext_semaphore_signal_params{};
+        MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{};
         ext_semaphore_signal_params.params.fence.value = fence_val;
-        cudaSignalExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_signal_params, 1, copy_stream_);
+        cuda_rt_.SignalExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_signal_params, 1, copy_stream_);
     }
 
-    cudaChannelFormatDesc GpuDiffRenderTorch::FormatDesc(GpuFormat format)
+    MiniCudaRt::ChannelFormatDesc GpuDiffRenderTorch::FormatDesc(GpuFormat format)
     {
         const GpuBaseFormat base_fmt = BaseFormat(format);
         const uint32_t num_channels = FormatChannels(format);
 
-        cudaChannelFormatKind kind;
+        MiniCudaRt::ChannelFormatKind kind;
         int ch_bytes;
         switch (base_fmt)
         {
         case GpuBaseFormat::Float:
-            kind = cudaChannelFormatKindFloat;
+            kind = MiniCudaRt::ChannelFormatKind::Float;
             ch_bytes = sizeof(float);
             break;
 
         case GpuBaseFormat::Sint:
-            kind = cudaChannelFormatKindSigned;
+            kind = MiniCudaRt::ChannelFormatKind::Signed;
             ch_bytes = sizeof(int32_t);
             break;
 
         case GpuBaseFormat::Uint:
-            kind = cudaChannelFormatKindUnsigned;
+            kind = MiniCudaRt::ChannelFormatKind::Unsigned;
             ch_bytes = sizeof(uint32_t);
             break;
 
@@ -640,6 +640,6 @@ namespace AIHoloImager
             channel_size[i] = ch_bytes * 8;
         }
 
-        return cudaCreateChannelDesc(channel_size[0], channel_size[1], channel_size[2], channel_size[3], kind);
+        return cuda_rt_.CreateChannelDesc(channel_size[0], channel_size[1], channel_size[2], channel_size[3], kind);
     }
 } // namespace AIHoloImager

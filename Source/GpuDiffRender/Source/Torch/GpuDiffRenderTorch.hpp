@@ -3,7 +3,6 @@
 
 #include <tuple>
 
-#include <cuda_runtime.h>
 #ifdef _MSC_VER
     #pragma warning(push)
     #pragma warning(disable : 4100) // Ignore unreferenced formal parameters
@@ -22,6 +21,7 @@
 #include "../GpuDiffRender.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "MiniCudaRt.hpp"
 
 namespace AIHoloImager
 {
@@ -63,10 +63,10 @@ namespace AIHoloImager
         torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type);
         torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex);
 
-        cudaExternalMemory_t ImportFromResource(const GpuResource& resource);
+        MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource);
         void WaitExternalSemaphore(uint64_t fence_val);
         void SignalExternalSemaphore(uint64_t fence_val);
-        cudaChannelFormatDesc FormatDesc(GpuFormat format);
+        MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format);
 
     private:
         GpuSystem& gpu_system_;
@@ -74,9 +74,11 @@ namespace AIHoloImager
 
         GpuDiffRender gpu_dr_;
 
+        MiniCudaRt cuda_rt_;
+
         bool uses_cuda_copy_;
-        cudaExternalSemaphore_t ext_semaphore_{};
-        cudaStream_t copy_stream_{};
+        MiniCudaRt::ExternalSemaphore_t ext_semaphore_{};
+        MiniCudaRt::Stream_t copy_stream_{};
 
         struct RasterizeIntermediate
         {

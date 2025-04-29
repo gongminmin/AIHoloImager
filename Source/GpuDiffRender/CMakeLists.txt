@@ -1,18 +1,6 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
- # CUDA compiler is using LIBCMT, causing a linking warning
-set( "/WX")
-foreach(flag_var
-    CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
-    string(REPLACE "/WX" "/WX:NO" ${flag_var} ${${flag_var}})
-endforeach()
-
-set(CMAKE_CUDA_ARCHITECTURES "86;89")
-enable_language(CUDA)
-
-find_package(CUDAToolkit REQUIRED)
-
 set(aihi_gpu_diff_rast_files
     Source/Shader/AntiAliasBwdCs.hlsl
     Source/Shader/AntiAliasFwdCs.hlsl
@@ -29,6 +17,8 @@ set(aihi_gpu_diff_rast_files
     Source/GpuDiffRender.hpp
     Source/Torch/GpuDiffRenderTorch.cpp
     Source/Torch/GpuDiffRenderTorch.hpp
+    Source/Torch/MiniCudaRt.cpp
+    Source/Torch/MiniCudaRt.hpp
     Source/Torch/PyTorchBindings.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_diff_rast_files})
@@ -86,7 +76,6 @@ target_link_libraries(AIHoloImagerGpuDiffRender
         torch.lib
         torch_python.lib
         Python3::Python
-        CUDA::cudart
 )
 
 target_link_libraries(AIHoloImagerGpuDiffRender

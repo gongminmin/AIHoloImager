@@ -32,7 +32,6 @@ stages:
 
       - bash: |
           choco install ninja
-          choco install cuda --version=12.4.1.551
         displayName: 'Install'
 
       - bash: |
@@ -42,6 +41,6 @@ stages:
 
       - script: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
-          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_CUDA_COMPILER="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin\nvcc.exe" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build Build -j
         displayName: 'Build'
