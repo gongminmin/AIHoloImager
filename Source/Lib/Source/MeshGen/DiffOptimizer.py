@@ -4,11 +4,12 @@
 import random
 
 import numpy as np
-import nvdiffrast.torch as dr
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
+
+from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch
 
 def ScaleMatrix(scale):
     device = scale.device
@@ -49,20 +50,11 @@ def NormalizeQuat(q):
     return q / torch.sum(q ** 2) ** 0.5
 
 class DiffOptimizer:
-    def __init__(self):
-        try:
-            # Inject the cached binary into nvdiffrast to prevent recompiling
-            import importlib
-            from nvdiffrast.torch.ops import _cached_plugin
-            _cached_plugin[False] = importlib.import_module("nvdiffrast_plugin")
-            _cached_plugin[True] = importlib.import_module("nvdiffrast_plugin_gl")
-        except Exception as e:
-            print(f"Fail to load nvdiffrast plugins: {e}")
-
+    def __init__(self, gpu_system):
         self.downsampling = True
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.context = dr.RasterizeGLContext(device = self.device, output_db = False)
+        self.gpu_dr = GpuDiffRenderTorch(gpu_system, self.device)
 
         self.image_channels = 4
         self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float16, device = self.device) / 64
@@ -70,7 +62,7 @@ class DiffOptimizer:
 
     def Destroy(self):
         del self.kernel
-        del self.context
+        del self.gpu_dr
         del self.device
         torch.cuda.empty_cache()
 
@@ -157,15 +149,15 @@ class DiffOptimizer:
         img = img.permute(0, 2, 3, 1)
         return img
 
-    def Render(self, model_mtx, view_proj_mtx, vp_offset, vtx_positions, vtx_colors, indices, topology_hash, resolution, roi):
+    def Render(self, model_mtx, view_proj_mtx, vp_offset, vtx_positions, vtx_colors, indices, opposite_vertices, resolution, roi):
         mvp_mtx = torch.matmul(model_mtx, view_proj_mtx).to(self.device)
 
         pos_w = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], device = self.device)], axis = 1)
-        pos_clip = torch.matmul(pos_w, mvp_mtx).unsqueeze(0)
+        pos_clip = torch.matmul(pos_w, mvp_mtx)
 
-        rast_out, _ = dr.rasterize(self.context, pos_clip, indices, resolution = resolution, grad_db = False)
-        image, _ = dr.interpolate(vtx_colors.unsqueeze(0), rast_out, indices)
-        image = dr.antialias(image, rast_out, pos_clip, indices, topology_hash)
+        rast_out = self.gpu_dr.Rasterize(pos_clip, indices, resolution)
+        image = self.gpu_dr.Interpolate(vtx_colors, rast_out, indices)
+        image = self.gpu_dr.AntiAlias(image, rast_out, pos_clip, indices, opposite_vertices)
 
         image = image.to(torch.float16)
         image = image.squeeze(0)
@@ -199,7 +191,7 @@ class DiffOptimizer:
         rotation_best = rotation_opt.detach().clone()
         translation_best = translation_opt.detach().clone()
 
-        topology_hash = dr.antialias_construct_topology_hash(indices)
+        opposite_vertices = self.gpu_dr.AntiAliasConstructOppositeVertices(indices)
 
         loss_sum = torch.zeros(1, dtype = torch.float32, device = self.device)
         n = 0
@@ -207,7 +199,7 @@ class DiffOptimizer:
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
-            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, topology_hash, resolutions[img_idx], rois[img_idx])
+            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, opposite_vertices, resolutions[img_idx], rois[img_idx])
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)

@@ -136,26 +136,6 @@ add_library(AIHoloImagerLib STATIC
     ${aihi_files}
 )
 
-macro(AddShaderFile file_name shader_type entry_point)
-    get_filename_component(file_base_name ${file_name} NAME_WE)
-    string(REPLACE "/" ";" path_list ${file_name})
-    list(REMOVE_AT path_list 0 2)
-    list(REMOVE_AT path_list -1)
-    string(REPLACE ";" "/" rel_dir "${path_list}")
-    set(variable_name ${file_base_name}_shader)
-    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${rel_dir}/${file_base_name}.h")
-    set(debug_option "-Zi;-Od;-Qembed_debug")
-    set(release_option "-O2")
-
-    add_custom_command(OUTPUT ${output_name}
-        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${CMAKE_CURRENT_SOURCE_DIR}/Source/Util/Shader/"
-        COMMENT "Compiling ${file_name} to ${output_name}..."
-        MAIN_DEPENDENCY ${file_name}
-        DEPENDS ${file_name}
-        VERBATIM COMMAND_EXPAND_LISTS
-    )
-endmacro()
-
 AddShaderFile(Source/MaskGen/Shader/CalcBBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/ErosionDilationCs.hlsl "cs" "main")
@@ -304,4 +284,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels nvdiffrast)
+add_dependencies(AIHoloImagerLib DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels AIHoloImagerGpuDiffRender)

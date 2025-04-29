@@ -1,0 +1,80 @@
+// Copyright (c) 2025 Minmin Gong
+//
+
+#pragma once
+
+void AtomicAdd(RWBuffer<uint32_t> buff, uint addr, float value)
+{
+    uint32_t cmp_val = buff[addr];
+    [allow_uav_condition]
+    for (;;)
+    {
+        uint32_t new_val = asuint(asfloat(cmp_val) + value);
+        uint32_t ori_val;
+        InterlockedCompareExchange(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+
+template <typename T>
+void Swap(inout T a, inout T b)
+{
+    T tmp = a;
+    a = b;
+    b = tmp;
+}
+
+float Cross(float2 lhs, float2 rhs)
+{
+    return lhs.x * rhs.y - lhs.y * rhs.x;
+}
+
+struct SilhouetteInfo
+{
+    uint32_t2 coord;
+    bool is_down;
+    bool is_face1;
+    uint32_t edge;
+    float alpha;
+};
+
+void EncodeSilhouetteInfo(RWBuffer<uint32_t> silhouette_info, uint32_t index, SilhouetteInfo sil_info)
+{
+    const uint32_t offset = index * 2;
+
+    silhouette_info[offset + 0] = (sil_info.edge << 30) | (sil_info.coord.x << 16) | ((sil_info.is_face1 ? 1 : 0) << 15) | ((sil_info.is_down ? 1 : 0) << 14) | sil_info.coord.y;
+    silhouette_info[offset + 1] = asuint(sil_info.alpha);
+}
+
+SilhouetteInfo DecodeSilhouetteInfo(Buffer<uint32_t> silhouette_info, uint32_t index)
+{
+    SilhouetteInfo sil_info;
+
+    const uint32_t offset = index * 2;
+    const uint32_t encoded = silhouette_info[offset + 0];
+
+    sil_info.coord.x = (encoded >> 16) & 0x3FFFu;
+    sil_info.coord.y = encoded & 0x3FFFu;
+
+    sil_info.is_down = (encoded >> 14) & 1u;
+    sil_info.is_face1 = (encoded >> 15) & 1u;
+    sil_info.edge = (encoded >> 30) & 3u;
+
+    sil_info.alpha = asfloat(silhouette_info[offset + 1]);
+
+    return sil_info;
+}
+
+uint32_t DivUp(uint32_t a, uint32_t b)
+{
+    return (a + b - 1) / b;
+}
+
+float2 WinToNdc(uint32_t2 win_coord, uint32_t2 win_size)
+{
+    return (win_coord + 0.5f) / win_size * 2 - 1;
+}

@@ -13,16 +13,22 @@
 #endif
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include "Gpu/GpuSystem.hpp"
+
 namespace AIHoloImager
 {
     class DiffOptimizer::Impl
     {
     public:
-        explicit Impl(PythonSystem& python_system) : python_system_(python_system)
+        Impl(GpuSystem& gpu_system, PythonSystem& python_system) : gpu_system_(gpu_system), python_system_(python_system)
         {
             diff_optimizer_module_ = python_system_.Import("DiffOptimizer");
             diff_optimizer_class_ = python_system_.GetAttr(*diff_optimizer_module_, "DiffOptimizer");
-            diff_optimizer_ = python_system_.CallObject(*diff_optimizer_class_);
+            auto args = python_system_.MakeTuple(1);
+            {
+                python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(reinterpret_cast<void*>(&gpu_system_)));
+            }
+            diff_optimizer_ = python_system_.CallObject(*diff_optimizer_class_, *args);
             diff_optimizer_opt_method_ = python_system_.GetAttr(*diff_optimizer_, "Optimize");
         }
 
@@ -140,6 +146,7 @@ namespace AIHoloImager
         }
 
     private:
+        GpuSystem& gpu_system_;
         PythonSystem& python_system_;
 
         PyObjectPtr diff_optimizer_module_;
@@ -148,7 +155,8 @@ namespace AIHoloImager
         PyObjectPtr diff_optimizer_opt_method_;
     };
 
-    DiffOptimizer::DiffOptimizer(PythonSystem& python_system) : impl_(std::make_unique<Impl>(python_system))
+    DiffOptimizer::DiffOptimizer(GpuSystem& gpu_system, PythonSystem& python_system)
+        : impl_(std::make_unique<Impl>(gpu_system, python_system))
     {
     }
 

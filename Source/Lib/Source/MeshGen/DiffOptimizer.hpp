@@ -19,7 +19,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(DiffOptimizer);
 
     public:
-        explicit DiffOptimizer(PythonSystem& python_system);
+        DiffOptimizer(GpuSystem& gpu_system, PythonSystem& python_system);
         DiffOptimizer(DiffOptimizer&& other) noexcept;
         ~DiffOptimizer() noexcept;
 

@@ -181,7 +181,7 @@ namespace AIHoloImager
             std::cout << "Optimizing transform...\n";
 
             {
-                DiffOptimizer optimizer(python_system_);
+                DiffOptimizer optimizer(gpu_system_, python_system_);
                 optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
             }
 
