@@ -35,6 +35,6 @@ endmacro()
 
 add_subdirectory(Base)
 add_subdirectory(GpuSystem)
-add_subdirectory(GpuDiffRast)
+add_subdirectory(GpuDiffRender)
 add_subdirectory(Lib)
 add_subdirectory(App)
