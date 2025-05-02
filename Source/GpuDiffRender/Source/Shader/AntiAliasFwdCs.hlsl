@@ -13,9 +13,10 @@ cbuffer param_cb : register(b0)
 
 Buffer<float> shading_buff : register(t0);
 Texture2D<float4> gbuffer_tex : register(t1);
-Buffer<float4> positions_buff : register(t2);
-Buffer<uint32_t> indices_buff : register(t3);
-Buffer<uint32_t> opposite_vertices_buff : register(t4);
+Texture2D<float> depth_tex : register(t2);
+Buffer<float4> positions_buff : register(t3);
+Buffer<uint32_t> indices_buff : register(t4);
+Buffer<uint32_t> opposite_vertices_buff : register(t5);
 
 RWBuffer<uint32_t> anti_aliased : register(u0);
 RWBuffer<uint32_t> silhouette_counter : register(u1);
@@ -33,54 +34,38 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     // Step 1: Is this pixel near an edge?
 
     const uint32_t2 center_coord = dtid.xy;
-    const uint32_t fi0 = asuint(gbuffer_tex[center_coord].w);
+    const uint32_t center_fi = asuint(gbuffer_tex[center_coord].w);
 
     const uint32_t2 right_coord = uint32_t2(min(dtid.x + 1, gbuffer_size.x - 1), dtid.y);
-    const uint32_t fi1 = asuint(gbuffer_tex[right_coord].w);
-
     const uint32_t2 down_coord = uint32_t2(dtid.x, min(dtid.y + 1, gbuffer_size.y - 1));
-    const uint32_t fi2 = asuint(gbuffer_tex[down_coord].w);
-
-    bool is_downs[2];
-    uint32_t num_candidates = 0;
-    if (fi1 != fi0)
-    {
-        is_downs[num_candidates] = false;
-        ++num_candidates;
-    }
-    if (fi2 != fi0)
-    {
-        is_downs[num_candidates] = true;
-        ++num_candidates;
-    }
-
-    [branch]
-    if (num_candidates == 0)
-    {
-        return;
-    }
 
     SilhouetteInfo silhouette_pixels[2];
     uint32_t num_silhouette_pixels = 0;
-    for (uint32_t i = 0; i < num_candidates; ++i)
+    for (uint32_t i = 0; i < 2; ++i)
     {
-        uint32_t2 pixel_coord = dtid.xy;
-        const bool is_down = is_downs[i];
+        const bool is_down = (i == 1);
 
-        const uint32_t2 pixel0 = pixel_coord;
-        const uint32_t2 pixel1 = pixel_coord + (is_down ? uint32_t2(0, 1) : uint32_t2(1, 0));
+        const uint32_t2 pixel0 = center_coord;
+        const uint32_t2 pixel1 = is_down ? down_coord : right_coord;
 
-        const float2 zt0 = gbuffer_tex[pixel0].zw;
-        const float2 zt1 = gbuffer_tex[pixel1].zw;
-        const uint32_t fi0 = asuint(zt0.y);
-        const uint32_t fi1 = asuint(zt1.y);
+        const uint32_t other_fi = asuint(gbuffer_tex[pixel1].w);
+        [branch]
+        if (other_fi == center_fi)
+        {
+            continue;
+        }
+
+        const float z0 = depth_tex[pixel0];
+        const float z1 = depth_tex[pixel1];
+        const uint32_t fi0 = center_fi;
+        const uint32_t fi1 = other_fi;
 
         uint32_t fi;
         if (fi0 > 0)
         {
             if (fi1 > 0)
             {
-                fi = zt0.x < zt1.x ? fi0 : fi1;
+                fi = z0 < z1 ? fi0 : fi1;
             }
             else
             {
@@ -98,10 +83,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         }
 
         const bool is_face1 = (fi == fi1);
-        if (is_face1)
-        {
-            pixel_coord = pixel1;
-        }
+        const uint32_t2 pixel_coord = is_face1 ? pixel1 : pixel0;
 
         --fi;
 

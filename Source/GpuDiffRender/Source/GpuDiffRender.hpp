@@ -41,6 +41,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system_;
 
         GpuTexture2D depth_tex_;
+        GpuShaderResourceView depth_srv_;
         GpuDepthStencilView depth_dsv_;
         GpuRenderPipeline rasterize_fwd_pipeline_;
 
@@ -50,7 +51,6 @@ namespace AIHoloImager
             uint32_t padding[2];
         };
         ConstantBuffer<RasterizeBwdConstantBuffer> rasterize_bwd_cb_;
-
         GpuComputePipeline rasterize_bwd_pipeline_;
 
         struct InterpolateFwdConstantBuffer

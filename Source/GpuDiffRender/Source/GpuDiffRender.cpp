@@ -85,7 +85,7 @@ namespace AIHoloImager
         {
             anti_alias_fwd_cb_ = ConstantBuffer<AntialiasFwdConstantBuffer>(gpu_system_, 1, L"anti_alias_fwd_cb_");
 
-            const ShaderInfo shader = {AntiAliasFwdCs_shader, 1, 5, 3};
+            const ShaderInfo shader = {AntiAliasFwdCs_shader, 1, 6, 3};
             anti_alias_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
@@ -123,6 +123,7 @@ namespace AIHoloImager
         {
             depth_tex_ = GpuTexture2D(gpu_system_, width, height, 1, GpuFormat::D32_Float, GpuResourceFlag::DepthStencil,
                 L"GpuDiffRender.RasterizeFwd.depth_tex");
+            depth_srv_ = GpuShaderResourceView(gpu_system_, depth_tex_, GpuFormat::R32_Float);
             depth_dsv_ = GpuDepthStencilView(gpu_system_, depth_tex_);
         }
 
@@ -379,7 +380,8 @@ namespace AIHoloImager
             }
 
             const GeneralConstantBuffer* cbs[] = {&anti_alias_fwd_cb_};
-            const GpuShaderResourceView* srvs[] = {&shading_srv, &gbuffer_srv, &positions_srv, &indices_srv, &opposite_vertices_srv};
+            const GpuShaderResourceView* srvs[] = {
+                &shading_srv, &gbuffer_srv, &depth_srv_, &positions_srv, &indices_srv, &opposite_vertices_srv};
             GpuUnorderedAccessView* uavs[] = {&anti_aliased_uav, &silhouette_counter_uav_, &silhouette_info_uav_};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);

@@ -13,7 +13,7 @@ struct GsInput
 
 struct PsInput
 {
-    float4 bc_zw : TEXCOORD0;
+    float2 bc : TEXCOORD0;
     nointerpolation uint prim_id : PRIMITIVE_ID;
     float4 pos : SV_Position;
 };
@@ -30,7 +30,7 @@ void main(triangle GsInput input[3],
     for (uint32_t i = 0; i < 3; ++i)
     {
         output.pos = input[i].pos;
-        output.bc_zw = float4(Barycentric[i], input[i].pos.zw);
+        output.bc = Barycentric[i];
         out_stream.Append(output);
     }
     out_stream.RestartStrip();
