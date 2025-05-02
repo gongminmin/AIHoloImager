@@ -211,7 +211,7 @@ namespace AIHoloImager
 
         GpuBuffer indices_buff;
         this->Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices_buff");
+            L"GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
 
         AntiAliasOppositeVertices ret;
         gpu_dr_.AntiAliasConstructOppositeVertices(cmd_list, indices_buff, ret.opposite_vertices);
@@ -267,13 +267,13 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         this->Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.shading_buff");
+            L"GpuDiffRenderTorch.AntiAliasFwd.shading");
         this->Convert(cmd_list, std::move(gbuffer), aa_intermediate_.gbuffer, GpuFormat::RGBA32_Float, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.gbuffer_tex");
+            L"GpuDiffRenderTorch.AntiAliasFwd.gbuffer");
         this->Convert(cmd_list, std::move(positions), aa_intermediate_.positions, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.positions_buff");
+            L"GpuDiffRenderTorch.AntiAliasFwd.positions");
         this->Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.indices_buff");
+            L"GpuDiffRenderTorch.AntiAliasFwd.indices");
 
         gpu_dr_.AntiAliasFwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.gbuffer, aa_intermediate_.positions,
             aa_intermediate_.indices, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);

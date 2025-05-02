@@ -328,7 +328,7 @@ namespace AIHoloImager
         {
             opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::None);
         }
-        opposite_vertices.Name(L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices_buff");
+        opposite_vertices.Name(L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices");
 
         cmd_list.Copy(opposite_vertices, opposite_vertices_upload_buff);
     }
@@ -345,7 +345,7 @@ namespace AIHoloImager
             anti_aliased =
                 GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
         }
-        anti_aliased.Name(L"GpuDiffRender.AntiAliasFwd.grad_gbuffer");
+        anti_aliased.Name(L"GpuDiffRender.AntiAliasFwd.anti_aliased");
 
         const uint32_t silhouette_info_size = width * height * 4 * sizeof(uint32_t);
         if (silhouette_info_.Size() != silhouette_info_size)
