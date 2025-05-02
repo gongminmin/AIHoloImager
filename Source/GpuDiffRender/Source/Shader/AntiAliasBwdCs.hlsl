@@ -12,7 +12,7 @@ cbuffer param_cb : register(b0)
 };
 
 Buffer<float> shading_buff : register(t0);
-Texture2D<float4> gbuffer_tex : register(t1);
+Texture2D<uint32_t> prim_id_tex : register(t1);
 Buffer<float4> positions_buff : register(t2);
 Buffer<uint32_t> indices_buff : register(t3);
 Buffer<uint32_t> silhouette_counter : register(t4);
@@ -41,7 +41,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         pixel_coord = pixel1;
     }
 
-    uint32_t fi = asuint(gbuffer_tex[pixel_coord].w);
+    uint32_t fi = prim_id_tex[pixel_coord];
     [branch]
     if (fi == 0)
     {

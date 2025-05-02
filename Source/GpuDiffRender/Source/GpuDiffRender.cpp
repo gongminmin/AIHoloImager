@@ -38,7 +38,7 @@ namespace AIHoloImager
                 {RasterizeFwdGs_shader, 0, 0, 0},
             };
 
-            const GpuFormat rtv_formats[] = {GpuFormat::RGBA32_Float};
+            const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint};
 
             GpuRenderPipeline::States states;
             states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
@@ -56,20 +56,20 @@ namespace AIHoloImager
         {
             rasterize_bwd_cb_ = ConstantBuffer<RasterizeBwdConstantBuffer>(gpu_system_, 1, L"rasterize_bwd_cb_");
 
-            const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 4, 1};
+            const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 5, 1};
             rasterize_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
             interpolate_fwd_cb_ = ConstantBuffer<InterpolateFwdConstantBuffer>(gpu_system_, 1, L"interpolate_fwd_cb_");
 
-            const ShaderInfo shader = {InterpolateFwdCs_shader, 1, 3, 1};
+            const ShaderInfo shader = {InterpolateFwdCs_shader, 1, 4, 1};
             interpolate_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
             interpolate_bwd_cb_ = ConstantBuffer<InterpolateBwdConstantBuffer>(gpu_system_, 1, L"interpolate_bwd_cb_");
 
-            const ShaderInfo shader = {InterpolateBwdCs_shader, 1, 4, 2};
+            const ShaderInfo shader = {InterpolateBwdCs_shader, 1, 5, 2};
             interpolate_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
@@ -108,16 +108,24 @@ namespace AIHoloImager
     GpuDiffRender::~GpuDiffRender() = default;
 
     void GpuDiffRender::RasterizeFwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, uint32_t width,
-        uint32_t height, GpuTexture2D& gbuffer)
+        uint32_t height, GpuTexture2D& barycentric, GpuTexture2D& prim_id)
     {
-        if ((gbuffer.Width(0) != width) || (gbuffer.Height(0) != height) || (gbuffer.Format() != GpuFormat::RGBA32_Float))
+        if ((barycentric.Width(0) != width) || (barycentric.Height(0) != height) || (barycentric.Format() != GpuFormat::RG32_Float))
         {
-            gbuffer = GpuTexture2D(
-                gpu_system_, width, height, 1, GpuFormat::RGBA32_Float, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+            barycentric = GpuTexture2D(
+                gpu_system_, width, height, 1, GpuFormat::RG32_Float, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
         }
-        gbuffer.Name(L"GpuDiffRender.RasterizeFwd.gbuffer");
+        barycentric.Name(L"GpuDiffRender.RasterizeFwd.barycentric");
 
-        GpuRenderTargetView gbuffer_rtv(gpu_system_, gbuffer);
+        if ((prim_id.Width(0) != width) || (prim_id.Height(0) != height) || (prim_id.Format() != GpuFormat::R32_Uint))
+        {
+            prim_id = GpuTexture2D(
+                gpu_system_, width, height, 1, GpuFormat::R32_Uint, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+        }
+        prim_id.Name(L"GpuDiffRender.RasterizeFwd.prim_id");
+
+        GpuRenderTargetView barycentric_rtv(gpu_system_, barycentric);
+        GpuRenderTargetView prim_id_rtv(gpu_system_, prim_id);
 
         if ((depth_tex_.Width(0) != width) || (depth_tex_.Height(0) != height))
         {
@@ -128,7 +136,7 @@ namespace AIHoloImager
         }
 
         const float clear_clr[] = {0, 0, 0, 0};
-        cmd_list.Clear(gbuffer_rtv, clear_clr);
+        cmd_list.Clear(prim_id_rtv, clear_clr);
         cmd_list.ClearDepth(depth_dsv_, 1.0f);
 
         const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&positions, 0, sizeof(glm::vec4)}};
@@ -140,7 +148,7 @@ namespace AIHoloImager
             {{}, {}, {}},
         };
 
-        const GpuRenderTargetView* rtvs[] = {&gbuffer_rtv};
+        const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
 
         const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)};
         cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
@@ -148,10 +156,10 @@ namespace AIHoloImager
     }
 
     void GpuDiffRender::RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices,
-        const GpuTexture2D& gbuffer, const GpuTexture2D& grad_gbuffer, GpuBuffer& grad_positions)
+        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric, GpuBuffer& grad_positions)
     {
-        const uint32_t width = gbuffer.Width(0);
-        const uint32_t height = gbuffer.Height(0);
+        const uint32_t width = barycentric.Width(0);
+        const uint32_t height = barycentric.Height(0);
 
         if (grad_positions.Size() != positions.Size())
         {
@@ -165,8 +173,9 @@ namespace AIHoloImager
         rasterize_bwd_cb_->gbuffer_size = glm::uvec2(width, height);
         rasterize_bwd_cb_.UploadToGpu();
 
-        const GpuShaderResourceView gbuffer_srv(gpu_system_, gbuffer, GpuFormat::RGBA32_Float);
-        const GpuShaderResourceView grad_gbuffer_srv(gpu_system_, grad_gbuffer, GpuFormat::RGBA32_Float);
+        const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
+        const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+        const GpuShaderResourceView grad_barycentric_srv(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
         const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
         const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
@@ -177,17 +186,17 @@ namespace AIHoloImager
         cmd_list.Clear(grad_positions_uav, clear_clr);
 
         const GeneralConstantBuffer* cbs[] = {&rasterize_bwd_cb_};
-        const GpuShaderResourceView* srvs[] = {&gbuffer_srv, &grad_gbuffer_srv, &positions_srv, &indices_srv};
+        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv};
         GpuUnorderedAccessView* uavs[] = {&grad_positions_uav};
         const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
         cmd_list.Compute(rasterize_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-        const GpuTexture2D& gbuffer, const GpuBuffer& indices, GpuBuffer& shading)
+        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, GpuBuffer& shading)
     {
-        const uint32_t width = gbuffer.Width(0);
-        const uint32_t height = gbuffer.Height(0);
+        const uint32_t width = barycentric.Width(0);
+        const uint32_t height = barycentric.Height(0);
 
         const uint32_t shading_size = width * height * num_attribs_per_vtx * sizeof(float);
         if (shading.Size() != shading_size)
@@ -202,7 +211,8 @@ namespace AIHoloImager
         interpolate_fwd_cb_->num_attribs = num_attribs_per_vtx;
         interpolate_fwd_cb_.UploadToGpu();
 
-        GpuShaderResourceView rast_srv(gpu_system_, gbuffer, GpuFormat::RGBA32_Float);
+        GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
+        GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
         GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
         GpuShaderResourceView index_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
@@ -212,18 +222,18 @@ namespace AIHoloImager
         cmd_list.Clear(shading_uav, clear_clr);
 
         const GeneralConstantBuffer* cbs[] = {&interpolate_fwd_cb_};
-        const GpuShaderResourceView* srvs[] = {&rast_srv, &attrib_srv, &index_srv};
+        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv};
         GpuUnorderedAccessView* uavs[] = {&shading_uav};
         const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
         cmd_list.Compute(interpolate_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::InterpolateBwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-        const GpuTexture2D& gbuffer, const GpuBuffer& indices, const GpuBuffer& grad_shading, GpuBuffer& grad_vtx_attribs,
-        GpuTexture2D& grad_gbuffer)
+        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, const GpuBuffer& grad_shading,
+        GpuBuffer& grad_vtx_attribs, GpuTexture2D& grad_barycentric)
     {
-        const uint32_t width = gbuffer.Width(0);
-        const uint32_t height = gbuffer.Height(0);
+        const uint32_t width = barycentric.Width(0);
+        const uint32_t height = barycentric.Height(0);
 
         if (grad_vtx_attribs.Size() != vtx_attribs.Size())
         {
@@ -232,12 +242,13 @@ namespace AIHoloImager
         }
         grad_vtx_attribs.Name(L"GpuDiffRender.InterpolateBwd.grad_vtx_attribs");
 
-        if ((grad_gbuffer.Width(0) != width) || (grad_gbuffer.Height(0) != height) || (grad_gbuffer.Format() != GpuFormat::RGBA32_Float))
+        if ((grad_barycentric.Width(0) != width) || (grad_barycentric.Height(0) != height) ||
+            (grad_barycentric.Format() != GpuFormat::RG32_Float))
         {
-            grad_gbuffer = GpuTexture2D(
-                gpu_system_, width, height, 1, GpuFormat::RGBA32_Float, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+            grad_barycentric = GpuTexture2D(
+                gpu_system_, width, height, 1, GpuFormat::RG32_Float, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
         }
-        grad_gbuffer.Name(L"GpuDiffRender.InterpolateBwd.grad_gbuffer");
+        grad_barycentric.Name(L"GpuDiffRender.InterpolateBwd.grad_barycentric");
 
         constexpr uint32_t BlockDim = 16;
 
@@ -245,13 +256,14 @@ namespace AIHoloImager
         interpolate_bwd_cb_->num_attribs = num_attribs_per_vtx;
         interpolate_bwd_cb_.UploadToGpu();
 
-        GpuShaderResourceView gbuffer_srv(gpu_system_, gbuffer, GpuFormat::RGBA32_Float);
+        GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
+        GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
         GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
         GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
         GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, GpuFormat::R32_Float);
 
         GpuUnorderedAccessView grad_vtx_attribs_uav(gpu_system_, grad_vtx_attribs, GpuFormat::R32_Uint);
-        GpuUnorderedAccessView grad_gbuffer_uav(gpu_system_, grad_gbuffer, GpuFormat::RGBA32_Float);
+        GpuUnorderedAccessView grad_barycentric_uav(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
 
         {
             const uint32_t clear_clr[] = {0, 0, 0, 0};
@@ -259,12 +271,12 @@ namespace AIHoloImager
         }
         {
             const float clear_clr[] = {0, 0, 0, 0};
-            cmd_list.Clear(grad_gbuffer_uav, clear_clr);
+            cmd_list.Clear(grad_barycentric_uav, clear_clr);
         }
 
         const GeneralConstantBuffer* cbs[] = {&interpolate_bwd_cb_};
-        const GpuShaderResourceView* srvs[] = {&gbuffer_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv};
-        GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_gbuffer_uav};
+        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv};
+        GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav};
         const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
         cmd_list.Compute(interpolate_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
     }
@@ -334,11 +346,11 @@ namespace AIHoloImager
         cmd_list.Copy(opposite_vertices, opposite_vertices_upload_buff);
     }
 
-    void GpuDiffRender::AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& gbuffer,
+    void GpuDiffRender::AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,
         const GpuBuffer& positions, const GpuBuffer& indices, const GpuBuffer& opposite_vertices, GpuBuffer& anti_aliased)
     {
-        const uint32_t width = gbuffer.Width(0);
-        const uint32_t height = gbuffer.Height(0);
+        const uint32_t width = prim_id.Width(0);
+        const uint32_t height = prim_id.Height(0);
         const uint32_t num_attribs = shading.Size() / (width * height * sizeof(float));
 
         if (anti_aliased.Size() != shading.Size())
@@ -367,7 +379,7 @@ namespace AIHoloImager
             anti_alias_fwd_cb_.UploadToGpu();
 
             GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
-            GpuShaderResourceView gbuffer_srv(gpu_system_, gbuffer, GpuFormat::RGBA32_Float);
+            GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
             GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
             GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
             GpuShaderResourceView opposite_vertices_srv(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
@@ -381,19 +393,19 @@ namespace AIHoloImager
 
             const GeneralConstantBuffer* cbs[] = {&anti_alias_fwd_cb_};
             const GpuShaderResourceView* srvs[] = {
-                &shading_srv, &gbuffer_srv, &depth_srv_, &positions_srv, &indices_srv, &opposite_vertices_srv};
+                &shading_srv, &prim_id_srv, &depth_srv_, &positions_srv, &indices_srv, &opposite_vertices_srv};
             GpuUnorderedAccessView* uavs[] = {&anti_aliased_uav, &silhouette_counter_uav_, &silhouette_info_uav_};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
         }
     }
 
-    void GpuDiffRender::AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& gbuffer,
+    void GpuDiffRender::AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,
         const GpuBuffer& positions, const GpuBuffer& indices, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
         GpuBuffer& grad_positions)
     {
-        const uint32_t width = gbuffer.Width(0);
-        const uint32_t height = gbuffer.Height(0);
+        const uint32_t width = prim_id.Width(0);
+        const uint32_t height = prim_id.Height(0);
         const uint32_t num_attribs = shading.Size() / (width * height * sizeof(float));
 
         {
@@ -430,7 +442,7 @@ namespace AIHoloImager
             anti_alias_bwd_cb_.UploadToGpu();
 
             GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
-            GpuShaderResourceView gbuffer_srv(gpu_system_, gbuffer, GpuFormat::RGBA32_Float);
+            GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
             GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
             GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
             GpuShaderResourceView grad_anti_aliased_srv(gpu_system_, grad_anti_aliased, GpuFormat::R32_Float);
@@ -444,7 +456,7 @@ namespace AIHoloImager
             }
 
             const GeneralConstantBuffer* cbs[] = {&anti_alias_bwd_cb_};
-            const GpuShaderResourceView* srvs[] = {&shading_srv, &gbuffer_srv, &positions_srv, &indices_srv, &silhouette_counter_srv_,
+            const GpuShaderResourceView* srvs[] = {&shading_srv, &prim_id_srv, &positions_srv, &indices_srv, &silhouette_counter_srv_,
                 &silhouette_info_srv_, &grad_anti_aliased_srv};
             GpuUnorderedAccessView* uavs[] = {&grad_shading_uav, &grad_positions_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};

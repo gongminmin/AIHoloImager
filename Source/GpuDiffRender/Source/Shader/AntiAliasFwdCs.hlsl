@@ -12,7 +12,7 @@ cbuffer param_cb : register(b0)
 };
 
 Buffer<float> shading_buff : register(t0);
-Texture2D<float4> gbuffer_tex : register(t1);
+Texture2D<uint32_t> prim_id_tex : register(t1);
 Texture2D<float> depth_tex : register(t2);
 Buffer<float4> positions_buff : register(t3);
 Buffer<uint32_t> indices_buff : register(t4);
@@ -34,7 +34,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     // Step 1: Is this pixel near an edge?
 
     const uint32_t2 center_coord = dtid.xy;
-    const uint32_t center_fi = asuint(gbuffer_tex[center_coord].w);
+    const uint32_t center_fi = prim_id_tex[center_coord];
 
     const uint32_t2 right_coord = uint32_t2(min(dtid.x + 1, gbuffer_size.x - 1), dtid.y);
     const uint32_t2 down_coord = uint32_t2(dtid.x, min(dtid.y + 1, gbuffer_size.y - 1));
@@ -48,7 +48,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         const uint32_t2 pixel0 = center_coord;
         const uint32_t2 pixel1 = is_down ? down_coord : right_coord;
 
-        const uint32_t other_fi = asuint(gbuffer_tex[pixel1].w);
+        const uint32_t other_fi = prim_id_tex[pixel1];
         [branch]
         if (other_fi == center_fi)
         {

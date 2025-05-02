@@ -9,9 +9,10 @@ cbuffer param_cb : register(b0)
     uint32_t num_attribs;
 };
 
-Texture2D<float4> gbuffer_tex : register(t0);
-Buffer<float> vtx_attribs_buff : register(t1);
-Buffer<uint32_t> indices_buff : register(t2);
+Texture2D<float2> barycentric_tex : register(t0);
+Texture2D<uint32_t> prim_id_tex : register(t1);
+Buffer<float> vtx_attribs_buff : register(t2);
+Buffer<uint32_t> indices_buff : register(t3);
 
 RWBuffer<float> shading : register(u0);
 
@@ -24,8 +25,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    const float4 rast = gbuffer_tex[dtid.xy];
-    uint32_t fi = asuint(rast.w);
+    uint32_t fi = prim_id_tex[dtid.xy];
     [branch]
     if (fi == 0)
     {
@@ -41,7 +41,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     }
 
     const uint32_t out_offset = (dtid.y * gbuffer_size.x + dtid.x) * num_attribs;
-    const float3 bc = float3(rast.xy, 1 - rast.x - rast.y);
+    float3 bc;
+    bc.xy = barycentric_tex[dtid.xy];
+    bc.z = 1 - bc.x - bc.y;
     for (uint32_t i = 0; i < num_attribs; ++i)
     {
         shading[out_offset + i] = bc.x * vtx_attribs_buff[in_offsets[0] + i] +

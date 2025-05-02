@@ -11,13 +11,14 @@ cbuffer param_cb : register(b0)
     uint32_t num_attribs;
 };
 
-Texture2D<float4> gbuffer_tex : register(t0);
-Buffer<float> vtx_attribs_buff : register(t1);
-Buffer<uint32_t> indices_buff : register(t2);
-Buffer<float> grad_shading_buff : register(t3);
+Texture2D<float2> barycentric_tex : register(t0);
+Texture2D<uint32_t> prim_id_tex : register(t1);
+Buffer<float> vtx_attribs_buff : register(t2);
+Buffer<uint32_t> indices_buff : register(t3);
+Buffer<float> grad_shading_buff : register(t4);
 
 RWBuffer<uint32_t> grad_vtx_attribs : register(u0);
-RWTexture2D<float4> grad_gbuffer : register(u1);
+RWTexture2D<float2> grad_barycentric : register(u1);
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
@@ -28,8 +29,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    const float4 rast = gbuffer_tex[dtid.xy];
-    uint32_t fi = asuint(rast.w);
+    uint32_t fi = prim_id_tex[dtid.xy];
     [branch]
     if (fi == 0)
     {
@@ -45,7 +45,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     }
 
     const uint32_t pixel_offset = (dtid.y * gbuffer_size.x + dtid.x) * num_attribs;
-    const float3 bc = float3(rast.xy, 1 - rast.x - rast.y);
+    float3 bc;
+    bc.xy = barycentric_tex[dtid.xy];
+    bc.z = 1 - bc.x - bc.y;
     float2 dl_duv = 0;
     for (uint32_t i = 0; i < num_attribs; ++i)
     {
@@ -69,5 +71,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         }
     }
 
-    grad_gbuffer[dtid.xy] = float4(dl_duv, 0, 0);
+    grad_barycentric[dtid.xy] = dl_duv;
 }

@@ -1,7 +1,9 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
-float4 main(float2 bc : TEXCOORD0, uint32_t prim_id : PRIMITIVE_ID) : SV_Target0
+void main(float2 bc : TEXCOORD0, uint32_t prim_id : PRIMITIVE_ID,
+          out float2 out_bc : SV_Target0, out uint32_t out_prim_id : SV_Target1)
 {
-    return float4(bc, 0, asfloat(prim_id));
+    out_bc = bc;
+    out_prim_id = prim_id;
 }

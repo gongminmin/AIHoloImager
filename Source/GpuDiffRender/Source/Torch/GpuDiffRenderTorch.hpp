@@ -13,6 +13,7 @@
     #pragma warning(disable : 4324) // Ignore padded structure
     #pragma warning(disable : 4275) // Ignore non dll-interface base class
 #endif
+#include <torch/autograd.h>
 #include <torch/types.h>
 #ifdef _MSC_VER
     #pragma warning(pop)
@@ -31,9 +32,9 @@ namespace AIHoloImager
         GpuDiffRenderTorch(size_t gpu_system, torch::Device torch_device);
         ~GpuDiffRenderTorch();
 
-        torch::Tensor Rasterize(torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
+        torch::autograd::tensor_list Rasterize(torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
 
-        torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor gbuffer, torch::Tensor indices);
+        torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
 
         struct AntiAliasOppositeVertices
         {
@@ -42,17 +43,18 @@ namespace AIHoloImager
 
         AntiAliasOppositeVertices AntiAliasConstructOppositeVertices(torch::Tensor indices);
 
-        torch::Tensor AntiAlias(torch::Tensor shading, torch::Tensor gbuffer, torch::Tensor positions, torch::Tensor indices,
+        torch::Tensor AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
             const AntiAliasOppositeVertices* opposite_vertices = nullptr);
 
     private:
-        torch::Tensor RasterizeFwd(torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
-        torch::Tensor RasterizeBwd(torch::Tensor grad_gbuffer);
+        std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
+            torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
+        torch::Tensor RasterizeBwd(torch::Tensor grad_barycentric);
 
-        torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor gbuffer, torch::Tensor indices);
+        torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
         std::tuple<torch::Tensor, torch::Tensor> InterpolateBwd(torch::Tensor grad_shading);
 
-        torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor gbuffer, torch::Tensor positions, torch::Tensor indices,
+        torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
             const AntiAliasOppositeVertices* opposite_vertices = nullptr);
         std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
 
@@ -84,9 +86,10 @@ namespace AIHoloImager
         {
             GpuBuffer positions;
             GpuBuffer indices;
-            GpuTexture2D gbuffer;
+            GpuTexture2D barycentric;
+            GpuTexture2D prim_id;
 
-            GpuTexture2D grad_gbuffer;
+            GpuTexture2D grad_barycentric;
             GpuBuffer grad_positions;
         };
         RasterizeIntermediate rast_intermediate_;
@@ -95,20 +98,21 @@ namespace AIHoloImager
         {
             GpuBuffer vtx_attribs;
             uint32_t num_attribs;
-            GpuTexture2D gbuffer;
+            GpuTexture2D barycentric;
+            GpuTexture2D prim_id;
             GpuBuffer indices;
 
             GpuBuffer shading;
             GpuBuffer grad_shading;
             GpuBuffer grad_vtx_attribs;
-            GpuTexture2D grad_gbuffer;
+            GpuTexture2D grad_barycentric;
         };
         InterpolateIntermediate interpolate_intermediate_;
 
         struct AntiAliasIntermediate
         {
             GpuBuffer shading;
-            GpuTexture2D gbuffer;
+            GpuTexture2D prim_id;
             GpuBuffer positions;
             GpuBuffer indices;
 

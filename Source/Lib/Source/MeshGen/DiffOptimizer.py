@@ -155,9 +155,9 @@ class DiffOptimizer:
         pos_w = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], device = self.device)], axis = 1)
         pos_clip = torch.matmul(pos_w, mvp_mtx)
 
-        rast_out = self.gpu_dr.Rasterize(pos_clip, indices, resolution)
-        image = self.gpu_dr.Interpolate(vtx_colors, rast_out, indices)
-        image = self.gpu_dr.AntiAlias(image, rast_out, pos_clip, indices, opposite_vertices)
+        barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution)
+        image = self.gpu_dr.Interpolate(vtx_colors, barycentric, prim_id, indices)
+        image = self.gpu_dr.AntiAlias(image, prim_id, pos_clip, indices, opposite_vertices)
 
         image = image.to(torch.float16)
         image = image.squeeze(0)

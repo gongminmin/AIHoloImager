@@ -20,21 +20,21 @@ namespace AIHoloImager
         ~GpuDiffRender();
 
         void RasterizeFwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, uint32_t width, uint32_t height,
-            GpuTexture2D& gbuffer);
-        void RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, const GpuTexture2D& gbuffer,
-            const GpuTexture2D& grad_gbuffer, GpuBuffer& grad_positions);
+            GpuTexture2D& barycentric, GpuTexture2D& prim_id);
+        void RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, const GpuTexture2D& barycentric,
+            const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric, GpuBuffer& grad_positions);
 
         void InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-            const GpuTexture2D& gbuffer, const GpuBuffer& indices, GpuBuffer& shading);
+            const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, GpuBuffer& shading);
         void InterpolateBwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-            const GpuTexture2D& gbuffer, const GpuBuffer& indices, const GpuBuffer& grad_shading, GpuBuffer& grad_vtx_attribs,
-            GpuTexture2D& grad_gbuffer);
+            const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, const GpuBuffer& grad_shading,
+            GpuBuffer& grad_vtx_attribs, GpuTexture2D& grad_barycentric);
 
         void AntiAliasConstructOppositeVertices(GpuCommandList& cmd_list, const GpuBuffer& indices, GpuBuffer& opposite_vertices);
 
-        void AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& gbuffer, const GpuBuffer& positions,
+        void AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
             const GpuBuffer& indices, const GpuBuffer& opposite_vertices, GpuBuffer& anti_aliased);
-        void AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& gbuffer, const GpuBuffer& positions,
+        void AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
             const GpuBuffer& indices, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading, GpuBuffer& grad_positions);
 
     private:

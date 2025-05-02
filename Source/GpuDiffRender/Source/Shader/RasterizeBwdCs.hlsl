@@ -10,10 +10,11 @@ cbuffer param_cb : register(b0)
     uint32_t2 gbuffer_size;
 };
 
-Texture2D<float4> gbuffer_tex : register(t0);
-Texture2D<float4> grad_gbuffer_tex : register(t1);
-Buffer<float4> positions_buff : register(t2);
-Buffer<uint32_t> indices_buff : register(t3);
+Texture2D<float2> barycentric_tex : register(t0);
+Texture2D<uint32_t> prim_id_tex : register(t1);
+Texture2D<float2> grad_barycentric_tex : register(t2);
+Buffer<float4> positions_buff : register(t3);
+Buffer<uint32_t> indices_buff : register(t4);
 
 RWBuffer<uint32_t> grad_positions_buff : register(u0);
 
@@ -31,15 +32,14 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    const float4 rast = gbuffer_tex[dtid.xy];
-    uint32_t fi = asuint(rast.w);
+    uint32_t fi = prim_id_tex[dtid.xy];
     [branch]
     if (fi == 0)
     {
         return;
     }
 
-    float2 dl_duv = grad_gbuffer_tex[dtid.xy].xy; // dL/d{u,v}
+    float2 dl_duv = grad_barycentric_tex[dtid.xy]; // dL/d{u,v}
     [branch]
     if (all(dl_duv == 0))
     {
@@ -117,7 +117,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     static const float Eps = 1e-6f;
     const float inv_area = 1 / (area + (area >= 0 ? Eps : -Eps));
 
-    const float2 bc = rast.xy;
+    const float2 bc = barycentric_tex[dtid.xy];
 
     float2 duv_dx;
     float2 duv_dy;
