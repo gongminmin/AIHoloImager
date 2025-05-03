@@ -78,3 +78,9 @@ float2 WinToNdc(uint32_t2 win_coord, uint32_t2 win_size)
 {
     return (win_coord + 0.5f) / win_size * 2 - 1;
 }
+
+void RightDownCoord(uint32_t2 center_coord, uint32_t2 tex_size, out uint32_t2 right_coord, out uint32_t2 down_coord)
+{
+    right_coord = uint32_t2(min(center_coord.x + 1, tex_size.x - 1), center_coord.y);
+    down_coord = uint32_t2(center_coord.x, min(center_coord.y + 1, tex_size.y - 1));
+}

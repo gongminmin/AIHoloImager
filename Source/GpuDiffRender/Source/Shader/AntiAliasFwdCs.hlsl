@@ -36,8 +36,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     const uint32_t2 center_coord = dtid.xy;
     const uint32_t center_fi = prim_id_tex[center_coord];
 
-    const uint32_t2 right_coord = uint32_t2(min(dtid.x + 1, gbuffer_size.x - 1), dtid.y);
-    const uint32_t2 down_coord = uint32_t2(dtid.x, min(dtid.y + 1, gbuffer_size.y - 1));
+    uint32_t2 right_coord;
+    uint32_t2 down_coord;
+    RightDownCoord(center_coord, gbuffer_size, right_coord, down_coord);
 
     SilhouetteInfo silhouette_pixels[2];
     uint32_t num_silhouette_pixels = 0;
@@ -182,7 +183,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         {
             // We have a winner. Accumulate the AA and store its info for backward usage.
 
-            silhouette_pixels[num_silhouette_pixels].coord = dtid.xy;
+            silhouette_pixels[num_silhouette_pixels].coord = pixel0;
             silhouette_pixels[num_silhouette_pixels].is_down = is_down;
             silhouette_pixels[num_silhouette_pixels].is_face1 = is_face1;
             silhouette_pixels[num_silhouette_pixels].edge = pick_edge;

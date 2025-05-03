@@ -33,13 +33,14 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     const SilhouetteInfo silhouette_pixel = DecodeSilhouetteInfo(silhouette_info, dtid.x);
 
-    uint32_t2 pixel_coord = silhouette_pixel.coord;
-    const uint32_t2 pixel0 = pixel_coord;
-    const uint32_t2 pixel1 = pixel_coord + (silhouette_pixel.is_down ? uint32_t2(0, 1) : uint32_t2(1, 0));
-    if (silhouette_pixel.is_face1)
-    {
-        pixel_coord = pixel1;
-    }
+    const uint32_t2 center_coord = silhouette_pixel.coord;
+    uint32_t2 right_coord;
+    uint32_t2 down_coord;
+    RightDownCoord(center_coord, gbuffer_size, right_coord, down_coord);
+
+    const uint32_t2 pixel0 = center_coord;
+    const uint32_t2 pixel1 = silhouette_pixel.is_down ? down_coord : right_coord;
+    const uint32_t2 pixel_coord = silhouette_pixel.is_face1 ? pixel1 : pixel0;
 
     uint32_t fi = prim_id_tex[pixel_coord];
     [branch]
