@@ -35,11 +35,11 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     const uint32_t2 center_coord = silhouette_pixel.coord;
     uint32_t2 right_coord;
-    uint32_t2 down_coord;
-    RightDownCoord(center_coord, gbuffer_size, right_coord, down_coord);
+    uint32_t2 up_coord;
+    RightUpCoord(center_coord, gbuffer_size, right_coord, up_coord);
 
     const uint32_t2 pixel0 = center_coord;
-    const uint32_t2 pixel1 = silhouette_pixel.is_down ? down_coord : right_coord;
+    const uint32_t2 pixel1 = silhouette_pixel.is_up ? up_coord : right_coord;
     const uint32_t2 pixel_coord = silhouette_pixel.is_face1 ? pixel1 : pixel0;
 
     uint32_t fi = prim_id_tex[pixel_coord];
@@ -79,7 +79,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     float2 half_size = gbuffer_size / 2.0f;
     float2 ndc_coord = WinToNdc(pixel_coord, gbuffer_size) * half_size;
-    if (silhouette_pixel.is_down)
+    if (silhouette_pixel.is_up)
     {
         Swap(half_size.x, half_size.y);
         Swap(ndc_coord.x, ndc_coord.y);
@@ -92,7 +92,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     {
         edge_vi[i] = indices_buff[fi * 3 + ((silhouette_pixel.edge + 1 + i) % 3)];
         pos[i] = positions_buff[edge_vi[i]];
-        if (silhouette_pixel.is_down)
+        if (silhouette_pixel.is_up)
         {
             Swap(pos[i].x, pos[i].y);
         }
@@ -127,7 +127,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     for (uint32_t i = 0; i < 2; ++i)
     {
         grad_pos[i] *= grad_factor * inv_y;
-        if (silhouette_pixel.is_down)
+        if (silhouette_pixel.is_up)
         {
             Swap(grad_pos[i].x, grad_pos[i].y);
         }

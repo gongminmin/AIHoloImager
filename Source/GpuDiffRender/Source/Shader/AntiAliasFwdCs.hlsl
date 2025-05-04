@@ -37,17 +37,17 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     const uint32_t center_fi = prim_id_tex[center_coord];
 
     uint32_t2 right_coord;
-    uint32_t2 down_coord;
-    RightDownCoord(center_coord, gbuffer_size, right_coord, down_coord);
+    uint32_t2 up_coord;
+    RightUpCoord(center_coord, gbuffer_size, right_coord, up_coord);
 
     SilhouetteInfo silhouette_pixels[2];
     uint32_t num_silhouette_pixels = 0;
     for (uint32_t i = 0; i < 2; ++i)
     {
-        const bool is_down = (i == 1);
+        const bool is_up = (i == 1);
 
         const uint32_t2 pixel0 = center_coord;
-        const uint32_t2 pixel1 = is_down ? down_coord : right_coord;
+        const uint32_t2 pixel1 = is_up ? up_coord : right_coord;
 
         const uint32_t other_fi = prim_id_tex[pixel1];
         [branch]
@@ -99,7 +99,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
             const uint32_t vi = indices_buff[fi * 3 + i];
             const float4 p = positions_buff[vi];
             to_p[i] = (p.xy / p.w - ndc_coord) * half_size;
-            if (is_down)
+            if (is_up)
             {
                 Swap(to_p[i].x, to_p[i].y);
             }
@@ -160,7 +160,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
             {
                 const float4 opposite = positions_buff[op];
                 float2 to_opposite = (opposite.xy / opposite.w - ndc_coord) * half_size;
-                if (is_down)
+                if (is_up)
                 {
                     Swap(to_opposite.x, to_opposite.y);
                 }
@@ -184,7 +184,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
             // We have a winner. Accumulate the AA and store its info for backward usage.
 
             silhouette_pixels[num_silhouette_pixels].coord = pixel0;
-            silhouette_pixels[num_silhouette_pixels].is_down = is_down;
+            silhouette_pixels[num_silhouette_pixels].is_up = is_up;
             silhouette_pixels[num_silhouette_pixels].is_face1 = is_face1;
             silhouette_pixels[num_silhouette_pixels].edge = pick_edge;
             silhouette_pixels[num_silhouette_pixels].alpha = alpha;

@@ -41,7 +41,7 @@ namespace AIHoloImager
             const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint};
 
             GpuRenderPipeline::States states;
-            states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
+            states.cull_mode = GpuRenderPipeline::CullMode::ClockWise;
             states.rtv_formats = rtv_formats;
             states.dsv_format = GpuFormat::D32_Float;
             states.depth_enable = true;

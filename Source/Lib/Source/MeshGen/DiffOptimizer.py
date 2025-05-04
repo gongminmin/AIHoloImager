@@ -161,8 +161,7 @@ class DiffOptimizer:
 
         image = image.to(torch.float16)
         image = image.squeeze(0)
-        image = torch.roll(image, shifts = (-vp_offset[1], vp_offset[0]), dims = (0, 1))
-        image = torch.flip(image, dims = (0, ))
+        image = torch.roll(image, shifts = (vp_offset[1], vp_offset[0]), dims = (0, 1))
         image = image[roi[1] : roi[3], roi[0] : roi[2], :]
         return image.contiguous()
 
