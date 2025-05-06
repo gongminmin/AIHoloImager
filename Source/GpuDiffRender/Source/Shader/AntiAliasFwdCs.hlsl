@@ -88,7 +88,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
         --fi;
 
-        float2 half_size = gbuffer_size / 2.0f;
+        const float2 half_size = gbuffer_size / 2.0f;
         const float2 ndc_coord = WinToNdc(pixel_coord, gbuffer_size);
 
         // Step 2: Which edge is it from?

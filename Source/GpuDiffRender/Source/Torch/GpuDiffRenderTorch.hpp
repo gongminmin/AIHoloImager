@@ -1,6 +1,9 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
+#pragma once
+
+#include <array>
 #include <tuple>
 
 #ifdef _MSC_VER
@@ -32,7 +35,7 @@ namespace AIHoloImager
         GpuDiffRenderTorch(size_t gpu_system, torch::Device torch_device);
         ~GpuDiffRenderTorch();
 
-        torch::autograd::tensor_list Rasterize(torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
+        torch::autograd::tensor_list Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution);
 
         torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
 
@@ -48,7 +51,7 @@ namespace AIHoloImager
 
     private:
         std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
-            torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution);
+            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution);
         torch::Tensor RasterizeBwd(torch::Tensor grad_barycentric);
 
         torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);

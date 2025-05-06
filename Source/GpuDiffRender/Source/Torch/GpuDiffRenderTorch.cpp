@@ -52,12 +52,12 @@ namespace AIHoloImager
         }
     }
 
-    tensor_list GpuDiffRenderTorch::Rasterize(torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution)
+    tensor_list GpuDiffRenderTorch::Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution)
     {
         struct RasterizeAutogradFunc : public Function<RasterizeAutogradFunc>
         {
             static tensor_list forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor positions, torch::Tensor indices,
-                std::tuple<uint32_t, uint32_t> resolution)
+                const std::array<uint32_t, 2>& resolution)
             {
                 auto [barycentric, prim_id] = dr->RasterizeFwd(std::move(positions), std::move(indices), resolution);
                 ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
@@ -78,10 +78,10 @@ namespace AIHoloImager
     }
 
     std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::RasterizeFwd(
-        torch::Tensor positions, torch::Tensor indices, std::tuple<uint32_t, uint32_t> resolution)
+        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution)
     {
-        const uint32_t width = std::get<1>(resolution);
-        const uint32_t height = std::get<0>(resolution);
+        const uint32_t width = resolution[0];
+        const uint32_t height = resolution[1];
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 

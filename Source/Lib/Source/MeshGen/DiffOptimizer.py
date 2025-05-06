@@ -128,10 +128,10 @@ class DiffOptimizer:
             if self.downsampling:
                 rois[i] = (rois[i] + 1) // 2
                 transform_offsets[i] = (transform_offsets[i] + 1) // 2
-                resolution = ((image_height + 1) // 2, (image_width + 1) // 2)
+                resolution = ((image_width + 1) // 2, (image_height + 1) // 2)
                 image = self.DownsampleImage(image.unsqueeze(0)).squeeze(0)
             else:
-                resolution = (image_height, image_width)
+                resolution = (image_width, image_height)
 
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()

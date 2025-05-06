@@ -28,5 +28,5 @@ PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
         .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices)
         .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias);
 
-    pybind11::class_<GpuDiffRenderTorch::AntiAliasOppositeVertices>(mod, "AntiAliasOppositeVertices");
+    pybind11::class_<GpuDiffRenderTorch::AntiAliasOppositeVertices>(mod, "AntiAliasOppositeVertices").def(pybind11::init<>());
 }
