@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
 
-from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch
+from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
     device = scale.device
@@ -139,9 +139,30 @@ class DiffOptimizer:
             crop_images.append(crop_img)
             resolutions.append(resolution)
 
+        merged_roi = rois[0].clone()
+        for i in range(1, num_views):
+            merged_roi[0] = min(merged_roi[0], rois[i][0])
+            merged_roi[1] = min(merged_roi[1], rois[i][1])
+            merged_roi[2] = max(merged_roi[2], rois[i][2])
+            merged_roi[3] = max(merged_roi[3], rois[i][3])
+
+        cropped_resolution = (merged_roi[2] - merged_roi[0], merged_roi[3] - merged_roi[1])
+
+        viewports = [None] * num_views
+        for i in range(0, num_views):
+            viewports[i] = Viewport()
+            viewports[i].left = -merged_roi[0] + transform_offsets[i][0]
+            viewports[i].top = -merged_roi[1] + transform_offsets[i][1]
+            viewports[i].width = resolutions[i][0]
+            viewports[i].height = resolutions[i][1]
+
+        cropped_roi = torch.empty(num_views, 4, dtype = torch.int32, device = "cpu")
+        for i in range(0, num_views):
+            cropped_roi[i] = rois[i] - torch.cat([merged_roi[0 : 2], merged_roi[0 : 2]])
+
         vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
-        scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, transform_offsets, rois, resolutions)
+        scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, viewports, cropped_roi, cropped_resolution)
         return (scale.cpu().numpy().tobytes(), rotation.cpu().numpy().tobytes(), translation.cpu().numpy().tobytes())
 
     def DownsampleImage(self, img):
@@ -149,26 +170,25 @@ class DiffOptimizer:
         img = img.permute(0, 2, 3, 1)
         return img
 
-    def Render(self, model_mtx, view_proj_mtx, vp_offset, vtx_positions, vtx_colors, indices, opposite_vertices, resolution, roi):
+    def Render(self, model_mtx, view_proj_mtx, viewport, vtx_positions, vtx_colors, indices, opposite_vertices, resolution, roi):
         mvp_mtx = torch.matmul(model_mtx, view_proj_mtx).to(self.device)
 
         pos_w = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], device = self.device)], axis = 1)
         pos_clip = torch.matmul(pos_w, mvp_mtx)
 
-        barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution)
+        barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport)
         image = self.gpu_dr.Interpolate(vtx_colors, barycentric, prim_id, indices)
-        image = self.gpu_dr.AntiAlias(image, prim_id, pos_clip, indices, opposite_vertices)
+        image = self.gpu_dr.AntiAlias(image, prim_id, pos_clip, indices, viewport, opposite_vertices)
 
         image = image.to(torch.float16)
         image = image.squeeze(0)
-        image = torch.roll(image, shifts = (vp_offset[1], vp_offset[0]), dims = (0, 1))
         image = image[roi[1] : roi[3], roi[0] : roi[2], :]
         return image.contiguous()
 
     def FitTransform(self,
                      scale, rotation, translation,
                      vtx_positions, vtx_colors, indices,
-                     crop_images, view_proj_mtxs, transform_offsets, rois,
+                     crop_images, view_proj_mtxs, viewports, rois,
                      resolutions, num_iter = 2000):
         num_images = len(crop_images)
         criterion = nn.MSELoss()
@@ -198,7 +218,7 @@ class DiffOptimizer:
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
-            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], transform_offsets[img_idx], vtx_positions, vtx_colors, indices, opposite_vertices, resolutions[img_idx], rois[img_idx])
+            color_opt = self.Render(model_mtx_opt, view_proj_mtxs[img_idx], viewports[img_idx], vtx_positions, vtx_colors, indices, opposite_vertices, resolutions, rois[img_idx])
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)

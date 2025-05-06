@@ -7,6 +7,7 @@ static const uint32_t BlockDim = 16;
 
 cbuffer param_cb : register(b0)
 {
+    float4 viewport;
     uint32_t2 gbuffer_size;
 };
 
@@ -48,7 +49,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     --fi;
 
-    const float2 ndc_coord = WinToNdc(dtid.xy, gbuffer_size);
+    const float2 ndc_coord = VpToNdc(dtid.xy, viewport);
 
     uint32_t vi[3];
     float4 pos[3];

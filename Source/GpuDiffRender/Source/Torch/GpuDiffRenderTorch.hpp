@@ -35,7 +35,16 @@ namespace AIHoloImager
         GpuDiffRenderTorch(size_t gpu_system, torch::Device torch_device);
         ~GpuDiffRenderTorch();
 
-        torch::autograd::tensor_list Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution);
+        struct Viewport
+        {
+            float left;
+            float top;
+            float width;
+            float height;
+        };
+
+        torch::autograd::tensor_list Rasterize(
+            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport = nullptr);
 
         torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
 
@@ -47,18 +56,18 @@ namespace AIHoloImager
         AntiAliasOppositeVertices AntiAliasConstructOppositeVertices(torch::Tensor indices);
 
         torch::Tensor AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
-            const AntiAliasOppositeVertices* opposite_vertices = nullptr);
+            const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
 
     private:
         std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
-            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution);
+            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport = nullptr);
         torch::Tensor RasterizeBwd(torch::Tensor grad_barycentric);
 
         torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
         std::tuple<torch::Tensor, torch::Tensor> InterpolateBwd(torch::Tensor grad_shading);
 
         torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
-            const AntiAliasOppositeVertices* opposite_vertices = nullptr);
+            const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
         std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
 
         void Convert(
@@ -91,6 +100,7 @@ namespace AIHoloImager
             GpuBuffer indices;
             GpuTexture2D barycentric;
             GpuTexture2D prim_id;
+            GpuViewport viewport;
 
             GpuTexture2D grad_barycentric;
             GpuBuffer grad_positions;
@@ -118,6 +128,7 @@ namespace AIHoloImager
             GpuTexture2D prim_id;
             GpuBuffer positions;
             GpuBuffer indices;
+            GpuViewport viewport;
 
             GpuBuffer anti_aliased;
             GpuBuffer grad_anti_aliased;

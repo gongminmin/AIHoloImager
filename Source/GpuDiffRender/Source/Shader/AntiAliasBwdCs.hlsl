@@ -7,6 +7,7 @@ static const uint32_t BlockDim = 256;
 
 cbuffer param_cb : register(b0)
 {
+    float4 viewport;
     uint32_t2 gbuffer_size;
     uint32_t num_attribs;
 };
@@ -77,8 +78,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         return;
     }
 
-    float2 half_size = gbuffer_size / 2.0f;
-    float2 ndc_coord = WinToNdc(pixel_coord, gbuffer_size) * half_size;
+    float2 half_size = viewport.zw / 2.0f;
+    float2 ndc_coord = VpToNdc(pixel_coord, viewport) * half_size;
     if (silhouette_pixel.is_up)
     {
         Swap(half_size.x, half_size.y);

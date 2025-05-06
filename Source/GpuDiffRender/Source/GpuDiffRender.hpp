@@ -4,6 +4,7 @@
 #pragma once
 
 #include <glm/vec2.hpp>
+#include <glm/vec4.hpp>
 
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -20,9 +21,9 @@ namespace AIHoloImager
         ~GpuDiffRender();
 
         void RasterizeFwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, uint32_t width, uint32_t height,
-            GpuTexture2D& barycentric, GpuTexture2D& prim_id);
-        void RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, const GpuTexture2D& barycentric,
-            const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric, GpuBuffer& grad_positions);
+            const GpuViewport& viewport, GpuTexture2D& barycentric, GpuTexture2D& prim_id);
+        void RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, const GpuViewport& viewport,
+            const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric, GpuBuffer& grad_positions);
 
         void InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
             const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, GpuBuffer& shading);
@@ -33,9 +34,10 @@ namespace AIHoloImager
         void AntiAliasConstructOppositeVertices(GpuCommandList& cmd_list, const GpuBuffer& indices, GpuBuffer& opposite_vertices);
 
         void AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
-            const GpuBuffer& indices, const GpuBuffer& opposite_vertices, GpuBuffer& anti_aliased);
+            const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& opposite_vertices, GpuBuffer& anti_aliased);
         void AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
-            const GpuBuffer& indices, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading, GpuBuffer& grad_positions);
+            const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
+            GpuBuffer& grad_positions);
 
     private:
         GpuSystem& gpu_system_;
@@ -47,6 +49,7 @@ namespace AIHoloImager
 
         struct RasterizeBwdConstantBuffer
         {
+            glm::vec4 viewport;
             glm::uvec2 gbuffer_size;
             uint32_t padding[2];
         };
@@ -82,6 +85,7 @@ namespace AIHoloImager
 
         struct AntialiasFwdConstantBuffer
         {
+            glm::vec4 viewport;
             glm::uvec2 gbuffer_size;
             uint32_t num_attribs;
             uint32_t padding[1];
@@ -100,6 +104,7 @@ namespace AIHoloImager
 
         struct AntialiasBwdConstantBuffer
         {
+            glm::vec4 viewport;
             glm::uvec2 gbuffer_size;
             uint32_t num_attribs;
             uint32_t padding[1];

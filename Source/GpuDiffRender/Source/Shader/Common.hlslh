@@ -74,9 +74,9 @@ uint32_t DivUp(uint32_t a, uint32_t b)
     return (a + b - 1) / b;
 }
 
-float2 WinToNdc(uint32_t2 win_coord, uint32_t2 win_size)
+float2 VpToNdc(uint32_t2 win_coord, float4 viewport)
 {
-    float2 ndc_coord = (win_coord + 0.5f) / win_size * 2 - 1;
+    float2 ndc_coord = (win_coord + 0.5f - viewport.xy) / viewport.zw * 2 - 1;
     ndc_coord.y = -ndc_coord.y;
     return ndc_coord;
 }

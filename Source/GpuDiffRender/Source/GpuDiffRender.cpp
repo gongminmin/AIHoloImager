@@ -108,7 +108,7 @@ namespace AIHoloImager
     GpuDiffRender::~GpuDiffRender() = default;
 
     void GpuDiffRender::RasterizeFwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, uint32_t width,
-        uint32_t height, GpuTexture2D& barycentric, GpuTexture2D& prim_id)
+        uint32_t height, const GpuViewport& viewport, GpuTexture2D& barycentric, GpuTexture2D& prim_id)
     {
         if ((barycentric.Width(0) != width) || (barycentric.Height(0) != height) || (barycentric.Format() != GpuFormat::RG32_Float))
         {
@@ -150,13 +150,13 @@ namespace AIHoloImager
 
         const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
 
-        const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)};
         cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
             &depth_dsv_, std::span(&viewport, 1), {});
     }
 
     void GpuDiffRender::RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices,
-        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric, GpuBuffer& grad_positions)
+        const GpuViewport& viewport, const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric,
+        GpuBuffer& grad_positions)
     {
         const uint32_t width = barycentric.Width(0);
         const uint32_t height = barycentric.Height(0);
@@ -170,6 +170,7 @@ namespace AIHoloImager
 
         constexpr uint32_t BlockDim = 16;
 
+        rasterize_bwd_cb_->viewport = glm::vec4(viewport.left, viewport.top, viewport.width, viewport.height);
         rasterize_bwd_cb_->gbuffer_size = glm::uvec2(width, height);
         rasterize_bwd_cb_.UploadToGpu();
 
@@ -347,7 +348,8 @@ namespace AIHoloImager
     }
 
     void GpuDiffRender::AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,
-        const GpuBuffer& positions, const GpuBuffer& indices, const GpuBuffer& opposite_vertices, GpuBuffer& anti_aliased)
+        const GpuBuffer& positions, const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& opposite_vertices,
+        GpuBuffer& anti_aliased)
     {
         const uint32_t width = prim_id.Width(0);
         const uint32_t height = prim_id.Height(0);
@@ -374,6 +376,7 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
+            anti_alias_fwd_cb_->viewport = glm::vec4(viewport.left, viewport.top, viewport.width, viewport.height);
             anti_alias_fwd_cb_->gbuffer_size = glm::uvec2(width, height);
             anti_alias_fwd_cb_->num_attribs = num_attribs;
             anti_alias_fwd_cb_.UploadToGpu();
@@ -401,8 +404,8 @@ namespace AIHoloImager
     }
 
     void GpuDiffRender::AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,
-        const GpuBuffer& positions, const GpuBuffer& indices, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
-        GpuBuffer& grad_positions)
+        const GpuBuffer& positions, const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& grad_anti_aliased,
+        GpuBuffer& grad_shading, GpuBuffer& grad_positions)
     {
         const uint32_t width = prim_id.Width(0);
         const uint32_t height = prim_id.Height(0);
@@ -437,6 +440,7 @@ namespace AIHoloImager
         {
             // constexpr uint32_t BlockDim = 256;
 
+            anti_alias_bwd_cb_->viewport = glm::vec4(viewport.left, viewport.top, viewport.width, viewport.height);
             anti_alias_bwd_cb_->gbuffer_size = glm::uvec2(width, height);
             anti_alias_bwd_cb_->num_attribs = num_attribs;
             anti_alias_bwd_cb_.UploadToGpu();

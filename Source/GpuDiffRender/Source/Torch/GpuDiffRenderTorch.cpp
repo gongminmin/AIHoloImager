@@ -52,14 +52,15 @@ namespace AIHoloImager
         }
     }
 
-    tensor_list GpuDiffRenderTorch::Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution)
+    tensor_list GpuDiffRenderTorch::Rasterize(
+        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
     {
         struct RasterizeAutogradFunc : public Function<RasterizeAutogradFunc>
         {
             static tensor_list forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor positions, torch::Tensor indices,
-                const std::array<uint32_t, 2>& resolution)
+                const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
             {
-                auto [barycentric, prim_id] = dr->RasterizeFwd(std::move(positions), std::move(indices), resolution);
+                auto [barycentric, prim_id] = dr->RasterizeFwd(std::move(positions), std::move(indices), resolution, viewport);
                 ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
                 return {std::move(barycentric), std::move(prim_id)};
             }
@@ -70,15 +71,15 @@ namespace AIHoloImager
 
                 torch::Tensor grad_barycentric = std::move(grad_outputs[0]);
                 auto grad_positions = dr->RasterizeBwd(std::move(grad_barycentric));
-                return {torch::Tensor(), std::move(grad_positions), torch::Tensor(), torch::Tensor()};
+                return {torch::Tensor(), std::move(grad_positions), torch::Tensor(), torch::Tensor(), torch::Tensor()};
             }
         };
 
-        return RasterizeAutogradFunc::apply(this, std::move(positions), std::move(indices), resolution);
+        return RasterizeAutogradFunc::apply(this, std::move(positions), std::move(indices), resolution, viewport);
     }
 
     std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::RasterizeFwd(
-        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution)
+        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
     {
         const uint32_t width = resolution[0];
         const uint32_t height = resolution[1];
@@ -90,7 +91,24 @@ namespace AIHoloImager
         this->Convert(cmd_list, std::move(indices), rast_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
             L"GpuDiffRenderTorch.RasterizeFwd.indices");
 
-        gpu_dr_.RasterizeFwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, width, height,
+        if (viewport != nullptr)
+        {
+            rast_intermediate_.viewport.left = viewport->left;
+            rast_intermediate_.viewport.top = viewport->top;
+            rast_intermediate_.viewport.width = viewport->width;
+            rast_intermediate_.viewport.height = viewport->height;
+        }
+        else
+        {
+            rast_intermediate_.viewport.left = 0;
+            rast_intermediate_.viewport.top = 0;
+            rast_intermediate_.viewport.width = static_cast<float>(width);
+            rast_intermediate_.viewport.height = static_cast<float>(height);
+        }
+        rast_intermediate_.viewport.min_depth = 0;
+        rast_intermediate_.viewport.max_depth = 1;
+
+        gpu_dr_.RasterizeFwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, width, height, rast_intermediate_.viewport,
             rast_intermediate_.barycentric, rast_intermediate_.prim_id);
 
         torch::Tensor barycentric = this->Convert(cmd_list, rast_intermediate_.barycentric);
@@ -110,8 +128,9 @@ namespace AIHoloImager
         this->Convert(cmd_list, std::move(grad_barycentric), rast_intermediate_.grad_barycentric, GpuFormat::RG32_Float,
             GpuResourceFlag::None, L"GpuDiffRenderTorch.RasterizeBwd.grad_barycentric");
 
-        gpu_dr_.RasterizeBwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, rast_intermediate_.barycentric,
-            rast_intermediate_.prim_id, rast_intermediate_.grad_barycentric, rast_intermediate_.grad_positions);
+        gpu_dr_.RasterizeBwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, rast_intermediate_.viewport,
+            rast_intermediate_.barycentric, rast_intermediate_.prim_id, rast_intermediate_.grad_barycentric,
+            rast_intermediate_.grad_positions);
 
         const torch::Tensor grad_positions = this->Convert(cmd_list, rast_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
 
@@ -217,15 +236,16 @@ namespace AIHoloImager
     }
 
     torch::Tensor GpuDiffRenderTorch::AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
-        torch::Tensor indices, const AntiAliasOppositeVertices* opposite_vertices)
+        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
     {
         struct AntiAliasAutogradFunc : public Function<AntiAliasAutogradFunc>
         {
             static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor shading, torch::Tensor prim_id,
-                torch::Tensor positions, torch::Tensor indices, const AntiAliasOppositeVertices* opposite_vertices)
+                torch::Tensor positions, torch::Tensor indices, const Viewport* viewport,
+                const AntiAliasOppositeVertices* opposite_vertices)
             {
-                auto anti_aliased =
-                    dr->AntiAliasFwd(std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), opposite_vertices);
+                auto anti_aliased = dr->AntiAliasFwd(
+                    std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
                 ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
                 return anti_aliased;
             }
@@ -236,17 +256,17 @@ namespace AIHoloImager
 
                 torch::Tensor grad_anti_aliased = std::move(grad_outputs[0]);
                 auto [grad_shading, grad_positions] = dr->AntiAliasBwd(std::move(grad_anti_aliased));
-                return {
-                    torch::Tensor(), std::move(grad_shading), torch::Tensor(), std::move(grad_positions), torch::Tensor(), torch::Tensor()};
+                return {torch::Tensor(), std::move(grad_shading), torch::Tensor(), std::move(grad_positions), torch::Tensor(),
+                    torch::Tensor(), torch::Tensor()};
             }
         };
 
         return AntiAliasAutogradFunc::apply(
-            this, std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), opposite_vertices);
+            this, std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
     }
 
     torch::Tensor GpuDiffRenderTorch::AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
-        torch::Tensor indices, const AntiAliasOppositeVertices* opposite_vertices)
+        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
     {
         AntiAliasOppositeVertices new_opposite_vertices;
         if (opposite_vertices == nullptr)
@@ -270,8 +290,25 @@ namespace AIHoloImager
         this->Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
             L"GpuDiffRenderTorch.AntiAliasFwd.indices");
 
+        if (viewport != nullptr)
+        {
+            aa_intermediate_.viewport.left = viewport->left;
+            aa_intermediate_.viewport.top = viewport->top;
+            aa_intermediate_.viewport.width = viewport->width;
+            aa_intermediate_.viewport.height = viewport->height;
+        }
+        else
+        {
+            aa_intermediate_.viewport.left = 0;
+            aa_intermediate_.viewport.top = 0;
+            aa_intermediate_.viewport.width = static_cast<float>(width);
+            aa_intermediate_.viewport.height = static_cast<float>(height);
+        }
+        aa_intermediate_.viewport.min_depth = 0;
+        aa_intermediate_.viewport.max_depth = 1;
+
         gpu_dr_.AntiAliasFwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
-            aa_intermediate_.indices, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);
+            aa_intermediate_.indices, aa_intermediate_.viewport, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);
 
         torch::Tensor anti_aliased =
             this->Convert(cmd_list, aa_intermediate_.anti_aliased, {1, height, width, num_attribs}, torch::kFloat32);
@@ -295,7 +332,8 @@ namespace AIHoloImager
             L"GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
 
         gpu_dr_.AntiAliasBwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
-            aa_intermediate_.indices, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading, aa_intermediate_.grad_positions);
+            aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,
+            aa_intermediate_.grad_positions);
 
         torch::Tensor grad_shading =
             this->Convert(cmd_list, aa_intermediate_.grad_shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
