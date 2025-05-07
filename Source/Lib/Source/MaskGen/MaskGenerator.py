@@ -31,8 +31,7 @@ class MaskGenerator:
         norm_img = torch.from_numpy(norm_img.copy()).to(self.device)
         norm_img = norm_img.reshape(1, num_channels, height, width)
 
-        outs = self.u2net(norm_img)
-        pred = outs[0][:, 0, :, :]
+        pred = self.u2net(norm_img).squeeze(0)
 
         pred = pred.cpu().numpy()
         return pred.tobytes()

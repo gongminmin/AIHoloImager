@@ -393,4 +393,4 @@ class U2Net(nn.Module):
 
         d0 = self.outconv(torch.cat((d1, d2, d3, d4, d5, d6), 1))
 
-        return functional.sigmoid(d0), functional.sigmoid(d1), functional.sigmoid(d2), functional.sigmoid(d3), functional.sigmoid(d4), functional.sigmoid(d5), functional.sigmoid(d6)
+        return functional.sigmoid(d0)
