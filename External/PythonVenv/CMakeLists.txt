@@ -90,36 +90,6 @@ set(py_files
     cumm/dtypes.py
     cumm/__init__.py
     cumm/__version__.py
-    google/protobuf/internal/api_implementation.py
-    google/protobuf/internal/builder.py
-    google/protobuf/internal/containers.py
-    google/protobuf/internal/decoder.py
-    google/protobuf/internal/encoder.py
-    google/protobuf/internal/enum_type_wrapper.py
-    google/protobuf/internal/extension_dict.py
-    google/protobuf/internal/field_mask.py
-    google/protobuf/internal/message_listener.py
-    google/protobuf/internal/python_edition_defaults.py
-    google/protobuf/internal/python_message.py
-    google/protobuf/internal/type_checkers.py
-    google/protobuf/internal/well_known_types.py
-    google/protobuf/internal/wire_format.py
-    google/protobuf/internal/__init__.py
-    google/protobuf/pyext/__init__.py
-    google/protobuf/descriptor.py
-    google/protobuf/descriptor_database.py
-    google/protobuf/descriptor_pb2.py
-    google/protobuf/descriptor_pool.py
-    google/protobuf/json_format.py
-    google/protobuf/message.py
-    google/protobuf/message_factory.py
-    google/protobuf/reflection.py
-    google/protobuf/runtime_version.py
-    google/protobuf/symbol_database.py
-    google/protobuf/text_encoding.py
-    google/protobuf/text_format.py
-    google/protobuf/unknown_fields.py
-    google/protobuf/__init__.py
     lark/parsers/cyk.py
     lark/parsers/earley.py
     lark/parsers/earley_common.py
@@ -286,104 +256,6 @@ set(py_files
     numpy/_pytesttester.py
     numpy/__config__.py
     numpy/__init__.py
-    onnx/defs/__init__.py
-    onnx/checker.py
-    onnx/compose.py
-    onnx/external_data_helper.py
-    onnx/gen_proto.py
-    onnx/helper.py
-    onnx/hub.py
-    onnx/mapping.py
-    onnx/numpy_helper.py
-    onnx/onnx_data_pb.py
-    onnx/onnx_data_pb2.py
-    onnx/onnx_ml_pb2.py
-    onnx/onnx_operators_ml_pb2.py
-    onnx/onnx_operators_pb.py
-    onnx/onnx_pb.py
-    onnx/parser.py
-    onnx/printer.py
-    onnx/serialization.py
-    onnx/shape_inference.py
-    onnx/subbyte.py
-    onnx/utils.py
-    onnx/version.py
-    onnx/version_converter.py
-    onnx/_custom_element_types.py
-    onnx/__init__.py
-    onnx2torch/node_converters/activations.py
-    onnx2torch/node_converters/arg_extrema.py
-    onnx2torch/node_converters/average_pool.py
-    onnx2torch/node_converters/base_element_wise.py
-    onnx2torch/node_converters/batch_norm.py
-    onnx2torch/node_converters/binary_math_operations.py
-    onnx2torch/node_converters/cast.py
-    onnx2torch/node_converters/clip.py
-    onnx2torch/node_converters/comparisons.py
-    onnx2torch/node_converters/concat.py
-    onnx2torch/node_converters/constant.py
-    onnx2torch/node_converters/constant_of_shape.py
-    onnx2torch/node_converters/conv.py
-    onnx2torch/node_converters/cumsum.py
-    onnx2torch/node_converters/depth_to_space.py
-    onnx2torch/node_converters/dropout.py
-    onnx2torch/node_converters/einsum.py
-    onnx2torch/node_converters/expand.py
-    onnx2torch/node_converters/eye_like.py
-    onnx2torch/node_converters/flatten.py
-    onnx2torch/node_converters/functions.py
-    onnx2torch/node_converters/gather.py
-    onnx2torch/node_converters/gemm.py
-    onnx2torch/node_converters/global_average_pool.py
-    onnx2torch/node_converters/identity.py
-    onnx2torch/node_converters/instance_norm.py
-    onnx2torch/node_converters/isinf.py
-    onnx2torch/node_converters/isnan.py
-    onnx2torch/node_converters/layer_norm.py
-    onnx2torch/node_converters/logical.py
-    onnx2torch/node_converters/lrn.py
-    onnx2torch/node_converters/matmul.py
-    onnx2torch/node_converters/max_pool.py
-    onnx2torch/node_converters/mean.py
-    onnx2torch/node_converters/min_max.py
-    onnx2torch/node_converters/mod.py
-    onnx2torch/node_converters/neg.py
-    onnx2torch/node_converters/nms.py
-    onnx2torch/node_converters/nonzero.py
-    onnx2torch/node_converters/pad.py
-    onnx2torch/node_converters/pow.py
-    onnx2torch/node_converters/range.py
-    onnx2torch/node_converters/reciprocal.py
-    onnx2torch/node_converters/reduce.py
-    onnx2torch/node_converters/registry.py
-    onnx2torch/node_converters/reshape.py
-    onnx2torch/node_converters/resize.py
-    onnx2torch/node_converters/roialign.py
-    onnx2torch/node_converters/roundings.py
-    onnx2torch/node_converters/scatter_nd.py
-    onnx2torch/node_converters/shape.py
-    onnx2torch/node_converters/slice.py
-    onnx2torch/node_converters/split.py
-    onnx2torch/node_converters/squeeze.py
-    onnx2torch/node_converters/sum.py
-    onnx2torch/node_converters/tile.py
-    onnx2torch/node_converters/topk.py
-    onnx2torch/node_converters/transpose.py
-    onnx2torch/node_converters/unsqueeze.py
-    onnx2torch/node_converters/where.py
-    onnx2torch/node_converters/__init__.py
-    onnx2torch/utils/common.py
-    onnx2torch/utils/custom_export_to_onnx.py
-    onnx2torch/utils/dtype.py
-    onnx2torch/utils/indices.py
-    onnx2torch/utils/padding.py
-    onnx2torch/utils/safe_shape_inference.py
-    onnx2torch/utils/__init__.py
-    onnx2torch/converter.py
-    onnx2torch/onnx_graph.py
-    onnx2torch/onnx_node.py
-    onnx2torch/onnx_tensor.py
-    onnx2torch/__init__.py
     pccm/builder/inliner.py
     pccm/builder/pybind.py
     pccm/builder/__init__.py
@@ -2125,7 +1997,6 @@ set(copy_files
     numpy/random/mtrand.${py_suffix}
     numpy.libs/libscipy_openblas64_-43e11ff0749b8cbe0a615c9cf6737e0e.dll
     numpy.libs/msvcp140-d64049c6e3865410a7dda6a7e9f0c575.dll
-    onnx/onnx_cpp2py_export.${py_suffix}
     PIL/_imaging.${py_suffix}
     safetensors/_safetensors_rust.${py_suffix}
     spconv/core_cc.${py_suffix}

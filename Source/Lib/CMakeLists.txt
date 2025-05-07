@@ -40,6 +40,7 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.cpp
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
+    Source/MaskGen/U2Net.py
     Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl
@@ -221,6 +222,7 @@ set(py_files
     Source/Delighter/ModMidas/Wsl.py
     Source/Delighter/ModMidas/__init__.py
     Source/MaskGen/MaskGenerator.py
+    Source/MaskGen/U2Net.py
     Source/MeshGen/MeshGenerator.py
     Source/MeshGen/Trellis/Models/StructuredLatentVae/Base.py
     Source/MeshGen/Trellis/Models/StructuredLatentVae/DecoderVolume.py
@@ -284,4 +286,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployRembgModels DeployIntrinsicModels DeployTrellisModels AIHoloImagerGpuDiffRender)
+add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels AIHoloImagerGpuDiffRender)
