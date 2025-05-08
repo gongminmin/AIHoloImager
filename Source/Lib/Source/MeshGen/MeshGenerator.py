@@ -6,13 +6,14 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from PythonSystem import ComputeDevice
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
     def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = ComputeDevice()
 
         pretrained_dir = this_py_dir / "Models/TRELLIS-image-large"
         self.pipeline = TrellisImageTo3DPipeline.FromPretrained(pretrained_dir)
@@ -20,7 +21,6 @@ class MeshGenerator:
 
     def Destroy(self):
         del self.pipeline
-        del self.device
         torch.cuda.empty_cache()
 
     @torch.no_grad()

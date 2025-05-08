@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from PythonSystem import ComputeDevice, GeneralDevice
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
 def Round32(x):
@@ -107,7 +108,7 @@ class Delighter:
 
         this_py_dir = Path(__file__).parent.resolve()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = ComputeDevice()
 
         model_paths = (
             this_py_dir / "Models/Intrinsic/stage_0.pt",
@@ -119,7 +120,6 @@ class Delighter:
 
     def Destroy(self):
         del self.models
-        del self.device
         torch.cuda.empty_cache()
 
     @torch.no_grad()
@@ -179,10 +179,10 @@ class Delighter:
     def LoadModels(self, paths):
         self.models = [None] * 4
 
-        ord_state_dict = self.FixStateDict(torch.load(paths[0], map_location = "cpu", weights_only = True))
-        iid_state_dict = self.FixStateDict(torch.load(paths[1], map_location = "cpu", weights_only = True))
-        col_state_dict = self.FixStateDict(torch.load(paths[2], map_location = "cpu", weights_only = True))
-        alb_state_dict = self.FixStateDict(torch.load(paths[3], map_location = "cpu", weights_only = True))
+        ord_state_dict = self.FixStateDict(torch.load(paths[0], map_location = GeneralDevice(), weights_only = True))
+        iid_state_dict = self.FixStateDict(torch.load(paths[1], map_location = GeneralDevice(), weights_only = True))
+        col_state_dict = self.FixStateDict(torch.load(paths[2], map_location = GeneralDevice(), weights_only = True))
+        alb_state_dict = self.FixStateDict(torch.load(paths[3], map_location = GeneralDevice(), weights_only = True))
 
         ord_model = MidasNet()
         ord_model.load_state_dict(ord_state_dict)

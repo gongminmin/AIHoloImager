@@ -18,6 +18,8 @@ from . import Samplers
 from .. import Models
 from ..Modules import Sparse as sp
 
+from PythonSystem import GeneralDevice
+
 class TrellisImageTo3DPipeline:
     def __init__(
         self,
@@ -50,7 +52,7 @@ class TrellisImageTo3DPipeline:
         num_register_tokens = 4
         model_full_name = f"dinov2_{compact_arch_name}{patch_size}_reg{num_register_tokens}"
         pth_file_name = this_py_dir.parents[1] / "Models/dinov2" / f"{model_full_name}_pretrain.pth"
-        dinov2_model.load_state_dict(torch.load(pth_file_name, map_location = "cpu", weights_only = True))
+        dinov2_model.load_state_dict(torch.load(pth_file_name, map_location = GeneralDevice(), weights_only = True))
 
         dinov2_model.eval()
         self.models["image_cond_model"] = dinov2_model

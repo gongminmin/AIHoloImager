@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
 
+from PythonSystem import ComputeDevice, GeneralDevice
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
@@ -53,7 +54,7 @@ class DiffOptimizer:
     def __init__(self, gpu_system):
         self.downsampling = True
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = ComputeDevice()
         self.gpu_dr = GpuDiffRenderTorch(gpu_system, self.device)
 
         self.image_channels = 4
@@ -63,7 +64,6 @@ class DiffOptimizer:
     def Destroy(self):
         del self.kernel
         del self.gpu_dr
-        del self.device
         torch.cuda.empty_cache()
 
     def Optimize(self,
@@ -102,7 +102,7 @@ class DiffOptimizer:
         translation = np.frombuffer(translation, dtype = np.float32, count = 3)
         translation = torch.from_numpy(translation.copy())
 
-        rois = torch.empty(num_views, 4, dtype = torch.int32, device = "cpu")
+        rois = torch.empty(num_views, 4, dtype = torch.int32, device = GeneralDevice())
         crop_images = []
         resolutions = []
         for i in range(0, num_views):
@@ -156,7 +156,7 @@ class DiffOptimizer:
             viewports[i].width = resolutions[i][0]
             viewports[i].height = resolutions[i][1]
 
-        cropped_roi = torch.empty(num_views, 4, dtype = torch.int32, device = "cpu")
+        cropped_roi = torch.empty(num_views, 4, dtype = torch.int32, device = GeneralDevice())
         for i in range(0, num_views):
             cropped_roi[i] = rois[i] - torch.cat([merged_roi[0 : 2], merged_roi[0 : 2]])
 

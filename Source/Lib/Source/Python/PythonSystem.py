@@ -25,3 +25,22 @@ def InitPySys():
         import sys
         sys.path.append(str(this_py_dir / "Python/Lib/site-packages/win32"))
         sys.path.append(str(this_py_dir / "Python/Lib/site-packages/win32/lib"))
+
+general_device = None
+def GeneralDevice():
+    global general_device
+    if general_device == None:
+        import torch
+        general_device = torch.device("cpu")
+    return general_device
+
+compute_device = None
+def ComputeDevice():
+    global compute_device
+    if compute_device == None:
+        import torch
+        if torch.cuda.is_available():
+            compute_device = torch.device("cuda")
+        else:
+            compute_device = GeneralDevice()
+    return compute_device

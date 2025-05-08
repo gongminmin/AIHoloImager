@@ -6,23 +6,23 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from PythonSystem import ComputeDevice, GeneralDevice
 from U2Net import U2Net
 
 class MaskGenerator:
     def __init__(self):
         this_py_dir = Path(__file__).parent.resolve()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = ComputeDevice()
 
         u2net_model_path = this_py_dir / "Models/U-2-Net/u2net.pth"
         self.u2net = U2Net(3, 1)
-        self.u2net.load_state_dict(torch.load(u2net_model_path, weights_only = True))
+        self.u2net.load_state_dict(torch.load(u2net_model_path, map_location = GeneralDevice(), weights_only = True))
         self.u2net.eval()
         self.u2net.to(self.device)
 
     def Destroy(self):
         del self.u2net
-        del self.device
         torch.cuda.empty_cache()
 
     @torch.no_grad()
