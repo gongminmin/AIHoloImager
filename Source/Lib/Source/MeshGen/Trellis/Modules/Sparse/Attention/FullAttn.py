@@ -6,9 +6,9 @@
 from typing import *
 
 import torch
-import xformers.ops as xops
 
 from .. import SparseTensor
+from ...Utils import MemEfficientAttention, BlockDiagonalMaskFromSeqlens
 
 __all__ = [
     'sparse_scaled_dot_product_attention',
@@ -181,9 +181,9 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
     q = q.unsqueeze(0)
     k = k.unsqueeze(0)
     v = v.unsqueeze(0)
-    mask = xops.fmha.BlockDiagonalMask.from_seqlens(q_seqlen, kv_seqlen)
-    out = xops.memory_efficient_attention(q, k, v, mask)[0]
-    
+    mask = BlockDiagonalMaskFromSeqlens(q_seqlen, kv_seqlen)
+    out = MemEfficientAttention(q, k, v, mask)[0]
+
     if s is not None:
         return s.replace(out)
     else:

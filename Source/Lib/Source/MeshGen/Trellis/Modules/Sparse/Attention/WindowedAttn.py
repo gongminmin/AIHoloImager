@@ -7,9 +7,9 @@ from typing import *
 import math
 
 import torch
-import xformers.ops as xops
 
 from .. import SparseTensor
+from ...Utils import MemEfficientAttention, BlockDiagonalMaskFromSeqlens
 
 __all__ = [
     'sparse_windowed_scaled_dot_product_self_attention',
@@ -93,15 +93,15 @@ def sparse_windowed_scaled_dot_product_self_attention(
         N = window_size
         qkv_feats = qkv_feats.reshape(B, N, 3, H, C)
         q, k, v = qkv_feats.unbind(dim=2)                       # [B, N, H, C]
-        out = xops.memory_efficient_attention(q, k, v)          # [B, N, H, C]
-        out = out.reshape(B * N, H, C)                              # [M, H, C]
+        out = MemEfficientAttention(q, k, v)                    # [B, N, H, C]
+        out = out.reshape(B * N, H, C)                          # [M, H, C]
     else:
         q, k, v = qkv_feats.unbind(dim=1)                       # [M, H, C]
         q = q.unsqueeze(0)                                      # [1, M, H, C]
         k = k.unsqueeze(0)                                      # [1, M, H, C]
         v = v.unsqueeze(0)                                      # [1, M, H, C]
-        mask = xops.fmha.BlockDiagonalMask.from_seqlens(seq_lens)
-        out = xops.memory_efficient_attention(q, k, v, mask)[0] # [M, H, C]
+        mask = BlockDiagonalMaskFromSeqlens(seq_lens)
+        out = MemEfficientAttention(q, k, v, mask)[0]           # [M, H, C]
 
     out = out[bwd_indices]      # [T, H, C]
 

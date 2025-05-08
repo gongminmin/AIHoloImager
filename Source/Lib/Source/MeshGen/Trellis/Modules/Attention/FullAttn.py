@@ -7,7 +7,8 @@ from typing import *
 import math
 
 import torch
-import xformers.ops as xops
+
+from ..Utils import MemEfficientAttention
 
 __all__ = [
     'scaled_dot_product_attention',
@@ -87,6 +88,6 @@ def scaled_dot_product_attention(*args, **kwargs):
         q, k, v = qkv.unbind(dim=2)
     elif num_all_args == 2:
         k, v = kv.unbind(dim=2)
-    out = xops.memory_efficient_attention(q, k, v)
+    out = MemEfficientAttention(q, k, v)
     
     return out
