@@ -13,7 +13,7 @@ namespace AIHoloImager
     class AIHoloImager
     {
     public:
-        explicit AIHoloImager(const std::filesystem::path& tmp_dir);
+        AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir);
         AIHoloImager(const AIHoloImager& rhs) = delete;
         AIHoloImager(AIHoloImager&& rhs) noexcept;
         ~AIHoloImager() noexcept;

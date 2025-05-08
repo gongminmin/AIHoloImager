@@ -36,7 +36,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(PythonSystem);
 
     public:
-        explicit PythonSystem(const std::filesystem::path& exe_dir);
+        PythonSystem(bool enable_cuda, const std::filesystem::path& exe_dir);
         PythonSystem(PythonSystem&& other) noexcept;
         ~PythonSystem() noexcept;
 

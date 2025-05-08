@@ -11,9 +11,18 @@ def SeedRandom(seed : int):
     import torch
     torch.manual_seed(seed)
 
-def InitPySys():
+compute_on_cuda = False
+def InitPySys(enable_cuda : bool):
+    import torch
+
+    global compute_on_cuda
+    compute_on_cuda = enable_cuda and torch.cuda.is_available()
+
     import os
-    os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
+    if compute_on_cuda:
+        os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
+    else:
+        os.environ["XFORMERS_DISABLED"] = "1" # Disable the usage of xformers in dinov2
 
     SeedRandom(42)
 
@@ -38,8 +47,9 @@ compute_device = None
 def ComputeDevice():
     global compute_device
     if compute_device == None:
-        import torch
-        if torch.cuda.is_available():
+        global compute_on_cuda
+        if compute_on_cuda:
+            import torch
             compute_device = torch.device("cuda")
         else:
             compute_device = GeneralDevice()

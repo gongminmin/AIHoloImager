@@ -21,6 +21,7 @@ int main(int argc, char* argv[])
         ("H,help", "Produce help message.")
         ("I,input-path", "The directory that contains the input image sequence.", cxxopts::value<std::string>())
         ("O,output-path", "The path of the output mesh (\"<input-dir>/Output/Mesh.glb\" by default).", cxxopts::value<std::string>())
+        ("enable-cuda", "Enable CUDA for inferencing (1 by default).", cxxopts::value<uint32_t>())
         ("v,version", "Version.");
     // clang-format on
 
@@ -64,6 +65,12 @@ int main(int argc, char* argv[])
         output_path = input_path / "Output/Mesh.glb";
     }
 
+    bool enable_cuda = true;
+    if (vm.count("enable-cuda") > 0)
+    {
+        enable_cuda = vm["enable-cuda"].as<uint32_t>() != 0;
+    }
+
     std::filesystem::create_directories(output_path.parent_path());
 
     const auto tmp_dir = output_path.parent_path() / "Tmp";
@@ -73,7 +80,7 @@ int main(int argc, char* argv[])
 
     try
     {
-        AIHoloImager::AIHoloImager imager(tmp_dir);
+        AIHoloImager::AIHoloImager imager(enable_cuda, tmp_dir);
         const AIHoloImager::Mesh mesh = imager.Generate(input_path);
         AIHoloImager::SaveMesh(mesh, output_path);
 

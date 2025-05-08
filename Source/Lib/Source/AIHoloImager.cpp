@@ -37,8 +37,8 @@ namespace AIHoloImager
     class AIHoloImager::Impl
     {
     public:
-        explicit Impl(const std::filesystem::path& tmp_dir)
-            : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), gpu_system_(nullptr, true), python_system_(exe_dir_)
+        Impl(bool enable_cuda, const std::filesystem::path& tmp_dir)
+            : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), gpu_system_(nullptr, true), python_system_(enable_cuda, exe_dir_)
         {
         }
 
@@ -82,7 +82,7 @@ namespace AIHoloImager
         PythonSystem python_system_;
     };
 
-    AIHoloImager::AIHoloImager(const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(tmp_dir))
+    AIHoloImager::AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(enable_cuda, tmp_dir))
     {
     }
     AIHoloImager::AIHoloImager(AIHoloImager&& rhs) noexcept = default;
