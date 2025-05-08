@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from PythonSystem import ComputeDevice
+from PythonSystem import ComputeDevice, PurgeTorchCache
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
@@ -21,7 +21,7 @@ class MeshGenerator:
 
     def Destroy(self):
         del self.pipeline
-        torch.cuda.empty_cache()
+        PurgeTorchCache()
 
     @torch.no_grad()
     def GenFeatures(self, images, width, height, num_channels):

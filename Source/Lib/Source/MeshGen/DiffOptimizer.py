@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
 
-from PythonSystem import ComputeDevice, GeneralDevice
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
@@ -64,13 +64,13 @@ class DiffOptimizer:
     def Destroy(self):
         del self.kernel
         del self.gpu_dr
-        torch.cuda.empty_cache()
+        PurgeTorchCache()
 
     def Optimize(self,
                  vtx_positions, vtx_colors, num_vertices, indices, num_indices,
                  view_images, view_proj_mtxs, transform_offsets, num_views,
                  scale, rotation, translation):
-        torch.cuda.empty_cache()
+        PurgeTorchCache()
 
         vtx_positions = np.frombuffer(vtx_positions, dtype = np.float32, count = num_vertices * 3)
         vtx_positions = torch.from_numpy(vtx_positions.copy()).to(self.device)

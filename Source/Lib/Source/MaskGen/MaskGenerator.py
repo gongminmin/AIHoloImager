@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from PythonSystem import ComputeDevice, GeneralDevice
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from U2Net import U2Net
 
 class MaskGenerator:
@@ -23,7 +23,7 @@ class MaskGenerator:
 
     def Destroy(self):
         del self.u2net
-        torch.cuda.empty_cache()
+        PurgeTorchCache()
 
     @torch.no_grad()
     def Gen(self, img_data : bytes, width : int, height : int, num_channels : int) -> bytes:

@@ -44,3 +44,9 @@ def ComputeDevice():
         else:
             compute_device = GeneralDevice()
     return compute_device
+
+def PurgeTorchCache():
+    global compute_device
+    if (compute_device != None) and (compute_device.type == "cuda"):
+        import torch
+        torch.cuda.empty_cache()

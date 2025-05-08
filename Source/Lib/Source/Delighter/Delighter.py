@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from PythonSystem import ComputeDevice, GeneralDevice
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
 def Round32(x):
@@ -120,7 +120,7 @@ class Delighter:
 
     def Destroy(self):
         del self.models
-        torch.cuda.empty_cache()
+        PurgeTorchCache()
 
     @torch.no_grad()
     def Process(self, image, width, height, channels):
