@@ -15,7 +15,7 @@ namespace AIHoloImager
         : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), gpu_dr_(gpu_system_), torch_device_(torch_device)
     {
         uses_cuda_copy_ = false;
-        if (torch_device.is_cuda() && cuda_rt_)
+        if ((torch_device.type() == torch::DeviceType::CUDA) && cuda_rt_)
         {
             int device_index = 0;
             if (torch_device.has_index())
@@ -524,8 +524,12 @@ namespace AIHoloImager
             gpu_system_.CpuWait();
 
             opts = opts.device(torch::kCPU);
-            tensor = torch::from_blob(read_back_buff.MappedData(), size, opts);
-            tensor = tensor.to(torch_device_);
+            tensor = torch::empty(size, opts);
+            std::memcpy(tensor.mutable_data_ptr(), read_back_buff.MappedData(), buff.Size());
+            if (torch_device_.type() != torch::DeviceType::CPU)
+            {
+                tensor = tensor.to(torch_device_);
+            }
         }
 
         return tensor;
@@ -601,7 +605,10 @@ namespace AIHoloImager
             opts = opts.device(torch::kCPU);
             tensor = torch::empty({1, height, width, num_channels}, opts);
             tex.Readback(gpu_system_, cmd_list, 0, tensor.mutable_data_ptr());
-            tensor = tensor.to(torch_device_);
+            if (torch_device_.type() != torch::DeviceType::CPU)
+            {
+                tensor = tensor.to(torch_device_);
+            }
         }
 
         return tensor;
