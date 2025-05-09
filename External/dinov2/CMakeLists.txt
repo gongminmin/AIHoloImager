@@ -92,6 +92,7 @@ else()
     )
 
     add_custom_target(DeployDinov2Models DEPENDS ${output_file})
+    add_dependencies(DeployDinov2Models dinov2)
 endif()
 
 set_target_properties(dinov2 DeployDinov2Models PROPERTIES FOLDER "External/dinov2")

@@ -1998,7 +1998,7 @@ set(copy_files
     numpy.libs/libscipy_openblas64_-43e11ff0749b8cbe0a615c9cf6737e0e.dll
     numpy.libs/msvcp140-d64049c6e3865410a7dda6a7e9f0c575.dll
     PIL/_imaging.${py_suffix}
-    safetensors/_safetensors_rust.${py_suffix}
+    safetensors/_safetensors_rust.pyd
     spconv/core_cc.${py_suffix}
     torch/_C.${py_suffix}
     torch/functional.py

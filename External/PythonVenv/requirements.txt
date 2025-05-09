@@ -37,7 +37,7 @@ torchvision==0.21.0+cu124
 #torch==2.6.0+cu124
 xformers==0.0.29.post2
 
-safetensors==0.4.5
+safetensors==0.5.3
 
 colorama==0.4.6
 tqdm==4.67.0
