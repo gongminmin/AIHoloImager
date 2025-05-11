@@ -27,17 +27,20 @@ class ResBlock3d(nn.Module):
         channels: int,
         out_channels: Optional[int] = None,
         norm_type: Literal["group", "layer"] = "layer",
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
         self.channels = channels
         self.out_channels = out_channels or channels
 
-        self.norm1 = NormLayer(norm_type, channels)
-        self.norm2 = NormLayer(norm_type, self.out_channels)
-        self.conv1 = nn.Conv3d(channels, self.out_channels, 3, padding=1)
-        self.conv2 = zero_module(nn.Conv3d(self.out_channels, self.out_channels, 3, padding=1))
-        self.skip_connection = nn.Conv3d(channels, self.out_channels, 1) if channels != self.out_channels else nn.Identity()
+        self.norm1 = NormLayer(norm_type, channels, device = device)
+        self.norm2 = NormLayer(norm_type, self.out_channels, device = device)
+        self.conv1 = nn.Conv3d(channels, self.out_channels, 3, padding=1, device = device)
+        self.conv2 = nn.Conv3d(self.out_channels, self.out_channels, 3, padding=1, device = device)
+        if device != "meta":
+            self.conv = zero_module(self.conv)
+        self.skip_connection = nn.Conv3d(channels, self.out_channels, 1, device = device) if channels != self.out_channels else nn.Identity()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm1(x)
@@ -55,6 +58,7 @@ class DownsampleBlock3d(nn.Module):
         in_channels: int,
         out_channels: int,
         mode: Literal["conv", "avgpool"] = "conv",
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -64,7 +68,7 @@ class DownsampleBlock3d(nn.Module):
         self.out_channels = out_channels
 
         if mode == "conv":
-            self.conv = nn.Conv3d(in_channels, out_channels, 2, stride=2)
+            self.conv = nn.Conv3d(in_channels, out_channels, 2, stride=2, device = device)
         elif mode == "avgpool":
             assert in_channels == out_channels, "Pooling mode requires in_channels to be equal to out_channels"
 
@@ -80,6 +84,7 @@ class UpsampleBlock3d(nn.Module):
         in_channels: int,
         out_channels: int,
         mode: Literal["conv", "nearest"] = "conv",
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
         
@@ -89,7 +94,7 @@ class UpsampleBlock3d(nn.Module):
         self.out_channels = out_channels
 
         if mode == "conv":
-            self.conv = nn.Conv3d(in_channels, out_channels*8, 3, padding=1)
+            self.conv = nn.Conv3d(in_channels, out_channels*8, 3, padding=1, device = device)
         elif mode == "nearest":
             assert in_channels == out_channels, "Nearest mode requires in_channels to be equal to out_channels"
 
@@ -122,6 +127,7 @@ class SparseStructureDecoder(nn.Module):
         num_res_blocks_middle: int = 2,
         norm_type: Literal["group", "layer"] = "layer",
         use_fp16: bool = False,
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -134,28 +140,28 @@ class SparseStructureDecoder(nn.Module):
         self.use_fp16 = use_fp16
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
-        self.input_layer = nn.Conv3d(latent_channels, channels[0], 3, padding=1)
+        self.input_layer = nn.Conv3d(latent_channels, channels[0], 3, padding=1, device = device)
 
         self.middle_block = nn.Sequential(*[
-            ResBlock3d(channels[0], channels[0])
+            ResBlock3d(channels[0], channels[0], device = device)
             for _ in range(num_res_blocks_middle)
         ])
 
         self.blocks = nn.ModuleList([])
         for i, ch in enumerate(channels):
             self.blocks.extend([
-                ResBlock3d(ch, ch)
+                ResBlock3d(ch, ch, device = device)
                 for _ in range(num_res_blocks)
             ])
             if i < len(channels) - 1:
                 self.blocks.append(
-                    UpsampleBlock3d(ch, channels[i+1])
+                    UpsampleBlock3d(ch, channels[i+1], device = device)
                 )
 
         self.out_layer = nn.Sequential(
-            NormLayer(norm_type, channels[-1]),
+            NormLayer(norm_type, channels[-1], device = device),
             nn.SiLU(),
-            nn.Conv3d(channels[-1], out_channels, 3, padding=1)
+            nn.Conv3d(channels[-1], out_channels, 3, padding=1, device = device)
         )
 
         if use_fp16:

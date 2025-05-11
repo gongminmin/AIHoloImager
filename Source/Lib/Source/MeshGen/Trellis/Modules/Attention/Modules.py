@@ -12,11 +12,11 @@ import torch.nn.functional as functional
 from .FullAttn import scaled_dot_product_attention
 
 class MultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int):
+    def __init__(self, dim: int, heads: int, device : Optional[torch.device] = None):
         super().__init__()
 
         self.scale = dim ** 0.5
-        self.gamma = nn.Parameter(torch.ones(heads, dim))
+        self.gamma = nn.Parameter(torch.ones(heads, dim, device = device))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return (functional.normalize(x.float(), dim = -1) * self.gamma * self.scale).to(x.dtype)
@@ -80,6 +80,7 @@ class MultiHeadAttention(nn.Module):
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -103,16 +104,16 @@ class MultiHeadAttention(nn.Module):
         self.qk_rms_norm = qk_rms_norm
 
         if self._type == "self":
-            self.to_qkv = nn.Linear(channels, channels * 3, bias=qkv_bias)
+            self.to_qkv = nn.Linear(channels, channels * 3, bias=qkv_bias, device = device)
         else:
-            self.to_q = nn.Linear(channels, channels, bias=qkv_bias)
-            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias=qkv_bias)
+            self.to_q = nn.Linear(channels, channels, bias=qkv_bias, device = device)
+            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias=qkv_bias, device = device)
             
         if self.qk_rms_norm:
-            self.q_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads)
-            self.k_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads)
+            self.q_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads, device = device)
+            self.k_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads, device = device)
             
-        self.to_out = nn.Linear(channels, channels)
+        self.to_out = nn.Linear(channels, channels, device = device)
 
         if use_rope:
             self.rope = RotaryPositionEmbedder(channels)

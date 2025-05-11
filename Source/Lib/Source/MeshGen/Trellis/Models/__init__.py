@@ -3,6 +3,8 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/__init__.py
 
+from torch.nn.utils import skip_init
+
 __attributes = {
     "SparseStructureDecoder" : "SparseStructureVae",
     "SparseStructureFlowModel" : "SparseStructureFlow",
@@ -38,7 +40,7 @@ def FromPretrained(path : str, **kwargs):
 
     with open(config_file_path, "r") as file:
         config = json.load(file)
-    model = __getattr__(config["name"])(**config["args"], **kwargs)
+    model = skip_init(__getattr__(config["name"]), **config["args"], **kwargs)
     model.load_state_dict(load_file(model_file_path))
 
     return model

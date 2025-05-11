@@ -40,9 +40,9 @@ class Conv2dSame(nn.Conv2d):
 
     # pylint: disable=unused-argument
     def __init__(self, in_channels, out_channels, kernel_size, stride = 1,
-                 padding = 0, dilation = 1, groups = 1, bias = True):
+                 padding = 0, dilation = 1, groups = 1, bias = True, device : Optional[torch.device] = None):
         super(Conv2dSame, self).__init__(
-              in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias)
+              in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias, device = device)
 
     def forward(self, x):
         return Conv2dSameFunc(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)

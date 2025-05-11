@@ -11,7 +11,9 @@ Copyright 2020 Ross Wightman
 
 from copy import deepcopy
 import math
+from typing import Optional
 
+import torch
 import torch.nn as nn
 
 from .Conv2dLayers import SelectConv2d
@@ -62,7 +64,7 @@ class DepthwiseSeparableConv(nn.Module):
     factor of 1.0. This is an alternative to having a IR with optional first pw conv.
     """
     def __init__(self, block_def : BlockDefine, in_channels, pad_type = "", act_layer = nn.ReLU,
-                 norm_layer = nn.BatchNorm2d, norm_kwargs = None):
+                 norm_layer = nn.BatchNorm2d, norm_kwargs = None, device : Optional[torch.device] = None):
         super(DepthwiseSeparableConv, self).__init__()
 
         assert(block_def.stride in [1, 2])
@@ -70,14 +72,14 @@ class DepthwiseSeparableConv(nn.Module):
         self.has_residual = (block_def.stride == 1) and (in_channels == block_def.out_channels)
 
         self.conv_dw = SelectConv2d(
-            in_channels, in_channels, block_def.kernel_size, stride = block_def.stride, padding = pad_type, depthwise = True)
-        self.bn1 = norm_layer(in_channels, **norm_kwargs)
+            in_channels, in_channels, block_def.kernel_size, stride = block_def.stride, padding = pad_type, depthwise = True, device = device)
+        self.bn1 = norm_layer(in_channels, device = device, **norm_kwargs)
         self.act1 = act_layer(inplace = True)
 
         self.se = nn.Identity()
 
-        self.conv_pw = SelectConv2d(in_channels, block_def.out_channels, 1, padding = pad_type)
-        self.bn2 = norm_layer(block_def.out_channels, **norm_kwargs)
+        self.conv_pw = SelectConv2d(in_channels, block_def.out_channels, 1, padding = pad_type, device = device)
+        self.bn2 = norm_layer(block_def.out_channels, device = device, **norm_kwargs)
         self.act2 = nn.Identity()
 
     def forward(self, x):
@@ -101,7 +103,7 @@ class InvertedResidual(nn.Module):
     """ Inverted residual block w/ optional SE"""
 
     def __init__(self, block_def : BlockDefine, in_channels, pad_type = "", act_layer = nn.ReLU,
-                 norm_layer = nn.BatchNorm2d, norm_kwargs = None):
+                 norm_layer = nn.BatchNorm2d, norm_kwargs = None, device : Optional[torch.device] = None):
         super(InvertedResidual, self).__init__()
 
         norm_kwargs = norm_kwargs or {}
@@ -109,21 +111,21 @@ class InvertedResidual(nn.Module):
         self.has_residual = (in_channels == block_def.out_channels) and (block_def.stride == 1)
 
         # Point-wise expansion
-        self.conv_pw = SelectConv2d(in_channels, mid_channels, 1, padding = pad_type)
-        self.bn1 = norm_layer(mid_channels, **norm_kwargs)
+        self.conv_pw = SelectConv2d(in_channels, mid_channels, 1, padding = pad_type, device = device)
+        self.bn1 = norm_layer(mid_channels, device = device, **norm_kwargs)
         self.act1 = act_layer(inplace = True)
 
         # Depth-wise convolution
         self.conv_dw = SelectConv2d(
-            mid_channels, mid_channels, block_def.kernel_size, stride = block_def.stride, padding = pad_type, depthwise = True)
-        self.bn2 = norm_layer(mid_channels, **norm_kwargs)
+            mid_channels, mid_channels, block_def.kernel_size, stride = block_def.stride, padding = pad_type, depthwise = True, device = device)
+        self.bn2 = norm_layer(mid_channels, device = device, **norm_kwargs)
         self.act2 = act_layer(inplace = True)
 
         self.se = nn.Identity()  # for jit.script compat
 
         # Point-wise linear projection
-        self.conv_pwl = SelectConv2d(mid_channels, block_def.out_channels, 1, padding = pad_type)
-        self.bn3 = norm_layer(block_def.out_channels, **norm_kwargs)
+        self.conv_pwl = SelectConv2d(mid_channels, block_def.out_channels, 1, padding = pad_type, device = device)
+        self.bn3 = norm_layer(block_def.out_channels, device = device, **norm_kwargs)
 
     def forward(self, x):
         residual = x
@@ -174,17 +176,17 @@ class EfficientNetBuilder:
         # updated during build
         self.in_channels = None
 
-    def MakeBlock(self, block_def):
+    def MakeBlock(self, block_def, device : Optional[torch.device] = None):
         if block_def.block_type == "ir":
-            block = InvertedResidual(block_def, self.in_channels, self.pad_type, self.act_layer, self.norm_layer, self.norm_kwargs)
+            block = InvertedResidual(block_def, self.in_channels, self.pad_type, self.act_layer, self.norm_layer, self.norm_kwargs, device = device)
         elif block_def.block_type == "ds":
-            block = DepthwiseSeparableConv(block_def, self.in_channels, self.pad_type, self.act_layer, self.norm_layer, self.norm_kwargs)
+            block = DepthwiseSeparableConv(block_def, self.in_channels, self.pad_type, self.act_layer, self.norm_layer, self.norm_kwargs, device = device)
         else:
             print(f"Uknkown block type ({block_type}) while building model.")
             assert(False)
         return block
 
-    def MakeStack(self, stack_args):
+    def MakeStack(self, stack_args, device : Optional[torch.device] = None):
         blocks = []
         # each stack (stage) contains a list of block arguments
         for i, block_args in enumerate(stack_args):
@@ -193,17 +195,17 @@ class EfficientNetBuilder:
             if i > 0:
                 # only the first block in any stack can have a stride > 1
                 block_def.stride = 1
-            blocks.append(self.MakeBlock(block_def))
+            blocks.append(self.MakeBlock(block_def, device))
             self.in_channels = block_def.out_channels  # update in_channels for arg of next block
         return nn.Sequential(*blocks)
 
-    def __call__(self, in_channels, block_args):
+    def __call__(self, in_channels, block_args, device : Optional[torch.device] = None):
         self.in_channels = in_channels
         blocks = []
         # outer list of block_args defines the stacks ("stages" by some conventions)
         for stack in block_args:
             assert(isinstance(stack, list))
-            blocks.append(self.MakeStack(stack))
+            blocks.append(self.MakeStack(stack, device = device))
         return blocks
 
 def ParseKSize(ss):
@@ -287,27 +289,27 @@ class EfficientNet(nn.Module):
 
     def __init__(self, block_args, num_classes = 1000, in_channels = 3, num_features = 1280, stem_size = 32, fix_stem = False,
                  channel_multiplier = 1.0, channel_divisor = 8, channel_min = None, pad_type = "", act_layer = nn.ReLU,
-                 norm_layer = nn.BatchNorm2d, norm_kwargs = None):
+                 norm_layer = nn.BatchNorm2d, norm_kwargs = None, device : Optional[torch.device] = None):
         super(EfficientNet, self).__init__()
 
         if not fix_stem:
             stem_size = RoundChannels(stem_size, channel_multiplier, channel_divisor, channel_min)
-        self.conv_stem = SelectConv2d(in_channels, stem_size, 3, stride = 2, padding = pad_type)
-        self.bn1 = norm_layer(stem_size, **norm_kwargs)
+        self.conv_stem = SelectConv2d(in_channels, stem_size, 3, stride = 2, padding = pad_type, device = device)
+        self.bn1 = norm_layer(stem_size, device = device, **norm_kwargs)
         self.act1 = act_layer(inplace = True)
         in_channels = stem_size
 
         builder = EfficientNetBuilder(
             channel_multiplier, channel_divisor, channel_min,
             pad_type, act_layer, norm_layer, norm_kwargs)
-        self.blocks = nn.Sequential(*builder(in_channels, block_args))
+        self.blocks = nn.Sequential(*builder(in_channels, block_args, device = device))
         in_channels = builder.in_channels
 
-        self.conv_head = SelectConv2d(in_channels, num_features, 1, padding = pad_type)
-        self.bn2 = norm_layer(num_features, **norm_kwargs)
+        self.conv_head = SelectConv2d(in_channels, num_features, 1, padding = pad_type, device = device)
+        self.bn2 = norm_layer(num_features, device = device, **norm_kwargs)
         self.act2 = act_layer(inplace = True)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Linear(num_features, num_classes)
+        self.classifier = nn.Linear(num_features, num_classes, device = device)
 
         for name, model in self.named_modules():
             InitializeWeightTf(model, name)
@@ -324,7 +326,7 @@ class EfficientNet(nn.Module):
         x = x.flatten(1)
         return self.classifier(x)
 
-def TfEfficientNetLite3():
+def TfEfficientNetLite3(device : Optional[torch.device] = None):
     """
     EfficientNet-Lite3. Tensorflow compatible variant
     Creates an EfficientNet-Lite model.
@@ -351,4 +353,5 @@ def TfEfficientNetLite3():
         act_layer = nn.ReLU6,
         norm_kwargs = {"eps" : BatchNormEpsTfDefault},
         pad_type = "same",
+        device = device,
     )

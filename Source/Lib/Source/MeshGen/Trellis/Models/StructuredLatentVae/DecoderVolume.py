@@ -33,7 +33,8 @@ class SparseSubdivideBlock3d(nn.Module):
         channels: int,
         resolution: int,
         out_channels: Optional[int] = None,
-        num_groups: int = 32
+        num_groups: int = 32,
+        device : Optional[torch.device] = None,
     ):
         super(SparseSubdivideBlock3d, self).__init__()
 
@@ -43,7 +44,7 @@ class SparseSubdivideBlock3d(nn.Module):
         self.out_channels = out_channels or channels
 
         self.act_layers = nn.Sequential(
-            sp.SparseGroupNorm32(num_groups, channels),
+            sp.SparseGroupNorm32(num_groups, channels, device = device),
             sp.SparseSiLU()
         )
         
@@ -51,11 +52,13 @@ class SparseSubdivideBlock3d(nn.Module):
         
         self.out_layers = nn.Sequential(
             sp.SparseConv3d(channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
-            sp.SparseGroupNorm32(num_groups, self.out_channels),
+            sp.SparseGroupNorm32(num_groups, self.out_channels, device = device),
             sp.SparseSiLU(),
-            zero_module(sp.SparseConv3d(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}")),
+            sp.SparseConv3d(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
         )
-        
+        if device != "meta":
+            self.out_layers[3] = zero_module(self.out_layers[3])
+
         if self.out_channels == channels:
             self.skip_connection = nn.Identity()
         else:
@@ -94,6 +97,7 @@ class SLatMeshDecoder(SparseTransformerBase):
         use_checkpoint: bool = False,
         qk_rms_norm: bool = False,
         representation_config: dict = None,
+        device : Optional[torch.device] = None,
     ):
         super(SLatMeshDecoder, self).__init__(
             in_channels=latent_channels,
@@ -108,6 +112,7 @@ class SLatMeshDecoder(SparseTransformerBase):
             use_fp16=use_fp16,
             use_checkpoint=use_checkpoint,
             qk_rms_norm=qk_rms_norm,
+            device = device,
         )
 
         self.resolution = resolution
@@ -117,17 +122,20 @@ class SLatMeshDecoder(SparseTransformerBase):
             SparseSubdivideBlock3d(
                 channels=model_channels,
                 resolution=resolution,
-                out_channels=model_channels // 4
+                out_channels=model_channels // 4,
+                device = device,
             ),
             SparseSubdivideBlock3d(
                 channels=model_channels // 4,
                 resolution=resolution * 2,
-                out_channels=model_channels // 8
+                out_channels=model_channels // 8,
+                device = device,
             )
         ])
-        self.out_layer = sp.SparseLinear(model_channels // 8, self.out_channels)
+        self.out_layer = sp.SparseLinear(model_channels // 8, self.out_channels, device = device)
 
-        self.initialize_weights()
+        if device != "meta":
+            self.initialize_weights()
         if use_fp16:
             self.convert_to_fp16()
 

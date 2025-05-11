@@ -42,6 +42,7 @@ class SparseTransformerBase(nn.Module):
         use_fp16: bool = False,
         use_checkpoint: bool = False,
         qk_rms_norm: bool = False,
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -61,7 +62,7 @@ class SparseTransformerBase(nn.Module):
         if pe_mode == "ape":
             self.pos_embedder = AbsolutePositionEmbedder(model_channels)
 
-        self.input_layer = sp.SparseLinear(in_channels, model_channels)
+        self.input_layer = sp.SparseLinear(in_channels, model_channels, device = device)
         self.blocks = nn.ModuleList([
             SparseTransformerBlock(
                 model_channels,
@@ -75,6 +76,7 @@ class SparseTransformerBase(nn.Module):
                 use_checkpoint=self.use_checkpoint,
                 use_rope=(pe_mode == "rope"),
                 qk_rms_norm=self.qk_rms_norm,
+                device = device,
             )
             for attn_mode, window_size, shift_sequence, shift_window, serialize_mode in BlockAttnConfig(self)
         ])

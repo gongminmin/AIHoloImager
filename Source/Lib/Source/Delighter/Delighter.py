@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.nn.utils import skip_init
 
 from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
@@ -184,22 +185,22 @@ class Delighter:
         col_state_dict = self.FixStateDict(torch.load(paths[2], map_location = GeneralDevice(), weights_only = True))
         alb_state_dict = self.FixStateDict(torch.load(paths[3], map_location = GeneralDevice(), weights_only = True))
 
-        ord_model = MidasNet()
+        ord_model = skip_init(MidasNet)
         ord_model.load_state_dict(ord_state_dict)
         ord_model.eval()
         self.models[self.ord_model_idx] = ord_model.to(self.device)
 
-        iid_model = MidasNetSmall(in_channels = 5, out_channels = 1)
+        iid_model = skip_init(MidasNetSmall, in_channels = 5, out_channels = 1)
         iid_model.load_state_dict(iid_state_dict)
         iid_model.eval()
         self.models[self.iid_model_idx] = iid_model.to(self.device)
 
-        col_model = MidasNet(activation = "sigmoid", in_channels = 7, out_channels = 2)
+        col_model = skip_init(MidasNet, activation = "sigmoid", in_channels = 7, out_channels = 2)
         col_model.load_state_dict(col_state_dict)
         col_model.eval()
         self.models[self.col_model_idx] = col_model.to(self.device)
 
-        alb_model = MidasNet(activation = "sigmoid", in_channels = 9, out_channels = 3)
+        alb_model = skip_init(MidasNet, activation = "sigmoid", in_channels = 9, out_channels = 3)
         alb_model.load_state_dict(alb_state_dict)
         alb_model.eval()
         self.models[self.alb_model_idx] = alb_model.to(self.device)

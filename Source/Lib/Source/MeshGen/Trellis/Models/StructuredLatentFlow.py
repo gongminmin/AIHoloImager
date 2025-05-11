@@ -25,6 +25,7 @@ class SparseResBlock3d(nn.Module):
         out_channels: Optional[int] = None,
         downsample: bool = False,
         upsample: bool = False,
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -36,15 +37,17 @@ class SparseResBlock3d(nn.Module):
         
         assert not (downsample and upsample), "Cannot downsample and upsample at the same time"
 
-        self.norm1 = LayerNorm32(channels, elementwise_affine=True, eps=1e-6)
-        self.norm2 = LayerNorm32(self.out_channels, elementwise_affine=False, eps=1e-6)
+        self.norm1 = LayerNorm32(channels, elementwise_affine=True, eps=1e-6, device = device)
+        self.norm2 = LayerNorm32(self.out_channels, elementwise_affine=False, eps=1e-6, device = device)
         self.conv1 = sp.SparseConv3d(channels, self.out_channels, 3)
-        self.conv2 = zero_module(sp.SparseConv3d(self.out_channels, self.out_channels, 3))
+        self.conv2 = sp.SparseConv3d(self.out_channels, self.out_channels, 3)
+        if device != "meta":
+            self.conv2 = zero_module(self.conv2)
         self.emb_layers = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(emb_channels, 2 * self.out_channels, bias=True),
+            nn.Linear(emb_channels, 2 * self.out_channels, bias=True, device = device),
         )
-        self.skip_connection = sp.SparseLinear(channels, self.out_channels) if channels != self.out_channels else nn.Identity()
+        self.skip_connection = sp.SparseLinear(channels, self.out_channels, device = device) if channels != self.out_channels else nn.Identity()
         self.updown = None
         if self.downsample:
             self.updown = sp.SparseDownsample(2)
@@ -93,6 +96,7 @@ class SLatFlowModel(nn.Module):
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
+        device : Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -119,17 +123,17 @@ class SLatFlowModel(nn.Module):
         assert int(np.log2(patch_size)) == np.log2(patch_size), "Patch size must be a power of 2"
         assert np.log2(patch_size) == len(io_block_channels), "Number of IO ResBlocks must match the number of stages"
 
-        self.t_embedder = TimestepEmbedder(model_channels)
+        self.t_embedder = TimestepEmbedder(model_channels, device = device)
         if share_mod:
             self.adaLN_modulation = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(model_channels, 6 * model_channels, bias=True)
+                nn.Linear(model_channels, 6 * model_channels, bias=True, device = device)
             )
 
         if pe_mode == "ape":
             self.pos_embedder = AbsolutePositionEmbedder(model_channels)
 
-        self.input_layer = sp.SparseLinear(in_channels, io_block_channels[0])
+        self.input_layer = sp.SparseLinear(in_channels, io_block_channels[0], device = device)
         self.input_blocks = nn.ModuleList([])
         for chs, next_chs in zip(io_block_channels, io_block_channels[1:] + [model_channels]):
             self.input_blocks.extend([
@@ -137,6 +141,7 @@ class SLatFlowModel(nn.Module):
                     chs,
                     model_channels,
                     out_channels=chs,
+                    device = device,
                 )
                 for _ in range(num_io_res_blocks-1)
             ])
@@ -146,6 +151,7 @@ class SLatFlowModel(nn.Module):
                     model_channels,
                     out_channels=next_chs,
                     downsample=True,
+                    device = device,
                 )
             )
             
@@ -161,6 +167,7 @@ class SLatFlowModel(nn.Module):
                 share_mod=self.share_mod,
                 qk_rms_norm=self.qk_rms_norm,
                 qk_rms_norm_cross=self.qk_rms_norm_cross,
+                device = device,
             )
             for _ in range(num_blocks)
         ])
@@ -173,6 +180,7 @@ class SLatFlowModel(nn.Module):
                     model_channels,
                     out_channels=chs,
                     upsample=True,
+                    device = device,
                 )
             )
             self.out_blocks.extend([
@@ -180,12 +188,14 @@ class SLatFlowModel(nn.Module):
                     chs * 2 if self.use_skip_connection else chs,
                     model_channels,
                     out_channels=chs,
+                    device = device,
                 )
                 for _ in range(num_io_res_blocks-1)
             ])
-        self.out_layer = sp.SparseLinear(io_block_channels[0], out_channels)
+        self.out_layer = sp.SparseLinear(io_block_channels[0], out_channels, device = device)
 
-        self.initialize_weights()
+        if device != "meta":
+            self.initialize_weights()
         if use_fp16:
             self.convert_to_fp16()
 

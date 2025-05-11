@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.nn.utils import skip_init
 
 from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from U2Net import U2Net
@@ -16,7 +17,7 @@ class MaskGenerator:
         self.device = ComputeDevice()
 
         u2net_model_path = this_py_dir / "Models/U-2-Net/u2net.pth"
-        self.u2net = U2Net(3, 1)
+        self.u2net = skip_init(U2Net, 3, 1)
         self.u2net.load_state_dict(torch.load(u2net_model_path, map_location = GeneralDevice(), weights_only = True))
         self.u2net.eval()
         self.u2net.to(self.device)

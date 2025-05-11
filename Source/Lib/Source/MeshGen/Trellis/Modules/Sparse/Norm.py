@@ -3,6 +3,8 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/norm.py
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
@@ -16,8 +18,8 @@ __all__ = [
 ]
 
 class SparseGroupNorm(nn.GroupNorm):
-    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
-        super(SparseGroupNorm, self).__init__(num_groups, num_channels, eps, affine)
+    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True, device : Optional[torch.device] = None):
+        super(SparseGroupNorm, self).__init__(num_groups, num_channels, eps, affine, device = device)
 
     def forward(self, input: SparseTensor) -> SparseTensor:
         nfeats = torch.zeros_like(input.feats)
@@ -30,8 +32,8 @@ class SparseGroupNorm(nn.GroupNorm):
         return input.replace(nfeats)
 
 class SparseLayerNorm(nn.LayerNorm):
-    def __init__(self, normalized_shape, eps=1e-5, elementwise_affine=True):
-        super(SparseLayerNorm, self).__init__(normalized_shape, eps, elementwise_affine)
+    def __init__(self, normalized_shape, eps=1e-5, elementwise_affine=True, device : Optional[torch.device] = None):
+        super(SparseLayerNorm, self).__init__(normalized_shape, eps, elementwise_affine, device = device)
 
     def forward(self, input: SparseTensor) -> SparseTensor:
         nfeats = torch.zeros_like(input.feats)
@@ -47,6 +49,9 @@ class SparseGroupNorm32(SparseGroupNorm):
     """
     A GroupNorm layer that converts to float32 before the forward pass.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def forward(self, x: SparseTensor) -> SparseTensor:
         return super().forward(x.float()).type(x.dtype)
 
@@ -54,5 +59,8 @@ class SparseLayerNorm32(SparseLayerNorm):
     """
     A LayerNorm layer that converts to float32 before the forward pass.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def forward(self, x: SparseTensor) -> SparseTensor:
         return super().forward(x.float()).type(x.dtype)

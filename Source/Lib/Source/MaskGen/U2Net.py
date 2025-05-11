@@ -3,16 +3,18 @@
 
 # From https://github.com/xuebinqin/U-2-Net/blob/master/model/u2net.py
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
 class ReBnConv(nn.Module):
-    def __init__(self, in_ch = 3, out_ch = 3, dirate = 1):
+    def __init__(self, in_ch = 3, out_ch = 3, dirate = 1, device : Optional[torch.device] = None):
         super(ReBnConv, self).__init__()
 
-        self.conv_s1 = nn.Conv2d(in_ch, out_ch, 3, padding = 1 * dirate, dilation = 1 * dirate)
-        self.bn_s1 = nn.BatchNorm2d(out_ch)
+        self.conv_s1 = nn.Conv2d(in_ch, out_ch, 3, padding = 1 * dirate, dilation = 1 * dirate, device = device)
+        self.bn_s1 = nn.BatchNorm2d(out_ch, device = device)
         self.relu_s1 = nn.ReLU(inplace = True)
 
     def forward(self,x):
@@ -26,24 +28,24 @@ def UpsampleLike(src, target):
     return functional.interpolate(src, size = target.shape[2 : ], mode = "bilinear")
 
 class Rsu4(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3):
+    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
         super(Rsu4, self).__init__()
 
-        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1)
+        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
 
-        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1)
+        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1, device = device)
         self.pool1 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool2 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
 
-        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 2)
+        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 2, device = device)
 
-        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1)
+        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
     def forward(self, x):
         hx = x
@@ -71,20 +73,20 @@ class Rsu4(nn.Module):
         return hx1d + hxin
 
 class Rsu4F(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3):
+    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
         super(Rsu4F, self).__init__()
 
-        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1)
+        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
 
-        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1)
-        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 2)
-        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 4)
+        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1, device = device)
+        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 2, device = device)
+        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 4, device = device)
 
-        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 8)
+        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 8, device = device)
 
-        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 4)
-        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 2)
-        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1)
+        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 4, device = device)
+        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 2, device = device)
+        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
     def forward(self,x):
         hx = x
@@ -104,28 +106,28 @@ class Rsu4F(nn.Module):
         return hx1d + hxin
 
 class Rsu5(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3):
+    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
         super(Rsu5, self).__init__()
 
-        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1)
+        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
 
-        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1)
+        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1, device = device)
         self.pool1 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool2 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool3 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
 
-        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 2)
+        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 2, device = device)
 
-        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1)
+        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
     def forward(self,x):
         hx = x
@@ -159,32 +161,32 @@ class Rsu5(nn.Module):
         return hx1d + hxin
 
 class Rsu6(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3):
+    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
         super(Rsu6, self).__init__()
 
-        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1)
+        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
 
-        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1)
+        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1, device = device)
         self.pool1 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool2 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool3 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool4 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
 
-        self.rebnconv6 = ReBnConv(mid_ch, mid_ch, dirate = 2)
+        self.rebnconv6 = ReBnConv(mid_ch, mid_ch, dirate = 2, device = device)
 
-        self.rebnconv5d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1)
+        self.rebnconv5d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
     def forward(self,x):
         hx = x
@@ -224,36 +226,36 @@ class Rsu6(nn.Module):
         return hx1d + hxin
 
 class Rsu7(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3):
+    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
         super(Rsu7, self).__init__()
 
-        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1)
+        self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
 
-        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1)
+        self.rebnconv1 = ReBnConv(out_ch, mid_ch, dirate = 1, device = device)
         self.pool1 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv2 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool2 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv3 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool3 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv4 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool4 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv5 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
         self.pool5 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.rebnconv6 = ReBnConv(mid_ch, mid_ch, dirate = 1)
+        self.rebnconv6 = ReBnConv(mid_ch, mid_ch, dirate = 1, device = device)
 
-        self.rebnconv7 = ReBnConv(mid_ch, mid_ch, dirate = 2)
+        self.rebnconv7 = ReBnConv(mid_ch, mid_ch, dirate = 2, device = device)
 
-        self.rebnconv6d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv5d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1)
-        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1)
+        self.rebnconv6d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv5d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv4d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv3d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
+        self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
     def forward(self, x):
         hx = x
@@ -298,44 +300,40 @@ class Rsu7(nn.Module):
         return hx1d + hxin
 
 class U2Net(nn.Module):
-    def __init__(self, in_ch = 3,out_ch = 1):
+    def __init__(self, in_ch = 3,out_ch = 1, device : Optional[torch.device] = None):
         super(U2Net, self).__init__()
 
-        state = torch.get_rng_state()
-
-        self.stage1 = Rsu7(in_ch, 32, 64)
+        self.stage1 = Rsu7(in_ch, 32, 64, device = device)
         self.pool12 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.stage2 = Rsu6(64, 32, 128)
+        self.stage2 = Rsu6(64, 32, 128, device = device)
         self.pool23 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.stage3 = Rsu5(128, 64, 256)
+        self.stage3 = Rsu5(128, 64, 256, device = device)
         self.pool34 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.stage4 = Rsu4(256, 128, 512)
+        self.stage4 = Rsu4(256, 128, 512, device = device)
         self.pool45 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.stage5 = Rsu4F(512, 256, 512)
+        self.stage5 = Rsu4F(512, 256, 512, device = device)
         self.pool56 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
 
-        self.stage6 = Rsu4F(512, 256, 512)
+        self.stage6 = Rsu4F(512, 256, 512, device = device)
 
-        self.stage5d = Rsu4F(1024, 256, 512)
-        self.stage4d = Rsu4(1024, 128, 256)
-        self.stage3d = Rsu5(512, 64, 128)
-        self.stage2d = Rsu6(256, 32, 64)
-        self.stage1d = Rsu7(128, 16, 64)
+        self.stage5d = Rsu4F(1024, 256, 512, device = device)
+        self.stage4d = Rsu4(1024, 128, 256, device = device)
+        self.stage3d = Rsu5(512, 64, 128, device = device)
+        self.stage2d = Rsu6(256, 32, 64, device = device)
+        self.stage1d = Rsu7(128, 16, 64, device = device)
 
-        self.side1 = nn.Conv2d(64, out_ch, 3, padding = 1)
-        self.side2 = nn.Conv2d(64, out_ch, 3, padding = 1)
-        self.side3 = nn.Conv2d(128, out_ch, 3, padding = 1)
-        self.side4 = nn.Conv2d(256, out_ch, 3, padding = 1)
-        self.side5 = nn.Conv2d(512, out_ch, 3, padding = 1)
-        self.side6 = nn.Conv2d(512, out_ch, 3, padding = 1)
+        self.side1 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side2 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side3 = nn.Conv2d(128, out_ch, 3, padding = 1, device = device)
+        self.side4 = nn.Conv2d(256, out_ch, 3, padding = 1, device = device)
+        self.side5 = nn.Conv2d(512, out_ch, 3, padding = 1, device = device)
+        self.side6 = nn.Conv2d(512, out_ch, 3, padding = 1, device = device)
 
-        self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1)
-
-        torch.set_rng_state(state) # Restore the random state changed by Conv2d
+        self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1, device = device)
 
     def forward(self, x):
         hx = x
