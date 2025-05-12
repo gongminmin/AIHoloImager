@@ -54,6 +54,29 @@
 
 namespace AIHoloImager
 {
+    void TransformMesh(Mesh& mesh, const glm::mat4x4& mtx)
+    {
+        const glm::mat3x3 mtx_it = glm::transpose(glm::inverse(mtx));
+
+        const auto& vertex_desc = mesh.MeshVertexDesc();
+        const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+        const uint32_t normal_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
+        for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
+        {
+            if (pos_attrib_index != VertexDesc::InvalidIndex)
+            {
+                auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                const glm::vec4 p = mtx * glm::vec4(pos, 1);
+                pos = glm::vec3(p) / p.w;
+            }
+            if (normal_attrib_index != VertexDesc::InvalidIndex)
+            {
+                auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
+                normal = mtx_it * normal;
+            }
+        }
+    }
+
     class MeshGenerator::Impl
     {
     public:
@@ -176,14 +199,61 @@ namespace AIHoloImager
                 obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, centroid, up_vec);
+            glm::vec3 local_up_vec;
+            {
+                const glm::vec3 local_y =
+                    glm::rotate(glm::inverse(obb.orientation), glm::vec3(0, 0, 1)); // Y and Z are swapped in the output of TRELLIS
+                const glm::vec3 abs_local_y = glm::abs(local_y);
+                if (abs_local_y.x > abs_local_y.y)
+                {
+                    if (abs_local_y.x > abs_local_y.z)
+                    {
+                        local_up_vec = glm::vec3(local_y.x / abs_local_y.x, 0, 0);
+                    }
+                    else
+                    {
+                        local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
+                    }
+                }
+                else
+                {
+                    if (local_y.y > abs_local_y.z)
+                    {
+                        local_up_vec = glm::vec3(0, local_y.y / abs_local_y.y, 0);
+                    }
+                    else
+                    {
+                        local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
+                    }
+                }
+
+                local_up_vec = glm::rotate(obb.orientation, local_up_vec);
+            }
+
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, centroid, local_up_vec, up_vec);
 
             std::cout << "Optimizing transform...\n";
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            {
+                Mesh before_opt_mesh = mesh;
+                TransformMesh(before_opt_mesh, model_mtx);
+                SaveMesh(before_opt_mesh, output_dir / "BeforeOpt.glb");
+            }
+#endif
 
             {
                 DiffOptimizer optimizer(gpu_system_, python_system_);
                 optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
             }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            {
+                Mesh after_opt_mesh = mesh;
+                TransformMesh(after_opt_mesh, model_mtx);
+                SaveMesh(after_opt_mesh, output_dir / "AfterOpt.glb");
+            }
+#endif
 
             std::cout << "Simplifying mesh...\n";
 
@@ -239,23 +309,9 @@ namespace AIHoloImager
                 glm::vec4 perspective;
                 glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
-                const glm::mat4x4 adjust_mtx = glm::recompose(scale,
-                    glm::angleAxis(-std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) * glm::inverse(obb.orientation),
-                    glm::zero<glm::vec3>(), skew, perspective);
-                const glm::mat3x3 adjust_it_mtx = glm::transpose(glm::inverse(adjust_mtx));
-
-                const auto& vertex_desc = mesh.MeshVertexDesc();
-                const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-                const uint32_t normal_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
-                for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
-                {
-                    auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                    const glm::vec4 p = adjust_mtx * glm::vec4(pos, 1);
-                    pos = glm::vec3(p) / p.w;
-
-                    auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
-                    normal = adjust_it_mtx * normal;
-                }
+                const glm::mat4x4 adjust_mtx =
+                    glm::recompose(scale, glm::rotation(local_up_vec, glm::vec3(0, 1, 0)), glm::zero<glm::vec3>(), skew, perspective);
+                TransformMesh(mesh, adjust_mtx);
             }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -1229,13 +1285,11 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 GuessModelMatrix(
-            const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& centroid, const glm::vec3& up_vec)
+        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& centroid,
+            const glm::vec3& local_up_vec, const glm::vec3& up_vec)
         {
             const glm::mat4 init_model_mtx =
-                glm::translate(glm::identity<glm::mat4x4>(), centroid) *
-                glm::mat4_cast(glm::rotation(glm::vec3(0, 1, 0), -up_vec) *
-                               glm::angleAxis(std::numbers::pi_v<float> / 2, glm::vec3(0, 0, 1)) * glm::inverse(obb.orientation));
+                glm::translate(glm::identity<glm::mat4x4>(), centroid) * glm::mat4_cast(glm::rotation(local_up_vec, up_vec));
 
             glm::vec3 corners[8];
             Obb::GetCorners(obb, corners);
