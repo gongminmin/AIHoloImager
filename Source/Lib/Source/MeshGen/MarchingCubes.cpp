@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "MarchingCubes.hpp"
@@ -301,7 +301,7 @@ namespace AIHoloImager
     class MarchingCubes::Impl
     {
     public:
-        Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
+        Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
             edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Upload, GpuResourceFlag::None, L"edge_table_buff");
             {
@@ -525,7 +525,7 @@ namespace AIHoloImager
         GpuComputePipeline gen_vertices_indices_pipeline_;
     };
 
-    MarchingCubes::MarchingCubes(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
+    MarchingCubes::MarchingCubes(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

@@ -27,7 +27,7 @@ namespace AIHoloImager
     class TextureReconstruction::Impl
     {
     public:
-        explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
+        explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
             const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
                 {"POSITION", 0, GpuFormat::RGB32_Float},
@@ -414,7 +414,7 @@ namespace AIHoloImager
         static constexpr GpuFormat DepthFmt = GpuFormat::D32_Float;
     };
 
-    TextureReconstruction::TextureReconstruction(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
+    TextureReconstruction::TextureReconstruction(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

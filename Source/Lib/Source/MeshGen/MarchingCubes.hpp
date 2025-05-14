@@ -4,8 +4,8 @@
 #pragma once
 
 #include "AIHoloImager/Mesh.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 
 namespace AIHoloImager
@@ -15,7 +15,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MarchingCubes);
 
     public:
-        explicit MarchingCubes(GpuSystem& gpu_system);
+        explicit MarchingCubes(AIHoloImagerInternal& aihi);
         MarchingCubes(MarchingCubes&& other) noexcept;
         ~MarchingCubes() noexcept;
 

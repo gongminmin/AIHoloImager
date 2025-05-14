@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "StructureFromMotion.hpp"
@@ -56,6 +56,7 @@
     #pragma warning(pop)
 #endif
 
+#include "Base/Timer.hpp"
 #include "Delighter/Delighter.hpp"
 #include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -85,21 +86,27 @@ namespace AIHoloImager
         };
 
     public:
-        explicit Impl(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-            : exe_dir_(exe_dir), gpu_system_(gpu_system), python_system_(python_system), mask_gen_(gpu_system_, python_system_),
-              delighter_(python_system_)
+        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), mask_gen_(aihi), delighter_(aihi)
         {
-            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system_, 1, L"undistort_cb_");
+            Timer timer;
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system, 1, L"undistort_cb_");
 
             const GpuStaticSampler bilinear_sampler(
                 {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
             const ShaderInfo shader = {UndistortCs_shader, 1, 1, 1};
-            undistort_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span(&bilinear_sampler, 1));
+            undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
+
+            aihi_.AddTiming("SfM init", timer.Elapsed());
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
+            Timer timer;
+
             std::vector<Texture> images;
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
             FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
@@ -111,7 +118,11 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return this->ExportResult(processed_sfm_data, std::move(images));
+            auto ret = this->ExportResult(processed_sfm_data, std::move(images));
+
+            aihi_.AddTiming("SfM process", timer.Elapsed());
+
+            return ret;
         }
 
     private:
@@ -119,7 +130,7 @@ namespace AIHoloImager
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
-            const auto camera_sensor_db_path = exe_dir_ / "sensor_width_camera_database.txt";
+            const auto camera_sensor_db_path = aihi_.ExeDir() / "sensor_width_camera_database.txt";
 
             std::vector<Datasheet> vec_database;
             if (!parseDatabase(camera_sensor_db_path.string(), vec_database))
@@ -423,6 +434,8 @@ namespace AIHoloImager
                 result_intrinsic.k = glm::transpose(result_intrinsic.k);
             }
 
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
             GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
 
@@ -454,29 +467,29 @@ namespace AIHoloImager
                         if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
                             (distort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
-                            distort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
+                            distort_gpu_tex = GpuTexture2D(gpu_system, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
                                 ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
                         }
                         if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
                             (undistort_gpu_tex.Height(0) != result_view.image_mask.Height()))
                         {
-                            undistort_gpu_tex = GpuTexture2D(gpu_system_, result_view.image_mask.Width(), result_view.image_mask.Height(),
-                                1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
+                            undistort_gpu_tex = GpuTexture2D(gpu_system, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
+                                ColorFmt, GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
                         }
 
-                        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        distort_gpu_tex.Upload(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
+                        distort_gpu_tex.Upload(gpu_system, cmd_list, 0, result_view.image_mask.Data());
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
                         mask_gen_.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
 
-                        undistort_gpu_tex.Readback(gpu_system_, cmd_list, 0, result_view.image_mask.Data());
+                        undistort_gpu_tex.Readback(gpu_system, cmd_list, 0, result_view.image_mask.Data());
 
-                        gpu_system_.Execute(std::move(cmd_list));
-                        gpu_system_.CpuWait();
+                        gpu_system.Execute(std::move(cmd_list));
+                        gpu_system.CpuWait();
 
                         result_view.delighted_image =
                             delighter_.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);
@@ -516,6 +529,8 @@ namespace AIHoloImager
         void Undistort(
             GpuCommandList& cmd_list, const Pinhole_Intrinsic_Radial_K3& camera, const GpuTexture2D& input_tex, GpuTexture2D& output_tex)
         {
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
             constexpr uint32_t BlockDim = 16;
 
             const auto& k = camera.K();
@@ -532,8 +547,8 @@ namespace AIHoloImager
             undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb_.UploadToGpu();
 
-            GpuShaderResourceView input_srv(gpu_system_, input_tex);
-            GpuUnorderedAccessView output_uav(gpu_system_, output_tex);
+            GpuShaderResourceView input_srv(gpu_system, input_tex);
+            GpuUnorderedAccessView output_uav(gpu_system, output_tex);
 
             const GeneralConstantBuffer* cbs[] = {&undistort_cb_};
             const GpuShaderResourceView* srvs[] = {&input_srv};
@@ -544,10 +559,7 @@ namespace AIHoloImager
         }
 
     private:
-        const std::filesystem::path exe_dir_;
-
-        GpuSystem& gpu_system_;
-        PythonSystem& python_system_;
+        AIHoloImagerInternal& aihi_;
 
         struct UndistortConstantBuffer
         {
@@ -566,8 +578,7 @@ namespace AIHoloImager
         static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
     };
 
-    StructureFromMotion::StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system)
-        : impl_(std::make_unique<Impl>(exe_dir, gpu_system, python_system))
+    StructureFromMotion::StructureFromMotion(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

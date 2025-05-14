@@ -5,11 +5,10 @@
 
 #include <glm/vec4.hpp>
 
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuCommandList.hpp"
-#include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
-#include "Python/PythonSystem.hpp"
 
 namespace AIHoloImager
 {
@@ -18,7 +17,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MaskGenerator);
 
     public:
-        MaskGenerator(GpuSystem& gpu_system, PythonSystem& python_system);
+        explicit MaskGenerator(AIHoloImagerInternal& aihi);
         MaskGenerator(MaskGenerator&& other) noexcept;
         ~MaskGenerator() noexcept;
 

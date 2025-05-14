@@ -15,7 +15,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MeshSimplification);
 
     public:
-        explicit MeshSimplification();
+        MeshSimplification();
         MeshSimplification(MeshSimplification&& other) noexcept;
         ~MeshSimplification() noexcept;
 

@@ -6,8 +6,8 @@
 #include <memory>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
 {
@@ -16,7 +16,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(InvisibleFacesRemover);
 
     public:
-        explicit InvisibleFacesRemover(GpuSystem& gpu_system);
+        explicit InvisibleFacesRemover(AIHoloImagerInternal& aihi);
         InvisibleFacesRemover(InvisibleFacesRemover&& other) noexcept;
         ~InvisibleFacesRemover() noexcept;
 

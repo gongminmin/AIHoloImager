@@ -82,7 +82,8 @@ namespace AIHoloImager
     class InvisibleFacesRemover::Impl
     {
     public:
-        explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 1.0f, 3.0f))
+        explicit Impl(AIHoloImagerInternal& aihi)
+            : gpu_system_(aihi.GpuSystemInstance()), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 1.0f, 3.0f))
         {
             face_id_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::R32_Uint,
                 GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, L"face_id_tex_");
@@ -358,7 +359,7 @@ namespace AIHoloImager
         GpuComputePipeline filter_faces_pipeline_;
     };
 
-    InvisibleFacesRemover::InvisibleFacesRemover(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
+    InvisibleFacesRemover::InvisibleFacesRemover(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

@@ -13,9 +13,8 @@
 #include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuSystem.hpp"
-#include "Python/PythonSystem.hpp"
 #include "Util/BoundingBox.hpp"
 
 namespace AIHoloImager
@@ -69,7 +68,7 @@ namespace AIHoloImager
         };
 
     public:
-        StructureFromMotion(const std::filesystem::path& exe_dir, GpuSystem& gpu_system, PythonSystem& python_system);
+        explicit StructureFromMotion(AIHoloImagerInternal& aihi);
         StructureFromMotion(StructureFromMotion&& other) noexcept;
         ~StructureFromMotion() noexcept;
 

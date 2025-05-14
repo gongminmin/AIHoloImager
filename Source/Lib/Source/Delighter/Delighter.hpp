@@ -7,8 +7,8 @@
 #include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Python/PythonSystem.hpp"
 
 namespace AIHoloImager
 {
@@ -17,7 +17,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(Delighter);
 
     public:
-        explicit Delighter(PythonSystem& python_system);
+        explicit Delighter(AIHoloImagerInternal& aihi);
         Delighter(Delighter&& other) noexcept;
         ~Delighter() noexcept;
 

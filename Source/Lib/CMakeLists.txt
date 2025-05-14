@@ -14,6 +14,7 @@ set(aihi_files
     Include/AIHoloImager/Mesh.hpp
     Include/AIHoloImager/Texture.hpp
     Source/AIHoloImager.cpp
+    Source/AIHoloImagerInternal.hpp
     Source/ElementFormat.cpp
     Source/Mesh.cpp
     Source/Texture.cpp

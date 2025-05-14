@@ -8,8 +8,8 @@
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/BoundingBox.hpp"
@@ -28,7 +28,7 @@ namespace AIHoloImager
         };
 
     public:
-        explicit TextureReconstruction(GpuSystem& gpu_system);
+        explicit TextureReconstruction(AIHoloImagerInternal& aihi);
         TextureReconstruction(TextureReconstruction&& other) noexcept;
         ~TextureReconstruction() noexcept;
 

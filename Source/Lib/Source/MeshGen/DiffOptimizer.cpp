@@ -20,22 +20,26 @@ namespace AIHoloImager
     class DiffOptimizer::Impl
     {
     public:
-        Impl(GpuSystem& gpu_system, PythonSystem& python_system) : gpu_system_(gpu_system), python_system_(python_system)
+        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
-            diff_optimizer_module_ = python_system_.Import("DiffOptimizer");
-            diff_optimizer_class_ = python_system_.GetAttr(*diff_optimizer_module_, "DiffOptimizer");
-            auto args = python_system_.MakeTuple(1);
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            auto& python_system = aihi_.PythonSystemInstance();
+
+            diff_optimizer_module_ = python_system.Import("DiffOptimizer");
+            diff_optimizer_class_ = python_system.GetAttr(*diff_optimizer_module_, "DiffOptimizer");
+            auto args = python_system.MakeTuple(1);
             {
-                python_system_.SetTupleItem(*args, 0, python_system_.MakeObject(reinterpret_cast<void*>(&gpu_system_)));
+                python_system.SetTupleItem(*args, 0, python_system.MakeObject(reinterpret_cast<void*>(&gpu_system)));
             }
-            diff_optimizer_ = python_system_.CallObject(*diff_optimizer_class_, *args);
-            diff_optimizer_opt_method_ = python_system_.GetAttr(*diff_optimizer_, "Optimize");
+            diff_optimizer_ = python_system.CallObject(*diff_optimizer_class_, *args);
+            diff_optimizer_opt_method_ = python_system.GetAttr(*diff_optimizer_, "Optimize");
         }
 
         ~Impl()
         {
-            auto diff_optimizer_destroy_method = python_system_.GetAttr(*diff_optimizer_, "Destroy");
-            python_system_.CallObject(*diff_optimizer_destroy_method);
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto diff_optimizer_destroy_method = python_system.GetAttr(*diff_optimizer_, "Destroy");
+            python_system.CallObject(*diff_optimizer_destroy_method);
         }
 
         void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
@@ -81,64 +85,65 @@ namespace AIHoloImager
                 };
             }
 
-            auto args = python_system_.MakeTuple(12);
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto args = python_system.MakeTuple(12);
             {
-                python_system_.SetTupleItem(*args, 0,
-                    python_system_.MakeObject(
+                python_system.SetTupleItem(*args, 0,
+                    python_system.MakeObject(
                         std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3))));
-                python_system_.SetTupleItem(*args, 1,
-                    python_system_.MakeObject(
+                python_system.SetTupleItem(*args, 1,
+                    python_system.MakeObject(
                         std::span(reinterpret_cast<const std::byte*>(colors.data()), colors.size() * sizeof(glm::vec3))));
-                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(static_cast<uint32_t>(positions.size())));
+                python_system.SetTupleItem(*args, 2, python_system.MakeObject(static_cast<uint32_t>(positions.size())));
 
                 const auto indices = mesh.IndexBuffer();
-                python_system_.SetTupleItem(*args, 3,
-                    python_system_.MakeObject(
+                python_system.SetTupleItem(*args, 3,
+                    python_system.MakeObject(
                         std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t))));
-                python_system_.SetTupleItem(*args, 4, python_system_.MakeObject(static_cast<uint32_t>(indices.size())));
+                python_system.SetTupleItem(*args, 4, python_system.MakeObject(static_cast<uint32_t>(indices.size())));
 
-                auto imgs_args = python_system_.MakeTuple(num_images);
+                auto imgs_args = python_system.MakeTuple(num_images);
                 for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    auto img_tuple = python_system_.MakeTuple(7);
+                    auto img_tuple = python_system.MakeTuple(7);
 
                     const auto& delighted_image = sfm_input.views[i].delighted_image;
-                    auto image = python_system_.MakeObject(
+                    auto image = python_system.MakeObject(
                         std::span(reinterpret_cast<const std::byte*>(delighted_image.Data()), delighted_image.DataSize()));
-                    python_system_.SetTupleItem(*img_tuple, 0, std::move(image));
-                    python_system_.SetTupleItem(*img_tuple, 1, python_system_.MakeObject(sfm_input.views[i].delighted_offset.x));
-                    python_system_.SetTupleItem(*img_tuple, 2, python_system_.MakeObject(sfm_input.views[i].delighted_offset.y));
-                    python_system_.SetTupleItem(*img_tuple, 3, python_system_.MakeObject(delighted_image.Width()));
-                    python_system_.SetTupleItem(*img_tuple, 4, python_system_.MakeObject(delighted_image.Height()));
-                    python_system_.SetTupleItem(*img_tuple, 5, python_system_.MakeObject(sfm_input.views[i].image_mask.Width()));
-                    python_system_.SetTupleItem(*img_tuple, 6, python_system_.MakeObject(sfm_input.views[i].image_mask.Height()));
+                    python_system.SetTupleItem(*img_tuple, 0, std::move(image));
+                    python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(sfm_input.views[i].delighted_offset.x));
+                    python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(sfm_input.views[i].delighted_offset.y));
+                    python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(delighted_image.Width()));
+                    python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(delighted_image.Height()));
+                    python_system.SetTupleItem(*img_tuple, 5, python_system.MakeObject(sfm_input.views[i].image_mask.Width()));
+                    python_system.SetTupleItem(*img_tuple, 6, python_system.MakeObject(sfm_input.views[i].image_mask.Height()));
 
-                    python_system_.SetTupleItem(*imgs_args, i, std::move(img_tuple));
+                    python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
-                python_system_.SetTupleItem(*args, 5, std::move(imgs_args));
+                python_system.SetTupleItem(*args, 5, std::move(imgs_args));
 
-                python_system_.SetTupleItem(*args, 6,
-                    python_system_.MakeObject(
+                python_system.SetTupleItem(*args, 6,
+                    python_system.MakeObject(
                         std::span(reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4))));
-                python_system_.SetTupleItem(*args, 7,
-                    python_system_.MakeObject(std::span(
+                python_system.SetTupleItem(*args, 7,
+                    python_system.MakeObject(std::span(
                         reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2))));
 
-                python_system_.SetTupleItem(*args, 8, python_system_.MakeObject(num_images));
+                python_system.SetTupleItem(*args, 8, python_system.MakeObject(num_images));
 
-                python_system_.SetTupleItem(
-                    *args, 9, python_system_.MakeObject(std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale))));
-                python_system_.SetTupleItem(
-                    *args, 10, python_system_.MakeObject(std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation))));
-                python_system_.SetTupleItem(
-                    *args, 11, python_system_.MakeObject(std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation))));
+                python_system.SetTupleItem(
+                    *args, 9, python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale))));
+                python_system.SetTupleItem(
+                    *args, 10, python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation))));
+                python_system.SetTupleItem(
+                    *args, 11, python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation))));
             }
 
-            auto py_opt_transforms = python_system_.CallObject(*diff_optimizer_opt_method_, *args);
+            auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_method_, *args);
 
-            const auto scale_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 0));
-            const auto rotate_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 1));
-            const auto translate_opt = python_system_.ToSpan<const float>(*python_system_.GetTupleItem(*py_opt_transforms, 2));
+            const auto scale_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 0));
+            const auto rotate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 1));
+            const auto translate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 2));
             scale = glm::vec3(scale_opt[0], scale_opt[1], scale_opt[2]);
             rotation = glm::quat(rotate_opt[3], rotate_opt[0], rotate_opt[1], rotate_opt[2]);
             translation = glm::vec3(translate_opt[0], translate_opt[1], translate_opt[2]);
@@ -146,8 +151,7 @@ namespace AIHoloImager
         }
 
     private:
-        GpuSystem& gpu_system_;
-        PythonSystem& python_system_;
+        AIHoloImagerInternal& aihi_;
 
         PyObjectPtr diff_optimizer_module_;
         PyObjectPtr diff_optimizer_class_;
@@ -155,8 +159,7 @@ namespace AIHoloImager
         PyObjectPtr diff_optimizer_opt_method_;
     };
 
-    DiffOptimizer::DiffOptimizer(GpuSystem& gpu_system, PythonSystem& python_system)
-        : impl_(std::make_unique<Impl>(gpu_system, python_system))
+    DiffOptimizer::DiffOptimizer(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

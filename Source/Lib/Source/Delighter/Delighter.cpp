@@ -3,23 +3,32 @@
 
 #include "Delighter.hpp"
 
+#include "Base/Timer.hpp"
+
 namespace AIHoloImager
 {
     class Delighter::Impl
     {
     public:
-        Impl(PythonSystem& python_system) : python_system_(python_system)
+        Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
-            delighter_module_ = python_system_.Import("Delighter");
-            delighter_class_ = python_system_.GetAttr(*delighter_module_, "Delighter");
-            delighter_ = python_system_.CallObject(*delighter_class_);
-            delighter_process_method_ = python_system_.GetAttr(*delighter_, "Process");
+            Timer timer;
+
+            auto& python_system = aihi_.PythonSystemInstance();
+
+            delighter_module_ = python_system.Import("Delighter");
+            delighter_class_ = python_system.GetAttr(*delighter_module_, "Delighter");
+            delighter_ = python_system.CallObject(*delighter_class_);
+            delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
+
+            aihi_.AddTiming("Delighter init", timer.Elapsed());
         }
 
         ~Impl()
         {
-            auto delighter_destroy_method = python_system_.GetAttr(*delighter_, "Destroy");
-            python_system_.CallObject(*delighter_destroy_method);
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto delighter_destroy_method = python_system.GetAttr(*delighter_, "Destroy");
+            python_system.CallObject(*delighter_destroy_method);
         }
 
         Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
@@ -53,22 +62,23 @@ namespace AIHoloImager
                 }
             }
 
-            auto args = python_system_.MakeTuple(4);
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto args = python_system.MakeTuple(4);
             {
-                auto py_image = python_system_.MakeObject(
+                auto py_image = python_system.MakeObject(
                     std::span<const std::byte>(reinterpret_cast<const std::byte*>(roi_image.Data()), roi_image.DataSize()));
-                python_system_.SetTupleItem(*args, 0, std::move(py_image));
+                python_system.SetTupleItem(*args, 0, std::move(py_image));
 
-                python_system_.SetTupleItem(*args, 1, python_system_.MakeObject(roi_width));
-                python_system_.SetTupleItem(*args, 2, python_system_.MakeObject(roi_height));
-                python_system_.SetTupleItem(*args, 3, python_system_.MakeObject(FormatChannels(roi_image.Format())));
+                python_system.SetTupleItem(*args, 1, python_system.MakeObject(roi_width));
+                python_system.SetTupleItem(*args, 2, python_system.MakeObject(roi_height));
+                python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(roi_image.Format())));
             }
 
-            const auto output_roi_image = python_system_.CallObject(*delighter_process_method_, *args);
+            const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
 
             Texture out_image(roi_width, roi_height, ElementFormat::RGBA8_UNorm);
             std::byte* dst = reinterpret_cast<std::byte*>(out_image.Data());
-            const std::byte* src = python_system_.ToBytes(*output_roi_image).data();
+            const std::byte* src = python_system.ToBytes(*output_roi_image).data();
             const std::byte* src_mask = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
             for (uint32_t y = 0; y < roi_height; ++y)
             {
@@ -86,7 +96,7 @@ namespace AIHoloImager
         }
 
     private:
-        PythonSystem& python_system_;
+        AIHoloImagerInternal& aihi_;
 
         PyObjectPtr delighter_module_;
         PyObjectPtr delighter_class_;
@@ -94,7 +104,7 @@ namespace AIHoloImager
         PyObjectPtr delighter_process_method_;
     };
 
-    Delighter::Delighter(PythonSystem& python_system) : impl_(std::make_unique<Impl>(python_system))
+    Delighter::Delighter(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
     {
     }
 

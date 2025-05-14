@@ -8,8 +8,8 @@
 #include <glm/mat4x4.hpp>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 
 namespace AIHoloImager
@@ -19,7 +19,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(DiffOptimizer);
 
     public:
-        DiffOptimizer(GpuSystem& gpu_system, PythonSystem& python_system);
+        explicit DiffOptimizer(AIHoloImagerInternal& aihi);
         DiffOptimizer(DiffOptimizer&& other) noexcept;
         ~DiffOptimizer() noexcept;
 

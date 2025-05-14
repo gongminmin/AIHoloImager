@@ -3,6 +3,7 @@
 
 #include "AIHoloImager/AIHoloImager.hpp"
 
+#include <chrono>
 #include <format>
 #include <iostream>
 
@@ -16,7 +17,7 @@
     #include <windows.h> // For GetModuleFileNameA
 #endif
 
-#include "Base/Timer.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"
@@ -24,7 +25,7 @@
 
 namespace
 {
-    std::filesystem::path ExeDir()
+    std::filesystem::path RetrieveExeDir()
     {
         char exe_path[MAX_PATH];
         GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
@@ -34,42 +35,54 @@ namespace
 
 namespace AIHoloImager
 {
-    class AIHoloImager::Impl
+    AIHoloImagerInternal::~AIHoloImagerInternal() noexcept = default;
+
+    class AIHoloImager::Impl : public AIHoloImagerInternal
     {
     public:
         Impl(bool enable_cuda, const std::filesystem::path& tmp_dir)
-            : exe_dir_(ExeDir()), tmp_dir_(tmp_dir), gpu_system_(nullptr, true), python_system_(enable_cuda, exe_dir_)
+            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(nullptr, true), python_system_(enable_cuda, exe_dir_)
         {
+        }
+
+        const std::filesystem::path& ExeDir() override
+        {
+            return exe_dir_;
+        }
+
+        GpuSystem& GpuSystemInstance() override
+        {
+            return gpu_system_;
+        }
+
+        PythonSystem& PythonSystemInstance() override
+        {
+            return python_system_;
+        }
+
+        void AddTiming(std::string_view name, std::chrono::duration<double> duration)
+        {
+            timings_.push_back(std::make_tuple(std::string(name), std::move(duration)));
         }
 
         Mesh Generate(const std::filesystem::path& input_path)
         {
-            Timer timer;
-
-            std::chrono::duration<double> sfm_init_time;
-            std::chrono::duration<double> sfm_time;
             StructureFromMotion::Result sfm_result;
             {
-                timer.Restart();
-                StructureFromMotion sfm(exe_dir_, gpu_system_, python_system_);
-                sfm_init_time = timer.Elapsed();
+                StructureFromMotion sfm(*this);
                 sfm_result = sfm.Process(input_path, true, tmp_dir_);
-                sfm_time = timer.Elapsed();
             }
 
-            std::chrono::duration<double> mesh_gen_init_time;
-            std::chrono::duration<double> mesh_gen_time;
             Mesh result_mesh;
             {
-                timer.Restart();
-                MeshGenerator mesh_gen(gpu_system_, python_system_);
-                mesh_gen_init_time = timer.Elapsed();
+                MeshGenerator mesh_gen(*this);
                 result_mesh = mesh_gen.Generate(sfm_result, 2048, tmp_dir_);
-                mesh_gen_time = timer.Elapsed();
             }
 
-            std::cout << std::format("Structure from motion time: {:.3f} s (init {:.3f} s)\n", sfm_time.count(), sfm_init_time.count());
-            std::cout << std::format("Mesh generation time: {:.3f} s (init {:.3f} s)\n", mesh_gen_time.count(), mesh_gen_init_time.count());
+            for (auto& [name, duration] : timings_)
+            {
+                std::cout << std::format("{}: {:.3f} s\n", name, duration.count());
+            }
 
             return result_mesh;
         }
@@ -80,6 +93,8 @@ namespace AIHoloImager
 
         GpuSystem gpu_system_;
         PythonSystem python_system_;
+
+        std::vector<std::tuple<std::string, std::chrono::duration<double>>> timings_;
     };
 
     AIHoloImager::AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(enable_cuda, tmp_dir))

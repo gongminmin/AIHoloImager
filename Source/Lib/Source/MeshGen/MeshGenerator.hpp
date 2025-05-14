@@ -6,9 +6,8 @@
 #include <filesystem>
 
 #include "AIHoloImager/Mesh.hpp"
+#include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuSystem.hpp"
-#include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 
 namespace AIHoloImager
@@ -18,7 +17,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(MeshGenerator);
 
     public:
-        MeshGenerator(GpuSystem& gpu_system, PythonSystem& python_system);
+        explicit MeshGenerator(AIHoloImagerInternal& aihi);
         MeshGenerator(MeshGenerator&& other) noexcept;
         ~MeshGenerator() noexcept;
 
