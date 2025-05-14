@@ -5,12 +5,12 @@ if(is_ci_env)
     add_custom_target(DeployU2NetModels)
 else()
     set(pth_file "${CMAKE_CURRENT_SOURCE_DIR}/U2NetModels/u2net.pth")
-    add_custom_command(OUTPUT ${pth_file}
-        COMMAND DownloadGd.bat
-        COMMENT "Downloading ${pth_file}..."
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        VERBATIM COMMAND_EXPAND_LISTS
-    )
+    if(NOT EXISTS ${pth_file})
+        execute_process(
+            COMMAND DownloadGd.bat
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    endif()
 
     set(output_file "${aihi_output_dir}/Models/U-2-Net/u2net.pth")
     add_custom_command(OUTPUT ${output_file}
