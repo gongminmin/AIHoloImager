@@ -87,6 +87,11 @@ namespace AIHoloImager
         return addr;
     }
 
+    const void* GpuBuffer::Map(const GpuRange& read_range) const
+    {
+        return const_cast<GpuBuffer*>(this)->Map(read_range);
+    }
+
     void* GpuBuffer::Map()
     {
         void* addr;
@@ -95,13 +100,18 @@ namespace AIHoloImager
         return addr;
     }
 
-    void GpuBuffer::Unmap(const GpuRange& write_range)
+    const void* GpuBuffer::Map() const
+    {
+        return const_cast<GpuBuffer*>(this)->Map();
+    }
+
+    void GpuBuffer::Unmap(const GpuRange& write_range) const
     {
         const D3D12_RANGE d3d12_write_range = ToD3D12Range(write_range);
         resource_->Unmap(0, (heap_type_ == D3D12_HEAP_TYPE_UPLOAD) ? nullptr : &d3d12_write_range);
     }
 
-    void GpuBuffer::Unmap()
+    void GpuBuffer::Unmap() const
     {
         this->Unmap(GpuRange{0, 0});
     }
@@ -137,6 +147,56 @@ namespace AIHoloImager
         }
 
         curr_state_ = d3d12_target_state;
+    }
+
+    void GpuBuffer::Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, const void* data)
+    {
+        const uint32_t size = this->Size();
+        if (heap_type_ == D3D12_HEAP_TYPE_UPLOAD)
+        {
+            std::memcpy(this->Map(), data, size);
+            this->Unmap();
+        }
+        else
+        {
+            auto upload_mem_block = gpu_system.AllocUploadMemBlock(size, GpuMemoryAllocator::StructuredDataAligment);
+            std::memcpy(upload_mem_block.CpuAddress<uint8_t>(), data, size);
+
+            this->Transition(cmd_list, GpuResourceState::CopyDst);
+
+            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->CopyBufferRegion(resource_.Object().Get(), 0, upload_mem_block.NativeBuffer(), upload_mem_block.Offset(), size);
+
+            gpu_system.ExecuteAndReset(cmd_list);
+            gpu_system.CpuWait();
+
+            gpu_system.DeallocUploadMemBlock(std::move(upload_mem_block));
+        }
+    }
+
+    void GpuBuffer::ReadBack(GpuSystem& gpu_system, GpuCommandList& cmd_list, void* data) const
+    {
+        const uint32_t size = this->Size();
+        if (heap_type_ == D3D12_HEAP_TYPE_READBACK)
+        {
+            std::memcpy(data, this->Map(), size);
+            this->Unmap();
+        }
+        else
+        {
+            auto read_back_mem_block = gpu_system.AllocReadBackMemBlock(size, GpuMemoryAllocator::StructuredDataAligment);
+
+            this->Transition(cmd_list, GpuResourceState::CopySrc);
+
+            auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->CopyBufferRegion(
+                read_back_mem_block.NativeBuffer(), read_back_mem_block.Offset(), resource_.Object().Get(), 0, size);
+
+            gpu_system.ExecuteAndReset(cmd_list);
+            gpu_system.CpuWait();
+
+            gpu_system.DeallocReadBackMemBlock(std::move(read_back_mem_block));
+        }
     }
 
 

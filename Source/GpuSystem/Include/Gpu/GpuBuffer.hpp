@@ -43,13 +43,18 @@ namespace AIHoloImager
         uint32_t Size() const noexcept;
 
         void* Map(const GpuRange& read_range);
+        const void* Map(const GpuRange& read_range) const;
         void* Map();
-        void Unmap(const GpuRange& write_range);
-        void Unmap();
+        const void* Map() const;
+        void Unmap(const GpuRange& write_range) const;
+        void Unmap() const;
 
         virtual void Reset();
 
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
+
+        void Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, const void* data);
+        void ReadBack(GpuSystem& gpu_system, GpuCommandList& cmd_list, void* data) const;
 
     protected:
         D3D12_HEAP_TYPE heap_type_{};
