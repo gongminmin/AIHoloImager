@@ -191,20 +191,20 @@ namespace AIHoloImager
     }
 
 
-    GpuReadbackBuffer::GpuReadbackBuffer() noexcept = default;
+    GpuReadBackBuffer::GpuReadBackBuffer() noexcept = default;
 
-    GpuReadbackBuffer::GpuReadbackBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
+    GpuReadBackBuffer::GpuReadBackBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
         : GpuBuffer(gpu_system, size, GpuHeap::ReadBack, GpuResourceFlag::None, std::move(name)), mapped_data_(this->Map())
     {
     }
 
-    GpuReadbackBuffer::GpuReadbackBuffer(GpuSystem& gpu_system, const void* data, uint32_t size, std::wstring_view name)
-        : GpuReadbackBuffer(gpu_system, size, std::move(name))
+    GpuReadBackBuffer::GpuReadBackBuffer(GpuSystem& gpu_system, const void* data, uint32_t size, std::wstring_view name)
+        : GpuReadBackBuffer(gpu_system, size, std::move(name))
     {
         memcpy(MappedData<void>(), data, size);
     }
 
-    GpuReadbackBuffer::~GpuReadbackBuffer() noexcept
+    GpuReadBackBuffer::~GpuReadBackBuffer() noexcept
     {
         if (resource_)
         {
@@ -212,12 +212,12 @@ namespace AIHoloImager
         }
     }
 
-    GpuReadbackBuffer::GpuReadbackBuffer(GpuReadbackBuffer&& other) noexcept = default;
-    GpuReadbackBuffer& GpuReadbackBuffer::operator=(GpuReadbackBuffer&& other) noexcept = default;
+    GpuReadBackBuffer::GpuReadBackBuffer(GpuReadBackBuffer&& other) noexcept = default;
+    GpuReadBackBuffer& GpuReadBackBuffer::operator=(GpuReadBackBuffer&& other) noexcept = default;
 
-    GpuReadbackBuffer GpuReadbackBuffer::Share() const
+    GpuReadBackBuffer GpuReadBackBuffer::Share() const
     {
-        GpuReadbackBuffer buffer;
+        GpuReadBackBuffer buffer;
         buffer.resource_ = resource_.Share();
         buffer.desc_ = desc_;
         buffer.heap_type_ = heap_type_;
@@ -226,7 +226,7 @@ namespace AIHoloImager
         return buffer;
     }
 
-    void GpuReadbackBuffer::Reset()
+    void GpuReadBackBuffer::Reset()
     {
         if (resource_)
         {
@@ -236,12 +236,12 @@ namespace AIHoloImager
         GpuBuffer::Reset();
     }
 
-    void* GpuReadbackBuffer::MappedData() noexcept
+    void* GpuReadBackBuffer::MappedData() noexcept
     {
         return mapped_data_;
     }
 
-    const void* GpuReadbackBuffer::MappedData() const noexcept
+    const void* GpuReadBackBuffer::MappedData() const noexcept
     {
         return mapped_data_;
     }

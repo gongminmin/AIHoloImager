@@ -58,7 +58,7 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
         void Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, const void* data);
-        void Readback(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const;
+        void ReadBack(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const;
         void CopyFrom(GpuSystem& gpu_system, GpuCommandList& cmd_list, const GpuTexture& other, uint32_t sub_resource, uint32_t dst_x,
             uint32_t dst_y, uint32_t dst_z, const D3D12_BOX& src_box);
 

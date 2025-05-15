@@ -120,10 +120,10 @@ namespace AIHoloImager
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 Texture pos_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA32_Float);
-                flatten_pos_tex.Readback(gpu_system_, cmd_list, 0, pos_tex.Data());
+                flatten_pos_tex.ReadBack(gpu_system_, cmd_list, 0, pos_tex.Data());
 
                 Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                flatten_normal_tex.Readback(gpu_system_, cmd_list, 0, normal_tex.Data());
+                flatten_normal_tex.ReadBack(gpu_system_, cmd_list, 0, normal_tex.Data());
 
                 gpu_system_.Execute(std::move(cmd_list));
 
@@ -144,7 +144,7 @@ namespace AIHoloImager
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                result.color_tex.Readback(gpu_system_, cmd_list, 0, projective_tex.Data());
+                result.color_tex.ReadBack(gpu_system_, cmd_list, 0, projective_tex.Data());
                 gpu_system_.Execute(std::move(cmd_list));
 
                 SaveTexture(projective_tex, output_dir / "Projective.png");
@@ -281,7 +281,7 @@ namespace AIHoloImager
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
                     Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                    accum_color_tex.Readback(gpu_system_, cmd_list, 0, color_tex.Data());
+                    accum_color_tex.ReadBack(gpu_system_, cmd_list, 0, color_tex.Data());
                     SaveTexture(color_tex, tmp_dir / "Texture" / std::format("Projective_{}.png", i));
                 }
 #endif

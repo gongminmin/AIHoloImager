@@ -96,7 +96,7 @@ namespace AIHoloImager
             filtered_counter_buff_ =
                 GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_counter_buff_");
             filtered_counter_uav_ = GpuUnorderedAccessView(gpu_system_, filtered_counter_buff_, GpuFormat::R32_Uint);
-            filtered_counter_read_back_buff_ = GpuReadbackBuffer(gpu_system_, sizeof(uint32_t), L"filtered_counter_read_back_buff");
+            filtered_counter_read_back_buff_ = GpuReadBackBuffer(gpu_system_, sizeof(uint32_t), L"filtered_counter_read_back_buff");
 
             {
                 const ShaderInfo shaders[] = {
@@ -202,7 +202,7 @@ namespace AIHoloImager
                 gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_index_buff");
             FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
 
-            GpuReadbackBuffer filtered_index_read_back_buff(gpu_system_, num_indices * sizeof(uint32_t), L"filtered_index_read_back_buff");
+            GpuReadBackBuffer filtered_index_read_back_buff(gpu_system_, num_indices * sizeof(uint32_t), L"filtered_index_read_back_buff");
             cmd_list.Copy(filtered_index_read_back_buff, filtered_index_buff);
             cmd_list.Copy(filtered_counter_read_back_buff_, filtered_counter_buff_);
 
@@ -323,7 +323,7 @@ namespace AIHoloImager
 
         GpuBuffer filtered_counter_buff_;
         GpuUnorderedAccessView filtered_counter_uav_;
-        GpuReadbackBuffer filtered_counter_read_back_buff_;
+        GpuReadBackBuffer filtered_counter_read_back_buff_;
 
         glm::mat4x4 proj_mtx_;
 

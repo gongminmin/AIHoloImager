@@ -288,7 +288,7 @@ namespace AIHoloImager
 
         // TODO: Port it to GPU
 
-        GpuReadbackBuffer indices_cpu(gpu_system_, indices.Size());
+        GpuReadBackBuffer indices_cpu(gpu_system_, indices.Size());
         cmd_list.Copy(indices_cpu, indices);
         gpu_system_.ExecuteAndReset(cmd_list);
         gpu_system_.CpuWait();

@@ -33,7 +33,7 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 namespace AIHoloImager
 {
     GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : upload_mem_allocator_(*this, true), readback_mem_allocator_(*this, false),
+        : upload_mem_allocator_(*this, true), read_back_mem_allocator_(*this, false),
           rtv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
@@ -160,7 +160,7 @@ namespace AIHoloImager
         dsv_desc_allocator_.Clear();
         rtv_desc_allocator_.Clear();
 
-        readback_mem_allocator_.Clear();
+        read_back_mem_allocator_.Clear();
         upload_mem_allocator_.Clear();
 
         stall_resources_.clear();
@@ -318,19 +318,19 @@ namespace AIHoloImager
         return upload_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
     }
 
-    GpuMemoryBlock GpuSystem::AllocReadbackMemBlock(uint32_t size_in_bytes, uint32_t alignment)
+    GpuMemoryBlock GpuSystem::AllocReadBackMemBlock(uint32_t size_in_bytes, uint32_t alignment)
     {
-        return readback_mem_allocator_.Allocate(size_in_bytes, alignment);
+        return read_back_mem_allocator_.Allocate(size_in_bytes, alignment);
     }
 
-    void GpuSystem::DeallocReadbackMemBlock(GpuMemoryBlock&& mem_block)
+    void GpuSystem::DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block)
     {
-        return readback_mem_allocator_.Deallocate(std::move(mem_block), fence_val_);
+        return read_back_mem_allocator_.Deallocate(std::move(mem_block), fence_val_);
     }
 
-    void GpuSystem::ReallocReadbackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
+    void GpuSystem::ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
     {
-        return readback_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
+        return read_back_mem_allocator_.Reallocate(mem_block, fence_val_, size_in_bytes, alignment);
     }
 
     void GpuSystem::CpuWait(uint64_t fence_value)
@@ -394,7 +394,7 @@ namespace AIHoloImager
     void GpuSystem::HandleDeviceLost()
     {
         upload_mem_allocator_.Clear();
-        readback_mem_allocator_.Clear();
+        read_back_mem_allocator_.Clear();
 
         rtv_desc_allocator_.Clear();
         dsv_desc_allocator_.Clear();
@@ -433,7 +433,7 @@ namespace AIHoloImager
         }
 
         upload_mem_allocator_.ClearStallPages(completed_fence);
-        readback_mem_allocator_.ClearStallPages(completed_fence);
+        read_back_mem_allocator_.ClearStallPages(completed_fence);
 
         rtv_desc_allocator_.ClearStallPages(completed_fence);
         dsv_desc_allocator_.ClearStallPages(completed_fence);

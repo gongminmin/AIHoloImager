@@ -84,9 +84,9 @@ namespace AIHoloImager
         void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocUploadMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        GpuMemoryBlock AllocReadbackMemBlock(uint32_t size_in_bytes, uint32_t alignment);
-        void DeallocReadbackMemBlock(GpuMemoryBlock&& mem_block);
-        void ReallocReadbackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
+        GpuMemoryBlock AllocReadBackMemBlock(uint32_t size_in_bytes, uint32_t alignment);
+        void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
+        void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
         void CpuWait(uint64_t fence_value = MaxFenceValue);
         void GpuWait(CmdQueueType type, uint64_t fence_value = MaxFenceValue);
@@ -123,7 +123,7 @@ namespace AIHoloImager
         Win32UniqueHandle shared_fence_handle_;
 
         GpuMemoryAllocator upload_mem_allocator_;
-        GpuMemoryAllocator readback_mem_allocator_;
+        GpuMemoryAllocator read_back_mem_allocator_;
 
         GpuDescriptorAllocator rtv_desc_allocator_;
         GpuDescriptorAllocator dsv_desc_allocator_;

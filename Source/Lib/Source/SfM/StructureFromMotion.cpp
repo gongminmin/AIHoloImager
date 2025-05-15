@@ -486,7 +486,7 @@ namespace AIHoloImager
 
                         mask_gen_.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
 
-                        undistort_gpu_tex.Readback(gpu_system, cmd_list, 0, result_view.image_mask.Data());
+                        undistort_gpu_tex.ReadBack(gpu_system, cmd_list, 0, result_view.image_mask.Data());
 
                         gpu_system.Execute(std::move(cmd_list));
                         gpu_system.CpuWait();

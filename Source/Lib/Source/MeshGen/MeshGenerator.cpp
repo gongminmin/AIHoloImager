@@ -301,7 +301,7 @@ namespace AIHoloImager
 
                 GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
 
-                dilated_gpu_tex->Readback(gpu_system, cmd_list, 0, merged_tex.Data());
+                dilated_gpu_tex->ReadBack(gpu_system, cmd_list, 0, merged_tex.Data());
                 gpu_system.Execute(std::move(cmd_list));
             }
 
@@ -575,7 +575,7 @@ namespace AIHoloImager
                 auto& resized_rotated_roi_cpu_tex = rotated_images[i];
                 resized_rotated_roi_cpu_tex = Texture(
                     resized_rotated_roi_tex.Width(0), resized_rotated_roi_tex.Height(0), ToElementFormat(resized_rotated_roi_tex.Format()));
-                resized_rotated_roi_tex.Readback(gpu_system, cmd_list, 0, resized_rotated_roi_cpu_tex.Data());
+                resized_rotated_roi_tex.ReadBack(gpu_system, cmd_list, 0, resized_rotated_roi_cpu_tex.Data());
                 gpu_system.Execute(std::move(cmd_list));
             }
 
@@ -996,7 +996,7 @@ namespace AIHoloImager
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(apply_vertex_color_pipeline_, DivUp(num_vertices, BlockDim), 1, 1, shader_binding);
 
-            GpuReadbackBuffer color_read_back_vb(
+            GpuReadBackBuffer color_read_back_vb(
                 gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), L"color_read_back_vb");
             cmd_list.Copy(color_read_back_vb, color_vb);
 

@@ -288,7 +288,7 @@ namespace AIHoloImager
         gpu_system.DeallocUploadMemBlock(std::move(upload_mem_block));
     }
 
-    void GpuTexture::Readback(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const
+    void GpuTexture::ReadBack(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const
     {
         uint32_t mip;
         uint32_t array_slice;
@@ -305,17 +305,17 @@ namespace AIHoloImager
         uint64_t required_size = 0;
         d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
 
-        auto readback_mem_block =
-            gpu_system.AllocReadbackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
+        auto read_back_mem_block =
+            gpu_system.AllocReadBackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
 
         D3D12_TEXTURE_COPY_LOCATION src;
         src.pResource = resource_.Object().Get();
         src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         src.SubresourceIndex = sub_resource;
 
-        layout.Offset = readback_mem_block.Offset();
+        layout.Offset = read_back_mem_block.Offset();
         D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = readback_mem_block.NativeBuffer();
+        dst.pResource = read_back_mem_block.NativeBuffer();
         dst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         dst.PlacedFootprint = layout;
 
@@ -340,7 +340,7 @@ namespace AIHoloImager
         assert(layout.Footprint.RowPitch >= width * format_size);
 
         uint8_t* u8_data = reinterpret_cast<uint8_t*>(data);
-        const uint8_t* tex_data = readback_mem_block.CpuAddress<uint8_t>();
+        const uint8_t* tex_data = read_back_mem_block.CpuAddress<uint8_t>();
         for (uint32_t z = 0; z < depth; ++z)
         {
             for (uint32_t y = 0; y < height; ++y)
@@ -350,7 +350,7 @@ namespace AIHoloImager
             }
         }
 
-        gpu_system.DeallocReadbackMemBlock(std::move(readback_mem_block));
+        gpu_system.DeallocReadBackMemBlock(std::move(read_back_mem_block));
     }
 
     void GpuTexture::CopyFrom(GpuSystem& gpu_system, GpuCommandList& cmd_list, const GpuTexture& other, uint32_t sub_resource,

@@ -152,7 +152,7 @@ namespace AIHoloImager
                 }
 
                 // TODO: Use indirect dispatch to avoid the read back
-                bbox_gpu_tex_.Readback(gpu_system, cmd_list, 0, &roi);
+                bbox_gpu_tex_.ReadBack(gpu_system, cmd_list, 0, &roi);
 
                 const glm::uvec2 bb_min(roi.x, roi.y);
                 const glm::uvec2 bb_max(roi.z, roi.w);
@@ -253,7 +253,7 @@ namespace AIHoloImager
 
             const uint32_t normalized_data_size = U2NetInputDim * U2NetInputDim * U2NetInputChannels;
             auto normalized_image = std::make_unique<float[]>(normalized_data_size);
-            normalized_gpu_tex_.Readback(gpu_system, cmd_list, 0, normalized_image.get());
+            normalized_gpu_tex_.ReadBack(gpu_system, cmd_list, 0, normalized_image.get());
 
             auto args = python_system.MakeTuple(4);
             {

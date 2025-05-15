@@ -517,7 +517,7 @@ namespace AIHoloImager
         }
         else
         {
-            GpuReadbackBuffer read_back_buff(gpu_system_, buff.Size());
+            GpuReadBackBuffer read_back_buff(gpu_system_, buff.Size());
             cmd_list.Copy(read_back_buff, buff);
 
             gpu_system_.ExecuteAndReset(cmd_list);
@@ -604,7 +604,7 @@ namespace AIHoloImager
         {
             opts = opts.device(torch::kCPU);
             tensor = torch::empty({1, height, width, num_channels}, opts);
-            tex.Readback(gpu_system_, cmd_list, 0, tensor.mutable_data_ptr());
+            tex.ReadBack(gpu_system_, cmd_list, 0, tensor.mutable_data_ptr());
             if (torch_device_.type() != torch::DeviceType::CPU)
             {
                 tensor = tensor.to(torch_device_);

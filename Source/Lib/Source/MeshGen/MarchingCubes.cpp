@@ -385,7 +385,7 @@ namespace AIHoloImager
                 cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
 
-            GpuReadbackBuffer counter_cpu_buff(gpu_system_, sizeof(glm::uvec2), L"counter_cpu_buff");
+            GpuReadBackBuffer counter_cpu_buff(gpu_system_, sizeof(glm::uvec2), L"counter_cpu_buff");
             cmd_list.Copy(counter_cpu_buff, 0, counter_buff, 0, sizeof(uint32_t));
 
             gpu_system_.Execute(std::move(cmd_list));
@@ -442,8 +442,8 @@ namespace AIHoloImager
 
             cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuReadbackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(glm::vec3), L"mesh_vertices_cpu_buff");
-            GpuReadbackBuffer mesh_indices_cpu_buff(gpu_system_, num_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
+            GpuReadBackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(glm::vec3), L"mesh_vertices_cpu_buff");
+            GpuReadBackBuffer mesh_indices_cpu_buff(gpu_system_, num_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
             {
                 gen_vertices_indices_cb_->size = size;
                 gen_vertices_indices_cb_->num_non_empty_cubes = num_non_empty_cubes;
