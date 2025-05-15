@@ -4,6 +4,7 @@
 #include "MaskGenerator.hpp"
 
 #include <cstddef>
+#include <future>
 #include <span>
 
 #include <glm/geometric.hpp>
@@ -36,12 +37,21 @@ namespace AIHoloImager
             Timer timer;
 
             auto& gpu_system = aihi_.GpuSystemInstance();
-            auto& python_system = aihi_.PythonSystemInstance();
 
-            mask_generator_module_ = python_system.Import("MaskGenerator");
-            mask_generator_class_ = python_system.GetAttr(*mask_generator_module_, "MaskGenerator");
-            mask_generator_ = python_system.CallObject(*mask_generator_class_);
-            mask_generator_gen_method_ = python_system.GetAttr(*mask_generator_, "Gen");
+            py_init_future_ = std::async(std::launch::async, [this] {
+                Timer timer;
+
+                PythonSystem::GilGuard guard;
+
+                auto& python_system = aihi_.PythonSystemInstance();
+
+                mask_generator_module_ = python_system.Import("MaskGenerator");
+                mask_generator_class_ = python_system.GetAttr(*mask_generator_module_, "MaskGenerator");
+                mask_generator_ = python_system.CallObject(*mask_generator_class_);
+                mask_generator_gen_method_ = python_system.GetAttr(*mask_generator_, "Gen");
+
+                aihi_.AddTiming("Mask generator init (async)", timer.Elapsed());
+            });
 
             {
                 const ShaderInfo shader = {DownsampleCs_shader, 1, 1, 1};
@@ -85,9 +95,17 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PythonSystem::GilGuard guard;
+
             auto& python_system = aihi_.PythonSystemInstance();
             auto mask_generator_destroy_method = python_system.GetAttr(*mask_generator_, "Destroy");
             python_system.CallObject(*mask_generator_destroy_method);
+
+            mask_generator_destroy_method.reset();
+            mask_generator_gen_method_.reset();
+            mask_generator_.reset();
+            mask_generator_class_.reset();
+            mask_generator_module_.reset();
         }
 
         void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, glm::uvec4& roi)
@@ -255,22 +273,28 @@ namespace AIHoloImager
             auto normalized_image = std::make_unique<float[]>(normalized_data_size);
             normalized_gpu_tex_.ReadBack(gpu_system, cmd_list, 0, normalized_image.get());
 
-            auto args = python_system.MakeTuple(4);
+            py_init_future_.wait();
+
             {
-                auto py_image =
-                    python_system.MakeObject(std::span<const std::byte>(reinterpret_cast<const std::byte*>(normalized_image.get()),
-                        U2NetInputDim * U2NetInputDim * U2NetInputChannels * sizeof(float)));
-                python_system.SetTupleItem(*args, 0, std::move(py_image));
+                PythonSystem::GilGuard guard;
 
-                python_system.SetTupleItem(*args, 1, python_system.MakeObject(U2NetInputDim));
-                python_system.SetTupleItem(*args, 2, python_system.MakeObject(U2NetInputDim));
-                python_system.SetTupleItem(*args, 3, python_system.MakeObject(U2NetInputChannels));
+                auto args = python_system.MakeTuple(4);
+                {
+                    auto py_image =
+                        python_system.MakeObject(std::span<const std::byte>(reinterpret_cast<const std::byte*>(normalized_image.get()),
+                            U2NetInputDim * U2NetInputDim * U2NetInputChannels * sizeof(float)));
+                    python_system.SetTupleItem(*args, 0, std::move(py_image));
+
+                    python_system.SetTupleItem(*args, 1, python_system.MakeObject(U2NetInputDim));
+                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(U2NetInputDim));
+                    python_system.SetTupleItem(*args, 3, python_system.MakeObject(U2NetInputChannels));
+                }
+
+                auto py_pred = python_system.CallObject(*mask_generator_gen_method_, *args);
+                auto pred_span = python_system.ToBytes(*py_pred);
+                assert(pred_span.size() == U2NetInputDim * U2NetInputDim * sizeof(float));
+                pred_gpu_tex_.Upload(gpu_system, cmd_list, 0, pred_span.data());
             }
-
-            auto py_pred = python_system.CallObject(*mask_generator_gen_method_, *args);
-            auto pred_span = python_system.ToBytes(*py_pred);
-            assert(pred_span.size() == U2NetInputDim * U2NetInputDim * sizeof(float));
-            pred_gpu_tex_.Upload(gpu_system, cmd_list, 0, pred_span.data());
 
             {
                 GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
@@ -469,6 +493,7 @@ namespace AIHoloImager
         PyObjectPtr mask_generator_class_;
         PyObjectPtr mask_generator_;
         PyObjectPtr mask_generator_gen_method_;
+        std::future<void> py_init_future_;
 
         GpuTexture2D downsampled_x_gpu_tex_;
         GpuTexture2D downsampled_gpu_tex_;

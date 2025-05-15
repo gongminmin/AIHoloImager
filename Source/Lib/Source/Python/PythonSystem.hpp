@@ -77,6 +77,18 @@ namespace AIHoloImager
             return this->Cast<T>(*this->GetAttr(module, name));
         }
 
+        class GilGuard
+        {
+            DISALLOW_COPY_AND_ASSIGN(GilGuard);
+
+        public:
+            GilGuard() noexcept;
+            ~GilGuard() noexcept;
+
+        private:
+            PyGILState_STATE gil_state_;
+        };
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

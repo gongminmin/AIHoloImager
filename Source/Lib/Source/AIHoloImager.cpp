@@ -6,6 +6,7 @@
 #include <chrono>
 #include <format>
 #include <iostream>
+#include <mutex>
 
 #ifdef _WIN32
     #ifndef WIN32_LEAN_AND_MEAN
@@ -62,6 +63,7 @@ namespace AIHoloImager
 
         void AddTiming(std::string_view name, std::chrono::duration<double> duration)
         {
+            std::lock_guard lock(timing_mutex_);
             timings_.push_back(std::make_tuple(std::string(name), std::move(duration)));
         }
 
@@ -95,6 +97,7 @@ namespace AIHoloImager
         PythonSystem python_system_;
 
         std::vector<std::tuple<std::string, std::chrono::duration<double>>> timings_;
+        std::mutex timing_mutex_;
     };
 
     AIHoloImager::AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(enable_cuda, tmp_dir))

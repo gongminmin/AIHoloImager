@@ -62,16 +62,21 @@ namespace AIHoloImager
             }
 
             PyConfig_Clear(&config);
+
+            PyEval_SaveThread();
         }
 
         ~Impl()
         {
+            PyGILState_Ensure();
             Py_Finalize();
         }
     };
 
     PythonSystem::PythonSystem(bool enable_cuda, const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
+        PythonSystem::GilGuard guard;
+
         auto py_sys = this->Import("PythonSystem");
         auto init_py_sys_method = this->GetAttr(*py_sys, "InitPySys");
 
@@ -183,5 +188,14 @@ namespace AIHoloImager
         const Py_ssize_t size = PyBytes_Size(&object);
         const char* data = PyBytes_AsString(&object);
         return std::span<const std::byte>(reinterpret_cast<const std::byte*>(data), size);
+    }
+
+    PythonSystem::GilGuard::GilGuard() noexcept : gil_state_(PyGILState_Ensure())
+    {
+    }
+
+    PythonSystem::GilGuard::~GilGuard() noexcept
+    {
+        PyGILState_Release(gil_state_);
     }
 } // namespace AIHoloImager

@@ -3,6 +3,8 @@
 
 #include "Delighter.hpp"
 
+#include <future>
+
 #include "Base/Timer.hpp"
 
 namespace AIHoloImager
@@ -12,23 +14,36 @@ namespace AIHoloImager
     public:
         Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
-            Timer timer;
+            py_init_future_ = std::async(std::launch::async, [this] {
+                Timer timer;
 
-            auto& python_system = aihi_.PythonSystemInstance();
+                PythonSystem::GilGuard guard;
 
-            delighter_module_ = python_system.Import("Delighter");
-            delighter_class_ = python_system.GetAttr(*delighter_module_, "Delighter");
-            delighter_ = python_system.CallObject(*delighter_class_);
-            delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
+                auto& python_system = aihi_.PythonSystemInstance();
 
-            aihi_.AddTiming("Delighter init", timer.Elapsed());
+                delighter_module_ = python_system.Import("Delighter");
+                delighter_class_ = python_system.GetAttr(*delighter_module_, "Delighter");
+                delighter_ = python_system.CallObject(*delighter_class_);
+                delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
+
+
+                aihi_.AddTiming("Delighter init (async)", timer.Elapsed());
+            });
         }
 
         ~Impl()
         {
+            PythonSystem::GilGuard guard;
+
             auto& python_system = aihi_.PythonSystemInstance();
             auto delighter_destroy_method = python_system.GetAttr(*delighter_, "Destroy");
             python_system.CallObject(*delighter_destroy_method);
+
+            delighter_destroy_method.reset();
+            delighter_process_method_.reset();
+            delighter_.reset();
+            delighter_class_.reset();
+            delighter_module_.reset();
         }
 
         Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
@@ -62,33 +77,40 @@ namespace AIHoloImager
                 }
             }
 
-            auto& python_system = aihi_.PythonSystemInstance();
-            auto args = python_system.MakeTuple(4);
+            py_init_future_.wait();
+
+            Texture out_image;
             {
-                auto py_image = python_system.MakeObject(
-                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(roi_image.Data()), roi_image.DataSize()));
-                python_system.SetTupleItem(*args, 0, std::move(py_image));
+                PythonSystem::GilGuard guard;
 
-                python_system.SetTupleItem(*args, 1, python_system.MakeObject(roi_width));
-                python_system.SetTupleItem(*args, 2, python_system.MakeObject(roi_height));
-                python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(roi_image.Format())));
-            }
-
-            const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
-
-            Texture out_image(roi_width, roi_height, ElementFormat::RGBA8_UNorm);
-            std::byte* dst = reinterpret_cast<std::byte*>(out_image.Data());
-            const std::byte* src = python_system.ToBytes(*output_roi_image).data();
-            const std::byte* src_mask = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
-            for (uint32_t y = 0; y < roi_height; ++y)
-            {
-                for (uint32_t x = 0; x < roi_width; ++x)
+                auto& python_system = aihi_.PythonSystemInstance();
+                auto args = python_system.MakeTuple(4);
                 {
-                    const uint32_t img_offset = y * roi_width + x;
-                    dst[img_offset * 4 + 0] = src[img_offset * 3 + 0];
-                    dst[img_offset * 4 + 1] = src[img_offset * 3 + 1];
-                    dst[img_offset * 4 + 2] = src[img_offset * 3 + 2];
-                    dst[img_offset * 4 + 3] = src_mask[(y * width + x) * fmt_size + 3];
+                    auto py_image = python_system.MakeObject(
+                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(roi_image.Data()), roi_image.DataSize()));
+                    python_system.SetTupleItem(*args, 0, std::move(py_image));
+
+                    python_system.SetTupleItem(*args, 1, python_system.MakeObject(roi_width));
+                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(roi_height));
+                    python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(roi_image.Format())));
+                }
+
+                const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
+
+                out_image = Texture(roi_width, roi_height, ElementFormat::RGBA8_UNorm);
+                std::byte* dst = reinterpret_cast<std::byte*>(out_image.Data());
+                const std::byte* src = python_system.ToBytes(*output_roi_image).data();
+                const std::byte* src_mask = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
+                for (uint32_t y = 0; y < roi_height; ++y)
+                {
+                    for (uint32_t x = 0; x < roi_width; ++x)
+                    {
+                        const uint32_t img_offset = y * roi_width + x;
+                        dst[img_offset * 4 + 0] = src[img_offset * 3 + 0];
+                        dst[img_offset * 4 + 1] = src[img_offset * 3 + 1];
+                        dst[img_offset * 4 + 2] = src[img_offset * 3 + 2];
+                        dst[img_offset * 4 + 3] = src_mask[(y * width + x) * fmt_size + 3];
+                    }
                 }
             }
 
@@ -102,6 +124,7 @@ namespace AIHoloImager
         PyObjectPtr delighter_class_;
         PyObjectPtr delighter_;
         PyObjectPtr delighter_process_method_;
+        std::future<void> py_init_future_;
     };
 
     Delighter::Delighter(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
