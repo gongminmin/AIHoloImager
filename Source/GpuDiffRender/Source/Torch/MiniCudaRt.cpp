@@ -5,103 +5,41 @@
 
 namespace AIHoloImager
 {
-    MiniCudaRt::MiniCudaRt()
+    MiniCudaRt::MiniCudaRt() : cudart_dll_("cudart64_12.dll")
     {
-        cudart_dll_ = LoadLibraryW(L"cudart64_12.dll");
         if (cudart_dll_)
         {
-            cuda_get_device_properties_ =
-                reinterpret_cast<CudaGetDeviceProperties_v2>(GetProcAddress(cudart_dll_, "cudaGetDeviceProperties_v2"));
-            cuda_create_channel_desc_ = reinterpret_cast<CudaCreateChannelDesc>(GetProcAddress(cudart_dll_, "cudaCreateChannelDesc"));
-            cuda_import_external_memory_ =
-                reinterpret_cast<CudaImportExternalMemory>(GetProcAddress(cudart_dll_, "cudaImportExternalMemory"));
+            cuda_get_device_properties_ = cudart_dll_.Func<CudaGetDeviceProperties_v2>("cudaGetDeviceProperties_v2");
+            cuda_create_channel_desc_ = cudart_dll_.Func<CudaCreateChannelDesc>("cudaCreateChannelDesc");
+            cuda_import_external_memory_ = cudart_dll_.Func<CudaImportExternalMemory>("cudaImportExternalMemory");
             cuda_external_memory_get_mapped_buffer_ =
-                reinterpret_cast<CudaExternalMemoryGetMappedBuffer>(GetProcAddress(cudart_dll_, "cudaExternalMemoryGetMappedBuffer"));
-            cuda_destroy_external_memory_ =
-                reinterpret_cast<CudaDestroyExternalMemory>(GetProcAddress(cudart_dll_, "cudaDestroyExternalMemory"));
-            cuda_external_memory_get_mapped_mipmapped_array_ = reinterpret_cast<CudaExternalMemoryGetMappedMipmappedArray>(
-                GetProcAddress(cudart_dll_, "cudaExternalMemoryGetMappedMipmappedArray"));
-            cuda_import_external_semaphore_ =
-                reinterpret_cast<CudaImportExternalSemaphore>(GetProcAddress(cudart_dll_, "cudaImportExternalSemaphore"));
-            cuda_destroy_external_semaphore_ =
-                reinterpret_cast<CudaDestroyExternalSemaphore>(GetProcAddress(cudart_dll_, "cudaDestroyExternalSemaphore"));
-            cuda_wait_external_semaphores_async_ =
-                reinterpret_cast<CudaWaitExternalSemaphoresAsync_v2>(GetProcAddress(cudart_dll_, "cudaWaitExternalSemaphoresAsync"));
-            cuda_signal_external_semaphores_async_ =
-                reinterpret_cast<CudaSignalExternalSemaphoresAsync_v2>(GetProcAddress(cudart_dll_, "cudaSignalExternalSemaphoresAsync"));
-            cuda_stream_create_ = reinterpret_cast<CudaStreamCreate>(GetProcAddress(cudart_dll_, "cudaStreamCreate"));
-            cuda_stream_destroy_ = reinterpret_cast<CudaStreamDestroy>(GetProcAddress(cudart_dll_, "cudaStreamDestroy"));
-            cuda_memcpy_async_ = reinterpret_cast<CudaMemcpyAsync>(GetProcAddress(cudart_dll_, "cudaMemcpyAsync"));
-            cuda_memcpy_3d_async_ = reinterpret_cast<CudaMemcpy3DAsync>(GetProcAddress(cudart_dll_, "cudaMemcpy3DAsync"));
-            cuda_get_mipmapped_array_level_ =
-                reinterpret_cast<CudaGetMipmappedArrayLevel>(GetProcAddress(cudart_dll_, "cudaGetMipmappedArrayLevel"));
-            cuda_free_mipmapped_array_ = reinterpret_cast<CudaFreeMipmappedArray>(GetProcAddress(cudart_dll_, "cudaFreeMipmappedArray"));
-            cuda_free_ = reinterpret_cast<CudaFree>(GetProcAddress(cudart_dll_, "cudaFree"));
-        }
-    }
-
-    MiniCudaRt::~MiniCudaRt()
-    {
-        if (cudart_dll_ != nullptr)
-        {
-            FreeLibrary(cudart_dll_);
-        }
-    }
-
-    MiniCudaRt::MiniCudaRt(MiniCudaRt&& other) noexcept
-        : cudart_dll_(std::exchange(other.cudart_dll_, nullptr)),
-          cuda_get_device_properties_(std::exchange(other.cuda_get_device_properties_, nullptr)),
-          cuda_create_channel_desc_(std::exchange(other.cuda_create_channel_desc_, nullptr)),
-          cuda_import_external_memory_(std::exchange(other.cuda_import_external_memory_, nullptr)),
-          cuda_external_memory_get_mapped_buffer_(std::exchange(other.cuda_external_memory_get_mapped_buffer_, nullptr)),
-          cuda_destroy_external_memory_(std::exchange(other.cuda_destroy_external_memory_, nullptr)),
-          cuda_external_memory_get_mapped_mipmapped_array_(std::exchange(other.cuda_external_memory_get_mapped_mipmapped_array_, nullptr)),
-          cuda_import_external_semaphore_(std::exchange(other.cuda_import_external_semaphore_, nullptr)),
-          cuda_destroy_external_semaphore_(std::exchange(other.cuda_destroy_external_semaphore_, nullptr)),
-          cuda_wait_external_semaphores_async_(std::exchange(other.cuda_wait_external_semaphores_async_, nullptr)),
-          cuda_signal_external_semaphores_async_(std::exchange(other.cuda_signal_external_semaphores_async_, nullptr)),
-          cuda_stream_create_(std::exchange(other.cuda_stream_create_, nullptr)),
-          cuda_stream_destroy_(std::exchange(other.cuda_stream_destroy_, nullptr)),
-          cuda_memcpy_async_(std::exchange(other.cuda_memcpy_async_, nullptr)),
-          cuda_memcpy_3d_async_(std::exchange(other.cuda_memcpy_3d_async_, nullptr)),
-          cuda_get_mipmapped_array_level_(std::exchange(other.cuda_get_mipmapped_array_level_, nullptr)),
-          cuda_free_mipmapped_array_(std::exchange(other.cuda_free_mipmapped_array_, nullptr)),
-          cuda_free_(std::exchange(other.cuda_free_, nullptr))
-    {
-    }
-
-    MiniCudaRt& MiniCudaRt::operator=(MiniCudaRt&& other) noexcept
-    {
-        if (this != &other)
-        {
-            cudart_dll_ = std::exchange(other.cudart_dll_, nullptr);
-
-            cuda_get_device_properties_ = std::exchange(other.cuda_get_device_properties_, nullptr);
-            cuda_create_channel_desc_ = std::exchange(other.cuda_create_channel_desc_, nullptr);
-            cuda_import_external_memory_ = std::exchange(other.cuda_import_external_memory_, nullptr);
-            cuda_external_memory_get_mapped_buffer_ = std::exchange(other.cuda_external_memory_get_mapped_buffer_, nullptr);
-            cuda_destroy_external_memory_ = std::exchange(other.cuda_destroy_external_memory_, nullptr);
+                cudart_dll_.Func<CudaExternalMemoryGetMappedBuffer>("cudaExternalMemoryGetMappedBuffer");
+            cuda_destroy_external_memory_ = cudart_dll_.Func<CudaDestroyExternalMemory>("cudaDestroyExternalMemory");
             cuda_external_memory_get_mapped_mipmapped_array_ =
-                std::exchange(other.cuda_external_memory_get_mapped_mipmapped_array_, nullptr);
-            cuda_import_external_semaphore_ = std::exchange(other.cuda_import_external_semaphore_, nullptr);
-            cuda_destroy_external_semaphore_ = std::exchange(other.cuda_destroy_external_semaphore_, nullptr);
-            cuda_wait_external_semaphores_async_ = std::exchange(other.cuda_wait_external_semaphores_async_, nullptr);
-            cuda_signal_external_semaphores_async_ = std::exchange(other.cuda_signal_external_semaphores_async_, nullptr);
-            cuda_stream_create_ = std::exchange(other.cuda_stream_create_, nullptr);
-            cuda_stream_destroy_ = std::exchange(other.cuda_stream_destroy_, nullptr);
-            cuda_memcpy_async_ = std::exchange(other.cuda_memcpy_async_, nullptr);
-            cuda_memcpy_3d_async_ = std::exchange(other.cuda_memcpy_3d_async_, nullptr);
-            cuda_get_mipmapped_array_level_ = std::exchange(other.cuda_get_mipmapped_array_level_, nullptr);
-            cuda_free_mipmapped_array_ = std::exchange(other.cuda_free_mipmapped_array_, nullptr);
-            cuda_free_ = std::exchange(other.cuda_free_, nullptr);
+                cudart_dll_.Func<CudaExternalMemoryGetMappedMipmappedArray>("cudaExternalMemoryGetMappedMipmappedArray");
+            cuda_import_external_semaphore_ = cudart_dll_.Func<CudaImportExternalSemaphore>("cudaImportExternalSemaphore");
+            cuda_destroy_external_semaphore_ = cudart_dll_.Func<CudaDestroyExternalSemaphore>("cudaDestroyExternalSemaphore");
+            cuda_wait_external_semaphores_async_ = cudart_dll_.Func<CudaWaitExternalSemaphoresAsync_v2>("cudaWaitExternalSemaphoresAsync");
+            cuda_signal_external_semaphores_async_ =
+                cudart_dll_.Func<CudaSignalExternalSemaphoresAsync_v2>("cudaSignalExternalSemaphoresAsync");
+            cuda_stream_create_ = cudart_dll_.Func<CudaStreamCreate>("cudaStreamCreate");
+            cuda_stream_destroy_ = cudart_dll_.Func<CudaStreamDestroy>("cudaStreamDestroy");
+            cuda_memcpy_async_ = cudart_dll_.Func<CudaMemcpyAsync>("cudaMemcpyAsync");
+            cuda_memcpy_3d_async_ = cudart_dll_.Func<CudaMemcpy3DAsync>("cudaMemcpy3DAsync");
+            cuda_get_mipmapped_array_level_ = cudart_dll_.Func<CudaGetMipmappedArrayLevel>("cudaGetMipmappedArrayLevel");
+            cuda_free_mipmapped_array_ = cudart_dll_.Func<CudaFreeMipmappedArray>("cudaFreeMipmappedArray");
+            cuda_free_ = cudart_dll_.Func<CudaFree>("cudaFree");
         }
-
-        return *this;
     }
+
+    MiniCudaRt::~MiniCudaRt() = default;
+
+    MiniCudaRt::MiniCudaRt(MiniCudaRt&& other) noexcept = default;
+    MiniCudaRt& MiniCudaRt::operator=(MiniCudaRt&& other) noexcept = default;
 
     MiniCudaRt::operator bool() const noexcept
     {
-        return cudart_dll_ != nullptr;
+        return static_cast<bool>(cudart_dll_);
     }
 
     MiniCudaRt::Error_t MiniCudaRt::GetDeviceProperties(DeviceProp* prop, int32_t device)

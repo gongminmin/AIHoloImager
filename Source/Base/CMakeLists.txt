@@ -3,12 +3,14 @@
 
 set(aihi_base_files
     Include/Base/ComPtr.hpp
+    Include/Base/Dll.hpp
     Include/Base/Enum.hpp
     Include/Base/Errorhandling.hpp
     Include/Base/Noncopyable.hpp
     Include/Base/SmartPtrHelper.hpp
     Include/Base/Timer.hpp
     Include/Base/Uuid.hpp
+    Source/Dll.cpp
     Source/Errorhandling.cpp
     Source/pch.hpp
     Source/Timer.cpp

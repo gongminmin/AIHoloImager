@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Base/Dll.hpp"
 #include "Base/Noncopyable.hpp"
 
 // Keep some entries we used from CUDA runtime, so we don't need to reference to CUDA Toolkit
@@ -292,7 +293,7 @@ namespace AIHoloImager
         using CudaFree = Error_t(CUDART_API*)(void* dev_ptr);
 
     private:
-        HMODULE cudart_dll_{};
+        Dll cudart_dll_;
 
         CudaGetDeviceProperties_v2 cuda_get_device_properties_{};
         CudaCreateChannelDesc cuda_create_channel_desc_{};
