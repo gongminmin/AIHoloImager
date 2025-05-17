@@ -24,14 +24,14 @@
     #pragma warning(disable : 4127) // Ignore conditional expression is constant
     #pragma warning(disable : 4244) // Ignore implicit conversion
     #pragma warning(disable : 4267) // Ignore implicit conversion
-    #pragma warning(disable : 4305) // Ignore transcation from double to float
+    #pragma warning(disable : 4305) // Ignore truncation from double to float
     #pragma warning(disable : 4702) // Ignore unreachable code
     #pragma warning(disable : 5054) // Ignore operator between enums of different types
     #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
-#include <openMVG/exif/sensor_width_database/ParseDatabase.hpp>
+#include <openMVG/exif/sensor_width_database/datasheet.hpp>
 #include <openMVG/features/regions.hpp>
 #include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
 #include <openMVG/image/image_io.hpp>
@@ -130,13 +130,33 @@ namespace AIHoloImager
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
-            const auto camera_sensor_db_path = aihi_.ExeDir() / "sensor_width_camera_database.txt";
-
+            const auto camera_sensor_db_path = aihi_.ExeDir() / "CameraDatabase.dat";
             std::vector<Datasheet> vec_database;
-            if (!parseDatabase(camera_sensor_db_path.string(), vec_database))
             {
-                throw std::runtime_error(
-                    std::format("Invalid input database: {}, please specify a valid file.", camera_sensor_db_path.string()));
+                std::ifstream db_file(camera_sensor_db_path.string(), std::ios::binary);
+                if (db_file.is_open())
+                {
+                    uint32_t num_datasheets = 0;
+                    db_file.read(reinterpret_cast<char*>(&num_datasheets), sizeof(num_datasheets));
+                    vec_database.resize(num_datasheets);
+                    for (uint32_t i = 0; i < num_datasheets; ++i)
+                    {
+                        uint16_t model_len = 0;
+                        db_file.read(reinterpret_cast<char*>(&model_len), sizeof(model_len));
+                        std::string model(model_len, '\0');
+                        db_file.read(model.data(), model_len);
+
+                        float sensor_size = 0;
+                        db_file.read(reinterpret_cast<char*>(&sensor_size), sizeof(sensor_size));
+
+                        vec_database[i] = {model, sensor_size};
+                    }
+                }
+                else
+                {
+                    throw std::runtime_error(
+                        std::format("Invalid input database: {}, please specify a valid file.", camera_sensor_db_path.string()));
+                }
             }
 
             std::vector<std::filesystem::path> input_image_paths;
@@ -194,10 +214,11 @@ namespace AIHoloImager
                         {
                             const std::string cam_full_model = std::format("{} {}", cam_brand, cam_model);
 
-                            Datasheet datasheet;
-                            if (getInfo(cam_full_model, vec_database, datasheet))
+                            const Datasheet ref_datasheet(cam_full_model, -1.0);
+                            auto db_iter = std::find(vec_database.begin(), vec_database.end(), ref_datasheet);
+                            if (db_iter != vec_database.end())
                             {
-                                focal = std::max(width, height) * exif_reader.getFocal() / datasheet.sensorSize_;
+                                focal = std::max(width, height) * exif_reader.getFocal() / db_iter->sensorSize_;
                             }
                             else
                             {

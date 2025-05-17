@@ -1,10 +1,14 @@
+# Copyright (c) 2025 Minmin Gong
+#
+
 set(camera_database_src "${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt")
-set(camera_database_dst "${aihi_output_dir}/sensor_width_camera_database.txt")
+set(camera_database_dst "${aihi_output_dir}/CameraDatabase.dat")
 add_custom_command(OUTPUT ${camera_database_dst}
-    COMMAND ${CMAKE_COMMAND} -E copy ${camera_database_src} ${camera_database_dst}
-    COMMENT "Copying camera database ..."
+    COMMAND ${Python3_EXECUTABLE} ConvertDatasheet.py ${camera_database_src} ${camera_database_dst}
+    COMMENT "Converting camera database ..."
     MAIN_DEPENDENCY ${camera_database_src}
     DEPENDS ${camera_database_src}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Source/SfM
     VERBATIM COMMAND_EXPAND_LISTS
 )
 
@@ -114,6 +118,7 @@ set(aihi_files
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
     Source/SfM/Shader/UndistortCs.hlsl
+    Source/SfM/ConvertDatasheet.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
     Source/TextureRecon/Shader/FlattenVs.hlsl
