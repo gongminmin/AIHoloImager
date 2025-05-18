@@ -1,16 +1,15 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-if(DEFINED ENV{GIT_LFS_SKIP_SMUDGE})
-    set(lfs_skip "$ENV{GIT_LFS_SKIP_SMUDGE}")
-else()
-    set(lfs_skip 0)
-endif()
-
-
 if(is_ci_env)
     add_custom_target(DeployTrellisModels)
 else()
+    if(DEFINED ENV{GIT_LFS_SKIP_SMUDGE})
+        set(lfs_skip "$ENV{GIT_LFS_SKIP_SMUDGE}")
+    else()
+        set(lfs_skip 0)
+    endif()
+
     set(ENV{GIT_LFS_SKIP_SMUDGE} 1)
     UpdateExternalLib("TRELLIS-image-large" "https://huggingface.co/JeffreyXiang/TRELLIS-image-large" "25e0d31ffbebe4b5a97464dd851910efc3002d96" "" "" need_checkout)
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})

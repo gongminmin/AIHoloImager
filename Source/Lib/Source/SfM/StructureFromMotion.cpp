@@ -51,7 +51,6 @@
 #ifdef AIHI_KEEP_INTERMEDIATES
     #include <openMVG/sfm/sfm_data_io.hpp>
 #endif
-#include <openMVG/sfm/sfm_data_utils.hpp>
 #ifdef _MSC_VER
     #pragma warning(pop)
 #endif
@@ -168,98 +167,125 @@ namespace AIHoloImager
                 }
             }
             std::sort(input_image_paths.begin(), input_image_paths.end());
-            images.reserve(input_image_paths.size());
+            images.resize(input_image_paths.size());
+
+            struct CameraInfo
+            {
+                std::string full_model;
+                uint32_t width = 0;
+                uint32_t height = 0;
+                double focal = -1;
+
+                std::vector<size_t> image_ids;
+            };
+
+            std::vector<CameraInfo> camera_infos;
+            {
+                exif::Exif_IO_EasyExif exif_reader;
+                for (size_t i = 0; i < input_image_paths.size(); ++i)
+                {
+                    const std::filesystem::path image_file_path = image_dir / input_image_paths[i];
+
+                    auto& image = images[i];
+                    image = LoadTexture(image_file_path);
+                    image.Convert(ElementFormat::RGBA8_UNorm);
+
+                    CameraInfo camera_info = {"unknown Unknown", image.Width(), image.Height()};
+                    if (exif_reader.open(image_file_path.string()))
+                    {
+                        if (exif_reader.doesHaveExifInfo())
+                        {
+                            const double focal = exif_reader.getFocal();
+                            if (focal != 0.0)
+                            {
+                                const std::string cam_brand = exif_reader.getBrand();
+                                const std::string cam_model = exif_reader.getModel();
+                                if (!cam_brand.empty() && !cam_model.empty())
+                                {
+                                    camera_info.full_model = std::format("{} {}", cam_brand, cam_model);
+                                    camera_info.focal = focal;
+                                }
+                            }
+                            else
+                            {
+                                std::cerr << image_file_path.stem() << ": Focal length is missing.\n";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        std::cerr << image_file_path.filename() << ": Unsupported image file format.\n";
+                    }
+
+                    // Group camera that share common properties, leads to more faster & stable BA.
+                    bool found = false;
+                    for (size_t j = 0; j < camera_infos.size(); ++j)
+                    {
+                        if ((camera_infos[j].full_model == camera_info.full_model) && (camera_infos[j].width == camera_info.width) &&
+                            (camera_infos[j].height == camera_info.height) && (std::abs(camera_infos[j].focal - camera_info.focal) < 1e-6f))
+                        {
+                            camera_infos[j].image_ids.push_back(i);
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        camera_info.image_ids.push_back(i);
+                        camera_infos.emplace_back(std::move(camera_info));
+                    }
+                }
+            }
 
             SfM_Data sfm_data;
             sfm_data.s_root_path = image_dir.string();
 
             Views& views = sfm_data.views;
-            Intrinsics& intrinsics = sfm_data.intrinsics;
-
-            exif::Exif_IO_EasyExif exif_reader;
-            for (auto iter = input_image_paths.begin(); iter != input_image_paths.end(); ++iter)
+            for (size_t i = 0; i < input_image_paths.size(); ++i)
             {
-                const std::filesystem::path image_file_path = image_dir / *iter;
-
-                if (GetFormat(image_file_path.string().c_str()) == Unknown)
-                {
-                    std::cerr << image_file_path.filename() << ": Unsupported image file format.\n";
-                    continue;
-                }
-
-                ImageHeader img_header;
-                if (!ReadImageHeader(image_file_path.string().c_str(), &img_header))
-                {
-                    continue;
-                }
-
-                const uint32_t width = static_cast<uint32_t>(img_header.width);
-                const uint32_t height = static_cast<uint32_t>(img_header.height);
-                const double ppx = width / 2.0;
-                const double ppy = height / 2.0;
-                double focal = -1;
-
-                exif_reader.open(image_file_path.string());
-                if (exif_reader.doesHaveExifInfo())
-                {
-                    if (exif_reader.getFocal() == 0.0f)
-                    {
-                        std::cerr << image_file_path.stem() << ": Focal length is missing.\n";
-                    }
-                    else
-                    {
-                        const std::string cam_brand = exif_reader.getBrand();
-                        const std::string cam_model = exif_reader.getModel();
-                        if (!cam_brand.empty() && !cam_model.empty())
-                        {
-                            const std::string cam_full_model = std::format("{} {}", cam_brand, cam_model);
-
-                            const Datasheet ref_datasheet(cam_full_model, -1.0);
-                            auto db_iter = std::find(vec_database.begin(), vec_database.end(), ref_datasheet);
-                            if (db_iter != vec_database.end())
-                            {
-                                focal = std::max(width, height) * exif_reader.getFocal() / db_iter->sensorSize_;
-                            }
-                            else
-                            {
-                                std::cerr << image_file_path.stem() << "\" model \"" << cam_full_model
-                                          << "\" doesn't exist in the database.\n"
-                                          << "Please consider add your camera model and sensor width in the database.\n";
-                            }
-                        }
-                    }
-                }
-
-                std::shared_ptr<IntrinsicBase> intrinsic;
-                if ((focal > 0) && (ppx > 0) && (ppy > 0) && (width > 0) && (height > 0))
-                {
-                    intrinsic = std::make_shared<Pinhole_Intrinsic_Radial_K3>(
-                        width, height, focal, ppx, ppy, 0.0, 0.0, 0.0); // setup no distortion as initial guess
-                }
-
-                {
-                    const IndexT id = static_cast<IndexT>(views.size());
-                    auto view = std::make_shared<openMVG::sfm::View>(iter->string(), id, id, id, width, height);
-
-                    if (intrinsic)
-                    {
-                        intrinsics[view->id_intrinsic] = std::move(intrinsic);
-                    }
-                    else
-                    {
-                        // The view has a invalid intrinsic data. Still export the view, but keep the invalid intrinsic id.
-                        view->id_intrinsic = UndefinedIndexT;
-                    }
-
-                    views[view->id_view] = std::move(view);
-                }
-
-                auto& image = images.emplace_back(LoadTexture(image_file_path));
-                image.Convert(ElementFormat::RGBA8_UNorm);
+                const IndexT id = static_cast<IndexT>(views.size());
+                views[id] = std::make_shared<openMVG::sfm::View>(
+                    input_image_paths[i].string(), id, UndefinedIndexT, id, images[i].Width(), images[i].Height());
             }
 
-            // Group camera that share common properties, leads to more faster & stable BA.
-            GroupSharedIntrinsics(sfm_data);
+            Intrinsics& intrinsics = sfm_data.intrinsics;
+            for (uint32_t i = 0; i < camera_infos.size(); ++i)
+            {
+                const auto& camera_info = camera_infos[i];
+                const uint32_t width = camera_info.width;
+                const uint32_t height = camera_info.height;
+
+                double focal = -1;
+                if (camera_info.focal > 0)
+                {
+                    const Datasheet ref_datasheet(camera_info.full_model, -1.0);
+                    auto db_iter = std::find(vec_database.begin(), vec_database.end(), ref_datasheet);
+                    if (db_iter != vec_database.end())
+                    {
+                        focal = std::max(width, height) * camera_info.focal / db_iter->sensorSize_;
+                    }
+                }
+
+                if (focal > 0)
+                {
+                    const double ppx = width / 2.0;
+                    const double ppy = height / 2.0;
+                    intrinsics[i] = std::make_shared<Pinhole_Intrinsic_Radial_K3>(
+                        width, height, focal, ppx, ppy, 0.0, 0.0, 0.0); // setup no distortion as initial guess
+
+                    for (const uint32_t image_id : camera_info.image_ids)
+                    {
+                        views[image_id]->id_intrinsic = i;
+                    }
+                }
+                else
+                {
+                    std::cerr << std::format("Model \"{}\" doesn't exist in the database.\nPlease consider add your camera model and "
+                                             "sensor width in the database.\n",
+                        camera_info.full_model);
+                }
+            }
 
             return sfm_data;
         }

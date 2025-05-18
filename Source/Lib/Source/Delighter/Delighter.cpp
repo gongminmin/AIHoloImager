@@ -26,7 +26,6 @@ namespace AIHoloImager
                 delighter_ = python_system.CallObject(*delighter_class_);
                 delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
 
-
                 aihi_.AddTiming("Delighter init (async)", timer.Elapsed());
             });
         }
