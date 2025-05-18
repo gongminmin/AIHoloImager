@@ -125,16 +125,19 @@ namespace AIHoloImager
                     {
                         auto img_tuple = python_system.MakeTuple(7);
 
-                        const auto& delighted_image = sfm_input.views[i].delighted_image;
+                        const auto& view = sfm_input.views[i];
+                        const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+
+                        const auto& delighted_image = view.delighted_image;
                         auto image = python_system.MakeObject(
                             std::span(reinterpret_cast<const std::byte*>(delighted_image.Data()), delighted_image.DataSize()));
                         python_system.SetTupleItem(*img_tuple, 0, std::move(image));
-                        python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(sfm_input.views[i].delighted_offset.x));
-                        python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(sfm_input.views[i].delighted_offset.y));
+                        python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(view.delighted_offset.x));
+                        python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(view.delighted_offset.y));
                         python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(delighted_image.Width()));
                         python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(delighted_image.Height()));
-                        python_system.SetTupleItem(*img_tuple, 5, python_system.MakeObject(sfm_input.views[i].image_mask.Width()));
-                        python_system.SetTupleItem(*img_tuple, 6, python_system.MakeObject(sfm_input.views[i].image_mask.Height()));
+                        python_system.SetTupleItem(*img_tuple, 5, python_system.MakeObject(intrinsic.width));
+                        python_system.SetTupleItem(*img_tuple, 6, python_system.MakeObject(intrinsic.height));
 
                         python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                     }

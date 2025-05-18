@@ -404,10 +404,11 @@ namespace AIHoloImager
                     const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
 
                     const auto& view = sfm_input.views[ob.view_id];
+                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+
                     const std::byte* image_mask_data = view.image_mask.Data();
                     const uint32_t fmt_size = FormatSize(view.image_mask.Format());
-                    const uint32_t row_pitch = view.image_mask.Width() * fmt_size;
-                    if (image_mask_data[y * row_pitch + x * fmt_size + 3] > std::byte(0x7F))
+                    if (image_mask_data[(y * intrinsic.width + x) * fmt_size + 3] > std::byte(0x7F))
                     {
                         centroid += landmark.point;
                         ++num;
@@ -430,7 +431,6 @@ namespace AIHoloImager
 
                 const std::byte* image_mask_data = view.image_mask.Data();
                 const uint32_t fmt_size = FormatSize(view.image_mask.Format());
-                const uint32_t row_pitch = intrinsic.width * fmt_size;
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x = view.delighted_offset.x - Gap;
@@ -438,32 +438,24 @@ namespace AIHoloImager
                 const uint32_t end_x = view.delighted_offset.x + view.delighted_image.Width() + Gap;
                 const uint32_t end_y = view.delighted_offset.y + view.delighted_image.Height() + Gap;
 
-                std::vector<bool> plane_mask(intrinsic.width * intrinsic.height, false);
-                for (uint32_t y = beg_y; y < end_y; ++y)
-                {
-                    for (uint32_t x = beg_x; x < end_x; ++x)
-                    {
-                        const uint32_t mask_offset = y * intrinsic.width + x;
-                        plane_mask[mask_offset] = image_mask_data[y * row_pitch + x * fmt_size + 3] <= std::byte(0x7F);
-                    }
-                }
-
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
-                    const auto& landmark = sfm_input.structure[j];
-                    for (const auto& ob : landmark.obs)
+                    if (!point_used[j])
                     {
-                        if (ob.view_id == i)
+                        const auto& landmark = sfm_input.structure[j];
+                        for (const auto& ob : landmark.obs)
                         {
-                            const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
-                            const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
-
-                            if (plane_mask[y * intrinsic.width + x])
+                            if (ob.view_id == i)
                             {
-                                if (!point_used[j])
+                                const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                                const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+                                if ((x >= beg_x) && (y >= beg_y) && (x < end_x) && (y < end_y))
                                 {
-                                    plane_points.push_back(landmark.point);
-                                    point_used[j] = true;
+                                    if (image_mask_data[(y * intrinsic.width + x) * fmt_size + 3] <= std::byte(0x7F))
+                                    {
+                                        plane_points.push_back(landmark.point);
+                                        point_used[j] = true;
+                                    }
                                 }
                             }
                         }
@@ -1364,8 +1356,8 @@ namespace AIHoloImager
                 const glm::mat4x4 mvp_mtx = proj_mtx * view_mtx * init_model_mtx;
 
                 constexpr float RoiScale = 1.6f;
-                const float roi_fx = RoiScale * 2.0f * view.delighted_image.Width() / view.image_mask.Width();
-                const float roi_fy = RoiScale * 2.0f * view.delighted_image.Height() / view.image_mask.Height();
+                const float roi_fx = RoiScale * 2.0f * view.delighted_image.Width() / intrinsic.width;
+                const float roi_fy = RoiScale * 2.0f * view.delighted_image.Height() / intrinsic.height;
                 const float roi_fz = RoiScale;
 
                 glm::vec3 aabb_min_ps(+1e10f, +1e10f, +1e10f);

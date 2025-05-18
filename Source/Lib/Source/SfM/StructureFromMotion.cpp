@@ -304,7 +304,7 @@ namespace AIHoloImager
             return feature_regions;
         }
 
-        PairWiseMatches PairMatching(const SfM_Data& sfm_data, FeatureRegions& regions) const
+        PairWiseMatches PairMatching(const SfM_Data& sfm_data, const FeatureRegions& regions) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
@@ -328,7 +328,7 @@ namespace AIHoloImager
         }
 
         PairWiseMatches GeometricFilter(
-            const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, FeatureRegions& regions, bool sequential) const
+            const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, const FeatureRegions& regions, bool sequential) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
 
@@ -374,8 +374,8 @@ namespace AIHoloImager
             return map_geometric_matches;
         }
 
-        SfM_Data PointCloudReconstruction(SfM_Data& sfm_data, const PairWiseMatches& map_geometric_matches, FeatureRegions& regions,
-            bool sequential, const std::filesystem::path& tmp_dir) const
+        SfM_Data PointCloudReconstruction(const SfM_Data& sfm_data, const PairWiseMatches& map_geometric_matches,
+            const FeatureRegions& regions, bool sequential, const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_SfM.cpp
 
