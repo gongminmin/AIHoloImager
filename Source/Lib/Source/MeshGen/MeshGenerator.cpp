@@ -86,8 +86,6 @@ namespace AIHoloImager
         {
             Timer timer;
 
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
             py_init_future_ = std::async(std::launch::async, [this] {
                 Timer timer;
 
@@ -107,6 +105,8 @@ namespace AIHoloImager
 
                 aihi_.AddTiming("Mesh generator init (async)", timer.Elapsed());
             });
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
                 const ShaderInfo shaders[] = {
@@ -169,6 +169,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            py_init_future_.wait();
+
             PythonSystem::GilGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();

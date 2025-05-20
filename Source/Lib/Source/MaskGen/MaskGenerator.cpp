@@ -36,8 +36,6 @@ namespace AIHoloImager
         {
             Timer timer;
 
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
             py_init_future_ = std::async(std::launch::async, [this] {
                 Timer timer;
 
@@ -52,6 +50,8 @@ namespace AIHoloImager
 
                 aihi_.AddTiming("Mask generator init (async)", timer.Elapsed());
             });
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
                 const ShaderInfo shader = {DownsampleCs_shader, 1, 1, 1};
@@ -95,6 +95,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            py_init_future_.wait();
+
             PythonSystem::GilGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();

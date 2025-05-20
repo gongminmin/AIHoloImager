@@ -32,6 +32,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            py_init_future_.wait();
+
             PythonSystem::GilGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
