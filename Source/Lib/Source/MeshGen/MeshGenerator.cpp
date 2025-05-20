@@ -198,8 +198,8 @@ namespace AIHoloImager
 
             std::cout << "Rotating images...\n";
 
-            const glm::vec3 centroid = this->ForegroundObjectCentroid(sfm_input);
-            const glm::vec3 up_vec = this->SceneUpVector(sfm_input, centroid);
+            const Aabb obj_aabb = this->ForegroundObjectAabb(sfm_input);
+            const glm::vec3 up_vec = this->SceneUpVector(sfm_input, obj_aabb.Center());
             std::vector<Texture> rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -262,7 +262,7 @@ namespace AIHoloImager
                 local_up_vec = glm::rotate(obb.orientation, local_up_vec);
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(sfm_input, obb, centroid, local_up_vec, up_vec);
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(obb, obj_aabb, local_up_vec, up_vec);
 
             std::cout << "Optimizing transform...\n";
 
@@ -342,8 +342,8 @@ namespace AIHoloImager
                 glm::vec4 perspective;
                 glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
-                const glm::mat4x4 adjust_mtx =
-                    glm::recompose(scale, glm::rotation(local_up_vec, glm::vec3(0, 1, 0)), glm::zero<glm::vec3>(), skew, perspective);
+                const glm::mat4x4 adjust_mtx = glm::recompose(
+                    scale, glm::normalize(glm::rotation(local_up_vec, glm::vec3(0, 1, 0))), glm::zero<glm::vec3>(), skew, perspective);
                 TransformMesh(mesh, adjust_mtx);
             }
 
@@ -392,10 +392,9 @@ namespace AIHoloImager
             return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
         }
 
-        glm::vec3 ForegroundObjectCentroid(const StructureFromMotion::Result& sfm_input)
+        Aabb ForegroundObjectAabb(const StructureFromMotion::Result& sfm_input)
         {
-            glm::vec3 centroid(0.0f);
-            uint32_t num = 0;
+            Aabb bb;
             for (const auto& landmark : sfm_input.structure)
             {
                 for (const auto& ob : landmark.obs)
@@ -410,14 +409,12 @@ namespace AIHoloImager
                     const uint32_t fmt_size = FormatSize(view.image_mask.Format());
                     if (image_mask_data[(y * intrinsic.width + x) * fmt_size + 3] > std::byte(0x7F))
                     {
-                        centroid += landmark.point;
-                        ++num;
+                        bb.AddPoint(glm::vec3(landmark.point));
                     }
                 }
             }
-            centroid /= static_cast<float>(num);
 
-            return centroid;
+            return bb;
         }
 
         glm::vec3 SceneUpVector(const StructureFromMotion::Result& sfm_input, const glm::vec3& centroid)
@@ -1334,43 +1331,14 @@ namespace AIHoloImager
             cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
         }
 
-        glm::mat4x4 GuessModelMatrix(const StructureFromMotion::Result& sfm_input, const Obb& obb, const glm::vec3& centroid,
-            const glm::vec3& local_up_vec, const glm::vec3& up_vec)
+        glm::mat4x4 GuessModelMatrix(const Obb& obb, const Aabb& obj_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
         {
-            const glm::mat4 init_model_mtx =
-                glm::translate(glm::identity<glm::mat4x4>(), centroid) * glm::mat4_cast(glm::rotation(local_up_vec, up_vec));
+            const float diag_len = glm::length(obj_aabb.Size());
+            const float scale = diag_len / (glm::length(obb.extents) * 2);
 
-            glm::vec3 corners[8];
-            Obb::GetCorners(obb, corners);
-
-            float scale = 1e10f;
-            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
-            {
-                const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
-
-                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
-                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
-                const glm::mat4x4 mvp_mtx = proj_mtx * view_mtx * init_model_mtx;
-
-                constexpr float RoiScale = 1.6f;
-                const float roi_fx = RoiScale * 2.0f * view.delighted_image.Width() / intrinsic.width;
-                const float roi_fy = RoiScale * 2.0f * view.delighted_image.Height() / intrinsic.height;
-                const float roi_fz = RoiScale;
-
-                Aabb aabb;
-                for (const auto& corner : corners)
-                {
-                    const glm::vec4 pos_ps = mvp_mtx * glm::vec4(corner - obb.center, 1);
-                    const glm::vec3 pos_ps3 = glm::vec3(pos_ps) / pos_ps.w;
-                    aabb.AddPoint(pos_ps3);
-                }
-
-                const glm::vec3 diagonal = aabb.Size();
-                scale = std::min({scale, roi_fx / diagonal.x, roi_fy / diagonal.y, roi_fz / diagonal.z});
-            }
-
-            return glm::scale(init_model_mtx, glm::vec3(scale));
+            return glm::translate(glm::identity<glm::mat4x4>(), obj_aabb.Center()) *
+                   glm::mat4_cast(glm::normalize(glm::rotation(local_up_vec, up_vec))) *
+                   glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale));
         }
 
         template <typename GpuTextureT>
