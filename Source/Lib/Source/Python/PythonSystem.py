@@ -19,10 +19,7 @@ def InitPySys(enable_cuda : bool):
     compute_on_cuda = enable_cuda and torch.cuda.is_available()
 
     import os
-    if compute_on_cuda:
-        os.environ["XFORMERS_FORCE_DISABLE_TRITON"] = "1"
-    else:
-        os.environ["XFORMERS_DISABLED"] = "1" # Disable the usage of xformers in dinov2
+    os.environ["XFORMERS_DISABLED"] = "1" # Disable the usage of xformers in dinov2
 
     SeedRandom(42)
 

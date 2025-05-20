@@ -1929,41 +1929,6 @@ if(WIN32)
         win32/lib/winerror.py
     )
 endif()
-if(Python3_VERSION VERSION_LESS "3.13")
-    set(py_files ${py_files}
-        xformers/ops/fmha/attn_bias.py
-        xformers/ops/fmha/ck.py
-        xformers/ops/fmha/ck_decoder.py
-        xformers/ops/fmha/ck_splitk.py
-        xformers/ops/fmha/common.py
-        xformers/ops/fmha/cutlass.py
-        xformers/ops/fmha/dispatch.py
-        xformers/ops/fmha/flash.py
-        xformers/ops/fmha/flash3.py
-        xformers/ops/fmha/torch_attention_compat.py
-        xformers/ops/fmha/triton_splitk.py
-        xformers/ops/fmha/__init__.py
-        xformers/ops/_triton/__init__.py
-        xformers/ops/common.py
-        xformers/ops/differentiable_collectives.py
-        xformers/ops/indexing.py
-        xformers/ops/ipc.py
-        xformers/ops/modpar_layers.py
-        xformers/ops/rmsnorm.py
-        xformers/ops/rope_padded.py
-        xformers/ops/seqpar.py
-        xformers/ops/sequence_parallel_fused_ops.py
-        xformers/ops/sp24.py
-        xformers/ops/swiglu_op.py
-        xformers/ops/tiled_matmul.py
-        xformers/ops/unbind.py
-        xformers/ops/__init__.py
-        xformers/checkpoint.py
-        xformers/version.py
-        xformers/_cpp_lib.py
-        xformers/__init__.py
-    )
-endif()
 foreach(src_file ${py_files})
     set(src_file "Lib/site-packages/${src_file}")
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
@@ -2053,13 +2018,6 @@ if(WIN32)
         pywin32_system32/pywintypes${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll
         win32/win32file.pyd
         win32/_win32sysloader.pyd
-    )
-endif()
-if(Python3_VERSION VERSION_LESS "3.13")
-    set(copy_files ${copy_files}
-        xformers/_C.pyd
-        xformers/_C_flashattention.pyd
-        xformers/cpp_lib.json
     )
 endif()
 foreach(src_file ${copy_files})
