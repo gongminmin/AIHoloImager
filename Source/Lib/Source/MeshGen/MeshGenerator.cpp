@@ -951,16 +951,14 @@ namespace AIHoloImager
                     break;
                 }
 
-                glm::vec3 bb_min(std::numeric_limits<float>::max());
-                glm::vec3 bb_max(std::numeric_limits<float>::lowest());
+                Aabb bb;
                 for (const uint32_t vi : new_component_vertices)
                 {
                     const auto& pos = mesh.VertexData<glm::vec3>(vi, pos_attrib_index);
-                    bb_min = glm::min(bb_min, pos);
-                    bb_max = glm::max(bb_max, pos);
+                    bb.AddPoint(pos);
                 }
 
-                const glm::vec3 diagonal = bb_max - bb_min;
+                const glm::vec3 diagonal = bb.Size();
                 const float bb_extent_sq = glm::dot(diagonal, diagonal);
                 if (bb_extent_sq > largest_bb_extent_sq)
                 {
@@ -1360,19 +1358,16 @@ namespace AIHoloImager
                 const float roi_fy = RoiScale * 2.0f * view.delighted_image.Height() / intrinsic.height;
                 const float roi_fz = RoiScale;
 
-                glm::vec3 aabb_min_ps(+1e10f, +1e10f, +1e10f);
-                glm::vec3 aabb_max_ps(-1e10f, -1e10f, -1e10f);
+                Aabb aabb;
                 for (const auto& corner : corners)
                 {
                     const glm::vec4 pos_ps = mvp_mtx * glm::vec4(corner - obb.center, 1);
                     const glm::vec3 pos_ps3 = glm::vec3(pos_ps) / pos_ps.w;
-
-                    aabb_min_ps = glm::min(aabb_min_ps, pos_ps3);
-                    aabb_max_ps = glm::max(aabb_max_ps, pos_ps3);
+                    aabb.AddPoint(pos_ps3);
                 }
 
-                const glm::vec3 aabb_extents = aabb_max_ps - aabb_min_ps;
-                scale = std::min({scale, roi_fx / aabb_extents.x, roi_fy / aabb_extents.y, roi_fz / aabb_extents.z});
+                const glm::vec3 diagonal = aabb.Size();
+                scale = std::min({scale, roi_fx / diagonal.x, roi_fy / diagonal.y, roi_fz / diagonal.z});
             }
 
             return glm::scale(init_model_mtx, glm::vec3(scale));

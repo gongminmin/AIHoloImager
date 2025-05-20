@@ -1,8 +1,9 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #pragma once
 
+#include <limits>
 #include <span>
 
 #include <glm/gtc/quaternion.hpp>
@@ -11,6 +12,17 @@
 
 namespace AIHoloImager
 {
+    struct Aabb
+    {
+        glm::vec3 min{std::numeric_limits<float>::max()};
+        glm::vec3 max{std::numeric_limits<float>::lowest()};
+
+        void AddPoint(const glm::vec3& point);
+        glm::vec3 Center() const;
+        glm::vec3 Extents() const;
+        glm::vec3 Size() const;
+    };
+
     struct Obb
     {
         glm::vec3 center;

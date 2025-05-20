@@ -1,11 +1,10 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 #include "BoundingBox.hpp"
 
 #include <cmath>
 #include <cstddef>
-#include <limits>
 
 #include <glm/geometric.hpp>
 #include <glm/mat3x3.hpp>
@@ -189,6 +188,27 @@ namespace
 
 namespace AIHoloImager
 {
+    void Aabb::AddPoint(const glm::vec3& point)
+    {
+        min = glm::min(min, point);
+        max = glm::max(max, point);
+    }
+
+    glm::vec3 Aabb::Center() const
+    {
+        return (min + max) * 0.5f;
+    }
+
+    glm::vec3 Aabb::Extents() const
+    {
+        return this->Size() * 0.5f;
+    }
+
+    glm::vec3 Aabb::Size() const
+    {
+        return max - min;
+    }
+
     Obb Obb::FromPoints(const glm::vec3* positions, uint32_t stride, uint32_t num_vertices)
     {
         auto get_pos = [&](uint32_t index) {
@@ -228,17 +248,14 @@ namespace AIHoloImager
         rot_mtx = glm::mat3_cast(obb.orientation);
         const glm::mat3 inv_rot_mtx = glm::transpose(rot_mtx);
 
-        glm::vec3 pmin(std::numeric_limits<float>::max());
-        glm::vec3 pmax(std::numeric_limits<float>::lowest());
+        Aabb aabb;
         for (uint32_t i = 0; i < num_vertices; ++i)
         {
-            const glm::vec3 point = inv_rot_mtx * get_pos(i);
-            pmin = glm::min(pmin, point);
-            pmax = glm::max(pmax, point);
+            aabb.AddPoint(inv_rot_mtx * get_pos(i));
         }
 
-        obb.center = rot_mtx * ((pmin + pmax) * 0.5f);
-        obb.extents = (pmax - pmin) * 0.5f;
+        obb.center = rot_mtx * aabb.Center();
+        obb.extents = aabb.Extents();
 
         return obb;
     }
