@@ -237,38 +237,38 @@ namespace AIHoloImager
         const uint32_t height = this->Height(mip);
         const uint32_t depth = this->Depth(mip);
         const uint32_t format_size = FormatSize(this->Format());
+        const uint32_t row_pitch = width * format_size;
 
         auto* d3d12_device = gpu_system.NativeDevice();
 
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
         uint64_t required_size = 0;
         d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
+        assert(layout.Footprint.RowPitch >= row_pitch);
 
         auto upload_mem_block =
-            gpu_system.AllocUploadMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
+            gpu_system.AllocUploadMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
 
-        assert(layout.Footprint.RowPitch >= width * format_size);
-
-        uint8_t* tex_data = upload_mem_block.CpuAddress<uint8_t>();
+        auto tex_data = upload_mem_block.CpuSpan<std::byte>();
         for (uint32_t z = 0; z < depth; ++z)
         {
             for (uint32_t y = 0; y < height; ++y)
             {
-                std::memcpy(tex_data + (z * layout.Footprint.Height + y) * layout.Footprint.RowPitch,
-                    reinterpret_cast<const uint8_t*>(data) + (z * height + y) * width * format_size, width * format_size);
+                std::memcpy(&tex_data[(z * layout.Footprint.Height + y) * layout.Footprint.RowPitch],
+                    &reinterpret_cast<const std::byte*>(data)[(z * height + y) * row_pitch], row_pitch);
             }
         }
 
         layout.Offset += upload_mem_block.Offset();
-        D3D12_TEXTURE_COPY_LOCATION src;
-        src.pResource = upload_mem_block.NativeBuffer();
-        src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        src.PlacedFootprint = layout;
+        D3D12_TEXTURE_COPY_LOCATION src_loc;
+        src_loc.pResource = upload_mem_block.NativeBuffer();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src_loc.PlacedFootprint = layout;
 
-        D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = resource_.Object().Get();
-        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst.SubresourceIndex = sub_resource;
+        D3D12_TEXTURE_COPY_LOCATION dst_loc;
+        dst_loc.pResource = this->NativeTexture();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst_loc.SubresourceIndex = sub_resource;
 
         D3D12_BOX src_box;
         src_box.left = 0;
@@ -283,7 +283,7 @@ namespace AIHoloImager
 
         this->Transition(cmd_list, GpuResourceState::CopyDst);
 
-        d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
+        d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
 
         gpu_system.DeallocUploadMemBlock(std::move(upload_mem_block));
     }
@@ -298,26 +298,28 @@ namespace AIHoloImager
         const uint32_t height = this->Height(mip);
         const uint32_t depth = this->Depth(mip);
         const uint32_t format_size = FormatSize(this->Format());
+        const uint32_t row_pitch = width * format_size;
 
         auto* d3d12_device = gpu_system.NativeDevice();
 
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
         uint64_t required_size = 0;
         d3d12_device->GetCopyableFootprints(&desc_, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
+        assert(layout.Footprint.RowPitch >= row_pitch);
 
         auto read_back_mem_block =
-            gpu_system.AllocReadBackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAligment);
+            gpu_system.AllocReadBackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
 
-        D3D12_TEXTURE_COPY_LOCATION src;
-        src.pResource = resource_.Object().Get();
-        src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src.SubresourceIndex = sub_resource;
+        D3D12_TEXTURE_COPY_LOCATION src_loc;
+        src_loc.pResource = this->NativeTexture();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        src_loc.SubresourceIndex = sub_resource;
 
         layout.Offset = read_back_mem_block.Offset();
-        D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = read_back_mem_block.NativeBuffer();
-        dst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dst.PlacedFootprint = layout;
+        D3D12_TEXTURE_COPY_LOCATION dst_loc;
+        dst_loc.pResource = read_back_mem_block.NativeBuffer();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        dst_loc.PlacedFootprint = layout;
 
         D3D12_BOX src_box;
         src_box.left = 0;
@@ -332,49 +334,22 @@ namespace AIHoloImager
 
         this->Transition(cmd_list, GpuResourceState::CopySrc);
 
-        d3d12_cmd_list->CopyTextureRegion(&dst, 0, 0, 0, &src, &src_box);
+        d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
 
         gpu_system.ExecuteAndReset(cmd_list);
         gpu_system.CpuWait();
 
-        assert(layout.Footprint.RowPitch >= width * format_size);
-
-        uint8_t* u8_data = reinterpret_cast<uint8_t*>(data);
-        const uint8_t* tex_data = read_back_mem_block.CpuAddress<uint8_t>();
+        const auto tex_data = read_back_mem_block.CpuSpan<std::byte>();
         for (uint32_t z = 0; z < depth; ++z)
         {
             for (uint32_t y = 0; y < height; ++y)
             {
-                std::memcpy(&u8_data[(z * height + y) * width * format_size],
-                    tex_data + (z * layout.Footprint.Height + y) * layout.Footprint.RowPitch, width * format_size);
+                std::memcpy(&reinterpret_cast<std::byte*>(data)[(z * height + y) * row_pitch],
+                    &tex_data[(z * layout.Footprint.Height + y) * layout.Footprint.RowPitch], row_pitch);
             }
         }
 
         gpu_system.DeallocReadBackMemBlock(std::move(read_back_mem_block));
-    }
-
-    void GpuTexture::CopyFrom(GpuSystem& gpu_system, GpuCommandList& cmd_list, const GpuTexture& other, uint32_t sub_resource,
-        uint32_t dst_x, uint32_t dst_y, uint32_t dst_z, const D3D12_BOX& src_box)
-    {
-        D3D12_TEXTURE_COPY_LOCATION src;
-        src.pResource = other.resource_.Object().Get();
-        src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src.SubresourceIndex = sub_resource;
-
-        D3D12_TEXTURE_COPY_LOCATION dst;
-        dst.pResource = resource_.Object().Get();
-        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst.SubresourceIndex = sub_resource;
-
-        assert((cmd_list.Type() == GpuSystem::CmdQueueType::Render) || (cmd_list.Type() == GpuSystem::CmdQueueType::Compute));
-        auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
-
-        other.Transition(cmd_list, GpuResourceState::CopySrc);
-        this->Transition(cmd_list, GpuResourceState::CopyDst);
-
-        d3d12_cmd_list->CopyTextureRegion(&dst, dst_x, dst_y, dst_z, &src, &src_box);
-
-        gpu_system.ExecuteAndReset(cmd_list);
     }
 
 

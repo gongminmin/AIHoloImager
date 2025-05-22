@@ -32,6 +32,16 @@ namespace AIHoloImager
         int32_t bottom;
     };
 
+    struct GpuBox
+    {
+        uint32_t left;
+        uint32_t top;
+        uint32_t front;
+        uint32_t right;
+        uint32_t bottom;
+        uint32_t back;
+    };
+
     class GpuCommandList
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandList)
@@ -94,7 +104,9 @@ namespace AIHoloImager
         void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);
         void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);
-        void Copy(GpuTexture2D& dest, const GpuTexture2D& src);
+        void Copy(GpuTexture& dest, const GpuTexture& src);
+        void Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z, const GpuTexture& src,
+            uint32_t src_sub_resource, const GpuBox& src_box);
 
         void Close();
         void Reset(GpuCommandAllocatorInfo& cmd_alloc_info);

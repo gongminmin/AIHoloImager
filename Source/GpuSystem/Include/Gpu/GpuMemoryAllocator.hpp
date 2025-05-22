@@ -4,6 +4,7 @@
 #pragma once
 
 #include <mutex>
+#include <span>
 #include <vector>
 
 #include "Base/Noncopyable.hpp"
@@ -29,15 +30,24 @@ namespace AIHoloImager
             return buffer_;
         }
 
-        void* CpuAddress() const noexcept
+        void* CpuAddress() noexcept
+        {
+            return cpu_addr_;
+        }
+        const void* CpuAddress() const noexcept
         {
             return cpu_addr_;
         }
 
         template <typename T>
-        T* CpuAddress() const noexcept
+        T* CpuAddress() noexcept
         {
             return reinterpret_cast<T*>(this->CpuAddress());
+        }
+        template <typename T>
+        const T* CpuAddress() const noexcept
+        {
+            return reinterpret_cast<const T*>(this->CpuAddress());
         }
 
         D3D12_GPU_VIRTUAL_ADDRESS GpuAddress() const noexcept
@@ -63,7 +73,7 @@ namespace AIHoloImager
         GpuMemoryBlock& operator=(GpuMemoryBlock&& other) noexcept;
 
         void Reset() noexcept;
-        void Reset(const GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
+        void Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
 
         ID3D12Resource* NativeBuffer() const noexcept
         {
@@ -85,15 +95,15 @@ namespace AIHoloImager
             return size_;
         }
 
-        void* CpuAddress() const noexcept
-        {
-            return cpu_addr_;
-        }
-
         template <typename T>
-        T* CpuAddress() const noexcept
+        std::span<T> CpuSpan() noexcept
         {
-            return reinterpret_cast<T*>(this->CpuAddress());
+            return std::span<T>(reinterpret_cast<T*>(cpu_addr_), size_ / sizeof(T));
+        }
+        template <typename T>
+        std::span<const T> CpuSpan() const noexcept
+        {
+            return std::span<const T>(reinterpret_cast<const T*>(cpu_addr_), size_ / sizeof(const T));
         }
 
         D3D12_GPU_VIRTUAL_ADDRESS GpuAddress() const noexcept
@@ -114,9 +124,9 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryAllocator)
 
     public:
-        static constexpr uint32_t ConstantDataAligment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-        static constexpr uint32_t StructuredDataAligment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-        static constexpr uint32_t TextureDataAligment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+        static constexpr uint32_t ConstantDataAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+        static constexpr uint32_t StructuredDataAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+        static constexpr uint32_t TextureDataAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 
     public:
         GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept;

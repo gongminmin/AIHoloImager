@@ -537,7 +537,7 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyBufferRegion(dest.NativeBuffer(), dst_offset, src.NativeBuffer(), src_offset, src_size);
     }
 
-    void GpuCommandList::Copy(GpuTexture2D& dest, const GpuTexture2D& src)
+    void GpuCommandList::Copy(GpuTexture& dest, const GpuTexture& src)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
@@ -545,6 +545,28 @@ namespace AIHoloImager
         dest.Transition(*this, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyResource(dest.NativeTexture(), src.NativeTexture());
+    }
+
+    void GpuCommandList::Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
+        const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box)
+    {
+        D3D12_TEXTURE_COPY_LOCATION src_loc;
+        src_loc.pResource = src.NativeTexture();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        src_loc.SubresourceIndex = src_sub_resource;
+
+        D3D12_TEXTURE_COPY_LOCATION dst_loc;
+        dst_loc.pResource = dest.NativeTexture();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst_loc.SubresourceIndex = dest_sub_resource;
+
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        src.Transition(*this, GpuResourceState::CopySrc);
+        dest.Transition(*this, GpuResourceState::CopyDst);
+
+        const D3D12_BOX d3d12_src_box{src_box.left, src_box.top, src_box.front, src_box.right, src_box.bottom, src_box.back};
+        d3d12_cmd_list->CopyTextureRegion(&dst_loc, dst_x, dst_y, dst_z, &src_loc, &d3d12_src_box);
     }
 
     void GpuCommandList::Close()

@@ -66,7 +66,7 @@ namespace AIHoloImager
         gpu_addr_ = {};
     }
 
-    void GpuMemoryBlock::Reset(const GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
+    void GpuMemoryBlock::Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
     {
         native_buffer_ = page.Buffer().NativeBuffer();
         offset_ = offset;
