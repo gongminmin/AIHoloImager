@@ -94,7 +94,7 @@ namespace AIHoloImager
     }
 
     GpuDescriptorAllocator::GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept
-        : gpu_system_(std::move(other.gpu_system_)), type_(other.type_), flags_(other.flags_), pages_(std::move(other.pages_))
+        : gpu_system_(std::exchange(other.gpu_system_, {})), type_(other.type_), flags_(other.flags_), pages_(std::move(other.pages_))
     {
     }
 
@@ -105,7 +105,7 @@ namespace AIHoloImager
             assert(type_ == other.type_);
             assert(flags_ == other.flags_);
 
-            gpu_system_ = std::move(other.gpu_system_);
+            gpu_system_ = std::exchange(other.gpu_system_, {});
             pages_ = std::move(other.pages_);
         }
         return *this;

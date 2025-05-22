@@ -34,7 +34,7 @@ namespace AIHoloImager
             this->Free();
         }
 
-        Impl(Impl&& other) noexcept : native_handle_(std::exchange(other.native_handle_, nullptr))
+        Impl(Impl&& other) noexcept : native_handle_(std::exchange(other.native_handle_, {}))
         {
         }
 
@@ -47,7 +47,7 @@ namespace AIHoloImager
                     this->Free();
                 }
 
-                native_handle_ = std::exchange(other.native_handle_, nullptr);
+                native_handle_ = std::exchange(other.native_handle_, {});
             }
 
             return *this;

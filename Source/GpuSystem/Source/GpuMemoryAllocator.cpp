@@ -34,8 +34,8 @@ namespace AIHoloImager
     }
 
     GpuMemoryPage::GpuMemoryPage(GpuMemoryPage&& other) noexcept
-        : is_upload_(other.is_upload_), buffer_(std::move(other.buffer_)), cpu_addr_(std::move(other.cpu_addr_)),
-          gpu_addr_(std::move(other.gpu_addr_))
+        : is_upload_(other.is_upload_), buffer_(std::move(other.buffer_)), cpu_addr_(std::exchange(other.cpu_addr_, {})),
+          gpu_addr_(std::exchange(other.gpu_addr_, {}))
     {
     }
 
@@ -46,8 +46,8 @@ namespace AIHoloImager
             assert(is_upload_ == other.is_upload_);
 
             buffer_ = std::move(other.buffer_);
-            cpu_addr_ = std::move(other.cpu_addr_);
-            gpu_addr_ = std::move(other.gpu_addr_);
+            cpu_addr_ = std::exchange(other.cpu_addr_, {});
+            gpu_addr_ = std::exchange(other.gpu_addr_, {});
         }
         return *this;
     }
@@ -81,7 +81,7 @@ namespace AIHoloImager
     }
 
     GpuMemoryAllocator::GpuMemoryAllocator(GpuMemoryAllocator&& other) noexcept
-        : gpu_system_(std::move(other.gpu_system_)), is_upload_(other.is_upload_), pages_(std::move(other.pages_)),
+        : gpu_system_(std::exchange(other.gpu_system_, {})), is_upload_(other.is_upload_), pages_(std::move(other.pages_)),
           large_pages_(std::move(other.large_pages_))
     {
     }
@@ -92,7 +92,7 @@ namespace AIHoloImager
         {
             assert(is_upload_ == other.is_upload_);
 
-            gpu_system_ = std::move(other.gpu_system_);
+            gpu_system_ = std::exchange(other.gpu_system_, {});
             pages_ = std::move(other.pages_);
             large_pages_ = std::move(other.large_pages_);
         }

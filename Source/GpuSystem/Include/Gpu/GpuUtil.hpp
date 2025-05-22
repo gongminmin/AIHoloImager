@@ -32,7 +32,7 @@ namespace AIHoloImager
             {
                 this->Recycle();
 
-                gpu_system_ = std::exchange(other.gpu_system_, nullptr);
+                gpu_system_ = std::exchange(other.gpu_system_, {});
                 object_ = std::move(other.object_);
             }
 
