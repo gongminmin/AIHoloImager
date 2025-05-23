@@ -4,9 +4,10 @@
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/trellis_image_to_3d.py
 
 from contextlib import contextmanager
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import *
+import warnings
 
 import numpy as np
 import torch
@@ -64,7 +65,9 @@ class TrellisImageTo3DPipeline:
         self.slat_normalization = slat_normalization
 
         this_py_dir = Path(__file__).parent.resolve()
-        dinov2_model = torch.hub.load(this_py_dir.parents[1] / "dinov2", image_cond_model, source = "local", pretrained = False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dinov2_model = torch.hub.load(this_py_dir.parents[1] / "dinov2", image_cond_model, source = "local", pretrained = False)
         for i in range(len(dinov2_model.blocks)):
             dinov2_model.blocks[i].attn = WrapDinov2AttentionWithSdpa(dinov2_model.blocks[i].attn)
 
