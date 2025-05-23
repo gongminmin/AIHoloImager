@@ -19,26 +19,7 @@ from . import Samplers
 from .. import Models
 from ..Modules import Sparse as sp
 
-from PythonSystem import GeneralDevice
-
-# From MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/utils.py
-def WrapDinov2AttentionWithSdpa(module : nn.Module):
-    class AttentionWrapper(module.__class__):
-        def forward(self, x : torch.Tensor, attn_bias = None) -> torch.Tensor:
-            B, N, C = x.shape
-            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)  # (3, B, H, N, C // H)
-
-            q, k, v = torch.unbind(qkv, 0)      # (B, H, N, C // H)
-
-            x = functional.scaled_dot_product_attention(q, k, v, attn_bias)
-            x = x.permute(0, 2, 1, 3).reshape(B, N, C) 
-
-            x = self.proj(x)
-            x = self.proj_drop(x)
-            return x
-
-    module.__class__ = AttentionWrapper
-    return module
+from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
 
 class TrellisImageTo3DPipeline:
     def __init__(

@@ -5,6 +5,7 @@ dinov2/Dinov2Models/
 DirectX-Headers/DirectX-Headers/
 glm/glm/
 Intrinsic/IntrinsicModels/
+MoGe/moge-vitl
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 openMVS/OpenMVS_*

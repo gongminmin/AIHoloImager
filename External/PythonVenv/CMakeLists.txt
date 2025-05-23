@@ -167,6 +167,26 @@ set(py_files
     ninja/ninja_syntax.py
     ninja/_version.py
     ninja/__init__.py
+    numpy/char/__init__.py
+    numpy/core/_utils.py
+    numpy/core/__init__.py
+    numpy/f2py/_backends/__init__.py
+    numpy/f2py/auxfuncs.py
+    numpy/f2py/capi_maps.py
+    numpy/f2py/cb_rules.py
+    numpy/f2py/cfuncs.py
+    numpy/f2py/common_rules.py
+    numpy/f2py/crackfortran.py
+    numpy/f2py/diagnose.py
+    numpy/f2py/f2py2e.py
+    numpy/f2py/f90mod_rules.py
+    numpy/f2py/func2subr.py
+    numpy/f2py/rules.py
+    numpy/f2py/symbolic.py
+    numpy/f2py/use_rules.py
+    numpy/f2py/_isocbind.py
+    numpy/f2py/__init__.py
+    numpy/f2py/__version__.py
     numpy/fft/helper.py
     numpy/fft/_helper.py
     numpy/fft/_pocketfft.py
@@ -202,11 +222,32 @@ set(py_files
     numpy/linalg/linalg.py
     numpy/linalg/_linalg.py
     numpy/linalg/__init__.py
+    numpy/ma/core.py
+    numpy/ma/extras.py
+    numpy/ma/__init__.py
     numpy/matrixlib/defmatrix.py
     numpy/matrixlib/__init__.py
+    numpy/polynomial/chebyshev.py
+    numpy/polynomial/hermite.py
+    numpy/polynomial/hermite_e.py
+    numpy/polynomial/laguerre.py
+    numpy/polynomial/legendre.py
+    numpy/polynomial/polynomial.py
+    numpy/polynomial/polyutils.py
+    numpy/polynomial/_polybase.py
+    numpy/polynomial/__init__.py
     numpy/random/_pickle.py
     numpy/random/__init__.py
+    numpy/rec/__init__.py
+    numpy/strings/__init__.py
+    numpy/testing/_private/extbuild.py
+    numpy/testing/_private/utils.py
+    numpy/testing/_private/__init__.py
+    numpy/testing/overrides.py
+    numpy/testing/__init__.py
+    numpy/typing/__init__.py
     numpy/_core/arrayprint.py
+    numpy/_core/defchararray.py
     numpy/_core/einsumfunc.py
     numpy/_core/fromnumeric.py
     numpy/_core/function_base.py
@@ -219,6 +260,7 @@ set(py_files
     numpy/_core/printoptions.py
     numpy/_core/records.py
     numpy/_core/shape_base.py
+    numpy/_core/strings.py
     numpy/_core/umath.py
     numpy/_core/_add_newdocs.py
     numpy/_core/_add_newdocs_scalars.py
@@ -233,6 +275,7 @@ set(py_files
     numpy/_core/_type_aliases.py
     numpy/_core/_ufunc_config.py
     numpy/_core/__init__.py
+    numpy/_typing/_add_docstring.py
     numpy/_typing/_array_like.py
     numpy/_typing/_char_codes.py
     numpy/_typing/_dtype_like.py
@@ -246,6 +289,7 @@ set(py_files
     numpy/_utils/_convertions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
+    numpy/ctypeslib.py
     numpy/dtypes.py
     numpy/exceptions.py
     numpy/version.py
@@ -312,6 +356,260 @@ set(py_files
     PIL/__init__.py
     safetensors/torch.py
     safetensors/__init__.py
+    scipy/constants/codata.py
+    scipy/constants/constants.py
+    scipy/constants/_codata.py
+    scipy/constants/_constants.py
+    scipy/constants/__init__.py
+    scipy/fft/_pocketfft/basic.py
+    scipy/fft/_pocketfft/helper.py
+    scipy/fft/_pocketfft/realtransforms.py
+    scipy/fft/_pocketfft/__init__.py
+    scipy/fft/_backend.py
+    scipy/fft/_basic.py
+    scipy/fft/_basic_backend.py
+    scipy/fft/_fftlog.py
+    scipy/fft/_fftlog_backend.py
+    scipy/fft/_helper.py
+    scipy/fft/_realtransforms.py
+    scipy/fft/_realtransforms_backend.py
+    scipy/fft/__init__.py
+    scipy/linalg/basic.py
+    scipy/linalg/blas.py
+    scipy/linalg/decomp.py
+    scipy/linalg/decomp_cholesky.py
+    scipy/linalg/decomp_lu.py
+    scipy/linalg/decomp_qr.py
+    scipy/linalg/decomp_schur.py
+    scipy/linalg/decomp_svd.py
+    scipy/linalg/interpolative.py
+    scipy/linalg/lapack.py
+    scipy/linalg/matfuncs.py
+    scipy/linalg/misc.py
+    scipy/linalg/special_matrices.py
+    scipy/linalg/_basic.py
+    scipy/linalg/_decomp.py
+    scipy/linalg/_decomp_cholesky.py
+    scipy/linalg/_decomp_cossin.py
+    scipy/linalg/_decomp_ldl.py
+    scipy/linalg/_decomp_lu.py
+    scipy/linalg/_decomp_polar.py
+    scipy/linalg/_decomp_qr.py
+    scipy/linalg/_decomp_qz.py
+    scipy/linalg/_decomp_schur.py
+    scipy/linalg/_decomp_svd.py
+    scipy/linalg/_expm_frechet.py
+    scipy/linalg/_matfuncs.py
+    scipy/linalg/_matfuncs_sqrtm.py
+    scipy/linalg/_misc.py
+    scipy/linalg/_procrustes.py
+    scipy/linalg/_sketches.py
+    scipy/linalg/_solvers.py
+    scipy/linalg/_special_matrices.py
+    scipy/linalg/__init__.py
+    scipy/optimize/_highspy/_highs_wrapper.py
+    scipy/optimize/_highspy/__init__.py
+    scipy/optimize/_lsq/bvls.py
+    scipy/optimize/_lsq/common.py
+    scipy/optimize/_lsq/dogbox.py
+    scipy/optimize/_lsq/least_squares.py
+    scipy/optimize/_lsq/lsq_linear.py
+    scipy/optimize/_lsq/trf.py
+    scipy/optimize/_lsq/trf_linear.py
+    scipy/optimize/_lsq/__init__.py
+    scipy/optimize/_shgo_lib/_complex.py
+    scipy/optimize/_shgo_lib/_vertex.py
+    scipy/optimize/_shgo_lib/__init__.py
+    scipy/optimize/_trlib/__init__.py
+    scipy/optimize/_trustregion_constr/canonical_constraint.py
+    scipy/optimize/_trustregion_constr/equality_constrained_sqp.py
+    scipy/optimize/_trustregion_constr/minimize_trustregion_constr.py
+    scipy/optimize/_trustregion_constr/projections.py
+    scipy/optimize/_trustregion_constr/qp_subproblem.py
+    scipy/optimize/_trustregion_constr/report.py
+    scipy/optimize/_trustregion_constr/tr_interior_point.py
+    scipy/optimize/_trustregion_constr/__init__.py
+    scipy/optimize/cobyla.py
+    scipy/optimize/lbfgsb.py
+    scipy/optimize/linesearch.py
+    scipy/optimize/minpack.py
+    scipy/optimize/minpack2.py
+    scipy/optimize/moduleTNC.py
+    scipy/optimize/nonlin.py
+    scipy/optimize/optimize.py
+    scipy/optimize/slsqp.py
+    scipy/optimize/tnc.py
+    scipy/optimize/zeros.py
+    scipy/optimize/_basinhopping.py
+    scipy/optimize/_cobyla_py.py
+    scipy/optimize/_cobyqa_py.py
+    scipy/optimize/_constraints.py
+    scipy/optimize/_dcsrch.py
+    scipy/optimize/_differentiable_functions.py
+    scipy/optimize/_differentialevolution.py
+    scipy/optimize/_direct_py.py
+    scipy/optimize/_dual_annealing.py
+    scipy/optimize/_hessian_update_strategy.py
+    scipy/optimize/_isotonic.py
+    scipy/optimize/_lbfgsb_py.py
+    scipy/optimize/_linesearch.py
+    scipy/optimize/_linprog.py
+    scipy/optimize/_linprog_doc.py
+    scipy/optimize/_linprog_highs.py
+    scipy/optimize/_linprog_ip.py
+    scipy/optimize/_linprog_rs.py
+    scipy/optimize/_linprog_simplex.py
+    scipy/optimize/_linprog_util.py
+    scipy/optimize/_milp.py
+    scipy/optimize/_minimize.py
+    scipy/optimize/_minpack_py.py
+    scipy/optimize/_nnls.py
+    scipy/optimize/_nonlin.py
+    scipy/optimize/_numdiff.py
+    scipy/optimize/_optimize.py
+    scipy/optimize/_qap.py
+    scipy/optimize/_remove_redundancy.py
+    scipy/optimize/_root.py
+    scipy/optimize/_root_scalar.py
+    scipy/optimize/_shgo.py
+    scipy/optimize/_slsqp_py.py
+    scipy/optimize/_spectral.py
+    scipy/optimize/_tnc.py
+    scipy/optimize/_trustregion.py
+    scipy/optimize/_trustregion_dogleg.py
+    scipy/optimize/_trustregion_exact.py
+    scipy/optimize/_trustregion_krylov.py
+    scipy/optimize/_trustregion_ncg.py
+    scipy/optimize/_zeros_py.py
+    scipy/optimize/__init__.py
+    scipy/sparse/csgraph/_laplacian.py
+    scipy/sparse/csgraph/_validation.py
+    scipy/sparse/csgraph/__init__.py
+    scipy/sparse/linalg/_dsolve/linsolve.py
+    scipy/sparse/linalg/_dsolve/_add_newdocs.py
+    scipy/sparse/linalg/_dsolve/__init__.py
+    scipy/sparse/linalg/_eigen/arpack/arpack.py
+    scipy/sparse/linalg/_eigen/arpack/__init__.py
+    scipy/sparse/linalg/_eigen/lobpcg/lobpcg.py
+    scipy/sparse/linalg/_eigen/lobpcg/__init__.py
+    scipy/sparse/linalg/_eigen/_svds.py
+    scipy/sparse/linalg/_eigen/__init__.py
+    scipy/sparse/linalg/_isolve/iterative.py
+    scipy/sparse/linalg/_isolve/lgmres.py
+    scipy/sparse/linalg/_isolve/lsmr.py
+    scipy/sparse/linalg/_isolve/lsqr.py
+    scipy/sparse/linalg/_isolve/minres.py
+    scipy/sparse/linalg/_isolve/tfqmr.py
+    scipy/sparse/linalg/_isolve/utils.py
+    scipy/sparse/linalg/_isolve/_gcrotmk.py
+    scipy/sparse/linalg/_isolve/__init__.py
+    scipy/sparse/linalg/dsolve.py
+    scipy/sparse/linalg/eigen.py
+    scipy/sparse/linalg/interface.py
+    scipy/sparse/linalg/isolve.py
+    scipy/sparse/linalg/matfuncs.py
+    scipy/sparse/linalg/_expm_multiply.py
+    scipy/sparse/linalg/_interface.py
+    scipy/sparse/linalg/_matfuncs.py
+    scipy/sparse/linalg/_norm.py
+    scipy/sparse/linalg/_onenormest.py
+    scipy/sparse/linalg/_special_sparse_arrays.py
+    scipy/sparse/linalg/_svdp.py
+    scipy/sparse/linalg/__init__.py
+    scipy/sparse/base.py
+    scipy/sparse/bsr.py
+    scipy/sparse/compressed.py
+    scipy/sparse/construct.py
+    scipy/sparse/coo.py
+    scipy/sparse/csc.py
+    scipy/sparse/csr.py
+    scipy/sparse/data.py
+    scipy/sparse/dia.py
+    scipy/sparse/dok.py
+    scipy/sparse/extract.py
+    scipy/sparse/lil.py
+    scipy/sparse/sparsetools.py
+    scipy/sparse/sputils.py
+    scipy/sparse/_base.py
+    scipy/sparse/_bsr.py
+    scipy/sparse/_compressed.py
+    scipy/sparse/_construct.py
+    scipy/sparse/_coo.py
+    scipy/sparse/_csc.py
+    scipy/sparse/_csr.py
+    scipy/sparse/_data.py
+    scipy/sparse/_dia.py
+    scipy/sparse/_dok.py
+    scipy/sparse/_extract.py
+    scipy/sparse/_index.py
+    scipy/sparse/_lil.py
+    scipy/sparse/_matrix.py
+    scipy/sparse/_matrix_io.py
+    scipy/sparse/_sputils.py
+    scipy/sparse/__init__.py
+    scipy/spatial/transform/rotation.py
+    scipy/spatial/transform/_rotation_groups.py
+    scipy/spatial/transform/_rotation_spline.py
+    scipy/spatial/transform/__init__.py
+    scipy/spatial/ckdtree.py
+    scipy/spatial/distance.py
+    scipy/spatial/kdtree.py
+    scipy/spatial/qhull.py
+    scipy/spatial/_geometric_slerp.py
+    scipy/spatial/_kdtree.py
+    scipy/spatial/_plotutils.py
+    scipy/spatial/_procrustes.py
+    scipy/spatial/_spherical_voronoi.py
+    scipy/spatial/__init__.py
+    scipy/special/add_newdocs.py
+    scipy/special/basic.py
+    scipy/special/orthogonal.py
+    scipy/special/sf_error.py
+    scipy/special/specfun.py
+    scipy/special/spfun_stats.py
+    scipy/special/_basic.py
+    scipy/special/_ellip_harm.py
+    scipy/special/_input_validation.py
+    scipy/special/_lambertw.py
+    scipy/special/_logsumexp.py
+    scipy/special/_multiufuncs.py
+    scipy/special/_orthogonal.py
+    scipy/special/_sf_error.py
+    scipy/special/_spfun_stats.py
+    scipy/special/_spherical_bessel.py
+    scipy/special/_support_alternative_backends.py
+    scipy/special/__init__.py
+    scipy/_lib/array_api_compat/common/_aliases.py
+    scipy/_lib/array_api_compat/common/_fft.py
+    scipy/_lib/array_api_compat/common/_helpers.py
+    scipy/_lib/array_api_compat/common/_linalg.py
+    scipy/_lib/array_api_compat/common/__init__.py
+    scipy/_lib/array_api_compat/numpy/fft.py
+    scipy/_lib/array_api_compat/numpy/linalg.py
+    scipy/_lib/array_api_compat/numpy/_aliases.py
+    scipy/_lib/array_api_compat/numpy/_info.py
+    scipy/_lib/array_api_compat/numpy/__init__.py
+    scipy/_lib/array_api_compat/_internal.py
+    scipy/_lib/array_api_compat/__init__.py
+    scipy/_lib/array_api_extra/_funcs.py
+    scipy/_lib/array_api_extra/__init__.py
+    scipy/_lib/_uarray/_backend.py
+    scipy/_lib/_uarray/__init__.py
+    scipy/_lib/decorator.py
+    scipy/_lib/deprecation.py
+    scipy/_lib/uarray.py
+    scipy/_lib/_array_api.py
+    scipy/_lib/_ccallback.py
+    scipy/_lib/_docscrape.py
+    scipy/_lib/_pep440.py
+    scipy/_lib/_testutils.py
+    scipy/_lib/_threadsafety.py
+    scipy/_lib/_util.py
+    scipy/_lib/__init__.py
+    scipy/version.py
+    scipy/_distributor_init.py
+    scipy/__config__.py
+    scipy/__init__.py
     spconv/pytorch/constants.py
     spconv/pytorch/conv.py
     spconv/pytorch/core.py
@@ -1968,6 +2266,69 @@ set(copy_files
     numpy.libs/msvcp140-d64049c6e3865410a7dda6a7e9f0c575.dll
     PIL/_imaging.${py_suffix}
     safetensors/_safetensors_rust.pyd
+    scipy.libs/libscipy_openblas-f07f5a5d207a3a47104dca54d6d0c86a.dll
+    scipy/fft/_pocketfft/pypocketfft.${py_suffix}
+    scipy/linalg/cython_blas.${py_suffix}
+    scipy/linalg/cython_lapack.${py_suffix}
+    scipy/linalg/_cythonized_array_utils.${py_suffix}
+    scipy/linalg/_decomp_interpolative.${py_suffix}
+    scipy/linalg/_decomp_lu_cython.${py_suffix}
+    scipy/linalg/_decomp_update.${py_suffix}
+    scipy/linalg/_fblas.${py_suffix}
+    scipy/linalg/_flapack.${py_suffix}
+    scipy/linalg/_linalg_pythran.${py_suffix}
+    scipy/linalg/_matfuncs_expm.${py_suffix}
+    scipy/linalg/_matfuncs_sqrtm_triu.${py_suffix}
+    scipy/linalg/_solve_toeplitz.${py_suffix}
+    scipy/optimize/_bglu_dense.${py_suffix}
+    scipy/optimize/_cobyla.${py_suffix}
+    scipy/optimize/_cython_nnls.${py_suffix}
+    scipy/optimize/_direct.${py_suffix}
+    scipy/optimize/_group_columns.${py_suffix}
+    scipy/optimize/_lbfgsb.${py_suffix}
+    scipy/optimize/_lsap.${py_suffix}
+    scipy/optimize/_minpack.${py_suffix}
+    scipy/optimize/_moduleTNC.${py_suffix}
+    scipy/optimize/_pava_pybind.${py_suffix}
+    scipy/optimize/_slsqp.${py_suffix}
+    scipy/optimize/_trlib/_trlib.${py_suffix}
+    scipy/optimize/_zeros.${py_suffix}
+    scipy/optimize/_highspy/_core.${py_suffix}
+    scipy/optimize/_highspy/_highs_options.${py_suffix}
+    scipy/optimize/_lsq/givens_elimination.${py_suffix}
+    scipy/sparse/csgraph/_flow.${py_suffix}
+    scipy/sparse/csgraph/_matching.${py_suffix}
+    scipy/sparse/csgraph/_min_spanning_tree.${py_suffix}
+    scipy/sparse/csgraph/_reordering.${py_suffix}
+    scipy/sparse/csgraph/_shortest_path.${py_suffix}
+    scipy/sparse/csgraph/_tools.${py_suffix}
+    scipy/sparse/csgraph/_traversal.${py_suffix}
+    scipy/sparse/linalg/_dsolve/_superlu.${py_suffix}
+    scipy/sparse/linalg/_eigen/arpack/_arpack.${py_suffix}
+    scipy/sparse/linalg/_propack/_cpropack.${py_suffix}
+    scipy/sparse/linalg/_propack/_dpropack.${py_suffix}
+    scipy/sparse/linalg/_propack/_spropack.${py_suffix}
+    scipy/sparse/linalg/_propack/_zpropack.${py_suffix}
+    scipy/sparse/_csparsetools.${py_suffix}
+    scipy/sparse/_sparsetools.${py_suffix}
+    scipy/spatial/transform/_rotation.${py_suffix}
+    scipy/special/libsf_error_state.dll
+    scipy/spatial/_ckdtree.${py_suffix}
+    scipy/special/_comb.${py_suffix}
+    scipy/spatial/_distance_pybind.${py_suffix}
+    scipy/spatial/_distance_wrap.${py_suffix}
+    scipy/special/_ellip_harm_2.${py_suffix}
+    scipy/special/_gufuncs.${py_suffix}
+    scipy/spatial/_hausdorff.${py_suffix}
+    scipy/spatial/_qhull.${py_suffix}
+    scipy/special/_specfun.${py_suffix}
+    scipy/special/_special_ufuncs.${py_suffix}
+    scipy/special/_ufuncs_cxx.${py_suffix}
+    scipy/special/_ufuncs.${py_suffix}
+    scipy/spatial/_voronoi.${py_suffix}
+    scipy/_lib/_uarray/_uarray.${py_suffix}
+    scipy/_lib/messagestream.${py_suffix}
+    scipy/_lib/_ccallback_c.${py_suffix}
     spconv/core_cc.${py_suffix}
     torch/_C.${py_suffix}
     torch/functional.py
@@ -2175,6 +2536,7 @@ set(py_files
     difflib.py
     dis.py
     enum.py
+    fileinput.py
     fnmatch.py
     fractions.py
     functools.py
@@ -2205,6 +2567,7 @@ set(py_files
     pprint.py
     profile.py
     pstats.py
+    pydoc.py
     queue.py
     quopri.py
     random.py

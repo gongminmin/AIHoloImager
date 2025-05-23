@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <format>
+#include <future>
 #include <map>
 #include <stdexcept>
 
@@ -34,7 +35,6 @@
 #include <openMVG/exif/sensor_width_database/datasheet.hpp>
 #include <openMVG/features/regions.hpp>
 #include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
-#include <openMVG/image/image_io.hpp>
 #include <openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp>
 #include <openMVG/matching_image_collection/E_ACRobust.hpp>
 #include <openMVG/matching_image_collection/F_ACRobust.hpp>
@@ -89,6 +89,21 @@ namespace AIHoloImager
         {
             Timer timer;
 
+            py_init_future_ = std::async(std::launch::async, [this] {
+                Timer timer;
+
+                PythonSystem::GilGuard guard;
+
+                auto& python_system = aihi_.PythonSystemInstance();
+
+                focal_estimator_module_ = python_system.Import("FocalEstimator");
+                focal_estimator_class_ = python_system.GetAttr(*focal_estimator_module_, "FocalEstimator");
+                focal_estimator_ = python_system.CallObject(*focal_estimator_class_);
+                focal_estimator_process_method_ = python_system.GetAttr(*focal_estimator_, "Process");
+
+                aihi_.AddTiming("Focal estimator init (async)", timer.Elapsed());
+            });
+
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system, 1, L"undistort_cb_");
@@ -100,6 +115,23 @@ namespace AIHoloImager
             undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
 
             aihi_.AddTiming("SfM init", timer.Elapsed());
+        }
+
+        ~Impl()
+        {
+            py_init_future_.wait();
+
+            PythonSystem::GilGuard guard;
+
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto focal_estimator_destroy_method = python_system.GetAttr(*focal_estimator_, "Destroy");
+            python_system.CallObject(*focal_estimator_destroy_method);
+
+            focal_estimator_destroy_method.reset();
+            focal_estimator_process_method_.reset();
+            focal_estimator_.reset();
+            focal_estimator_class_.reset();
+            focal_estimator_module_.reset();
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
@@ -265,6 +297,52 @@ namespace AIHoloImager
                     {
                         focal = std::max(width, height) * camera_info.focal / db_iter->sensorSize_;
                     }
+                    else
+                    {
+                        std::cout << std::format("Model \"{}\" doesn't exist in the database. ", camera_info.full_model);
+                    }
+                }
+
+                if (focal <= 0)
+                {
+                    std::cout << "Estimating the camera focal length...\n";
+
+                    py_init_future_.wait();
+
+                    double sum_focal = 0;
+                    for (const uint32_t image_id : camera_info.image_ids)
+                    {
+                        const auto& image = images[image_id];
+                        {
+                            PythonSystem::GilGuard guard;
+
+                            auto& python_system = aihi_.PythonSystemInstance();
+                            auto args = python_system.MakeTuple(4);
+                            {
+                                auto py_image = python_system.MakeObject(
+                                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
+                                python_system.SetTupleItem(*args, 0, std::move(py_image));
+
+                                python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
+                                python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
+                                python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
+                            }
+
+                            auto py_focal = python_system.CallObject(*focal_estimator_process_method_, *args);
+                            sum_focal += python_system.Cast<double>(*py_focal);
+                        }
+                    }
+
+                    focal = sum_focal / camera_info.image_ids.size();
+
+                    if (focal > 0)
+                    {
+                        std::cout << std::format("Estimated as {:.3f} pixels.\n", focal);
+                    }
+                    else
+                    {
+                        std::cerr << std::format("Fail to estimate the focal length of Model \"{}\"\n", camera_info.full_model);
+                    }
                 }
 
                 if (focal > 0)
@@ -278,12 +356,6 @@ namespace AIHoloImager
                     {
                         views[image_id]->id_intrinsic = i;
                     }
-                }
-                else
-                {
-                    std::cerr << std::format("Model \"{}\" doesn't exist in the database.\nPlease consider add your camera model and "
-                                             "sensor width in the database.\n",
-                        camera_info.full_model);
                 }
             }
 
@@ -607,6 +679,12 @@ namespace AIHoloImager
 
     private:
         AIHoloImagerInternal& aihi_;
+
+        PyObjectPtr focal_estimator_module_;
+        PyObjectPtr focal_estimator_class_;
+        PyObjectPtr focal_estimator_;
+        PyObjectPtr focal_estimator_process_method_;
+        std::future<void> py_init_future_;
 
         struct UndistortConstantBuffer
         {

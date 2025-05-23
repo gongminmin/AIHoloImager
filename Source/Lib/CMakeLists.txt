@@ -117,8 +117,12 @@ set(aihi_files
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
+    Source/SfM/MoGe/Geometry.py
+    Source/SfM/MoGe/MoGeModel.py
+    Source/SfM/MoGe/__init__.py
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/ConvertDatasheet.py
+    Source/SfM/FocalEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
     Source/TextureRecon/Shader/FlattenVs.hlsl
@@ -271,6 +275,10 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/__init__.py
     Source/MeshGen/DiffOptimizer.py
     Source/Python/PythonSystem.py
+    Source/SfM/MoGe/Geometry.py
+    Source/SfM/MoGe/MoGeModel.py
+    Source/SfM/MoGe/__init__.py
+    Source/SfM/FocalEstimator.py
 )
 foreach(py_file ${py_files})
     string(REPLACE "/" ";" path_list ${py_file})
@@ -292,4 +300,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels AIHoloImagerGpuDiffRender)
+add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels AIHoloImagerGpuDiffRender)

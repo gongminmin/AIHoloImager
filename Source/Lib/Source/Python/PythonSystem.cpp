@@ -174,6 +174,16 @@ namespace AIHoloImager
     {
         return static_cast<uint32_t>(PyLong_AsUnsignedLong(&object));
     }
+    template <>
+    double PythonSystem::Cast<double>(PyObject& object)
+    {
+        return PyFloat_AsDouble(&object);
+    }
+    template <>
+    float PythonSystem::Cast<float>(PyObject& object)
+    {
+        return static_cast<float>(this->Cast<double>(object));
+    }
 
     template <>
     std::wstring_view PythonSystem::Cast<std::wstring_view>(PyObject& object)

@@ -63,3 +63,6 @@ soupsieve==2.7
 PySocks==1.7.1
 beautifulsoup4==4.13.4
 gdown==5.2.0
+
+#numpy==2.2.2
+scipy==1.15.3
