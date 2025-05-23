@@ -2090,6 +2090,7 @@ set(py_files
     email/_policybase.py
     email/__init__.py
     encodings/aliases.py
+    encodings/cp1252.py
     encodings/gbk.py
     encodings/raw_unicode_escape.py
     encodings/unicode_escape.py
