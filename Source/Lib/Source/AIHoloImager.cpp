@@ -8,17 +8,8 @@
 #include <iostream>
 #include <mutex>
 
-#ifdef _WIN32
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #include <windows.h> // For GetModuleFileNameA
-#endif
-
 #include "AIHoloImagerInternal.hpp"
+#include "Base/MiniWindows.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"

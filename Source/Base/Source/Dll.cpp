@@ -4,13 +4,7 @@
 #include "Base/Dll.hpp"
 
 #ifdef _WIN32
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #include <windows.h>
+    #include "Base/MiniWindows.hpp"
 #else
     #include <dlfcn.h>
 #endif
