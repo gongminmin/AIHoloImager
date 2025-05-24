@@ -20,7 +20,6 @@ namespace AIHoloImager
             paths.push_back((exe_dir / "Python/DLLs").lexically_normal().wstring());
             paths.push_back((exe_dir / "Python/Lib").lexically_normal().wstring());
             paths.push_back((exe_dir / "Python/Lib/site-packages").lexically_normal().wstring());
-            paths.push_back((exe_dir / "dinov2").lexically_normal().wstring());
 
             PyPreConfig pre_config;
             PyPreConfig_InitIsolatedConfig(&pre_config);

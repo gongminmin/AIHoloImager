@@ -3,8 +3,9 @@
 
 # Based on MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/v1.py
 
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+import importlib
 from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import warnings
 
 import torch
@@ -185,10 +186,10 @@ class MoGeModel(nn.Module):
         self.num_tokens_range = num_tokens_range
         self.mask_threshold = mask_threshold
 
-        this_py_dir = Path(__file__).parent.resolve()
+        backbones_module = getattr(importlib.import_module("dinov2.hub.backbones"), encoder)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.backbone = torch.hub.load(this_py_dir.parent / "dinov2", encoder, source = "local", pretrained = False)
+            self.backbone = backbones_module(pretrained = False)
         dim_feature = self.backbone.blocks[0].attn.qkv.in_features
 
         self.head = Head(
