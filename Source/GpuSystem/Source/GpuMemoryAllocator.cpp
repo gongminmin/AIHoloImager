@@ -71,7 +71,7 @@ namespace AIHoloImager
         native_buffer_ = page.Buffer().NativeBuffer();
         offset_ = offset;
         size_ = size;
-        cpu_addr_ = page.CpuAddress<uint8_t>() + offset;
+        cpu_addr_ = page.CpuAddress<std::byte>() + offset;
         gpu_addr_ = page.GpuAddress() + offset;
     }
 

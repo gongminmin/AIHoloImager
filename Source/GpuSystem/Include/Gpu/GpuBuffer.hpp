@@ -43,9 +43,33 @@ namespace AIHoloImager
         uint32_t Size() const noexcept;
 
         void* Map(const GpuRange& read_range);
+        const void* Map(const GpuRange& read_range) const;
         void* Map();
+        const void* Map() const;
         void Unmap(const GpuRange& write_range);
         void Unmap();
+        void Unmap() const;
+
+        template <typename T>
+        T* Map(const GpuRange& read_range)
+        {
+            return reinterpret_cast<T*>(this->Map(read_range));
+        }
+        template <typename T>
+        const T* Map(const GpuRange& read_range) const
+        {
+            return reinterpret_cast<T*>(this->Map(read_range));
+        }
+        template <typename T>
+        T* Map()
+        {
+            return reinterpret_cast<T*>(this->Map());
+        }
+        template <typename T>
+        const T* Map() const
+        {
+            return reinterpret_cast<T*>(this->Map());
+        }
 
         virtual void Reset();
 
@@ -72,11 +96,17 @@ namespace AIHoloImager
         void Reset() override;
 
         void* MappedData() noexcept;
+        const void* MappedData() const noexcept;
 
         template <typename T>
         T* MappedData() noexcept
         {
             return reinterpret_cast<T*>(this->MappedData());
+        }
+        template <typename T>
+        const T* MappedData() const noexcept
+        {
+            return reinterpret_cast<const T*>(this->MappedData());
         }
 
     private:

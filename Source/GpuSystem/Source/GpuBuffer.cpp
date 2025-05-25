@@ -87,12 +87,22 @@ namespace AIHoloImager
         return addr;
     }
 
+    const void* GpuBuffer::Map(const GpuRange& read_range) const
+    {
+        return const_cast<GpuBuffer*>(this)->Map(read_range);
+    }
+
     void* GpuBuffer::Map()
     {
         void* addr;
         const D3D12_RANGE d3d12_read_range{0, 0};
         TIFHR(resource_->Map(0, (heap_type_ == D3D12_HEAP_TYPE_READBACK) ? nullptr : &d3d12_read_range, &addr));
         return addr;
+    }
+
+    const void* GpuBuffer::Map() const
+    {
+        return const_cast<GpuBuffer*>(this)->Map();
     }
 
     void GpuBuffer::Unmap(const GpuRange& write_range)
@@ -104,6 +114,11 @@ namespace AIHoloImager
     void GpuBuffer::Unmap()
     {
         this->Unmap(GpuRange{0, 0});
+    }
+
+    void GpuBuffer::Unmap() const
+    {
+        return const_cast<GpuBuffer*>(this)->Unmap();
     }
 
     void GpuBuffer::Reset()
@@ -201,7 +216,7 @@ namespace AIHoloImager
     GpuReadBackBuffer::GpuReadBackBuffer(GpuSystem& gpu_system, const void* data, uint32_t size, std::wstring_view name)
         : GpuReadBackBuffer(gpu_system, size, std::move(name))
     {
-        memcpy(MappedData<void>(), data, size);
+        std::memcpy(mapped_data_, data, size);
     }
 
     GpuReadBackBuffer::~GpuReadBackBuffer() noexcept

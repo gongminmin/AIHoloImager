@@ -148,12 +148,12 @@ namespace AIHoloImager
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"vb");
-            memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
+            std::memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
             vb.Unmap(GpuRange{0, vb.Size()});
 
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"ib");
-            memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
+            std::memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
             ib.Unmap(GpuRange{0, ib.Size()});
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());

@@ -313,7 +313,7 @@ namespace AIHoloImager
             triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Upload,
                 GpuResourceFlag::None, L"triangle_table_buff");
             {
-                uint16_t* triangle_table_buff_ptr = reinterpret_cast<uint16_t*>(triangle_table_buff_.Map());
+                uint16_t* triangle_table_buff_ptr = triangle_table_buff_.Map<uint16_t>();
                 for (size_t i = 0; i < std::size(TriangleTable); ++i)
                 {
                     for (uint32_t j = 0; j < 16; ++j)

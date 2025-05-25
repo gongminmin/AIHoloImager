@@ -103,12 +103,12 @@ namespace AIHoloImager
 
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"mesh_vb");
-            memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
+            std::memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
             mesh_vb.Unmap(GpuRange{0, mesh_vb.Size()});
 
             GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"mesh_ib");
-            memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
+            std::memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
             mesh_ib.Unmap(GpuRange{0, mesh_ib.Size()});
 
             GpuTexture2D flatten_pos_tex;

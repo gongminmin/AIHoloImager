@@ -998,7 +998,7 @@ namespace AIHoloImager
             GpuBuffer pos_vb(
                 gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Upload, GpuResourceFlag::None, L"pos_vb");
             {
-                glm::vec3* pos_data = reinterpret_cast<glm::vec3*>(pos_vb.Map());
+                glm::vec3* pos_data = pos_vb.Map<glm::vec3>();
                 for (uint32_t i = 0; i < num_vertices; ++i)
                 {
                     pos_data[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
