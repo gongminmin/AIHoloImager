@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include <string>
 #include <string_view>
 #include <type_traits>
 
 #include <directx/d3d12.h>
 
+#include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
@@ -17,7 +19,7 @@ namespace AIHoloImager
     public:
         virtual ~GeneralConstantBuffer() noexcept = default;
 
-        virtual D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress(uint32_t frame_index = 0) const noexcept = 0;
+        virtual D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept = 0;
 
     protected:
         GeneralConstantBuffer() noexcept = default;
@@ -34,15 +36,14 @@ namespace AIHoloImager
     public:
         ConstantBuffer() noexcept = default;
 
-        explicit ConstantBuffer(GpuSystem& gpu_system, uint32_t num_frames = 1, std::wstring_view name = L"")
-            : buffer_(gpu_system, num_frames * Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type)), std::move(name)),
-              aligned_size_(Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type))), num_frames_(num_frames)
+        explicit ConstantBuffer(GpuSystem& gpu_system, std::wstring_view name = L"")
+            : mem_block_(gpu_system.AllocUploadMemBlock(sizeof(value_type), GpuMemoryAllocator::ConstantDataAlignment)),
+              name_(std::move(name))
         {
         }
 
         ConstantBuffer(ConstantBuffer&& other) noexcept
-            : buffer_(std::move(other.buffer_)), staging_(std::exchange(other.staging_, value_type{})),
-              aligned_size_(std::exchange(other.aligned_size_, 0)), num_frames_(std::exchange(other.num_frames_, 0))
+            : mem_block_(std::move(other.mem_block_)), name_(std::move(name_)), staging_(std::exchange(other.staging_, value_type{}))
         {
         }
 
@@ -50,36 +51,35 @@ namespace AIHoloImager
         {
             if (this != &other)
             {
-                buffer_ = std::move(other.buffer_);
+                mem_block_ = std::move(other.mem_block_);
+                name_ = std::move(name_);
                 staging_ = std::exchange(other.staging_, value_type{});
-                aligned_size_ = std::exchange(other.aligned_size_, 0);
-                num_frames_ = std::exchange(other.num_frames_, 0);
             }
             return *this;
         }
 
         explicit operator bool() const noexcept
         {
-            return buffer_ ? true : false;
+            return mem_block_ ? true : false;
         }
 
-        const GpuUploadBuffer& Buffer() const noexcept
+        const GpuMemoryBlock& MemBlock() const noexcept
         {
-            return buffer_;
+            return mem_block_;
         }
 
-        value_type* MappedData(uint32_t frame_index = 0) noexcept
+        value_type* MappedData() noexcept
         {
-            return reinterpret_cast<value_type*>(buffer_.MappedData<uint8_t>() + frame_index * aligned_size_);
+            return mem_block_.CpuSpan<value_type>().data();
         }
-        const value_type* MappedData(uint32_t frame_index = 0) const noexcept
+        const value_type* MappedData() const noexcept
         {
-            return reinterpret_cast<const value_type*>(buffer_.MappedData<uint8_t>() + frame_index * aligned_size_);
+            return mem_block_.CpuSpan<value_type>().data();
         }
 
-        void UploadToGpu(uint32_t frame_index = 0) noexcept
+        void UploadToGpu() noexcept
         {
-            *this->MappedData(frame_index) = staging_;
+            *this->MappedData() = staging_;
         }
 
         value_type* operator->() noexcept
@@ -91,35 +91,20 @@ namespace AIHoloImager
             return &staging_;
         }
 
-        uint32_t NumFrames() const noexcept
-        {
-            return num_frames_;
-        }
-
         void* NativeResource() const noexcept
         {
-            return buffer_.NativeResource();
+            return mem_block_.NativeBuffer();
         }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress(uint32_t frame_index = 0) const noexcept override
+        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept override
         {
-            return buffer_.GpuVirtualAddress() + frame_index * aligned_size_;
+            return mem_block_.GpuAddress();
         }
 
     private:
-        template <uint32_t Alignment>
-        constexpr uint32_t Align(uint32_t size) noexcept
-        {
-            static_assert((Alignment & (Alignment - 1)) == 0);
-            return (size + (Alignment - 1)) & ~(Alignment - 1);
-        }
-
-    private:
-        GpuUploadBuffer buffer_;
+        GpuMemoryBlock mem_block_;
+        std::wstring name_;
 
         value_type staging_{};
-
-        uint32_t aligned_size_ = Align<D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT>(sizeof(value_type));
-        uint32_t num_frames_ = 1;
     };
 } // namespace AIHoloImager

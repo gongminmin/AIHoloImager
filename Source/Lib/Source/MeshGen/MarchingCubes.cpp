@@ -326,20 +326,20 @@ namespace AIHoloImager
             triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, GpuFormat::R16_Uint);
 
             {
-                calc_cube_indices_cb_ = ConstantBuffer<CalcCubeIndicesConstantBuffer>(gpu_system_, 1, L"calc_cube_indices_cb_");
+                calc_cube_indices_cb_ = ConstantBuffer<CalcCubeIndicesConstantBuffer>(gpu_system_, L"calc_cube_indices_cb_");
 
                 const ShaderInfo shader = {CalcCubeIndicesCs_shader, 1, 2, 2};
                 calc_cube_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
                 process_non_empty_cubes_cb_ =
-                    ConstantBuffer<ProcessNonEmptyCubesConstantBuffer>(gpu_system_, 1, L"process_non_empty_cubes_cb_");
+                    ConstantBuffer<ProcessNonEmptyCubesConstantBuffer>(gpu_system_, L"process_non_empty_cubes_cb_");
 
                 const ShaderInfo shader = {ProcessNonEmptyCubesCs_shader, 1, 4, 4};
                 process_non_empty_cubes_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                gen_vertices_indices_cb_ = ConstantBuffer<GenVerticesIndicesConstantBuffer>(gpu_system_, 1, L"gen_vertices_indices_cb_");
+                gen_vertices_indices_cb_ = ConstantBuffer<GenVerticesIndicesConstantBuffer>(gpu_system_, L"gen_vertices_indices_cb_");
 
                 const ShaderInfo shader = {GenVerticesIndicesCs_shader, 1, 7, 2};
                 gen_vertices_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});

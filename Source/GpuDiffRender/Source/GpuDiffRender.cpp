@@ -54,20 +54,20 @@ namespace AIHoloImager
                 GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
         }
         {
-            rasterize_bwd_cb_ = ConstantBuffer<RasterizeBwdConstantBuffer>(gpu_system_, 1, L"rasterize_bwd_cb_");
+            rasterize_bwd_cb_ = ConstantBuffer<RasterizeBwdConstantBuffer>(gpu_system_, L"rasterize_bwd_cb_");
 
             const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 5, 1};
             rasterize_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
-            interpolate_fwd_cb_ = ConstantBuffer<InterpolateFwdConstantBuffer>(gpu_system_, 1, L"interpolate_fwd_cb_");
+            interpolate_fwd_cb_ = ConstantBuffer<InterpolateFwdConstantBuffer>(gpu_system_, L"interpolate_fwd_cb_");
 
             const ShaderInfo shader = {InterpolateFwdCs_shader, 1, 4, 1};
             interpolate_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            interpolate_bwd_cb_ = ConstantBuffer<InterpolateBwdConstantBuffer>(gpu_system_, 1, L"interpolate_bwd_cb_");
+            interpolate_bwd_cb_ = ConstantBuffer<InterpolateBwdConstantBuffer>(gpu_system_, L"interpolate_bwd_cb_");
 
             const ShaderInfo shader = {InterpolateBwdCs_shader, 1, 5, 2};
             interpolate_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -75,7 +75,7 @@ namespace AIHoloImager
 
         {
             anti_alias_indirect_args_cb_ =
-                ConstantBuffer<AntialiasIndirectArgsConstantBuffer>(gpu_system_, 1, L"anti_alias_indirect_args_cb_");
+                ConstantBuffer<AntialiasIndirectArgsConstantBuffer>(gpu_system_, L"anti_alias_indirect_args_cb_");
             anti_alias_indirect_args_cb_->bwd_block_dim = 256;
             anti_alias_indirect_args_cb_.UploadToGpu();
 
@@ -83,13 +83,13 @@ namespace AIHoloImager
             anti_alias_indirect_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            anti_alias_fwd_cb_ = ConstantBuffer<AntialiasFwdConstantBuffer>(gpu_system_, 1, L"anti_alias_fwd_cb_");
+            anti_alias_fwd_cb_ = ConstantBuffer<AntialiasFwdConstantBuffer>(gpu_system_, L"anti_alias_fwd_cb_");
 
             const ShaderInfo shader = {AntiAliasFwdCs_shader, 1, 6, 3};
             anti_alias_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            anti_alias_bwd_cb_ = ConstantBuffer<AntialiasBwdConstantBuffer>(gpu_system_, 1, L"anti_alias_bwd_cb_");
+            anti_alias_bwd_cb_ = ConstantBuffer<AntialiasBwdConstantBuffer>(gpu_system_, L"anti_alias_bwd_cb_");
 
             const ShaderInfo shader = {AntiAliasBwdCs_shader, 1, 7, 2};
             anti_alias_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});

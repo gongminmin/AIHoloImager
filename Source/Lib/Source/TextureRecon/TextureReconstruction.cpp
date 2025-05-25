@@ -36,7 +36,7 @@ namespace AIHoloImager
             }));
 
             {
-                flatten_cb_ = ConstantBuffer<FlattenConstantBuffer>(gpu_system_, 1, L"flatten_cb_");
+                flatten_cb_ = ConstantBuffer<FlattenConstantBuffer>(gpu_system_, L"flatten_cb_");
 
                 const ShaderInfo shaders[] = {
                     {FlattenVs_shader, 1, 0, 0},
@@ -55,7 +55,7 @@ namespace AIHoloImager
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
-                gen_shadow_map_cb_ = ConstantBuffer<GenShadowMapConstantBuffer>(gpu_system_, 1, L"gen_shadow_map_cb_");
+                gen_shadow_map_cb_ = ConstantBuffer<GenShadowMapConstantBuffer>(gpu_system_, L"gen_shadow_map_cb_");
 
                 const ShaderInfo shaders[] = {
                     {GenShadowMapVs_shader, 1, 0, 0},
@@ -71,7 +71,7 @@ namespace AIHoloImager
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
-                project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, 1, L"project_tex_cb_");
+                project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, L"project_tex_cb_");
 
                 const GpuStaticSampler samplers[] = {
                     GpuStaticSampler(
@@ -84,7 +84,7 @@ namespace AIHoloImager
                 project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{samplers});
             }
             {
-                resolve_texture_cb_ = ConstantBuffer<ResolveTextureConstantBuffer>(gpu_system_, 1, L"resolve_texture_cb_");
+                resolve_texture_cb_ = ConstantBuffer<ResolveTextureConstantBuffer>(gpu_system_, L"resolve_texture_cb_");
 
                 const ShaderInfo shader = {ResolveTextureCs_shader, 1, 1, 1};
                 resolve_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});

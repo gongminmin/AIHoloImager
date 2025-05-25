@@ -122,19 +122,19 @@ namespace AIHoloImager
             }
 
             {
-                mark_faces_cb_ = ConstantBuffer<MarkFacesConstantBuffer>(gpu_system_, 1, L"mark_faces_cb_");
+                mark_faces_cb_ = ConstantBuffer<MarkFacesConstantBuffer>(gpu_system_, L"mark_faces_cb_");
 
                 const ShaderInfo shader = {MarkFacesCs_shader, 1, 1, 1};
                 mark_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                accum_faces_cb_ = ConstantBuffer<AccumFacesConstantBuffer>(gpu_system_, 1, L"accum_faces_cb_");
+                accum_faces_cb_ = ConstantBuffer<AccumFacesConstantBuffer>(gpu_system_, L"accum_faces_cb_");
 
                 const ShaderInfo shader = {AccumFacesCs_shader, 1, 1, 1};
                 accum_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                filter_faces_cb_ = ConstantBuffer<FilterFacesConstantBuffer>(gpu_system_, 1, L"filter_faces_cb_");
+                filter_faces_cb_ = ConstantBuffer<FilterFacesConstantBuffer>(gpu_system_, L"filter_faces_cb_");
 
                 const ShaderInfo shader = {FilterFacesCs_shader, 1, 2, 2};
                 filter_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -233,7 +233,7 @@ namespace AIHoloImager
 
             const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
-            ConstantBuffer<RenderConstantBuffer> render_cb(gpu_system_, 1, L"render_cb");
+            ConstantBuffer<RenderConstantBuffer> render_cb(gpu_system_, L"render_cb");
             render_cb->mvp = glm::transpose(proj_mtx_ * view_mtx);
             render_cb.UploadToGpu();
 

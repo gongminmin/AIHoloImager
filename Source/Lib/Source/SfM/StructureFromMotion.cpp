@@ -106,7 +106,7 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system, 1, L"undistort_cb_");
+            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system, L"undistort_cb_");
 
             const GpuStaticSampler bilinear_sampler(
                 {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
