@@ -79,7 +79,6 @@ class DiffOptimizer:
         vtx_colors = np.frombuffer(vtx_colors, dtype = np.float32, count = num_vertices * 3)
         vtx_colors = torch.from_numpy(vtx_colors.copy()).to(self.device)
         vtx_colors = vtx_colors.reshape(num_vertices, 3)
-        vtx_colors = vtx_colors.to(torch.float16)
 
         indices = np.frombuffer(indices, dtype = np.int32, count = num_indices)
         indices = torch.from_numpy(indices.copy()).to(self.device)
@@ -160,6 +159,7 @@ class DiffOptimizer:
         for i in range(0, num_views):
             cropped_roi[i] = rois[i] - torch.cat([merged_roi[0 : 2], merged_roi[0 : 2]])
 
+        vtx_positions = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
         vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
         scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, viewports, cropped_roi, cropped_resolution)
@@ -172,24 +172,22 @@ class DiffOptimizer:
 
     def Render(self, model_mtx, view_proj_mtx, viewport, vtx_positions, vtx_colors, indices, opposite_vertices, resolution, roi):
         mvp_mtx = torch.matmul(model_mtx, view_proj_mtx).to(self.device)
-
-        pos_w = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], device = self.device)], axis = 1)
-        pos_clip = torch.matmul(pos_w, mvp_mtx)
+        pos_clip = torch.matmul(vtx_positions, mvp_mtx)
 
         barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport)
         image = self.gpu_dr.Interpolate(vtx_colors, barycentric, prim_id, indices)
         image = self.gpu_dr.AntiAlias(image, prim_id, pos_clip, indices, viewport, opposite_vertices)
 
-        image = image.to(torch.float16)
         image = image.squeeze(0)
         image = image[roi[1] : roi[3], roi[0] : roi[2], :]
+        image = image.to(torch.float16)
         return image.contiguous()
 
     def FitTransform(self,
                      scale, rotation, translation,
                      vtx_positions, vtx_colors, indices,
                      crop_images, view_proj_mtxs, viewports, rois,
-                     resolutions, num_iter = 2000):
+                     resolutions, num_iter = 1500):
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
