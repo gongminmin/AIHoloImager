@@ -57,8 +57,8 @@
 
 #include "Base/Timer.hpp"
 #include "Delighter/Delighter.hpp"
-#include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
@@ -106,7 +106,7 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            undistort_cb_ = ConstantBuffer<UndistortConstantBuffer>(gpu_system, L"undistort_cb_");
+            undistort_cb_ = GpuConstantBufferOfType<UndistortConstantBuffer>(gpu_system, L"undistort_cb_");
 
             const GpuStaticSampler bilinear_sampler(
                 {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
@@ -666,12 +666,12 @@ namespace AIHoloImager
             undistort_cb_->width_height.y = static_cast<float>(input_tex.Height(0));
             undistort_cb_->width_height.z = 1.0f / input_tex.Width(0);
             undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
-            undistort_cb_.UploadToGpu();
+            undistort_cb_.UploadStaging();
 
             GpuShaderResourceView input_srv(gpu_system, input_tex);
             GpuUnorderedAccessView output_uav(gpu_system, output_tex);
 
-            const GeneralConstantBuffer* cbs[] = {&undistort_cb_};
+            const GpuConstantBuffer* cbs[] = {&undistort_cb_};
             const GpuShaderResourceView* srvs[] = {&input_srv};
             GpuUnorderedAccessView* uavs[] = {&output_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -696,7 +696,7 @@ namespace AIHoloImager
             float padding_1;
             glm::vec4 width_height;
         };
-        ConstantBuffer<UndistortConstantBuffer> undistort_cb_;
+        GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb_;
         GpuComputePipeline undistort_pipeline_;
 
         MaskGenerator mask_gen_;

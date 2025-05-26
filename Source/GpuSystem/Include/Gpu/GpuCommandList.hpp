@@ -7,7 +7,7 @@
 #include <span>
 
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuBufferHelper.hpp"
+#include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -64,7 +64,7 @@ namespace AIHoloImager
 
         struct ShaderBinding
         {
-            std::span<const GeneralConstantBuffer*> cbs;
+            std::span<const GpuConstantBuffer*> cbs;
             std::span<const GpuShaderResourceView*> srvs;
             std::span<GpuUnorderedAccessView*> uavs;
         };

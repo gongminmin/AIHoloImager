@@ -3,8 +3,8 @@
 
 set(aihi_gpu_system_files
     Include/Gpu/GpuBuffer.hpp
-    Include/Gpu/GpuBufferHelper.hpp
     Include/Gpu/GpuCommandList.hpp
+    Include/Gpu/GpuConstantBuffer.hpp
     Include/Gpu/GpuDescriptorAllocator.hpp
     Include/Gpu/GpuDescriptorHeap.hpp
     Include/Gpu/GpuFormat.hpp
@@ -19,6 +19,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuVertexAttrib.hpp
     Source/GpuBuffer.cpp
     Source/GpuCommandList.cpp
+    Source/GpuConstantBuffer.cpp
     Source/GpuDescriptorAllocator.cpp
     Source/GpuDescriptorHeap.cpp
     Source/GpuFormat.cpp

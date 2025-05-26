@@ -20,7 +20,6 @@ namespace AIHoloImager
         uint64_t begin;
         uint64_t end;
     };
-    D3D12_RANGE ToD3D12Range(const GpuRange& range);
 
     class GpuBuffer : public GpuResource
     {

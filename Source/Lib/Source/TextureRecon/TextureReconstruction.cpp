@@ -36,7 +36,7 @@ namespace AIHoloImager
             }));
 
             {
-                flatten_cb_ = ConstantBuffer<FlattenConstantBuffer>(gpu_system_, L"flatten_cb_");
+                flatten_cb_ = GpuConstantBufferOfType<FlattenConstantBuffer>(gpu_system_, L"flatten_cb_");
 
                 const ShaderInfo shaders[] = {
                     {FlattenVs_shader, 1, 0, 0},
@@ -55,7 +55,7 @@ namespace AIHoloImager
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
-                gen_shadow_map_cb_ = ConstantBuffer<GenShadowMapConstantBuffer>(gpu_system_, L"gen_shadow_map_cb_");
+                gen_shadow_map_cb_ = GpuConstantBufferOfType<GenShadowMapConstantBuffer>(gpu_system_, L"gen_shadow_map_cb_");
 
                 const ShaderInfo shaders[] = {
                     {GenShadowMapVs_shader, 1, 0, 0},
@@ -71,7 +71,7 @@ namespace AIHoloImager
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
             }
             {
-                project_tex_cb_ = ConstantBuffer<ProjectTextureConstantBuffer>(gpu_system_, L"project_tex_cb_");
+                project_tex_cb_ = GpuConstantBufferOfType<ProjectTextureConstantBuffer>(gpu_system_, L"project_tex_cb_");
 
                 const GpuStaticSampler samplers[] = {
                     GpuStaticSampler(
@@ -84,7 +84,7 @@ namespace AIHoloImager
                 project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{samplers});
             }
             {
-                resolve_texture_cb_ = ConstantBuffer<ResolveTextureConstantBuffer>(gpu_system_, L"resolve_texture_cb_");
+                resolve_texture_cb_ = GpuConstantBufferOfType<ResolveTextureConstantBuffer>(gpu_system_, L"resolve_texture_cb_");
 
                 const ShaderInfo shader = {ResolveTextureCs_shader, 1, 1, 1};
                 resolve_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -177,7 +177,7 @@ namespace AIHoloImager
 
             flatten_cb_->model_mtx = glm::transpose(model_mtx);
             flatten_cb_->model_it_mtx = glm::inverse(model_mtx);
-            flatten_cb_.UploadToGpu();
+            flatten_cb_.UploadStaging();
 
             const float clear_clr[] = {0, 0, 0, 0};
             cmd_list.Clear(pos_rtv, clear_clr);
@@ -186,7 +186,7 @@ namespace AIHoloImager
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&mesh_vb, 0, vertex_stride}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, GpuFormat::R32_Uint};
 
-            const GeneralConstantBuffer* cbs[] = {&flatten_cb_};
+            const GpuConstantBuffer* cbs[] = {&flatten_cb_};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {cbs, {}, {}},
                 {{}, {}, {}},
@@ -264,7 +264,7 @@ namespace AIHoloImager
                 const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
 
                 gen_shadow_map_cb_->mvp = glm::transpose(proj_mtx * view_mtx * model_mtx);
-                gen_shadow_map_cb_.UploadToGpu();
+                gen_shadow_map_cb_.UploadStaging();
 
                 const glm::vec2 vp_offset = CalcViewportOffset(intrinsic);
 
@@ -306,7 +306,7 @@ namespace AIHoloImager
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
-            const GeneralConstantBuffer* cbs[] = {&gen_shadow_map_cb_};
+            const GpuConstantBuffer* cbs[] = {&gen_shadow_map_cb_};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {cbs, {}, {}},
                 {{}, {}, {}},
@@ -336,9 +336,9 @@ namespace AIHoloImager
             project_tex_cb_->delighted_scale =
                 glm::vec2(static_cast<float>(intrinsic.width) / delighted_size.x, static_cast<float>(intrinsic.height) / delighted_size.y);
             project_tex_cb_->texture_size = texture_size;
-            project_tex_cb_.UploadToGpu();
+            project_tex_cb_.UploadStaging();
 
-            const GeneralConstantBuffer* cbs[] = {&project_tex_cb_};
+            const GpuConstantBuffer* cbs[] = {&project_tex_cb_};
             const GpuShaderResourceView* srvs[] = {&flatten_pos_srv, &flatten_normal_srv, &projective_map_srv, &shadow_map_srv};
             GpuUnorderedAccessView* uavs[] = {&accum_color_uav};
 
@@ -358,9 +358,9 @@ namespace AIHoloImager
             GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
 
             resolve_texture_cb_->texture_size = texture_size;
-            resolve_texture_cb_.UploadToGpu();
+            resolve_texture_cb_.UploadStaging();
 
-            const GeneralConstantBuffer* cbs[] = {&resolve_texture_cb_};
+            const GpuConstantBuffer* cbs[] = {&resolve_texture_cb_};
             const GpuShaderResourceView* srvs[] = {&accum_color_srv};
             GpuUnorderedAccessView* uavs[] = {&color_uav};
 
@@ -380,14 +380,14 @@ namespace AIHoloImager
             glm::mat4x4 model_mtx;
             glm::mat4x4 model_it_mtx;
         };
-        ConstantBuffer<FlattenConstantBuffer> flatten_cb_;
+        GpuConstantBufferOfType<FlattenConstantBuffer> flatten_cb_;
         GpuRenderPipeline flatten_pipeline_;
 
         struct GenShadowMapConstantBuffer
         {
             glm::mat4x4 mvp;
         };
-        ConstantBuffer<GenShadowMapConstantBuffer> gen_shadow_map_cb_;
+        GpuConstantBufferOfType<GenShadowMapConstantBuffer> gen_shadow_map_cb_;
         GpuRenderPipeline gen_shadow_map_pipeline_;
 
         struct ProjectTextureConstantBuffer
@@ -401,7 +401,7 @@ namespace AIHoloImager
             uint32_t texture_size;
             uint32_t padding;
         };
-        ConstantBuffer<ProjectTextureConstantBuffer> project_tex_cb_;
+        GpuConstantBufferOfType<ProjectTextureConstantBuffer> project_tex_cb_;
         GpuComputePipeline project_texture_pipeline_;
 
         struct ResolveTextureConstantBuffer
@@ -409,7 +409,7 @@ namespace AIHoloImager
             uint32_t texture_size;
             uint32_t padding[3];
         };
-        ConstantBuffer<ResolveTextureConstantBuffer> resolve_texture_cb_;
+        GpuConstantBufferOfType<ResolveTextureConstantBuffer> resolve_texture_cb_;
         GpuComputePipeline resolve_texture_pipeline_;
 
         static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;

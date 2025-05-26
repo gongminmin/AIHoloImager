@@ -12,8 +12,8 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-#include "Gpu/GpuBufferHelper.hpp"
 #include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
@@ -121,19 +121,19 @@ namespace AIHoloImager
             }
 
             {
-                mark_faces_cb_ = ConstantBuffer<MarkFacesConstantBuffer>(gpu_system_, L"mark_faces_cb_");
+                mark_faces_cb_ = GpuConstantBufferOfType<MarkFacesConstantBuffer>(gpu_system_, L"mark_faces_cb_");
 
                 const ShaderInfo shader = {MarkFacesCs_shader, 1, 1, 1};
                 mark_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                accum_faces_cb_ = ConstantBuffer<AccumFacesConstantBuffer>(gpu_system_, L"accum_faces_cb_");
+                accum_faces_cb_ = GpuConstantBufferOfType<AccumFacesConstantBuffer>(gpu_system_, L"accum_faces_cb_");
 
                 const ShaderInfo shader = {AccumFacesCs_shader, 1, 1, 1};
                 accum_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                filter_faces_cb_ = ConstantBuffer<FilterFacesConstantBuffer>(gpu_system_, L"filter_faces_cb_");
+                filter_faces_cb_ = GpuConstantBufferOfType<FilterFacesConstantBuffer>(gpu_system_, L"filter_faces_cb_");
 
                 const ShaderInfo shader = {FilterFacesCs_shader, 1, 2, 2};
                 filter_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -170,14 +170,14 @@ namespace AIHoloImager
 
             {
                 mark_faces_cb_->width_height = glm::uvec2(face_id_tex_.Width(0), face_id_tex_.Height(0));
-                mark_faces_cb_.UploadToGpu();
+                mark_faces_cb_.UploadStaging();
 
                 accum_faces_cb_->num_faces = num_faces;
-                accum_faces_cb_.UploadToGpu();
+                accum_faces_cb_.UploadStaging();
 
                 filter_faces_cb_->num_faces = num_faces;
                 filter_faces_cb_->threshold = NumViews / 100;
-                filter_faces_cb_.UploadToGpu();
+                filter_faces_cb_.UploadStaging();
             }
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
@@ -235,9 +235,9 @@ namespace AIHoloImager
 
             const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
-            ConstantBuffer<RenderConstantBuffer> render_cb(gpu_system_, L"render_cb");
+            GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system_, L"render_cb");
             render_cb->mvp = glm::transpose(proj_mtx_ * view_mtx);
-            render_cb.UploadToGpu();
+            render_cb.UploadStaging();
 
             const float clear_clr[] = {0, 0, 0, 0};
             cmd_list.Clear(face_id_rtv_, clear_clr);
@@ -246,7 +246,7 @@ namespace AIHoloImager
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
-            const GeneralConstantBuffer* cbs[] = {&render_cb};
+            const GpuConstantBuffer* cbs[] = {&render_cb};
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {cbs, {}, {}},
                 {{}, {}, {}},
@@ -268,7 +268,7 @@ namespace AIHoloImager
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
                 cmd_list.Clear(face_mark_uav_, clear_clr);
 
-                const GeneralConstantBuffer* cbs[] = {&mark_faces_cb_};
+                const GpuConstantBuffer* cbs[] = {&mark_faces_cb_};
                 const GpuShaderResourceView* srvs[] = {&face_id_srv_};
                 GpuUnorderedAccessView* uavs[] = {&face_mark_uav_};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -278,7 +278,7 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 256;
 
-                const GeneralConstantBuffer* cbs[] = {&accum_faces_cb_};
+                const GpuConstantBuffer* cbs[] = {&accum_faces_cb_};
                 const GpuShaderResourceView* srvs[] = {&face_mark_srv_};
                 GpuUnorderedAccessView* uavs[] = {&view_counter_uav_};
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -293,7 +293,7 @@ namespace AIHoloImager
             GpuShaderResourceView index_srv(gpu_system_, index_buff, GpuFormat::R32_Uint);
             GpuUnorderedAccessView filtered_index_uav(gpu_system_, filtered_index_buff, GpuFormat::R32_Uint);
 
-            const GeneralConstantBuffer* cbs[] = {&filter_faces_cb_};
+            const GpuConstantBuffer* cbs[] = {&filter_faces_cb_};
             const GpuShaderResourceView* srvs[] = {&index_srv, &view_counter_srv_};
             GpuUnorderedAccessView* uavs[] = {&filtered_index_uav, &filtered_counter_uav_};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -339,7 +339,7 @@ namespace AIHoloImager
             glm::uvec2 width_height;
             uint32_t padding[2];
         };
-        ConstantBuffer<MarkFacesConstantBuffer> mark_faces_cb_;
+        GpuConstantBufferOfType<MarkFacesConstantBuffer> mark_faces_cb_;
         GpuComputePipeline mark_faces_pipeline_;
 
         struct AccumFacesConstantBuffer
@@ -347,7 +347,7 @@ namespace AIHoloImager
             uint32_t num_faces;
             uint32_t padding[3];
         };
-        ConstantBuffer<AccumFacesConstantBuffer> accum_faces_cb_;
+        GpuConstantBufferOfType<AccumFacesConstantBuffer> accum_faces_cb_;
         GpuComputePipeline accum_faces_pipeline_;
 
         struct FilterFacesConstantBuffer
@@ -356,7 +356,7 @@ namespace AIHoloImager
             uint32_t threshold;
             uint32_t padding[2];
         };
-        ConstantBuffer<FilterFacesConstantBuffer> filter_faces_cb_;
+        GpuConstantBufferOfType<FilterFacesConstantBuffer> filter_faces_cb_;
         GpuComputePipeline filter_faces_pipeline_;
     };
 

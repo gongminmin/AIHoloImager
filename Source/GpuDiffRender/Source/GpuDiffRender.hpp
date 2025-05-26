@@ -53,7 +53,7 @@ namespace AIHoloImager
             glm::uvec2 gbuffer_size;
             uint32_t padding[2];
         };
-        ConstantBuffer<RasterizeBwdConstantBuffer> rasterize_bwd_cb_;
+        GpuConstantBufferOfType<RasterizeBwdConstantBuffer> rasterize_bwd_cb_;
         GpuComputePipeline rasterize_bwd_pipeline_;
 
         struct InterpolateFwdConstantBuffer
@@ -62,7 +62,7 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        ConstantBuffer<InterpolateFwdConstantBuffer> interpolate_fwd_cb_;
+        GpuConstantBufferOfType<InterpolateFwdConstantBuffer> interpolate_fwd_cb_;
         GpuComputePipeline interpolate_fwd_pipeline_;
 
         struct InterpolateBwdConstantBuffer
@@ -71,7 +71,7 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        ConstantBuffer<InterpolateBwdConstantBuffer> interpolate_bwd_cb_;
+        GpuConstantBufferOfType<InterpolateBwdConstantBuffer> interpolate_bwd_cb_;
         GpuComputePipeline interpolate_bwd_pipeline_;
 
         GpuComputePipeline anti_alias_indirect_pipeline_;
@@ -83,33 +83,33 @@ namespace AIHoloImager
         GpuShaderResourceView silhouette_info_srv_;
         GpuUnorderedAccessView silhouette_info_uav_;
 
-        struct AntialiasFwdConstantBuffer
+        struct AntiAliasFwdConstantBuffer
         {
             glm::vec4 viewport;
             glm::uvec2 gbuffer_size;
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        ConstantBuffer<AntialiasFwdConstantBuffer> anti_alias_fwd_cb_;
+        GpuConstantBufferOfType<AntiAliasFwdConstantBuffer> anti_alias_fwd_cb_;
         GpuComputePipeline anti_alias_fwd_pipeline_;
 
-        struct AntialiasIndirectArgsConstantBuffer
+        struct AntiAliasIndirectArgsConstantBuffer
         {
             uint32_t bwd_block_dim;
             uint32_t padding[3];
         };
-        ConstantBuffer<AntialiasIndirectArgsConstantBuffer> anti_alias_indirect_args_cb_;
+        GpuConstantBufferOfType<AntiAliasIndirectArgsConstantBuffer> anti_alias_indirect_args_cb_;
         GpuBuffer indirect_args_;
         GpuUnorderedAccessView indirect_args_uav_;
 
-        struct AntialiasBwdConstantBuffer
+        struct AntiAliasBwdConstantBuffer
         {
             glm::vec4 viewport;
             glm::uvec2 gbuffer_size;
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        ConstantBuffer<AntialiasBwdConstantBuffer> anti_alias_bwd_cb_;
+        GpuConstantBufferOfType<AntiAliasBwdConstantBuffer> anti_alias_bwd_cb_;
         GpuComputePipeline anti_alias_bwd_pipeline_;
     };
 } // namespace AIHoloImager
