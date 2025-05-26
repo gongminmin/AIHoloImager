@@ -50,9 +50,6 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
-        void Upload(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, const void* data);
-        void ReadBack(GpuSystem& gpu_system, GpuCommandList& cmd_list, uint32_t sub_resource, void* data) const;
-
     protected:
         mutable std::vector<D3D12_RESOURCE_STATES> curr_states_;
         GpuFormat format_;

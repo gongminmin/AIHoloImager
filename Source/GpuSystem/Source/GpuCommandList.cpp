@@ -569,6 +569,261 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, dst_x, dst_y, dst_z, &src_loc, &d3d12_src_box);
     }
 
+    void GpuCommandList::Upload(GpuBuffer& dest, const std::function<void(void*)>& copy_func)
+    {
+        D3D12_HEAP_PROPERTIES heap_prop;
+        dest.NativeBuffer()->GetHeapProperties(&heap_prop, nullptr);
+
+        switch (heap_prop.Type)
+        {
+        case D3D12_HEAP_TYPE_UPLOAD:
+        case D3D12_HEAP_TYPE_READBACK:
+            copy_func(dest.Map());
+            dest.Unmap();
+            break;
+
+        case D3D12_HEAP_TYPE_DEFAULT:
+        {
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+            auto upload_mem_block = gpu_system_->AllocUploadMemBlock(dest.Size(), GpuMemoryAllocator::StructuredDataAlignment);
+
+            void* buff_data = upload_mem_block.CpuSpan<std::byte>().data();
+            copy_func(buff_data);
+
+            dest.Transition(*this, GpuResourceState::CopyDst);
+            d3d12_cmd_list->CopyBufferRegion(
+                dest.NativeBuffer(), 0, upload_mem_block.NativeBuffer(), upload_mem_block.Offset(), dest.Size());
+
+            gpu_system_->DeallocUploadMemBlock(std::move(upload_mem_block));
+        }
+        break;
+
+        default:
+            Unreachable("Invalid heap type");
+        }
+    }
+
+    void GpuCommandList::Upload(GpuBuffer& dest, const void* src_data, uint32_t src_size)
+    {
+        const uint32_t size = std::min(dest.Size(), src_size);
+        this->Upload(dest, [src_data, size](void* dst_data) { std::memcpy(dst_data, src_data, size); });
+    }
+
+    void GpuCommandList::Upload(
+        GpuTexture& dest, uint32_t sub_resource, const std::function<void(void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+    {
+        uint32_t mip;
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, dest.MipLevels(), dest.ArraySize(), mip, array_slice, plane_slice);
+        const uint32_t width = dest.Width(mip);
+        const uint32_t height = dest.Height(mip);
+        const uint32_t depth = dest.Depth(mip);
+
+        auto* d3d12_device = gpu_system_->NativeDevice();
+
+        const auto desc = dest.NativeResource()->GetDesc();
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
+        uint64_t required_size = 0;
+        d3d12_device->GetCopyableFootprints(&desc, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
+        assert(layout.Footprint.RowPitch >= width * FormatSize(dest.Format()));
+
+        auto upload_mem_block =
+            gpu_system_->AllocUploadMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
+
+        void* tex_data = upload_mem_block.CpuSpan<std::byte>().data();
+        copy_func(tex_data, layout.Footprint.RowPitch, layout.Footprint.RowPitch * layout.Footprint.Height);
+
+        layout.Offset += upload_mem_block.Offset();
+        D3D12_TEXTURE_COPY_LOCATION src_loc;
+        src_loc.pResource = upload_mem_block.NativeBuffer();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src_loc.PlacedFootprint = layout;
+
+        D3D12_TEXTURE_COPY_LOCATION dst_loc;
+        dst_loc.pResource = dest.NativeTexture();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst_loc.SubresourceIndex = sub_resource;
+
+        D3D12_BOX src_box;
+        src_box.left = 0;
+        src_box.top = 0;
+        src_box.front = 0;
+        src_box.right = width;
+        src_box.bottom = height;
+        src_box.back = depth;
+
+        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        dest.Transition(*this, GpuResourceState::CopyDst);
+
+        d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
+
+        gpu_system_->DeallocUploadMemBlock(std::move(upload_mem_block));
+    }
+
+    void GpuCommandList::Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size)
+    {
+        uint32_t mip;
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, dest.MipLevels(), dest.ArraySize(), mip, array_slice, plane_slice);
+        const uint32_t width = dest.Width(mip);
+        const uint32_t height = dest.Height(mip);
+        const uint32_t depth = dest.Depth(mip);
+        const uint32_t src_row_pitch = width * FormatSize(dest.Format());
+
+        this->Upload(dest, sub_resource,
+            [height, depth, src_data, src_size, src_row_pitch](void* dst_data, uint32_t row_pitch, uint32_t slice_pitch) {
+                uint32_t size = src_size;
+                for (uint32_t z = 0; z < depth; ++z)
+                {
+                    for (uint32_t y = 0; y < height; ++y)
+                    {
+                        std::memcpy(&reinterpret_cast<std::byte*>(dst_data)[z * slice_pitch + y * row_pitch],
+                            &reinterpret_cast<const std::byte*>(src_data)[(z * height + y) * src_row_pitch], std::min(src_row_pitch, size));
+                        size -= src_row_pitch;
+                    }
+                }
+            });
+    }
+
+    std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void*)>& copy_func)
+    {
+        D3D12_HEAP_PROPERTIES heap_prop;
+        src.NativeBuffer()->GetHeapProperties(&heap_prop, nullptr);
+
+        switch (heap_prop.Type)
+        {
+        case D3D12_HEAP_TYPE_UPLOAD:
+        case D3D12_HEAP_TYPE_READBACK:
+            copy_func(src.Map());
+            src.Unmap();
+            return {};
+
+        case D3D12_HEAP_TYPE_DEFAULT:
+        {
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+            auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), GpuMemoryAllocator::StructuredDataAlignment);
+
+            src.Transition(*this, GpuResourceState::CopySrc);
+
+            d3d12_cmd_list->CopyBufferRegion(
+                read_back_mem_block.NativeBuffer(), read_back_mem_block.Offset(), src.NativeBuffer(), 0, src.Size());
+            const uint64_t fence_val = gpu_system_->ExecuteAndReset(*this);
+
+            return std::async(
+                std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
+                    gpu_system_->CpuWait(fence_val);
+
+                    const void* buff_data = read_back_mem_block.CpuSpan<std::byte>().data();
+                    copy_func(buff_data);
+
+                    gpu_system_->DeallocReadBackMemBlock(std::move(read_back_mem_block));
+                });
+        }
+
+        default:
+            Unreachable("Invalid heap type");
+        }
+    }
+
+    std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size)
+    {
+        const uint32_t size = std::min(src.Size(), dst_size);
+        return this->ReadBackAsync(src, [dst_data, size](const void* src_data) { std::memcpy(dst_data, src_data, size); });
+    }
+
+    std::future<void> GpuCommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
+        const std::function<void(const void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+    {
+        uint32_t mip;
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, src.MipLevels(), src.ArraySize(), mip, array_slice, plane_slice);
+        const uint32_t width = src.Width(mip);
+        const uint32_t height = src.Height(mip);
+        const uint32_t depth = src.Depth(mip);
+
+        auto* d3d12_device = gpu_system_->NativeDevice();
+
+        const auto desc = src.NativeResource()->GetDesc();
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
+        uint64_t required_size = 0;
+        d3d12_device->GetCopyableFootprints(&desc, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
+        assert(layout.Footprint.RowPitch >= width * FormatSize(src.Format()));
+
+        auto read_back_mem_block =
+            gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
+
+        D3D12_TEXTURE_COPY_LOCATION src_loc;
+        src_loc.pResource = src.NativeResource();
+        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        src_loc.SubresourceIndex = sub_resource;
+
+        layout.Offset = read_back_mem_block.Offset();
+        D3D12_TEXTURE_COPY_LOCATION dst_loc;
+        dst_loc.pResource = read_back_mem_block.NativeBuffer();
+        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        dst_loc.PlacedFootprint = layout;
+
+        D3D12_BOX src_box;
+        src_box.left = 0;
+        src_box.top = 0;
+        src_box.front = 0;
+        src_box.right = width;
+        src_box.bottom = height;
+        src_box.back = depth;
+
+        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
+        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+
+        src.Transition(*this, GpuResourceState::CopySrc);
+
+        d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
+        const uint64_t fence_val = gpu_system_->ExecuteAndReset(*this);
+
+        return std::async(std::launch::deferred,
+            [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch = layout.Footprint.RowPitch,
+                slice_pitch = layout.Footprint.RowPitch * layout.Footprint.Height, copy_func]() mutable {
+                gpu_system_->CpuWait(fence_val);
+
+                const void* tex_data = read_back_mem_block.CpuSpan<std::byte>().data();
+                copy_func(tex_data, row_pitch, slice_pitch);
+
+                gpu_system_->DeallocReadBackMemBlock(std::move(read_back_mem_block));
+            });
+    }
+
+    std::future<void> GpuCommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size)
+    {
+        uint32_t mip;
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, src.MipLevels(), src.ArraySize(), mip, array_slice, plane_slice);
+        const uint32_t width = src.Width(mip);
+        const uint32_t height = src.Height(mip);
+        const uint32_t depth = src.Depth(mip);
+        const uint32_t dst_row_pitch = width * FormatSize(src.Format());
+
+        return this->ReadBackAsync(src, sub_resource,
+            [height, depth, dst_data, dst_size, dst_row_pitch](const void* src_data, uint32_t row_pitch, uint32_t slice_pitch) {
+                uint32_t size = dst_size;
+                for (uint32_t z = 0; z < depth; ++z)
+                {
+                    for (uint32_t y = 0; y < height; ++y)
+                    {
+                        std::memcpy(&reinterpret_cast<std::byte*>(dst_data)[(z * height + y) * dst_row_pitch],
+                            &reinterpret_cast<const std::byte*>(src_data)[z * slice_pitch + y * row_pitch], std::min(dst_row_pitch, size));
+                        size -= dst_row_pitch;
+                    }
+                }
+            });
+    }
+
     void GpuCommandList::Close()
     {
         switch (type_)

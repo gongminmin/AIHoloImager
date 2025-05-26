@@ -288,21 +288,19 @@ namespace AIHoloImager
 
         // TODO: Port it to GPU
 
-        GpuReadBackBuffer indices_cpu(gpu_system_, indices.Size());
-        cmd_list.Copy(indices_cpu, indices);
-        gpu_system_.ExecuteAndReset(cmd_list);
-        gpu_system_.CpuWait();
+        auto indices_data = std::make_unique<uint32_t[]>(num_faces * 3);
+        const auto rb_future = cmd_list.ReadBackAsync(indices, indices_data.get(), indices.Size());
+        rb_future.wait();
 
         const auto gen_key = [](uint32_t v0, uint32_t v1) -> std::tuple<uint32_t, uint32_t> { return std::minmax(v0, v1); };
 
         std::map<std::tuple<uint32_t, uint32_t>, std::array<uint32_t, 2>> edges;
-        const uint32_t* indices_ptr = indices_cpu.MappedData<uint32_t>();
         for (uint32_t i = 0; i < num_faces; ++i)
         {
             for (uint32_t j = 0; j < 3; ++j)
             {
-                const auto key = gen_key(indices_ptr[i * 3 + ((j + 1) % 3)], indices_ptr[i * 3 + ((j + 2) % 3)]);
-                const auto this_vertex = indices_ptr[i * 3 + j];
+                const auto key = gen_key(indices_data[i * 3 + ((j + 1) % 3)], indices_data[i * 3 + ((j + 2) % 3)]);
+                const auto this_vertex = indices_data[i * 3 + j];
                 auto iter = edges.find(key);
                 if (iter != edges.end())
                 {
@@ -315,36 +313,35 @@ namespace AIHoloImager
             }
         }
 
-        GpuUploadBuffer opposite_vertices_upload_buff(
-            gpu_system_, indices.Size(), L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices_upload_buff");
-        uint32_t* opposite_vertices_ptr = opposite_vertices_upload_buff.MappedData<uint32_t>();
-        for (uint32_t i = 0; i < num_faces; ++i)
-        {
-            for (uint32_t j = 0; j < 3; ++j)
-            {
-                const auto key = gen_key(indices_ptr[i * 3 + ((j + 1) % 3)], indices_ptr[i * 3 + ((j + 2) % 3)]);
-                const auto this_vertex = indices_ptr[i * 3 + j];
-                const auto iter = edges.find(key);
-                assert(iter != edges.end());
-                if (iter->second[0] == this_vertex)
-                {
-                    opposite_vertices_ptr[i * 3 + j] = iter->second[1];
-                }
-                else
-                {
-                    assert(iter->second[1] == this_vertex);
-                    opposite_vertices_ptr[i * 3 + j] = iter->second[0];
-                }
-            }
-        }
-
         if (opposite_vertices.Size() != indices.Size())
         {
             opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::None);
         }
         opposite_vertices.Name(L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices");
 
-        cmd_list.Copy(opposite_vertices, opposite_vertices_upload_buff);
+        cmd_list.Upload(opposite_vertices, [num_faces, &indices_data, &gen_key, &edges](void* dst_data) {
+            uint32_t* opposite_vertices_ptr = reinterpret_cast<uint32_t*>(dst_data);
+
+            for (uint32_t i = 0; i < num_faces; ++i)
+            {
+                for (uint32_t j = 0; j < 3; ++j)
+                {
+                    const auto key = gen_key(indices_data[i * 3 + ((j + 1) % 3)], indices_data[i * 3 + ((j + 2) % 3)]);
+                    const auto this_vertex = indices_data[i * 3 + j];
+                    const auto iter = edges.find(key);
+                    assert(iter != edges.end());
+                    if (iter->second[0] == this_vertex)
+                    {
+                        opposite_vertices_ptr[i * 3 + j] = iter->second[1];
+                    }
+                    else
+                    {
+                        assert(iter->second[1] == this_vertex);
+                        opposite_vertices_ptr[i * 3 + j] = iter->second[0];
+                    }
+                }
+            }
+        });
     }
 
     void GpuDiffRender::AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,

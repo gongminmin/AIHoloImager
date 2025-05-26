@@ -385,13 +385,13 @@ namespace AIHoloImager
                 cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
 
-            GpuReadBackBuffer counter_cpu_buff(gpu_system_, sizeof(glm::uvec2), L"counter_cpu_buff");
-            cmd_list.Copy(counter_cpu_buff, 0, counter_buff, 0, sizeof(uint32_t));
+            glm::uvec3 counter(0, 0, 0);
+            auto rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.CpuWait();
 
-            const uint32_t num_non_empty_cubes = *counter_cpu_buff.MappedData<uint32_t>();
+            rb_future.wait();
+            const uint32_t num_non_empty_cubes = counter.x;
             if (num_non_empty_cubes == 0)
             {
                 return Mesh();
@@ -425,15 +425,13 @@ namespace AIHoloImager
                 cmd_list.Compute(process_non_empty_cubes_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
 
-            cmd_list.Copy(counter_cpu_buff, 0, counter_buff, sizeof(uint32_t), sizeof(glm::uvec2));
+            rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.CpuWait();
 
-            const auto& counter = *counter_cpu_buff.MappedData<glm::uvec2>();
-            const uint32_t num_vertices = counter.x;
-            const uint32_t num_indices = counter.y;
-            counter_cpu_buff.Reset();
+            rb_future.wait();
+            const uint32_t num_vertices = counter.y;
+            const uint32_t num_indices = counter.z;
 
             const VertexAttrib pos_only_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},
@@ -442,8 +440,8 @@ namespace AIHoloImager
 
             cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuReadBackBuffer mesh_vertices_cpu_buff(gpu_system_, num_vertices * sizeof(glm::vec3), L"mesh_vertices_cpu_buff");
-            GpuReadBackBuffer mesh_indices_cpu_buff(gpu_system_, num_indices * sizeof(uint32_t), L"mesh_indices_cpu_buff");
+            std::future<void> vertex_rb_future;
+            std::future<void> index_rb_future;
             {
                 gen_vertices_indices_cb_->size = size;
                 gen_vertices_indices_cb_->num_non_empty_cubes = num_non_empty_cubes;
@@ -455,10 +453,10 @@ namespace AIHoloImager
                 GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
                 GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
-                GpuBuffer mesh_vertices_buff(
-                    gpu_system_, mesh_vertices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_vertices_buff");
+                GpuBuffer mesh_vertices_buff(gpu_system_, num_vertices * sizeof(glm::vec3), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, L"mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(
-                    gpu_system_, mesh_indices_cpu_buff.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_indices_buff");
+                    gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"mesh_indices_buff");
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, GpuFormat::R32_Uint);
 
@@ -471,16 +469,15 @@ namespace AIHoloImager
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(gen_vertices_indices_pipeline_, DivUp(num_non_empty_cubes, BlockDim), 1, 1, shader_binding);
 
-                cmd_list.Copy(mesh_vertices_cpu_buff, mesh_vertices_buff);
-                cmd_list.Copy(mesh_indices_cpu_buff, mesh_indices_buff);
+                vertex_rb_future = cmd_list.ReadBackAsync(mesh_vertices_buff, mesh.VertexBuffer().data(), mesh.VertexBuffer().size_bytes());
+                index_rb_future = cmd_list.ReadBackAsync(mesh_indices_buff, mesh.IndexBuffer().data(), mesh.IndexBuffer().size_bytes());
             }
             vertex_index_offsets_buff.Reset();
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.CpuWait();
 
-            std::memcpy(mesh.VertexBuffer().data(), mesh_vertices_cpu_buff.MappedData(), mesh_vertices_cpu_buff.Size());
-            std::memcpy(mesh.IndexBuffer().data(), mesh_indices_cpu_buff.MappedData(), mesh_indices_cpu_buff.Size());
+            vertex_rb_future.wait();
+            index_rb_future.wait();
 
             return mesh;
         }

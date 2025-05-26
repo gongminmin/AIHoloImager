@@ -96,7 +96,6 @@ namespace AIHoloImager
             filtered_counter_buff_ =
                 GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_counter_buff_");
             filtered_counter_uav_ = GpuUnorderedAccessView(gpu_system_, filtered_counter_buff_, GpuFormat::R32_Uint);
-            filtered_counter_read_back_buff_ = GpuReadBackBuffer(gpu_system_, sizeof(uint32_t), L"filtered_counter_read_back_buff");
 
             {
                 const ShaderInfo shaders[] = {
@@ -202,17 +201,20 @@ namespace AIHoloImager
                 gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_index_buff");
             FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
 
-            GpuReadBackBuffer filtered_index_read_back_buff(gpu_system_, num_indices * sizeof(uint32_t), L"filtered_index_read_back_buff");
-            cmd_list.Copy(filtered_index_read_back_buff, filtered_index_buff);
-            cmd_list.Copy(filtered_counter_read_back_buff_, filtered_counter_buff_);
+            auto filtered_indices = std::make_unique<uint32_t[]>(num_indices);
+            const auto index_rb_future =
+                cmd_list.ReadBackAsync(filtered_index_buff, filtered_indices.get(), num_indices * sizeof(uint32_t));
+
+            uint32_t filtered_count = 0;
+            const auto count_rb_future = cmd_list.ReadBackAsync(filtered_counter_buff_, &filtered_count, sizeof(filtered_count));
 
             gpu_system_.Execute(std::move(cmd_list));
-            gpu_system_.CpuWait();
 
-            const uint32_t filtered_count = *filtered_counter_read_back_buff_.MappedData<uint32_t>();
-            const uint32_t* filtered_indices_ptr = filtered_index_read_back_buff.MappedData<uint32_t>();
-            std::span<const uint32_t> filtered_indices(filtered_indices_ptr, filtered_indices_ptr + filtered_count * 3);
-            return mesh.ExtractMesh(vertex_desc, filtered_indices);
+            index_rb_future.wait();
+            count_rb_future.wait();
+
+            const uint32_t* filtered_indices_ptr = filtered_indices.get();
+            return mesh.ExtractMesh(vertex_desc, {filtered_indices_ptr, filtered_indices_ptr + filtered_count * 3});
         }
 
     private:
@@ -323,7 +325,6 @@ namespace AIHoloImager
 
         GpuBuffer filtered_counter_buff_;
         GpuUnorderedAccessView filtered_counter_uav_;
-        GpuReadBackBuffer filtered_counter_read_back_buff_;
 
         glm::mat4x4 proj_mtx_;
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <future>
 #include <span>
 
 #include "Base/Noncopyable.hpp"
@@ -107,6 +108,17 @@ namespace AIHoloImager
         void Copy(GpuTexture& dest, const GpuTexture& src);
         void Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z, const GpuTexture& src,
             uint32_t src_sub_resource, const GpuBox& src_box);
+
+        void Upload(GpuBuffer& dest, const std::function<void(void*)>& copy_func);
+        void Upload(GpuBuffer& dest, const void* src_data, uint32_t src_size);
+        void Upload(
+            GpuTexture& dest, uint32_t sub_resource, const std::function<void(void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
+        void Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size);
+        [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, const std::function<void(const void*)>& copy_func);
+        [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size);
+        [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
+            const std::function<void(const void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
+        [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size);
 
         void Close();
         void Reset(GpuCommandAllocatorInfo& cmd_alloc_info);

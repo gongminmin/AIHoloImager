@@ -407,16 +407,7 @@ namespace AIHoloImager
         else
         {
             tensor = tensor.cpu();
-            if (heap == GpuHeap::Default)
-            {
-                const GpuUploadBuffer upload_buff(gpu_system_, tensor.const_data_ptr(), size);
-                cmd_list.Copy(buff, upload_buff);
-            }
-            else
-            {
-                std::memcpy(buff.Map(), tensor.const_data_ptr(), buff.Size());
-                buff.Unmap();
-            }
+            cmd_list.Upload(buff, tensor.const_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
         }
     }
 
@@ -479,7 +470,7 @@ namespace AIHoloImager
         else
         {
             tensor = tensor.cpu();
-            tex.Upload(gpu_system_, cmd_list, 0, tensor.const_data_ptr());
+            cmd_list.Upload(tex, 0, tensor.const_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
         }
     }
 
@@ -517,15 +508,10 @@ namespace AIHoloImager
         }
         else
         {
-            GpuReadBackBuffer read_back_buff(gpu_system_, buff.Size());
-            cmd_list.Copy(read_back_buff, buff);
-
-            gpu_system_.ExecuteAndReset(cmd_list);
-            gpu_system_.CpuWait();
-
             opts = opts.device(torch::kCPU);
             tensor = torch::empty(size, opts);
-            std::memcpy(tensor.mutable_data_ptr(), read_back_buff.MappedData(), buff.Size());
+            const auto rb_future = cmd_list.ReadBackAsync(buff, tensor.mutable_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+            rb_future.wait();
             if (torch_device_.type() != torch::DeviceType::CPU)
             {
                 tensor = tensor.to(torch_device_);
@@ -604,7 +590,8 @@ namespace AIHoloImager
         {
             opts = opts.device(torch::kCPU);
             tensor = torch::empty({1, height, width, num_channels}, opts);
-            tex.ReadBack(gpu_system_, cmd_list, 0, tensor.mutable_data_ptr());
+            const auto rb_future = cmd_list.ReadBackAsync(tex, 0, tensor.mutable_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+            rb_future.wait();
             if (torch_device_.type() != torch::DeviceType::CPU)
             {
                 tensor = tensor.to(torch_device_);

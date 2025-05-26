@@ -120,16 +120,18 @@ namespace AIHoloImager
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 Texture pos_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA32_Float);
-                flatten_pos_tex.ReadBack(gpu_system_, cmd_list, 0, pos_tex.Data());
+                const auto pos_rb_future = cmd_list.ReadBackAsync(flatten_pos_tex, 0, pos_tex.Data(), pos_tex.DataSize());
 
                 Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                flatten_normal_tex.ReadBack(gpu_system_, cmd_list, 0, normal_tex.Data());
+                const auto normal_rb_future = cmd_list.ReadBackAsync(flatten_normal_tex, 0, normal_tex.Data(), normal_tex.DataSize());
 
                 gpu_system_.Execute(std::move(cmd_list));
 
+                pos_rb_future.wait();
                 pos_tex.ConvertInPlace(ElementFormat::RGB32_Float);
                 SaveTexture(pos_tex, output_dir / "FlattenPos.pfm");
 
+                normal_rb_future.wait();
                 SaveTexture(normal_tex, output_dir / "FlattenNormal.png");
             }
 #endif
@@ -144,9 +146,10 @@ namespace AIHoloImager
 
                 auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                result.color_tex.ReadBack(gpu_system_, cmd_list, 0, projective_tex.Data());
+                const auto rb_future = cmd_list.ReadBackAsync(result.color_tex, 0, projective_tex.Data(), projective_tex.DataSize());
                 gpu_system_.Execute(std::move(cmd_list));
 
+                rb_future.wait();
                 SaveTexture(projective_tex, output_dir / "Projective.png");
             }
 #endif
@@ -254,7 +257,7 @@ namespace AIHoloImager
                         GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"photo_tex");
                     photo_srv = GpuShaderResourceView(gpu_system_, photo_tex);
                 }
-                photo_tex.Upload(gpu_system_, cmd_list, 0, view.delighted_image.Data());
+                cmd_list.Upload(photo_tex, 0, view.delighted_image.Data(), view.delighted_image.DataSize());
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
@@ -281,7 +284,8 @@ namespace AIHoloImager
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
                     Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                    accum_color_tex.ReadBack(gpu_system_, cmd_list, 0, color_tex.Data());
+                    const auto rb_future = cmd_list.ReadBackAsync(accum_color_tex, 0, color_tex.Data(), color_tex.DataSize());
+                    rb_future.wait();
                     SaveTexture(color_tex, tmp_dir / "Texture" / std::format("Projective_{}.png", i));
                 }
 #endif

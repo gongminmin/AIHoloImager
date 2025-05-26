@@ -598,17 +598,19 @@ namespace AIHoloImager
 
                         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        distort_gpu_tex.Upload(gpu_system, cmd_list, 0, result_view.image_mask.Data());
+                        cmd_list.Upload(distort_gpu_tex, 0, result_view.image_mask.Data(), result_view.image_mask.DataSize());
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
                         mask_gen_.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
 
-                        undistort_gpu_tex.ReadBack(gpu_system, cmd_list, 0, result_view.image_mask.Data());
+                        const auto rb_future =
+                            cmd_list.ReadBackAsync(undistort_gpu_tex, 0, result_view.image_mask.Data(), result_view.image_mask.DataSize());
 
                         gpu_system.Execute(std::move(cmd_list));
-                        gpu_system.CpuWait();
+
+                        rb_future.wait();
 
                         result_view.delighted_image =
                             delighter_.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);

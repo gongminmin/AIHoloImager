@@ -158,7 +158,7 @@ namespace AIHoloImager
 
                 {
                     const uint32_t bb_init[] = {width, height, 0, 0};
-                    bbox_gpu_tex_.Upload(gpu_system, cmd_list, 0, bb_init);
+                    cmd_list.Upload(bbox_gpu_tex_, 0, bb_init, sizeof(bb_init));
 
                     constexpr uint32_t BlockDim = 16;
 
@@ -172,7 +172,8 @@ namespace AIHoloImager
                 }
 
                 // TODO: Use indirect dispatch to avoid the read back
-                bbox_gpu_tex_.ReadBack(gpu_system, cmd_list, 0, &roi);
+                const auto rb_future = cmd_list.ReadBackAsync(bbox_gpu_tex_, 0, &roi, sizeof(roi));
+                rb_future.wait();
 
                 const glm::uvec2 bb_min(roi.x, roi.y);
                 const glm::uvec2 bb_max(roi.z, roi.w);
@@ -197,7 +198,7 @@ namespace AIHoloImager
             const uint32_t roi_height = roi.w - roi.y;
 
             constexpr uint32_t InitMinMax[2] = {~0U, 0U};
-            pred_min_max_gpu_tex_.Upload(gpu_system, cmd_list, 0, InitMinMax);
+            cmd_list.Upload(pred_min_max_gpu_tex_, 0, InitMinMax, sizeof(InitMinMax));
 
             {
                 GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
@@ -273,9 +274,11 @@ namespace AIHoloImager
 
             const uint32_t normalized_data_size = U2NetInputDim * U2NetInputDim * U2NetInputChannels;
             auto normalized_image = std::make_unique<float[]>(normalized_data_size);
-            normalized_gpu_tex_.ReadBack(gpu_system, cmd_list, 0, normalized_image.get());
+            const auto rb_future =
+                cmd_list.ReadBackAsync(normalized_gpu_tex_, 0, normalized_image.get(), normalized_data_size * sizeof(float));
 
             py_init_future_.wait();
+            rb_future.wait();
 
             {
                 PythonSystem::GilGuard guard;
@@ -295,7 +298,7 @@ namespace AIHoloImager
                 auto py_pred = python_system.CallObject(*mask_generator_gen_method_, *args);
                 auto pred_span = python_system.ToBytes(*py_pred);
                 assert(pred_span.size() == U2NetInputDim * U2NetInputDim * sizeof(float));
-                pred_gpu_tex_.Upload(gpu_system, cmd_list, 0, pred_span.data());
+                cmd_list.Upload(pred_gpu_tex_, 0, pred_span.data(), pred_span.size());
             }
 
             {

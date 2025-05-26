@@ -326,8 +326,10 @@ namespace AIHoloImager
 
                 GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
 
-                dilated_gpu_tex->ReadBack(gpu_system, cmd_list, 0, merged_tex.Data());
+                const auto rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
                 gpu_system.Execute(std::move(cmd_list));
+
+                rb_future.wait();
             }
 
             mesh.AlbedoTexture() = std::move(merged_tex);
@@ -490,7 +492,7 @@ namespace AIHoloImager
                     const uint32_t delighted_height = view.delighted_image.Height();
                     GpuTexture2D delighted_tex(gpu_system, delighted_width, delighted_height, 1, ToGpuFormat(view.delighted_image.Format()),
                         GpuResourceFlag::None, L"delighted_tex");
-                    delighted_tex.Upload(gpu_system, cmd_list, 0, view.delighted_image.Data());
+                    cmd_list.Upload(delighted_tex, 0, view.delighted_image.Data(), view.delighted_image.DataSize());
                     GpuShaderResourceView delighted_srv(gpu_system, delighted_tex);
 
                     ConstantBuffer<RotateConstantBuffer> rotation_cb(gpu_system, L"rotation_cb");
@@ -589,8 +591,10 @@ namespace AIHoloImager
                 auto& resized_rotated_roi_cpu_tex = rotated_images[i];
                 resized_rotated_roi_cpu_tex = Texture(
                     resized_rotated_roi_tex.Width(0), resized_rotated_roi_tex.Height(0), ToElementFormat(resized_rotated_roi_tex.Format()));
-                resized_rotated_roi_tex.ReadBack(gpu_system, cmd_list, 0, resized_rotated_roi_cpu_tex.Data());
+                auto rb_future = cmd_list.ReadBackAsync(
+                    resized_rotated_roi_tex, 0, resized_rotated_roi_cpu_tex.Data(), resized_rotated_roi_cpu_tex.DataSize());
                 gpu_system.Execute(std::move(cmd_list));
+                rb_future.wait();
             }
 
             return rotated_images;
@@ -644,11 +648,7 @@ namespace AIHoloImager
 
                 GpuBuffer coords_buff(gpu_system, static_cast<uint32_t>(coords.size() * sizeof(glm::uvec3)), GpuHeap::Default,
                     GpuResourceFlag::None, L"coords_buff");
-                {
-                    GpuUploadBuffer coords_upload_buff(gpu_system, coords_buff.Size(), L"coords_upload_buff");
-                    std::memcpy(coords_upload_buff.MappedData<glm::uvec3>(), coords.data(), coords_buff.Size());
-                    cmd_list.Copy(coords_buff, coords_upload_buff);
-                }
+                cmd_list.Upload(coords_buff, coords.data(), coords_buff.Size());
                 GpuShaderResourceView coords_srv(gpu_system, coords_buff, GpuFormat::RGB32_Uint);
 
                 index_vol_tex = GpuTexture3D(
@@ -683,29 +683,15 @@ namespace AIHoloImager
 
                 density_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(density_features.size() * sizeof(uint16_t)),
                     GpuHeap::Default, GpuResourceFlag::None, L"density_features_buff");
-                {
-                    GpuUploadBuffer density_features_upload_buff(gpu_system, density_features_buff.Size(), L"density_features_upload_buff");
-                    std::memcpy(density_features_upload_buff.MappedData<uint16_t>(), density_features.data(), density_features_buff.Size());
-                    cmd_list.Copy(density_features_buff, density_features_upload_buff);
-                }
+                cmd_list.Upload(density_features_buff, density_features.data(), density_features_buff.Size());
 
                 deformation_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(deformation_features.size() * sizeof(glm::u16vec3)),
                     GpuHeap::Default, GpuResourceFlag::None, L"deformation_features_buff");
-                {
-                    GpuUploadBuffer deformation_features_upload_buff(
-                        gpu_system, deformation_features_buff.Size(), L"deformation_features_upload_buff");
-                    std::memcpy(deformation_features_upload_buff.MappedData<glm::u16vec3>(), deformation_features.data(),
-                        deformation_features_buff.Size());
-                    cmd_list.Copy(deformation_features_buff, deformation_features_upload_buff);
-                }
+                cmd_list.Upload(deformation_features_buff, deformation_features.data(), deformation_features_buff.Size());
 
                 color_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(color_features.size() * sizeof(glm::u16vec3)),
                     GpuHeap::Default, GpuResourceFlag::None, L"color_features_buff");
-                {
-                    GpuUploadBuffer color_features_upload_buff(gpu_system, color_features_buff.Size(), L"color_features_upload_buff");
-                    std::memcpy(color_features_upload_buff.MappedData<glm::u16vec3>(), color_features.data(), color_features_buff.Size());
-                    cmd_list.Copy(color_features_buff, color_features_upload_buff);
-                }
+                cmd_list.Upload(color_features_buff, color_features.data(), color_features_buff.Size());
             }
 
             GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);
@@ -1023,13 +1009,6 @@ namespace AIHoloImager
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(apply_vertex_color_pipeline_, DivUp(num_vertices, BlockDim), 1, 1, shader_binding);
 
-            GpuReadBackBuffer color_read_back_vb(
-                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), L"color_read_back_vb");
-            cmd_list.Copy(color_read_back_vb, color_vb);
-
-            gpu_system.Execute(std::move(cmd_list));
-            gpu_system.CpuWait();
-
             const VertexAttrib pos_color_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},
                 {VertexAttrib::Semantic::Color, 0, 3},
@@ -1038,12 +1017,19 @@ namespace AIHoloImager
             constexpr uint32_t OutputColorAttribIndex = 1;
 
             Mesh pos_color_mesh(VertexDesc(pos_color_vertex_attribs), mesh.NumVertices(), static_cast<uint32_t>(mesh.IndexBuffer().size()));
-            const auto* colors = color_read_back_vb.MappedData<glm::vec3>();
-            for (uint32_t i = 0; i < num_vertices; ++i)
-            {
-                pos_color_mesh.VertexData<glm::vec3>(i, OutputPosAttribIndex) = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                pos_color_mesh.VertexData<glm::vec3>(i, OutputColorAttribIndex) = colors[i];
-            }
+
+            const auto rb_future =
+                cmd_list.ReadBackAsync(color_vb, [num_vertices, pos_attrib_index, &mesh, &pos_color_mesh](const void* src_data) {
+                    const auto* colors = reinterpret_cast<const glm::vec3*>(src_data);
+                    for (uint32_t i = 0; i < num_vertices; ++i)
+                    {
+                        pos_color_mesh.VertexData<glm::vec3>(i, OutputPosAttribIndex) = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                        pos_color_mesh.VertexData<glm::vec3>(i, OutputColorAttribIndex) = colors[i];
+                    }
+                });
+
+            gpu_system.Execute(std::move(cmd_list));
+            rb_future.wait();
 
             pos_color_mesh.IndexBuffer(mesh.IndexBuffer());
 
