@@ -146,7 +146,7 @@ namespace AIHoloImager
             }
 
             roi = glm::uvec4(0, 0, width, height);
-            this->GenMask(cmd_list, image_gpu_tex, roi, !crop);
+            this->GenMask(cmd_list, image_gpu_tex, roi, !crop, !crop);
             if (crop)
             {
                 auto calc_bbox_cb = GpuConstantBufferOfType<StatPredConstantBuffer>(gpu_system, L"calc_bbox_cb");
@@ -182,12 +182,12 @@ namespace AIHoloImager
                 const glm::uvec4 square_roi = glm::clamp(glm::ivec4(crop_center - crop_extent, crop_center + crop_extent + 1U),
                     glm::ivec4(0, 0, 0, 0), glm::ivec4(width, height, width, height));
 
-                this->GenMask(cmd_list, image_gpu_tex, square_roi, true);
+                this->GenMask(cmd_list, image_gpu_tex, square_roi, true, true);
             }
         }
 
     private:
-        void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, const glm::uvec4& roi, bool blur)
+        void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, const glm::uvec4& roi, bool blur, bool large_model)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
             auto& python_system = aihi_.PythonSystemInstance();
@@ -283,7 +283,7 @@ namespace AIHoloImager
             {
                 PythonSystem::GilGuard guard;
 
-                auto args = python_system.MakeTuple(4);
+                auto args = python_system.MakeTuple(5);
                 {
                     auto py_image =
                         python_system.MakeObject(std::span<const std::byte>(reinterpret_cast<const std::byte*>(normalized_image.get()),
@@ -293,6 +293,7 @@ namespace AIHoloImager
                     python_system.SetTupleItem(*args, 1, python_system.MakeObject(U2NetInputDim));
                     python_system.SetTupleItem(*args, 2, python_system.MakeObject(U2NetInputDim));
                     python_system.SetTupleItem(*args, 3, python_system.MakeObject(U2NetInputChannels));
+                    python_system.SetTupleItem(*args, 4, python_system.MakeObject(large_model));
                 }
 
                 auto py_pred = python_system.CallObject(*mask_generator_gen_method_, *args);

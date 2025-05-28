@@ -392,3 +392,95 @@ class U2Net(nn.Module):
         d0 = self.outconv(torch.cat((d1, d2, d3, d4, d5, d6), 1))
 
         return functional.sigmoid(d0)
+
+class U2NetSmall(nn.Module):
+    def __init__(self, in_ch = 3,out_ch = 1, device : Optional[torch.device] = None):
+        super(U2NetSmall, self).__init__()
+
+        self.stage1 = Rsu7(in_ch, 16, 64, device = device)
+        self.pool12 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
+
+        self.stage2 = Rsu6(64, 16, 64, device = device)
+        self.pool23 = nn.MaxPool2d(2, stride = 2,ceil_mode = True)
+
+        self.stage3 = Rsu5(64, 16, 64, device = device)
+        self.pool34 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
+
+        self.stage4 = Rsu4(64, 16, 64, device = device)
+        self.pool45 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
+
+        self.stage5 = Rsu4F(64, 16, 64, device = device)
+        self.pool56 = nn.MaxPool2d(2, stride = 2, ceil_mode = True)
+
+        self.stage6 = Rsu4F(64, 16, 64, device = device)
+
+        self.stage5d = Rsu4F(128, 16, 64)
+        self.stage4d = Rsu4(128, 16, 64)
+        self.stage3d = Rsu5(128, 16, 64)
+        self.stage2d = Rsu6(128, 16, 64)
+        self.stage1d = Rsu7(128, 16, 64)
+
+        self.side1 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side2 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side3 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side4 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side5 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+        self.side6 = nn.Conv2d(64, out_ch, 3, padding = 1, device = device)
+
+        self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1, device = device)
+
+    def forward(self, x):
+        hx = x
+
+        hx1 = self.stage1(hx)
+        hx = self.pool12(hx1)
+
+        hx2 = self.stage2(hx)
+        hx = self.pool23(hx2)
+
+        hx3 = self.stage3(hx)
+        hx = self.pool34(hx3)
+
+        hx4 = self.stage4(hx)
+        hx = self.pool45(hx4)
+
+        hx5 = self.stage5(hx)
+        hx = self.pool56(hx5)
+
+        hx6 = self.stage6(hx)
+        hx6up = UpsampleLike(hx6, hx5)
+
+        hx5d = self.stage5d(torch.cat((hx6up, hx5), 1))
+        hx5dup = UpsampleLike(hx5d, hx4)
+
+        hx4d = self.stage4d(torch.cat((hx5dup, hx4), 1))
+        hx4dup = UpsampleLike(hx4d, hx3)
+
+        hx3d = self.stage3d(torch.cat((hx4dup, hx3), 1))
+        hx3dup = UpsampleLike(hx3d, hx2)
+
+        hx2d = self.stage2d(torch.cat((hx3dup, hx2), 1))
+        hx2dup = UpsampleLike(hx2d, hx1)
+
+        hx1d = self.stage1d(torch.cat((hx2dup, hx1), 1))
+
+        d1 = self.side1(hx1d)
+
+        d2 = self.side2(hx2d)
+        d2 = UpsampleLike(d2, d1)
+
+        d3 = self.side3(hx3d)
+        d3 = UpsampleLike(d3, d1)
+
+        d4 = self.side4(hx4d)
+        d4 = UpsampleLike(d4, d1)
+
+        d5 = self.side5(hx5d)
+        d5 = UpsampleLike(d5, d1)
+
+        d6 = self.side6(hx6)
+        d6 = UpsampleLike(d6, d1)
+
+        d0 = self.outconv(torch.cat((d1, d2, d3, d4, d5, d6), 1))
+
+        return functional.sigmoid(d0)
