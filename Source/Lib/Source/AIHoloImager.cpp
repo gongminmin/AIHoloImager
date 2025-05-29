@@ -33,8 +33,20 @@ namespace AIHoloImager
     {
     public:
         Impl(bool enable_cuda, const std::filesystem::path& tmp_dir)
-            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(nullptr, true), python_system_(enable_cuda, exe_dir_)
+            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true), python_system_(enable_cuda, exe_dir_)
         {
+        }
+
+        static bool ConfirmDevice(ID3D12Device* device)
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
+            device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+            if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         const std::filesystem::path& ExeDir() override

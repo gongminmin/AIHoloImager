@@ -1,0 +1,9 @@
+// Copyright (c) 2025 Minmin Gong
+//
+
+#pragma once
+
+uint32_t DivUp(uint32_t a, uint32_t b)
+{
+    return (a + b - 1) / b;
+}

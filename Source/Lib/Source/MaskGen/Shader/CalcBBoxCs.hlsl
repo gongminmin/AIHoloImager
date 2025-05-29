@@ -1,8 +1,10 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
+#include "Utils.hlslh"
+
 static const uint32_t BlockDim = 16;
-static const uint32_t MinWaveSize = 32;
+static const uint32_t MinWaveSize = 16;
 
 cbuffer param_cb : register(b0)
 {
@@ -31,32 +33,36 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         }
     }
 
-    uint32_t wave_size = WaveGetLaneCount();
-    uint32_t wave_index = group_index / wave_size;
-    uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
 
     bb_min = WaveActiveMin(bb_min);
     bb_max = WaveActiveMax(bb_max);
-    if (WaveIsFirstLane())
-    {
-        group_wave_mins[wave_index] = bb_min;
-        group_wave_maxs[wave_index] = bb_max;
-    }
-    GroupMemoryBarrierWithGroupSync();
 
-    uint32_t group_mem_size = BlockDim * BlockDim / wave_size;
-
-    if (group_index < group_mem_size)
+    uint32_t num_active_waves = DivUp(BlockDim * BlockDim, wave_size);
+    while (num_active_waves > 1)
     {
-        bb_min = group_wave_mins[group_index];
-        bb_max = group_wave_maxs[group_index];
-    }
-    GroupMemoryBarrier();
+        if (WaveIsFirstLane() && (wave_index < num_active_waves))
+        {
+            group_wave_mins[wave_index] = bb_min;
+            group_wave_maxs[wave_index] = bb_max;
+        }
+        GroupMemoryBarrierWithGroupSync();
 
-    if (group_index < group_mem_size)
-    {
-        bb_min = WaveActiveMin(bb_min);
-        bb_max = WaveActiveMax(bb_max);
+        if (group_index < num_active_waves)
+        {
+            bb_min = group_wave_mins[group_index];
+            bb_max = group_wave_maxs[group_index];
+        }
+        GroupMemoryBarrier();
+
+        if (group_index < num_active_waves)
+        {
+            bb_min = WaveActiveMin(bb_min);
+            bb_max = WaveActiveMax(bb_max);
+        }
+
+        num_active_waves = DivUp(num_active_waves, wave_size);
     }
 
     if ((group_index == 0) && (bb_min.x < bb_max.x) && (bb_min.y < bb_max.y))

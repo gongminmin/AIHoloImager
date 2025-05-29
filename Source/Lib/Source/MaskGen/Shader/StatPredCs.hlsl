@@ -1,8 +1,10 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
+#include "Utils.hlslh"
+
 static const uint32_t BlockDim = 16;
-static const uint32_t MinWaveSize = 32;
+static const uint32_t MinWaveSize = 16;
 
 cbuffer param_cb : register(b0)
 {
@@ -22,28 +24,32 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     float data = input_tex.Load(uint32_t3(coord, 0));
     GroupMemoryBarrierWithGroupSync();
 
-    uint32_t wave_size = WaveGetLaneCount();
-    uint32_t wave_index = group_index / wave_size;
-    uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
 
     float2 min_max = float2(WaveActiveMin(data), WaveActiveMax(data));
-    if (WaveIsFirstLane())
-    {
-        group_wave_min_max[wave_index] = min_max;
-    }
-    GroupMemoryBarrierWithGroupSync();
 
-    uint32_t group_mem_size = BlockDim * BlockDim / wave_size;
-
-    if (group_index < group_mem_size)
+    uint32_t num_active_waves = DivUp(BlockDim * BlockDim, wave_size);
+    while (num_active_waves > 1)
     {
-        min_max = group_wave_min_max[group_index];
-    }
-    GroupMemoryBarrier();
+        if (WaveIsFirstLane() && (wave_index < num_active_waves))
+        {
+            group_wave_min_max[wave_index] = min_max;
+        }
+        GroupMemoryBarrierWithGroupSync();
 
-    if (group_index < group_mem_size)
-    {
-        min_max = float2(WaveActiveMin(min_max.x), WaveActiveMax(min_max.y));
+        if (group_index < num_active_waves)
+        {
+            min_max = group_wave_min_max[group_index];
+        }
+        GroupMemoryBarrier();
+
+        if (group_index < num_active_waves)
+        {
+            min_max = float2(WaveActiveMin(min_max.x), WaveActiveMax(min_max.y));
+        }
+
+        num_active_waves = DivUp(num_active_waves, wave_size);
     }
 
     if (group_index == 0)
