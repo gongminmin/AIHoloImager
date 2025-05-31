@@ -11,11 +11,11 @@ This is the overall data flow graph.
       * Produces undistorted versions of the input images.
     * Additionally, a **Mask Generator** (implemented with [rembg](https://github.com/danielgatis/rembg)) processes the undistorted images, effectively separating foreground objects from the background. A **Delighter** (implemented with [Intrinsic](https://github.com/compphoto/Intrinsic) remove the lighting in images.
 
-2. Reconstruct Mesh Module:
-    * All the processed data--feature point cloud, camera poses, undistorted images, mask images, and delighted images--is sent to the **Mesh Reconstruction** module (implemented using [openMVS](https://github.com/cdcseacave/openMVS)). Here, a dense point cloud and the transform between it and the SfM space are generated.
-
-3. AI Mesh Generator:
+2. AI Mesh Generator:
     * All the processed data are further handled by the **AI Mesh Generator** module (implemented using [TRELLIS](https://github.com/Microsoft/TRELLIS)). This AI-powered step refines the 3D mesh, enhancing its completeness.
+
+3. Differentiable Optimizer:
+    * The **Differentiable Optimizer** module takes the AI-generated mesh, refines its transformation to match the delighted images. This step is crucial for improving the mesh's quality and accuracy.
 
 4. Post Processing:
     * Finally, in the **Post Processing** module:
