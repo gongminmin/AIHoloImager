@@ -32,8 +32,9 @@ namespace AIHoloImager
     class AIHoloImager::Impl : public AIHoloImagerInternal
     {
     public:
-        Impl(bool enable_cuda, const std::filesystem::path& tmp_dir)
-            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true), python_system_(enable_cuda, exe_dir_)
+        Impl(DeviceType device, const std::filesystem::path& tmp_dir)
+            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true),
+              python_system_(GetDeviceName(device), exe_dir_)
         {
         }
 
@@ -47,6 +48,18 @@ namespace AIHoloImager
             }
 
             return true;
+        }
+
+        static std::string_view GetDeviceName(DeviceType device)
+        {
+            switch (device)
+            {
+            case DeviceType::Cuda:
+                return "cuda";
+
+            default:
+                return "cpu";
+            }
         }
 
         const std::filesystem::path& ExeDir() override
@@ -103,7 +116,7 @@ namespace AIHoloImager
         std::mutex timing_mutex_;
     };
 
-    AIHoloImager::AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(enable_cuda, tmp_dir))
+    AIHoloImager::AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(device, tmp_dir))
     {
     }
     AIHoloImager::AIHoloImager(AIHoloImager&& rhs) noexcept = default;

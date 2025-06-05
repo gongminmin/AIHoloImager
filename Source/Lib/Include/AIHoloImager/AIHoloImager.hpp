@@ -13,7 +13,14 @@ namespace AIHoloImager
     class AIHoloImager
     {
     public:
-        AIHoloImager(bool enable_cuda, const std::filesystem::path& tmp_dir);
+        enum class DeviceType
+        {
+            Cpu,
+            Cuda,
+        };
+
+    public:
+        AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir);
         AIHoloImager(const AIHoloImager& rhs) = delete;
         AIHoloImager(AIHoloImager&& rhs) noexcept;
         ~AIHoloImager() noexcept;

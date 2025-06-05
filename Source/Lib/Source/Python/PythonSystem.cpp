@@ -72,7 +72,7 @@ namespace AIHoloImager
         }
     };
 
-    PythonSystem::PythonSystem(bool enable_cuda, const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
+    PythonSystem::PythonSystem(std::string_view device, const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
         PythonSystem::GilGuard guard;
 
@@ -81,7 +81,7 @@ namespace AIHoloImager
 
         auto args = this->MakeTuple(1);
         {
-            this->SetTupleItem(*args, 0, this->MakeObject(enable_cuda));
+            this->SetTupleItem(*args, 0, this->MakeObject(std::move(device)));
         }
         this->CallObject(*init_py_sys_method, *args);
     }
@@ -124,6 +124,11 @@ namespace AIHoloImager
     PyObjectPtr PythonSystem::MakeObject(float value)
     {
         return MakePyObjectPtr(PyFloat_FromDouble(value));
+    }
+
+    PyObjectPtr PythonSystem::MakeObject(std::string_view str)
+    {
+        return MakePyObjectPtr(PyUnicode_FromStringAndSize(str.data(), str.size()));
     }
 
     PyObjectPtr PythonSystem::MakeObject(std::wstring_view str)

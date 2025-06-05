@@ -12,10 +12,14 @@ def SeedRandom(seed : int):
 
     torch.manual_seed(seed)
 
-compute_on_cuda = False
-def InitPySys(enable_cuda : bool):
-    global compute_on_cuda
-    compute_on_cuda = enable_cuda and torch.cuda.is_available()
+compute_device_name = "cpu"
+def InitPySys(device : str):
+    global compute_device_name
+    torch_device = getattr(torch, device, None)
+    if (torch_device != None) and hasattr(torch_device, "is_available") and torch_device.is_available():
+        compute_device_name = device
+
+    print(f"Pick \"{compute_device_name}\" as the computation device.")
 
     import os
     os.environ["XFORMERS_DISABLED"] = "1" # Disable the usage of xformers in dinov2
@@ -42,17 +46,18 @@ compute_device = None
 def ComputeDevice():
     global compute_device
     if compute_device == None:
-        global compute_on_cuda
-        if compute_on_cuda:
-            compute_device = torch.device("cuda")
+        global compute_device_name
+        if compute_device_name != "cpu":
+            compute_device = torch.device(compute_device_name)
         else:
             compute_device = GeneralDevice()
     return compute_device
 
 def PurgeTorchCache():
-    global compute_device
-    if (compute_device != None) and (compute_device.type == "cuda"):
-        torch.cuda.empty_cache()
+    global compute_device_name
+    torch_device = getattr(torch, compute_device_name, None)
+    if (torch_device != None) and hasattr(torch_device, "empty_cache"):
+        torch_device.empty_cache()
 
 # From MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/utils.py
 def WrapDinov2AttentionWithSdpa(module : torch.nn.Module):

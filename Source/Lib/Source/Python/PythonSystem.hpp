@@ -36,7 +36,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(PythonSystem);
 
     public:
-        PythonSystem(bool enable_cuda, const std::filesystem::path& exe_dir);
+        PythonSystem(std::string_view device, const std::filesystem::path& exe_dir);
         PythonSystem(PythonSystem&& other) noexcept;
         ~PythonSystem() noexcept;
 
@@ -51,6 +51,7 @@ namespace AIHoloImager
         PyObjectPtr MakeObject(int32_t value);
         PyObjectPtr MakeObject(uint32_t value);
         PyObjectPtr MakeObject(float value);
+        PyObjectPtr MakeObject(std::string_view str);
         PyObjectPtr MakeObject(std::wstring_view str);
         PyObjectPtr MakeObject(std::span<const std::byte> mem);
         PyObjectPtr MakeObject(void* ptr);

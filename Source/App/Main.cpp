@@ -1,6 +1,8 @@
 // Copyright (c) 2024 Minmin Gong
 //
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <filesystem>
 #include <format>
@@ -21,7 +23,7 @@ int main(int argc, char* argv[])
         ("H,help", "Produce help message.")
         ("I,input-path", "The directory that contains the input image sequence.", cxxopts::value<std::string>())
         ("O,output-path", "The path of the output mesh (\"<input-dir>/Output/Mesh.glb\" by default).", cxxopts::value<std::string>())
-        ("enable-cuda", "Enable CUDA for inferencing (1 by default).", cxxopts::value<uint32_t>())
+        ("D,device", "The computation device for inferencing (cuda or cpu; cuda by default).", cxxopts::value<std::string>())
         ("v,version", "Version.");
     // clang-format on
 
@@ -65,10 +67,26 @@ int main(int argc, char* argv[])
         output_path = input_path / "Output/Mesh.glb";
     }
 
-    bool enable_cuda = true;
-    if (vm.count("enable-cuda") > 0)
+    auto device = AIHoloImager::AIHoloImager::DeviceType::Cuda;
+    if (vm.count("device") > 0)
     {
-        enable_cuda = vm["enable-cuda"].as<uint32_t>() != 0;
+        std::string device_name = vm["device"].as<std::string>();
+        std::transform(
+            device_name.begin(), device_name.end(), device_name.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });
+
+        if (device_name == "cpu")
+        {
+            device = AIHoloImager::AIHoloImager::DeviceType::Cpu;
+        }
+        else if (device_name == "cuda")
+        {
+            device = AIHoloImager::AIHoloImager::DeviceType::Cuda;
+        }
+        else
+        {
+            std::cerr << std::format("ERROR: Unsupported device {}. Use cpu or cuda.\n", device_name);
+            return 1;
+        }
     }
 
     std::filesystem::create_directories(output_path.parent_path());
@@ -80,7 +98,7 @@ int main(int argc, char* argv[])
 
     try
     {
-        AIHoloImager::AIHoloImager imager(enable_cuda, tmp_dir);
+        AIHoloImager::AIHoloImager imager(device, tmp_dir);
         const AIHoloImager::Mesh mesh = imager.Generate(input_path);
         AIHoloImager::SaveMesh(mesh, output_path);
 
