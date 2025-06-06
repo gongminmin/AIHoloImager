@@ -35,7 +35,8 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 option(AIHI_KEEP_INTERMEDIATES "Keep intermediate results" OFF)
 
-find_package(Python3 3.11...<3.14 COMPONENTS Interpreter Development.Embed REQUIRED)
+# 3.13.4 has issues with lib name. See https://github.com/python/cpython/issues/135151
+find_package(Python3 3.11...<3.13.4 COMPONENTS Interpreter Development.Embed REQUIRED)
 
 add_subdirectory(External)
 add_subdirectory(Source)
