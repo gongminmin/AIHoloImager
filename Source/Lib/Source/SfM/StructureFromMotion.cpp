@@ -55,7 +55,6 @@
     #pragma warning(pop)
 #endif
 
-#include "Base/Timer.hpp"
 #include "Delighter/Delighter.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
@@ -63,6 +62,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MaskGen/MaskGenerator.hpp"
+#include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/SfM/UndistortCs.h"
 
@@ -87,10 +87,10 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), mask_gen_(aihi), delighter_(aihi)
         {
-            Timer timer;
+            PerfRegion init_perf(aihi_.PerfProfilerInstance(), "SfM init");
 
             py_init_future_ = std::async(std::launch::async, [this] {
-                Timer timer;
+                PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Focal estimator init (async)");
 
                 PythonSystem::GilGuard guard;
 
@@ -100,8 +100,6 @@ namespace AIHoloImager
                 focal_estimator_class_ = python_system.GetAttr(*focal_estimator_module_, "FocalEstimator");
                 focal_estimator_ = python_system.CallObject(*focal_estimator_class_);
                 focal_estimator_process_method_ = python_system.GetAttr(*focal_estimator_, "Process");
-
-                aihi_.AddTiming("Focal estimator init (async)", timer.Elapsed());
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -113,8 +111,6 @@ namespace AIHoloImager
 
             const ShaderInfo shader = {UndistortCs_shader, 1, 1, 1};
             undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
-
-            aihi_.AddTiming("SfM init", timer.Elapsed());
         }
 
         ~Impl()
@@ -136,7 +132,7 @@ namespace AIHoloImager
 
         Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
         {
-            Timer timer;
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
             std::vector<Texture> images;
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
@@ -149,17 +145,15 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            auto ret = this->ExportResult(processed_sfm_data, std::move(images));
-
-            aihi_.AddTiming("SfM process", timer.Elapsed());
-
-            return ret;
+            return this->ExportResult(processed_sfm_data, std::move(images));
         }
 
     private:
         SfM_Data IntrinsicAnalysis(const std::filesystem::path& image_dir, std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
+
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Intrinsic analysis");
 
             const auto camera_sensor_db_path = aihi_.ExeDir() / "CameraDatabase.dat";
             std::vector<Datasheet> vec_database;
@@ -366,6 +360,8 @@ namespace AIHoloImager
         {
             // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Feature extraction");
+
             features::SIFT_Anatomy_Image_describer image_describer;
 
             FeatureRegions feature_regions;
@@ -406,6 +402,8 @@ namespace AIHoloImager
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Pair matching");
+
             // Load the corresponding view regions
             auto regions_provider = std::make_shared<Regions_Provider>();
             regions_provider->load(sfm_data, regions.feature_regions.data(), *regions.regions_type);
@@ -429,6 +427,8 @@ namespace AIHoloImager
             const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, const FeatureRegions& regions, bool sequential) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
+
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Geometric filter");
 
             const bool guided_matching = false;
             const uint32_t max_iteration = 2048;
@@ -476,6 +476,8 @@ namespace AIHoloImager
             const FeatureRegions& regions, bool sequential, const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_SfM.cpp
+
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Point cloud reconstruction");
 
             Features_Provider feats_provider;
             feats_provider.load(sfm_data, regions.feature_regions.data());
@@ -530,6 +532,8 @@ namespace AIHoloImager
         Result ExportResult(const SfM_Data& sfm_data, std::vector<Texture>&& images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
+
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Export result");
 
             Result ret;
 

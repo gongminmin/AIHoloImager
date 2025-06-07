@@ -8,7 +8,6 @@
 #include <future>
 #include <iostream>
 #include <map>
-#include <numbers>
 #include <set>
 #include <tuple>
 #include <type_traits>
@@ -31,7 +30,6 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec3.hpp>
 
-#include "Base/Timer.hpp"
 #include "DiffOptimizer.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -43,6 +41,7 @@
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
 #include "Util/FormatConversion.hpp"
+#include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
 #include "CompiledShader/MeshGen/Dilate3DCs.h"
@@ -84,10 +83,10 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi)
         {
-            Timer timer;
+            PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Mesh generator init");
 
             py_init_future_ = std::async(std::launch::async, [this] {
-                Timer timer;
+                PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Mesh generator init (async)");
 
                 PythonSystem::GilGuard guard;
 
@@ -102,8 +101,6 @@ namespace AIHoloImager
                 mesh_generator_density_features_method_ = python_system.GetAttr(*mesh_generator_, "DensityFeatures");
                 mesh_generator_deformation_features_method_ = python_system.GetAttr(*mesh_generator_, "DeformationFeatures");
                 mesh_generator_color_features_method_ = python_system.GetAttr(*mesh_generator_, "ColorFeatures");
-
-                aihi_.AddTiming("Mesh generator init (async)", timer.Elapsed());
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -163,8 +160,6 @@ namespace AIHoloImager
                 const ShaderInfo shader = {ApplyVertexColorCs_shader, 1, 2, 1};
                 apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
-
-            aihi_.AddTiming("Mesh generator init", timer.Elapsed());
         }
 
         ~Impl()
@@ -191,154 +186,187 @@ namespace AIHoloImager
 
         Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
         {
-            Timer timer;
+            auto& profiler = aihi_.PerfProfilerInstance();
+            PerfRegion process_perf(profiler, "Mesh generator process");
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = tmp_dir / "MeshGen";
             std::filesystem::create_directories(output_dir);
 #endif
 
-            std::cout << "Rotating images...\n";
+            Aabb obj_aabb;
+            glm::vec3 up_vec;
+            std::vector<Texture> rotated_images;
+            {
+                std::cout << "Rotating images...\n";
 
-            const Aabb obj_aabb = this->ForegroundObjectAabb(sfm_input);
-            const glm::vec3 up_vec = this->SceneUpVector(sfm_input, obj_aabb.Center());
-            std::vector<Texture> rotated_images = this->RotateImages(sfm_input, up_vec);
+                PerfRegion rotating_perf(profiler, "Rotating images");
+
+                obj_aabb = this->ForegroundObjectAabb(sfm_input);
+                up_vec = this->SceneUpVector(sfm_input, obj_aabb.Center());
+                rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            for (size_t i = 0; i < rotated_images.size(); ++i)
-            {
-                SaveTexture(rotated_images[i], output_dir / std::format("Rotated_{}.png", i));
-            }
+                for (size_t i = 0; i < rotated_images.size(); ++i)
+                {
+                    SaveTexture(rotated_images[i], output_dir / std::format("Rotated_{}.png", i));
+                }
 #endif
-
-            std::cout << "Generating mesh from images...\n";
+            }
 
             GpuTexture3D color_vol_tex;
-            Mesh mesh = this->GenMesh(rotated_images, color_vol_tex);
+            Mesh mesh;
+            Mesh pos_color_mesh;
+            {
+                std::cout << "Generating mesh from images...\n";
+
+                PerfRegion rotating_perf(profiler, "Generate mesh");
+
+                mesh = this->GenMesh(rotated_images, color_vol_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
+                SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
 #endif
 
-            Mesh pos_color_mesh = this->ApplyVertexColor(mesh, color_vol_tex);
+                pos_color_mesh = this->ApplyVertexColor(mesh, color_vol_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(pos_color_mesh, output_dir / "AiMeshPosColor.glb");
+                SaveMesh(pos_color_mesh, output_dir / "AiMeshPosColor.glb");
 #endif
+            }
 
             Obb obb;
-            {
-                const auto& vertex_desc = mesh.MeshVertexDesc();
-                const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-                obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
-            }
-
+            glm::mat4x4 model_mtx;
             glm::vec3 local_up_vec;
             {
-                const glm::vec3 local_y =
-                    glm::rotate(glm::inverse(obb.orientation), glm::vec3(0, 0, 1)); // Y and Z are swapped in the output of TRELLIS
-                const glm::vec3 abs_local_y = glm::abs(local_y);
-                if (abs_local_y.x > abs_local_y.y)
+                std::cout << "Optimizing transform...\n";
+
+                PerfRegion opt_perf(profiler, "Optimize transform");
+
                 {
-                    if (abs_local_y.x > abs_local_y.z)
+                    const auto& vertex_desc = mesh.MeshVertexDesc();
+                    const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
+                    obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
+                }
+
+                {
+                    const glm::vec3 local_y =
+                        glm::rotate(glm::inverse(obb.orientation), glm::vec3(0, 0, 1)); // Y and Z are swapped in the output of TRELLIS
+                    const glm::vec3 abs_local_y = glm::abs(local_y);
+                    if (abs_local_y.x > abs_local_y.y)
                     {
-                        local_up_vec = glm::vec3(local_y.x / abs_local_y.x, 0, 0);
+                        if (abs_local_y.x > abs_local_y.z)
+                        {
+                            local_up_vec = glm::vec3(local_y.x / abs_local_y.x, 0, 0);
+                        }
+                        else
+                        {
+                            local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
+                        }
                     }
                     else
                     {
-                        local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
+                        if (local_y.y > abs_local_y.z)
+                        {
+                            local_up_vec = glm::vec3(0, local_y.y / abs_local_y.y, 0);
+                        }
+                        else
+                        {
+                            local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
+                        }
                     }
+
+                    local_up_vec = glm::rotate(obb.orientation, local_up_vec);
                 }
-                else
+
+                model_mtx = this->GuessModelMatrix(obb, obj_aabb, local_up_vec, up_vec);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    if (local_y.y > abs_local_y.z)
-                    {
-                        local_up_vec = glm::vec3(0, local_y.y / abs_local_y.y, 0);
-                    }
-                    else
-                    {
-                        local_up_vec = glm::vec3(0, 0, local_y.z / abs_local_y.z);
-                    }
+                    Mesh before_opt_mesh = mesh;
+                    TransformMesh(before_opt_mesh, model_mtx);
+                    SaveMesh(before_opt_mesh, output_dir / "BeforeOpt.glb");
+                }
+#endif
+
+                {
+                    DiffOptimizer optimizer(aihi_);
+                    optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
                 }
 
-                local_up_vec = glm::rotate(obb.orientation, local_up_vec);
+#ifdef AIHI_KEEP_INTERMEDIATES
+                {
+                    Mesh after_opt_mesh = mesh;
+                    TransformMesh(after_opt_mesh, model_mtx);
+                    SaveMesh(after_opt_mesh, output_dir / "AfterOpt.glb");
+                }
+#endif
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(obb, obj_aabb, local_up_vec, up_vec);
+            {
+                std::cout << "Simplifying mesh...\n";
 
-            std::cout << "Optimizing transform...\n";
+                PerfRegion simplify_perf(profiler, "Simplify mesh");
+
+                MeshSimplification mesh_simp;
+                mesh = mesh_simp.Process(mesh, 0.125f);
+                this->FillHoles(mesh);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            {
-                Mesh before_opt_mesh = mesh;
-                TransformMesh(before_opt_mesh, model_mtx);
-                SaveMesh(before_opt_mesh, output_dir / "BeforeOpt.glb");
-            }
+                SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-            {
-                DiffOptimizer optimizer(aihi_);
-                optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
-            }
+                mesh.ComputeNormals();
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            {
-                Mesh after_opt_mesh = mesh;
-                TransformMesh(after_opt_mesh, model_mtx);
-                SaveMesh(after_opt_mesh, output_dir / "AfterOpt.glb");
-            }
+                SaveMesh(mesh, output_dir / "AiMeshPosNormal.glb");
 #endif
-
-            std::cout << "Simplifying mesh...\n";
-
-            MeshSimplification mesh_simp;
-            mesh = mesh_simp.Process(mesh, 0.125f);
-            this->FillHoles(mesh);
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
-#endif
-
-            mesh.ComputeNormals();
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMeshPosNormal.glb");
-#endif
-
-            std::cout << "Unwrapping UV...\n";
-
-            mesh = mesh.UnwrapUv(texture_size, 2);
-
-            std::cout << "Generating texture...\n";
-
-            const Obb world_obb = Obb::Transform(obb, model_mtx);
-            auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
-
-            Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-            {
-                auto& gpu_system = aihi_.GpuSystemInstance();
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-                this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
-
-                GpuTexture2D dilated_tmp_gpu_tex(gpu_system, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
-                    texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
-
-                GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
-
-                const auto rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
-                gpu_system.Execute(std::move(cmd_list));
-
-                rb_future.wait();
             }
 
-            mesh.AlbedoTexture() = std::move(merged_tex);
+            {
+                std::cout << "Unwrapping UV...\n";
 
-#ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
-#endif
+                PerfRegion unwrap_perf(profiler, "Unwrap UV");
+
+                mesh = mesh.UnwrapUv(texture_size, 2);
+            }
 
             {
+                std::cout << "Generating texture...\n";
+
+                PerfRegion texturing_perf(profiler, "Generate texture");
+
+                const Obb world_obb = Obb::Transform(obb, model_mtx);
+                auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
+
+                Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                {
+                    auto& gpu_system = aihi_.GpuSystemInstance();
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                    this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
+
+                    GpuTexture2D dilated_tmp_gpu_tex(gpu_system, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
+                        texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
+
+                    GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
+
+                    const auto rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+
+                    rb_future.wait();
+                }
+
+                mesh.AlbedoTexture() = std::move(merged_tex);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
+#endif
+            }
+
+            {
+                PerfRegion aligning_perf(profiler, "Align mesh");
+
                 glm::vec3 scale;
                 glm::quat rotation;
                 glm::vec3 translation;
@@ -349,13 +377,11 @@ namespace AIHoloImager
                 const glm::mat4x4 adjust_mtx = glm::recompose(
                     scale, glm::normalize(glm::rotation(local_up_vec, glm::vec3(0, 1, 0))), glm::zero<glm::vec3>(), skew, perspective);
                 TransformMesh(mesh, adjust_mtx);
-            }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(mesh, output_dir / "AiMesh.glb");
+                SaveMesh(mesh, output_dir / "AiMesh.glb");
 #endif
-
-            aihi_.AddTiming("Mesh generator process", timer.Elapsed());
+            }
 
             return mesh;
         }

@@ -139,6 +139,8 @@ set(aihi_files
     Source/Util/BoundingBox.hpp
     Source/Util/FormatConversion.cpp
     Source/Util/FormatConversion.hpp
+    Source/Util/PerfProfiler.cpp
+    Source/Util/PerfProfiler.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_files})
 source_group("Source" FILES ${camera_database_src})

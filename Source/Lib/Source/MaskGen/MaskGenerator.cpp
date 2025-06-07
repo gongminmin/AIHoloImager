@@ -11,11 +11,11 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-#include "Base/Timer.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/MaskGen/CalcBBoxCs.h"
 #include "CompiledShader/MaskGen/DownsampleCs.h"
@@ -34,10 +34,10 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
-            Timer timer;
+            PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Mask generator init");
 
             py_init_future_ = std::async(std::launch::async, [this] {
-                Timer timer;
+                PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Mask generator init (async)");
 
                 PythonSystem::GilGuard guard;
 
@@ -47,8 +47,6 @@ namespace AIHoloImager
                 mask_generator_class_ = python_system.GetAttr(*mask_generator_module_, "MaskGenerator");
                 mask_generator_ = python_system.CallObject(*mask_generator_class_);
                 mask_generator_gen_method_ = python_system.GetAttr(*mask_generator_, "Gen");
-
-                aihi_.AddTiming("Mask generator init (async)", timer.Elapsed());
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -89,8 +87,6 @@ namespace AIHoloImager
                 const ShaderInfo shader = {MergeMaskCs_shader, 1, 1, 1};
                 merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
-
-            aihi_.AddTiming("Mask generator init", timer.Elapsed());
         }
 
         ~Impl()
@@ -112,6 +108,8 @@ namespace AIHoloImager
 
         void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, glm::uvec4& roi)
         {
+            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), "Mask generator generate");
+
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             const uint32_t width = image_gpu_tex.Width(0);
@@ -189,6 +187,8 @@ namespace AIHoloImager
     private:
         void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, const glm::uvec4& roi, bool blur, bool large_model)
         {
+            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), std::format("U2Net ({})", large_model ? "large" : "small"));
+
             auto& gpu_system = aihi_.GpuSystemInstance();
             auto& python_system = aihi_.PythonSystemInstance();
 

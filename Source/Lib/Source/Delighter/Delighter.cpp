@@ -5,7 +5,7 @@
 
 #include <future>
 
-#include "Base/Timer.hpp"
+#include "Util/PerfProfiler.hpp"
 
 namespace AIHoloImager
 {
@@ -15,7 +15,7 @@ namespace AIHoloImager
         Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
             py_init_future_ = std::async(std::launch::async, [this] {
-                Timer timer;
+                PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Delighter init (async)");
 
                 PythonSystem::GilGuard guard;
 
@@ -25,8 +25,6 @@ namespace AIHoloImager
                 delighter_class_ = python_system.GetAttr(*delighter_module_, "Delighter");
                 delighter_ = python_system.CallObject(*delighter_class_);
                 delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
-
-                aihi_.AddTiming("Delighter init (async)", timer.Elapsed());
             });
         }
 
@@ -49,6 +47,8 @@ namespace AIHoloImager
 
         Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
         {
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Delighter process");
+
             const uint32_t width = image.Width();
             const uint32_t height = image.Height();
 

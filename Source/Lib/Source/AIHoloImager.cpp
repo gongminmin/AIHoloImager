@@ -14,6 +14,7 @@
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
+#include "Util/PerfProfiler.hpp"
 
 namespace
 {
@@ -77,10 +78,9 @@ namespace AIHoloImager
             return python_system_;
         }
 
-        void AddTiming(std::string_view name, std::chrono::duration<double> duration)
+        PerfProfiler& PerfProfilerInstance() override
         {
-            std::lock_guard lock(timing_mutex_);
-            timings_.push_back(std::make_tuple(std::string(name), std::move(duration)));
+            return profiler_;
         }
 
         Mesh Generate(const std::filesystem::path& input_path)
@@ -97,10 +97,7 @@ namespace AIHoloImager
                 result_mesh = mesh_gen.Generate(sfm_result, 2048, tmp_dir_);
             }
 
-            for (auto& [name, duration] : timings_)
-            {
-                std::cout << std::format("{}: {:.3f} s\n", name, duration.count());
-            }
+            profiler_.Output(std::cout);
 
             return result_mesh;
         }
@@ -111,9 +108,7 @@ namespace AIHoloImager
 
         GpuSystem gpu_system_;
         PythonSystem python_system_;
-
-        std::vector<std::tuple<std::string, std::chrono::duration<double>>> timings_;
-        std::mutex timing_mutex_;
+        PerfProfiler profiler_;
     };
 
     AIHoloImager::AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(device, tmp_dir))

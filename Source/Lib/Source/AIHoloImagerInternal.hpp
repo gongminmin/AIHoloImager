@@ -8,6 +8,7 @@
 
 #include "Gpu/GpuSystem.hpp"
 #include "Python/PythonSystem.hpp"
+#include "Util/PerfProfiler.hpp"
 
 namespace AIHoloImager
 {
@@ -20,7 +21,6 @@ namespace AIHoloImager
 
         virtual GpuSystem& GpuSystemInstance() = 0;
         virtual PythonSystem& PythonSystemInstance() = 0;
-
-        virtual void AddTiming(std::string_view name, std::chrono::duration<double> duration) = 0;
+        virtual PerfProfiler& PerfProfilerInstance() = 0;
     };
 } // namespace AIHoloImager
