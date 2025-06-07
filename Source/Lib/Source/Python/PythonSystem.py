@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
+from typing import *
+
 import torch
 
 def SeedRandom(seed : int):
@@ -62,14 +64,14 @@ def PurgeTorchCache():
 # From MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/utils.py
 def WrapDinov2AttentionWithSdpa(module : torch.nn.Module):
     class AttentionWrapper(module.__class__):
-        def forward(self, x : torch.Tensor, attn_bias = None) -> torch.Tensor:
-            B, N, C = x.shape
-            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)  # (3, B, H, N, C // H)
+        def forward(self, x : torch.Tensor, attn_bias : Optional[torch.Tensor] = None) -> torch.Tensor:
+            batch, num, comp = x.shape
+            qkv = self.qkv(x).reshape(batch, num, 3, self.num_heads, comp // self.num_heads).permute(2, 0, 3, 1, 4)  # (3, B, H, N, C // H)
 
-            q, k, v = torch.unbind(qkv, 0)      # (B, H, N, C // H)
+            query, key, value = torch.unbind(qkv, 0)      # (B, H, N, C // H)
 
-            x = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_bias)
-            x = x.permute(0, 2, 1, 3).reshape(B, N, C) 
+            x = torch.nn.functional.scaled_dot_product_attention(query, key, value, attn_bias)
+            x = x.permute(0, 2, 1, 3).reshape(batch, num, comp) 
 
             x = self.proj(x)
             x = self.proj_drop(x)
