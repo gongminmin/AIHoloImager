@@ -170,6 +170,8 @@ set(py_files
     numpy/char/__init__.py
     numpy/core/_utils.py
     numpy/core/__init__.py
+    numpy/ctypeslib/_ctypeslib.py
+    numpy/ctypeslib/__init__.py
     numpy/f2py/_backends/__init__.py
     numpy/f2py/auxfuncs.py
     numpy/f2py/capi_maps.py
@@ -203,6 +205,7 @@ set(py_files
     numpy/lib/_arrayterator_impl.py
     numpy/lib/_array_utils_impl.py
     numpy/lib/_datasource.py
+    numpy/lib/_format_impl.py
     numpy/lib/_function_base_impl.py
     numpy/lib/_histograms_impl.py
     numpy/lib/_index_tricks_impl.py
@@ -289,7 +292,6 @@ set(py_files
     numpy/_utils/_convertions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
-    numpy/ctypeslib.py
     numpy/dtypes.py
     numpy/exceptions.py
     numpy/version.py
@@ -917,6 +919,7 @@ set(py_files
     sympy/polys/polyroots.py
     sympy/polys/polytools.py
     sympy/polys/polyutils.py
+    sympy/polys/puiseux.py
     sympy/polys/rationaltools.py
     sympy/polys/rings.py
     sympy/polys/ring_series.py
@@ -1156,6 +1159,7 @@ set(py_files
     torch/backends/cuda/__init__.py
     torch/backends/cudnn/__init__.py
     torch/backends/cusparselt/__init__.py
+    torch/backends/kleidiai/__init__.py
     torch/backends/mha/__init__.py
     torch/backends/mkl/__init__.py
     torch/backends/mkldnn/__init__.py
@@ -1165,6 +1169,7 @@ set(py_files
     torch/backends/quantized/__init__.py
     torch/backends/__init__.py
     torch/compiler/config.py
+    torch/compiler/_cache.py
     torch/compiler/__init__.py
     torch/cpu/amp/autocast_mode.py
     torch/cpu/amp/grad_scaler.py
@@ -1352,6 +1357,7 @@ set(py_files
     torch/distributions/weibull.py
     torch/distributions/wishart.py
     torch/distributions/__init__.py
+    torch/export/custom_ops.py
     torch/export/decomp_utils.py
     torch/export/dynamic_shapes.py
     torch/export/exported_program.py
@@ -1371,6 +1377,7 @@ set(py_files
     torch/fx/experimental/_backward_state.py
     torch/fx/experimental/_config.py
     torch/fx/experimental/_constant_symnode.py
+    torch/fx/experimental/_dynamism.py
     torch/fx/experimental/__init__.py
     torch/fx/passes/infra/pass_base.py
     torch/fx/passes/infra/pass_manager.py
@@ -1603,6 +1610,9 @@ set(py_files
     torch/onnx/_internal/diagnostics/_diagnostic.py
     torch/onnx/_internal/diagnostics/_rules.py
     torch/onnx/_internal/diagnostics/__init__.py
+    torch/onnx/_internal/exporter/_constants.py
+    torch/onnx/_internal/exporter/_dynamic_shapes.py
+    torch/onnx/_internal/exporter/_ir_passes.py
     torch/onnx/_internal/exporter/_onnx_program.py
     torch/onnx/_internal/exporter/__init__.py
     torch/onnx/_internal/fx/decomposition_table.py
@@ -1638,7 +1648,6 @@ set(py_files
     torch/onnx/symbolic_opset9.py
     torch/onnx/utils.py
     torch/onnx/_constants.py
-    torch/onnx/_deprecation.py
     torch/onnx/_globals.py
     torch/onnx/_type_utils.py
     torch/onnx/__init__.py
@@ -1757,6 +1766,7 @@ set(py_files
     torch/utils/data/graph_settings.py
     torch/utils/data/sampler.py
     torch/utils/data/__init__.py
+    torch/utils/serialization/__init__.py
     torch/utils/_sympy/functions.py
     torch/utils/_sympy/interp.py
     torch/utils/_sympy/numbers.py
@@ -1779,6 +1789,7 @@ set(py_files
     torch/utils/module_tracker.py
     torch/utils/throughput_benchmark.py
     torch/utils/weak.py
+    torch/utils/_appending_byte_serializer.py
     torch/utils/_backport_slots.py
     torch/utils/_config_module.py
     torch/utils/_content_store.py
@@ -1787,6 +1798,7 @@ set(py_files
     torch/utils/_device.py
     torch/utils/_exposed_in.py
     torch/utils/_foreach_utils.py
+    torch/utils/_functools.py
     torch/utils/_import_utils.py
     torch/utils/_mode_utils.py
     torch/utils/_ordered_set.py
@@ -1816,6 +1828,7 @@ set(py_files
     torch/_dynamo/backends/__init__.py
     torch/_dynamo/polyfills/builtins.py
     torch/_dynamo/polyfills/functools.py
+    torch/_dynamo/polyfills/fx.py
     torch/_dynamo/polyfills/itertools.py
     torch/_dynamo/polyfills/loader.py
     torch/_dynamo/polyfills/operator.py
@@ -1864,6 +1877,7 @@ set(py_files
     torch/_dynamo/exc.py
     torch/_dynamo/external_utils.py
     torch/_dynamo/funcname_cache.py
+    torch/_dynamo/graph_break_hints.py
     torch/_dynamo/graph_deduplication.py
     torch/_dynamo/graph_region_tracker.py
     torch/_dynamo/guards.py
@@ -1917,20 +1931,29 @@ set(py_files
     torch/_functorch/utils.py
     torch/_functorch/vmap.py
     torch/_functorch/__init__.py
+    torch/_higher_order_ops/aoti_call_delegate.py
+    torch/_higher_order_ops/associative_scan.py
+    torch/_higher_order_ops/auto_functionalize.py
+    torch/_higher_order_ops/base_hop.py
     torch/_higher_order_ops/cond.py
     torch/_higher_order_ops/effects.py
+    torch/_higher_order_ops/executorch_call_delegate.py
+    torch/_higher_order_ops/flat_apply.py
     torch/_higher_order_ops/flex_attention.py
+    torch/_higher_order_ops/foreach_map.py
     torch/_higher_order_ops/hints_wrap.py
     torch/_higher_order_ops/invoke_subgraph.py
     torch/_higher_order_ops/map.py
     torch/_higher_order_ops/out_dtype.py
-    torch/_higher_order_ops/prim_hop_base.py
+    torch/_higher_order_ops/run_const_graph.py
     torch/_higher_order_ops/scan.py
     torch/_higher_order_ops/strict_mode.py
     torch/_higher_order_ops/torchbind.py
     torch/_higher_order_ops/triton_kernel_wrap.py
     torch/_higher_order_ops/utils.py
     torch/_higher_order_ops/while_loop.py
+    torch/_higher_order_ops/wrap.py
+    torch/_higher_order_ops/_invoke_quant.py
     torch/_higher_order_ops/__init__.py
     torch/_inductor/codegen/cuda/cuda_env.py
     torch/_inductor/codegen/cuda/__init__.py
@@ -2114,6 +2137,7 @@ set(py_files
     torchvision/io/video.py
     torchvision/io/video_reader.py
     torchvision/io/_load_gpu_decoder.py
+    torchvision/io/_video_deprecation_warning.py
     torchvision/io/_video_opt.py
     torchvision/io/__init__.py
     torchvision/models/detection/anchor_utils.py
@@ -2262,8 +2286,8 @@ set(copy_files
     numpy/random/_sfc64.${py_suffix}
     numpy/random/bit_generator.${py_suffix}
     numpy/random/mtrand.${py_suffix}
-    numpy.libs/libscipy_openblas64_-43e11ff0749b8cbe0a615c9cf6737e0e.dll
-    numpy.libs/msvcp140-d64049c6e3865410a7dda6a7e9f0c575.dll
+    numpy.libs/libscipy_openblas64_-13e2df515630b4a41f92893938845698.dll
+    numpy.libs/msvcp140-263139962577ecda4cd9469ca360a746.dll
     PIL/_imaging.${py_suffix}
     safetensors/_safetensors_rust.pyd
     scipy.libs/libscipy_openblas-f07f5a5d207a3a47104dca54d6d0c86a.dll
@@ -2350,6 +2374,7 @@ set(copy_files
     torch/lib/cudnn_heuristic64_9.dll
     torch/lib/cudnn_ops64_9.dll
     torch/lib/cufft64_11.dll
+    torch/lib/cupti64_2024.3.2.dll
     torch/lib/cusolver64_11.dll
     torch/lib/cusparse64_12.dll
     torch/lib/fbgemm.dll
@@ -2363,6 +2388,7 @@ set(copy_files
     torch/lib/uv.dll
     torch/nn/functional.py
     torch/nn/modules/rnn.py
+    torch/utils/serialization/config.py
     torchvision/_C.pyd
     torchvision/image.pyd
     torchvision/jpeg8.dll
