@@ -2,12 +2,10 @@
 #
 
 from pathlib import Path
-import sys
 
-import numpy as np
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes
 from MoGe import MoGeModel
 
 class FocalEstimator:
@@ -26,8 +24,7 @@ class FocalEstimator:
 
     @torch.no_grad()
     def Process(self, image, image_width, image_height, channels):
-        image = np.frombuffer(image, dtype = np.uint8, count = image_height * image_width * channels)
-        image = torch.from_numpy(image.copy()).to(self.device)
+        image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
         image = image.reshape(image_height, image_width, channels)[:, :, 0 : 3].permute(2, 0, 1)
 
         image = image.to(torch.float16).contiguous()

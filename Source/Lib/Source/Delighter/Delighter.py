@@ -3,11 +3,10 @@
 
 from pathlib import Path
 
-import numpy as np
 import torch
 from torch.nn.utils import skip_init
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
 def Round32(x):
@@ -125,8 +124,7 @@ class Delighter:
 
     @torch.no_grad()
     def Process(self, image, width, height, channels):
-        image = np.frombuffer(image, dtype = np.uint8, count = height * width * channels)
-        image = torch.from_numpy(image.copy()).to(self.device)
+        image = TensorFromBytes(image, torch.uint8, height * width * channels, self.device)
         image = image.reshape(height, width, channels)
 
         float_image = image.permute(2, 0, 1)
@@ -175,7 +173,7 @@ class Delighter:
         result_image = (result_image * 255).byte()
         result_image = result_image.permute(1, 2, 0)
 
-        return result_image.cpu().numpy().tobytes()
+        return TensorToBytes(result_image)
 
     def LoadModels(self, paths):
         self.models = [None] * 4

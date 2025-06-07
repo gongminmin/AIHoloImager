@@ -79,3 +79,18 @@ def WrapDinov2AttentionWithSdpa(module : torch.nn.Module):
 
     module.__class__ = AttentionWrapper
     return module
+
+def TensorFromBytes(buffer : bytes, dtype : torch.dtype, count : int, device : Optional[torch.device] = None) -> torch.Tensor:
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        tensor = torch.frombuffer(buffer, dtype = dtype, count = count)
+    if (device is None) or (device == GeneralDevice()):
+        tensor = tensor.clone()
+    else:
+        tensor = tensor.to(device)
+    return tensor
+
+def TensorToBytes(tensor : torch.Tensor) -> bytes:
+    tensor = tensor.to(GeneralDevice()).contiguous()
+    return tensor.numpy().tobytes()

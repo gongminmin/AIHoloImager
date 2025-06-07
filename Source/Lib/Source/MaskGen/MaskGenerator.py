@@ -3,11 +3,10 @@
 
 from pathlib import Path
 
-import numpy as np
 import torch
 from torch.nn.utils import skip_init
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from U2Net import U2Net, U2NetSmall
 
 class MaskGenerator:
@@ -35,8 +34,7 @@ class MaskGenerator:
 
     @torch.no_grad()
     def Gen(self, img_data : bytes, width : int, height : int, num_channels : int, large_model : bool) -> bytes:
-        norm_img = np.frombuffer(img_data, dtype = np.float32, count = width * height * num_channels)
-        norm_img = torch.from_numpy(norm_img.copy()).to(self.device)
+        norm_img = TensorFromBytes(img_data, torch.float32, num_channels * height * width, self.device)
         norm_img = norm_img.reshape(1, num_channels, height, width)
 
         if large_model:
@@ -44,5 +42,5 @@ class MaskGenerator:
         else:
             pred = self.u2net_small(norm_img)
 
-        pred = pred.squeeze(0).cpu().numpy()
-        return pred.tobytes()
+        pred = pred.squeeze(0)
+        return TensorToBytes(pred)

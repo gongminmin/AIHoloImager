@@ -3,13 +3,12 @@
 
 import random
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
@@ -72,34 +71,24 @@ class DiffOptimizer:
                  scale, rotation, translation):
         PurgeTorchCache()
 
-        vtx_positions = np.frombuffer(vtx_positions, dtype = np.float32, count = num_vertices * 3)
-        vtx_positions = torch.from_numpy(vtx_positions.copy()).to(self.device)
+        vtx_positions = TensorFromBytes(vtx_positions, torch.float32, num_vertices * 3, self.device)
         vtx_positions = vtx_positions.reshape(num_vertices, 3)
 
-        vtx_colors = np.frombuffer(vtx_colors, dtype = np.float32, count = num_vertices * 3)
-        vtx_colors = torch.from_numpy(vtx_colors.copy()).to(self.device)
+        vtx_colors = TensorFromBytes(vtx_colors, torch.float32, num_vertices * 3, self.device)
         vtx_colors = vtx_colors.reshape(num_vertices, 3)
 
-        indices = np.frombuffer(indices, dtype = np.int32, count = num_indices)
-        indices = torch.from_numpy(indices.copy()).to(self.device)
+        indices = TensorFromBytes(indices, torch.int32, num_indices, self.device)
         indices = indices.reshape(num_indices // 3, 3)
 
-        view_proj_mtxs = np.frombuffer(view_proj_mtxs, dtype = np.float32, count = num_views * 16)
-        view_proj_mtxs = torch.from_numpy(view_proj_mtxs.copy())
+        view_proj_mtxs = TensorFromBytes(view_proj_mtxs, torch.float32, num_views * 4 * 4)
         view_proj_mtxs = view_proj_mtxs.reshape(num_views, 4, 4)
 
-        transform_offsets = np.frombuffer(transform_offsets, dtype = np.int32, count = num_views * 2)
-        transform_offsets = torch.from_numpy(transform_offsets.copy())
+        transform_offsets = TensorFromBytes(transform_offsets, torch.int32, num_views * 2)
         transform_offsets = transform_offsets.reshape(num_views, 2)
 
-        scale = np.frombuffer(scale, dtype = np.float32, count = 3)
-        scale = torch.from_numpy(scale.copy())
-
-        rotation = np.frombuffer(rotation, dtype = np.float32, count = 4)
-        rotation = torch.from_numpy(rotation.copy())
-
-        translation = np.frombuffer(translation, dtype = np.float32, count = 3)
-        translation = torch.from_numpy(translation.copy())
+        scale = TensorFromBytes(scale, torch.float32, 3)
+        rotation = TensorFromBytes(rotation, torch.float32, 4)
+        translation = TensorFromBytes(translation, torch.float32, 3)
 
         rois = torch.empty(num_views, 4, dtype = torch.int32, device = GeneralDevice())
         crop_images = []
@@ -113,8 +102,7 @@ class DiffOptimizer:
             image_width = view_images[i][5]
             image_height = view_images[i][6]
 
-            roi_image = np.frombuffer(cropped_data, dtype = np.uint8, count = cropped_height * cropped_width * self.image_channels)
-            roi_image = torch.from_numpy(roi_image.copy())
+            roi_image = TensorFromBytes(cropped_data, torch.uint8, cropped_height * cropped_width * self.image_channels)
             roi_image = roi_image.reshape(cropped_height, cropped_width, self.image_channels)
 
             rois[i] = torch.tensor([cropped_x, cropped_y, cropped_x + cropped_width, cropped_y + cropped_height])
@@ -163,7 +151,7 @@ class DiffOptimizer:
         vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
         scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, viewports, cropped_roi, cropped_resolution)
-        return (scale.cpu().numpy().tobytes(), rotation.cpu().numpy().tobytes(), translation.cpu().numpy().tobytes())
+        return (TensorToBytes(scale), TensorToBytes(rotation), TensorToBytes(translation))
 
     def DownsampleImage(self, img):
         img = functional.conv2d(img.permute(0, 3, 1, 2), self.kernel, padding = 1, stride = 2, groups = img.shape[-1])
