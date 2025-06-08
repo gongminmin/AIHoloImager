@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     try
     {
         AIHoloImager::AIHoloImager imager(device, tmp_dir);
-        const AIHoloImager::Mesh mesh = imager.Generate(input_path);
+        const AIHoloImager::Mesh mesh = imager.Generate(input_path, 2048);
         AIHoloImager::SaveMesh(mesh, output_path);
 
 #ifndef AIHI_KEEP_INTERMEDIATES

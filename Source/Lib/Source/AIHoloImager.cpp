@@ -83,7 +83,7 @@ namespace AIHoloImager
             return profiler_;
         }
 
-        Mesh Generate(const std::filesystem::path& input_path)
+        Mesh Generate(const std::filesystem::path& input_path, uint32_t texture_size)
         {
             StructureFromMotion::Result sfm_result;
             {
@@ -94,7 +94,7 @@ namespace AIHoloImager
             Mesh result_mesh;
             {
                 MeshGenerator mesh_gen(*this);
-                result_mesh = mesh_gen.Generate(sfm_result, 2048, tmp_dir_);
+                result_mesh = mesh_gen.Generate(sfm_result, texture_size, tmp_dir_);
             }
 
             profiler_.Output(std::cout);
@@ -119,8 +119,8 @@ namespace AIHoloImager
 
     AIHoloImager& AIHoloImager::operator=(AIHoloImager&& rhs) noexcept = default;
 
-    Mesh AIHoloImager::Generate(const std::filesystem::path& input_path)
+    Mesh AIHoloImager::Generate(const std::filesystem::path& input_path, uint32_t texture_size)
     {
-        return impl_->Generate(input_path);
+        return impl_->Generate(input_path, texture_size);
     }
 } // namespace AIHoloImager
