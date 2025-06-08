@@ -91,6 +91,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "Mask generator destroy");
+
             py_init_future_.wait();
 
             PythonSystem::GilGuard guard;
@@ -277,7 +279,10 @@ namespace AIHoloImager
             const auto rb_future =
                 cmd_list.ReadBackAsync(normalized_gpu_tex_, 0, normalized_image.get(), normalized_data_size * sizeof(float));
 
-            py_init_future_.wait();
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
             rb_future.wait();
 
             {

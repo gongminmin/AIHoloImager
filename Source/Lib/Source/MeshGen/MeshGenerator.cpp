@@ -164,6 +164,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "MeshGenerator destroy");
+
             py_init_future_.wait();
 
             PythonSystem::GilGuard guard;
@@ -637,7 +639,10 @@ namespace AIHoloImager
             GpuBuffer deformation_features_buff;
             GpuBuffer color_features_buff;
 
-            py_init_future_.wait();
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
 
             {
                 PythonSystem::GilGuard guard;

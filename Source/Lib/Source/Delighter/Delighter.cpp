@@ -30,6 +30,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "Delighter destroy");
+
             py_init_future_.wait();
 
             PythonSystem::GilGuard guard;
@@ -78,7 +80,10 @@ namespace AIHoloImager
                 }
             }
 
-            py_init_future_.wait();
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
 
             Texture out_image;
             {

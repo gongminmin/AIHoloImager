@@ -115,6 +115,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "SfM destroy");
+
             py_init_future_.wait();
 
             PythonSystem::GilGuard guard;
@@ -301,7 +303,10 @@ namespace AIHoloImager
                 {
                     std::cout << "Estimating the camera focal length...\n";
 
-                    py_init_future_.wait();
+                    {
+                        PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                        py_init_future_.wait();
+                    }
 
                     double sum_focal = 0;
                     for (const uint32_t image_id : camera_info.image_ids)

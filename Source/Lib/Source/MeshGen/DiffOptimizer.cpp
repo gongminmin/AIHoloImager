@@ -24,6 +24,8 @@ namespace AIHoloImager
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
             py_init_future_ = std::async(std::launch::async, [this] {
+                PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "DiffOptimizer init (async)");
+
                 PythonSystem::GilGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
@@ -42,6 +44,8 @@ namespace AIHoloImager
 
         ~Impl()
         {
+            PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "DiffOptimizer destroy");
+
             py_init_future_.wait();
 
             PythonSystem::GilGuard guard;
@@ -100,7 +104,10 @@ namespace AIHoloImager
                 };
             }
 
-            py_init_future_.wait();
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
 
             {
                 PythonSystem::GilGuard guard;
