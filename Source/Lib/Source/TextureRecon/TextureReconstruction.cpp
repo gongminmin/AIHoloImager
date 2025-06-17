@@ -27,7 +27,7 @@ namespace AIHoloImager
     class TextureReconstruction::Impl
     {
     public:
-        explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
+        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), gpu_system_(aihi.GpuSystemInstance())
         {
             const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
                 {"POSITION", 0, GpuFormat::RGB32_Float},
@@ -92,12 +92,12 @@ namespace AIHoloImager
         }
 
         TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
             const uint32_t vertex_stride = mesh.MeshVertexDesc().Stride();
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            const auto output_dir = tmp_dir / "Texture";
+            const auto output_dir = aihi_.TmpDir() / "Texture";
             std::filesystem::create_directories(output_dir);
 #endif
 
@@ -137,8 +137,8 @@ namespace AIHoloImager
 #endif
 
             TextureReconstruction::Result result;
-            result.color_tex = this->GenTextureFromPhotos(mesh_vb, vertex_stride, mesh_ib, model_mtx, world_obb, flatten_pos_tex,
-                flatten_normal_tex, sfm_input, texture_size, tmp_dir);
+            result.color_tex = this->GenTextureFromPhotos(
+                mesh_vb, vertex_stride, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -209,7 +209,7 @@ namespace AIHoloImager
 
         GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib,
             const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size, [[maybe_unused]] const std::filesystem::path& tmp_dir)
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -286,7 +286,7 @@ namespace AIHoloImager
                     Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
                     const auto rb_future = cmd_list.ReadBackAsync(accum_color_tex, 0, color_tex.Data(), color_tex.DataSize());
                     rb_future.wait();
-                    SaveTexture(color_tex, tmp_dir / "Texture" / std::format("Projective_{}.png", i));
+                    SaveTexture(color_tex, aihi_.TmpDir() / "Texture" / std::format("Projective_{}.png", i));
                 }
 #endif
 
@@ -373,6 +373,7 @@ namespace AIHoloImager
         }
 
     private:
+        AIHoloImagerInternal& aihi_;
         GpuSystem& gpu_system_;
 
         struct FlattenConstantBuffer
@@ -428,8 +429,8 @@ namespace AIHoloImager
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
     TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
-        const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+        const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
     {
-        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
+        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size);
     }
 } // namespace AIHoloImager

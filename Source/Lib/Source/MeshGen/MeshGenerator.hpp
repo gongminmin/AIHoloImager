@@ -23,7 +23,7 @@ namespace AIHoloImager
 
         MeshGenerator& operator=(MeshGenerator&& other) noexcept;
 
-        Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir);
+        Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size);
 
     private:
         class Impl;

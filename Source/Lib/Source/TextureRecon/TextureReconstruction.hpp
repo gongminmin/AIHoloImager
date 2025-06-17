@@ -35,7 +35,7 @@ namespace AIHoloImager
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
         Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input,
-            uint32_t texture_size, const std::filesystem::path& tmp_dir);
+            uint32_t texture_size);
 
     private:
         class Impl;

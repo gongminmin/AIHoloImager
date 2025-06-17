@@ -16,16 +16,6 @@
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/PerfProfiler.hpp"
 
-namespace
-{
-    std::filesystem::path RetrieveExeDir()
-    {
-        char exe_path[MAX_PATH];
-        GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
-        return std::filesystem::path(exe_path).parent_path();
-    }
-} // namespace
-
 namespace AIHoloImager
 {
     AIHoloImagerInternal::~AIHoloImagerInternal() noexcept = default;
@@ -37,6 +27,13 @@ namespace AIHoloImager
             : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true),
               python_system_(GetDeviceName(device), exe_dir_)
         {
+        }
+
+        static std::filesystem::path RetrieveExeDir()
+        {
+            char exe_path[MAX_PATH];
+            GetModuleFileNameA(nullptr, exe_path, sizeof(exe_path));
+            return std::filesystem::path(exe_path).parent_path();
         }
 
         static bool ConfirmDevice(ID3D12Device* device)
@@ -68,6 +65,11 @@ namespace AIHoloImager
             return exe_dir_;
         }
 
+        const std::filesystem::path& TmpDir() override
+        {
+            return tmp_dir_;
+        }
+
         GpuSystem& GpuSystemInstance() override
         {
             return gpu_system_;
@@ -88,13 +90,13 @@ namespace AIHoloImager
             StructureFromMotion::Result sfm_result;
             {
                 StructureFromMotion sfm(*this);
-                sfm_result = sfm.Process(input_path, true, tmp_dir_);
+                sfm_result = sfm.Process(input_path, true);
             }
 
             Mesh result_mesh;
             {
                 MeshGenerator mesh_gen(*this);
-                result_mesh = mesh_gen.Generate(sfm_result, texture_size, tmp_dir_);
+                result_mesh = mesh_gen.Generate(sfm_result, texture_size);
             }
 
             profiler_.Output(std::cout);

@@ -132,7 +132,7 @@ namespace AIHoloImager
             focal_estimator_module_.reset();
         }
 
-        Result Process(const std::filesystem::path& input_path, bool sequential, const std::filesystem::path& tmp_dir)
+        Result Process(const std::filesystem::path& input_path, bool sequential)
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
@@ -142,7 +142,7 @@ namespace AIHoloImager
             const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
             const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
 
-            const auto sfm_tmp_dir = tmp_dir / "Sfm";
+            const auto sfm_tmp_dir = aihi_.TmpDir() / "Sfm";
             std::filesystem::create_directories(sfm_tmp_dir);
 
             const SfM_Data processed_sfm_data =
@@ -723,10 +723,9 @@ namespace AIHoloImager
     StructureFromMotion::StructureFromMotion(StructureFromMotion&& other) noexcept = default;
     StructureFromMotion& StructureFromMotion::operator=(StructureFromMotion&& other) noexcept = default;
 
-    StructureFromMotion::Result StructureFromMotion::Process(
-        const std::filesystem::path& image_dir, bool sequential, const std::filesystem::path& tmp_dir)
+    StructureFromMotion::Result StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential)
     {
-        return impl_->Process(image_dir, sequential, tmp_dir);
+        return impl_->Process(image_dir, sequential);
     }
 
     glm::mat4x4 CalcViewMatrix(const StructureFromMotion::View& view)

@@ -18,6 +18,7 @@ namespace AIHoloImager
         virtual ~AIHoloImagerInternal() noexcept;
 
         virtual const std::filesystem::path& ExeDir() = 0;
+        virtual const std::filesystem::path& TmpDir() = 0;
 
         virtual GpuSystem& GpuSystemInstance() = 0;
         virtual PythonSystem& PythonSystemInstance() = 0;

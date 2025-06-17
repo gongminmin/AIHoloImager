@@ -186,13 +186,13 @@ namespace AIHoloImager
             mesh_generator_module_.reset();
         }
 
-        Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+        Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
             auto& profiler = aihi_.PerfProfilerInstance();
             PerfRegion process_perf(profiler, "Mesh generator process");
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            const auto output_dir = tmp_dir / "MeshGen";
+            const auto output_dir = aihi_.TmpDir() / "MeshGen";
             std::filesystem::create_directories(output_dir);
 #endif
 
@@ -339,7 +339,7 @@ namespace AIHoloImager
                 PerfRegion texturing_perf(profiler, "Generate texture");
 
                 const Obb world_obb = Obb::Transform(obb, model_mtx);
-                auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size, tmp_dir);
+                auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size);
 
                 Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 {
@@ -1498,8 +1498,8 @@ namespace AIHoloImager
     MeshGenerator::MeshGenerator(MeshGenerator&& other) noexcept = default;
     MeshGenerator& MeshGenerator::operator=(MeshGenerator&& other) noexcept = default;
 
-    Mesh MeshGenerator::Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size, const std::filesystem::path& tmp_dir)
+    Mesh MeshGenerator::Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
     {
-        return impl_->Generate(sfm_input, texture_size, tmp_dir);
+        return impl_->Generate(sfm_input, texture_size);
     }
 } // namespace AIHoloImager
