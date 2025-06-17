@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     }
     if (vm.count("version") > 0)
     {
-        std::cout << "AIHoloImager, Version 0.4.0\n";
+        std::cout << "AIHoloImager, Version 0.5.0\n";
         return 0;
     }
 
