@@ -435,13 +435,24 @@ namespace AIHoloImager
                     const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
 
                     const auto& view = sfm_input.views[ob.view_id];
-                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                    const std::byte* image_mask_data = view.image_mask.Data();
-                    const uint32_t fmt_size = FormatSize(view.image_mask.Format());
-                    if (image_mask_data[(y * intrinsic.width + x) * fmt_size + 3] > std::byte(0x7F))
+                    const uint32_t delighted_beg_x = view.delighted_offset.x;
+                    const uint32_t delighted_beg_y = view.delighted_offset.y;
+                    const uint32_t delighted_end_x = view.delighted_offset.x + view.delighted_image.Width();
+                    const uint32_t delighted_end_y = view.delighted_offset.y + view.delighted_image.Height();
+                    const uint32_t delighted_width = view.delighted_image.Width();
+
+                    if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
                     {
-                        bb.AddPoint(glm::vec3(landmark.point));
+                        const std::byte* delighted_image_data = view.delighted_image.Data();
+                        const uint32_t fmt_size = FormatSize(view.delighted_image.Format());
+                        const uint32_t delighted_x = x - delighted_beg_x;
+                        const uint32_t delighted_y = y - delighted_beg_y;
+                        const std::byte mask = delighted_image_data[(delighted_y * delighted_width + delighted_x) * fmt_size + 3];
+                        if (mask > std::byte(0x7F))
+                        {
+                            bb.AddPoint(glm::vec3(landmark.point));
+                        }
                     }
                 }
             }
@@ -456,16 +467,21 @@ namespace AIHoloImager
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
                 const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                const std::byte* image_mask_data = view.image_mask.Data();
-                const uint32_t fmt_size = FormatSize(view.image_mask.Format());
+                const std::byte* delighted_image_data = view.delighted_image.Data();
+                const uint32_t fmt_size = FormatSize(view.delighted_image.Format());
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x = view.delighted_offset.x - Gap;
                 const uint32_t beg_y = view.delighted_offset.y + view.delighted_image.Height() / 2;
                 const uint32_t end_x = view.delighted_offset.x + view.delighted_image.Width() + Gap;
                 const uint32_t end_y = view.delighted_offset.y + view.delighted_image.Height() + Gap;
+
+                const uint32_t delighted_beg_x = view.delighted_offset.x;
+                const uint32_t delighted_beg_y = view.delighted_offset.y;
+                const uint32_t delighted_end_x = view.delighted_offset.x + view.delighted_image.Width();
+                const uint32_t delighted_end_y = view.delighted_offset.y + view.delighted_image.Height();
+                const uint32_t delighted_width = view.delighted_image.Width();
 
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
@@ -480,7 +496,17 @@ namespace AIHoloImager
                                 const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
                                 if ((x >= beg_x) && (y >= beg_y) && (x < end_x) && (y < end_y))
                                 {
-                                    if (image_mask_data[(y * intrinsic.width + x) * fmt_size + 3] <= std::byte(0x7F))
+                                    bool is_background = true;
+                                    if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
+                                    {
+                                        const uint32_t delighted_x = x - delighted_beg_x;
+                                        const uint32_t delighted_y = y - delighted_beg_y;
+                                        const std::byte mask =
+                                            delighted_image_data[(delighted_y * delighted_width + delighted_x) * fmt_size + 3];
+                                        is_background = (mask <= std::byte(0x7F));
+                                    }
+
+                                    if (is_background)
                                     {
                                         plane_points.push_back(landmark.point);
                                         point_used[j] = true;

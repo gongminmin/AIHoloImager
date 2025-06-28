@@ -10,7 +10,6 @@
 #include <glm/mat3x3.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
 
 #include "AIHoloImager/Texture.hpp"
 #include "AIHoloImagerInternal.hpp"
@@ -26,9 +25,6 @@ namespace AIHoloImager
     public:
         struct View
         {
-            Texture image_mask;
-            glm::uvec4 roi;
-
             Texture delighted_image;
             glm::uvec2 delighted_offset;
 

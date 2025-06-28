@@ -147,7 +147,7 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return this->ExportResult(processed_sfm_data, std::move(images));
+            return this->ExportResult(processed_sfm_data, images);
         }
 
     private:
@@ -176,7 +176,7 @@ namespace AIHoloImager
                         float sensor_size = 0;
                         db_file.read(reinterpret_cast<char*>(&sensor_size), sizeof(sensor_size));
 
-                        vec_database[i] = {model, sensor_size};
+                        vec_database[i] = {std::move(model), sensor_size};
                     }
                 }
                 else
@@ -534,7 +534,7 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(const SfM_Data& sfm_data, std::vector<Texture>&& images)
+        Result ExportResult(const SfM_Data& sfm_data, std::vector<Texture>& images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -585,44 +585,43 @@ namespace AIHoloImager
                     const auto& center = mvg_pose.center();
                     result_view.center = {center.x(), center.y(), center.z()};
 
-                    result_view.image_mask = std::move(images[mvg_view.first]);
+                    Texture& image_mask = images[mvg_view.first];
 
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        result_view.image_mask.ConvertInPlace(ElementFormat::RGBA8_UNorm);
+                        image_mask.ConvertInPlace(ElementFormat::RGBA8_UNorm);
 
-                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
-                            (distort_gpu_tex.Height(0) != result_view.image_mask.Height()))
+                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image_mask.Width()) ||
+                            (distort_gpu_tex.Height(0) != image_mask.Height()))
                         {
-                            distort_gpu_tex = GpuTexture2D(gpu_system, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
-                                ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
+                            distort_gpu_tex = GpuTexture2D(gpu_system, image_mask.Width(), image_mask.Height(), 1, ColorFmt,
+                                GpuResourceFlag::None, L"distort_gpu_tex");
                         }
-                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != result_view.image_mask.Width()) ||
-                            (undistort_gpu_tex.Height(0) != result_view.image_mask.Height()))
+                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != image_mask.Width()) ||
+                            (undistort_gpu_tex.Height(0) != image_mask.Height()))
                         {
-                            undistort_gpu_tex = GpuTexture2D(gpu_system, result_view.image_mask.Width(), result_view.image_mask.Height(), 1,
-                                ColorFmt, GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
+                            undistort_gpu_tex = GpuTexture2D(gpu_system, image_mask.Width(), image_mask.Height(), 1, ColorFmt,
+                                GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
                         }
 
                         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        cmd_list.Upload(distort_gpu_tex, 0, result_view.image_mask.Data(), result_view.image_mask.DataSize());
+                        cmd_list.Upload(distort_gpu_tex, 0, image_mask.Data(), image_mask.DataSize());
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        mask_gen_.Generate(cmd_list, undistort_gpu_tex, result_view.roi);
+                        glm::uvec4 roi;
+                        mask_gen_.Generate(cmd_list, undistort_gpu_tex, roi);
 
-                        const auto rb_future =
-                            cmd_list.ReadBackAsync(undistort_gpu_tex, 0, result_view.image_mask.Data(), result_view.image_mask.DataSize());
+                        const auto rb_future = cmd_list.ReadBackAsync(undistort_gpu_tex, 0, image_mask.Data(), image_mask.DataSize());
 
                         gpu_system.Execute(std::move(cmd_list));
 
                         rb_future.wait();
 
-                        result_view.delighted_image =
-                            delighter_.Process(result_view.image_mask, result_view.roi, result_view.delighted_offset);
+                        result_view.delighted_image = delighter_.Process(image_mask, roi, result_view.delighted_offset);
                     }
                 }
                 else
