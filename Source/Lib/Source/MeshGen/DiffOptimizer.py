@@ -175,13 +175,12 @@ class DiffOptimizer:
                      scale, rotation, translation,
                      vtx_positions, vtx_colors, indices,
                      crop_images, view_proj_mtxs, viewports, rois,
-                     resolutions, num_iter = 1500):
+                     resolutions, num_iter = 300):
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
         interval = 100
         lr_base = 1e-2
-        lr_ramp = 1e-3
 
         scale_opt = nn.Parameter(scale)
         rotation_opt = nn.Parameter(rotation)
@@ -189,7 +188,7 @@ class DiffOptimizer:
 
         parameters = [scale_opt, rotation_opt, translation_opt]
         optimizer = optim.Adam(parameters, betas = (0.9, 0.999), lr = lr_base)
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda = lambda x: max(lr_ramp, 10 ** (-x * 0.0001)))
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = 0.5)
 
         loss_best = 1e10
         scale_best = scale_opt.detach().clone()
@@ -198,7 +197,7 @@ class DiffOptimizer:
 
         opposite_vertices = self.gpu_dr.AntiAliasConstructOppositeVertices(indices)
 
-        loss_sum = torch.zeros(1, dtype = torch.float32, device = self.device)
+        loss_sum = 0.0
         n = 0
         for it in range(num_iter + 1):
             img_idx = random.randint(0, num_images - 1)
@@ -219,17 +218,17 @@ class DiffOptimizer:
             optimizer.zero_grad(set_to_none = True)
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            scheduler.step(loss)
 
             with torch.no_grad():
                 rotation_opt[:] = NormalizeQuat(rotation_opt)
 
-            loss_sum += loss
+            loss_sum += loss_val
             n += 1
 
             if it % interval == 0:
-                print(f"Iteration {it}, loss {(loss_sum.item() / n):.7f}, loss best {loss_best:.7f}")
-                loss_sum = torch.zeros(1, dtype = torch.float32, device = self.device)
+                print(f"Iteration {it}, loss {(loss_sum / n):.7f}, loss best {loss_best:.7f}")
+                loss_sum = 0.0
                 n = 0
 
         return scale_best, rotation_best, translation_best
