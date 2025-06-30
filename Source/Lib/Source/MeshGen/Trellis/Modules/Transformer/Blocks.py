@@ -21,7 +21,7 @@ class AbsolutePositionEmbedder(nn.Module):
         self.channels = channels
         self.in_channels = in_channels
         self.freq_dim = channels // in_channels // 2
-        self.freqs = torch.arange(self.freq_dim, dtype=torch.float32) / self.freq_dim
+        self.freqs = torch.arange(self.freq_dim, dtype = torch.float32) / self.freq_dim
         self.freqs = 1.0 / (10000 ** self.freqs)
         
     def _sin_cos_embedding(self, x: torch.Tensor) -> torch.Tensor:
@@ -34,9 +34,10 @@ class AbsolutePositionEmbedder(nn.Module):
         Returns:
             an (N, D) Tensor of positional embeddings.
         """
+
         self.freqs = self.freqs.to(x.device)
         out = torch.outer(x, self.freqs)
-        out = torch.cat([torch.sin(out), torch.cos(out)], dim=-1)
+        out = torch.cat([torch.sin(out), torch.cos(out)], dim = -1)
         return out
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -44,12 +45,13 @@ class AbsolutePositionEmbedder(nn.Module):
         Args:
             x (torch.Tensor): (N, D) tensor of spatial positions
         """
-        N, D = x.shape
-        assert D == self.in_channels, "Input dimension must match number of input channels"
+
+        num, dim = x.shape
+        assert dim == self.in_channels, "Input dimension must match number of input channels"
         embed = self._sin_cos_embedding(x.reshape(-1))
-        embed = embed.reshape(N, -1)
+        embed = embed.reshape(num, -1)
         if embed.shape[1] < self.channels:
-            embed = torch.cat([embed, torch.zeros(N, self.channels - embed.shape[1], device=embed.device)], dim=-1)
+            embed = torch.cat([embed, torch.zeros(num, self.channels - embed.shape[1], device = embed.device)], dim = -1)
         return embed
 
 class FeedForwardNet(nn.Module):
@@ -58,7 +60,7 @@ class FeedForwardNet(nn.Module):
 
         self.mlp = nn.Sequential(
             nn.Linear(channels, int(channels * mlp_ratio), device = device),
-            nn.GELU(approximate="tanh"),
+            nn.GELU(approximate = "tanh"),
             nn.Linear(int(channels * mlp_ratio), channels, device = device),
         )
 

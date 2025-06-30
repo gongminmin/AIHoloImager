@@ -11,11 +11,11 @@ from .. import SparseTensor
 from ...Utils import MemEfficientAttention, BlockDiagonalMaskFromSeqlens
 
 __all__ = [
-    'sparse_scaled_dot_product_attention',
+    "SparseScaledDotProductAttention",
 ]
 
 @overload
-def sparse_scaled_dot_product_attention(qkv: SparseTensor) -> SparseTensor:
+def SparseScaledDotProductAttention(qkv: SparseTensor) -> SparseTensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -25,7 +25,7 @@ def sparse_scaled_dot_product_attention(qkv: SparseTensor) -> SparseTensor:
     ...
 
 @overload
-def sparse_scaled_dot_product_attention(q: SparseTensor, kv: Union[SparseTensor, torch.Tensor]) -> SparseTensor:
+def SparseScaledDotProductAttention(q: SparseTensor, kv: Union[SparseTensor, torch.Tensor]) -> SparseTensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -36,7 +36,7 @@ def sparse_scaled_dot_product_attention(q: SparseTensor, kv: Union[SparseTensor,
     ...
 
 @overload
-def sparse_scaled_dot_product_attention(q: torch.Tensor, kv: SparseTensor) -> torch.Tensor:
+def SparseScaledDotProductAttention(q: torch.Tensor, kv: SparseTensor) -> torch.Tensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -47,7 +47,7 @@ def sparse_scaled_dot_product_attention(q: torch.Tensor, kv: SparseTensor) -> to
     ...
 
 @overload
-def sparse_scaled_dot_product_attention(q: SparseTensor, k: SparseTensor, v: SparseTensor) -> SparseTensor:
+def SparseScaledDotProductAttention(q: SparseTensor, k: SparseTensor, v: SparseTensor) -> SparseTensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -62,7 +62,7 @@ def sparse_scaled_dot_product_attention(q: SparseTensor, k: SparseTensor, v: Spa
     ...
 
 @overload
-def sparse_scaled_dot_product_attention(q: SparseTensor, k: torch.Tensor, v: torch.Tensor) -> SparseTensor:
+def SparseScaledDotProductAttention(q: SparseTensor, k: torch.Tensor, v: torch.Tensor) -> SparseTensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -74,7 +74,7 @@ def sparse_scaled_dot_product_attention(q: SparseTensor, k: torch.Tensor, v: tor
     ...
 
 @overload
-def sparse_scaled_dot_product_attention(q: torch.Tensor, k: SparseTensor, v: SparseTensor) -> torch.Tensor:
+def SparseScaledDotProductAttention(q: torch.Tensor, k: SparseTensor, v: SparseTensor) -> torch.Tensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -85,11 +85,11 @@ def sparse_scaled_dot_product_attention(q: torch.Tensor, k: SparseTensor, v: Spa
     """
     ...
 
-def sparse_scaled_dot_product_attention(*args, **kwargs):
+def SparseScaledDotProductAttention(*args, **kwargs):
     arg_names_dict = {
-        1: ['qkv'],
-        2: ['q', 'kv'],
-        3: ['q', 'k', 'v']
+        1: ["qkv"],
+        2: ["q", "kv"],
+        3: ["q", "k", "v"]
     }
     num_all_args = len(args) + len(kwargs)
     assert num_all_args in arg_names_dict, f"Invalid number of arguments, got {num_all_args}, expected 1, 2, or 3"
@@ -97,24 +97,22 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
         assert key in kwargs, f"Missing argument {key}"
 
     if num_all_args == 1:
-        qkv = args[0] if len(args) > 0 else kwargs['qkv']
+        qkv = args[0] if len(args) > 0 else kwargs["qkv"]
         assert isinstance(qkv, SparseTensor), f"qkv must be a SparseTensor, got {type(qkv)}"
         assert len(qkv.shape) == 4 and qkv.shape[1] == 3, f"Invalid shape for qkv, got {qkv.shape}, expected [N, *, 3, H, C]"
-        device = qkv.device
 
         s = qkv
         q_seqlen = [qkv.layout[i].stop - qkv.layout[i].start for i in range(qkv.shape[0])]
         kv_seqlen = q_seqlen
         qkv = qkv.feats     # [T, 3, H, C]
-
+        q, k, v = qkv.unbind(dim = 1)
     elif num_all_args == 2:
-        q = args[0] if len(args) > 0 else kwargs['q']
-        kv = args[1] if len(args) > 1 else kwargs['kv']
+        q = args[0] if len(args) > 0 else kwargs["q"]
+        kv = args[1] if len(args) > 1 else kwargs["kv"]
         assert isinstance(q, SparseTensor) and isinstance(kv, (SparseTensor, torch.Tensor)) or \
                isinstance(q, torch.Tensor) and isinstance(kv, SparseTensor), \
                f"Invalid types, got {type(q)} and {type(kv)}"
         assert q.shape[0] == kv.shape[0], f"Batch size mismatch, got {q.shape[0]} and {kv.shape[0]}"
-        device = q.device
 
         if isinstance(q, SparseTensor):
             assert len(q.shape) == 3, f"Invalid shape for q, got {q.shape}, expected [N, *, H, C]"
@@ -124,29 +122,28 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
         else:
             assert len(q.shape) == 4, f"Invalid shape for q, got {q.shape}, expected [N, L, H, C]"
             s = None
-            N, L, H, C = q.shape
-            q_seqlen = [L] * N
-            q = q.reshape(N * L, H, C)   # [T_Q, H, C]
+            num, length, height, channels = q.shape
+            q_seqlen = [length] * num
+            q = q.reshape(num * length, height, channels)   # [T_Q, H, C]
 
         if isinstance(kv, SparseTensor):
-            assert len(kv.shape) == 4 and kv.shape[1] == 2, f"Invalid shape for kv, got {kv.shape}, expected [N, *, 2, H, C]"
+            assert len(kv.shape) == 4 and kv.shape[1] == 2, f"Invalid shape for kv, got {kv.shape}, expected [num, *, 2, H, C]"
             kv_seqlen = [kv.layout[i].stop - kv.layout[i].start for i in range(kv.shape[0])]
             kv = kv.feats     # [T_KV, 2, H, C]
         else:
             assert len(kv.shape) == 5, f"Invalid shape for kv, got {kv.shape}, expected [N, L, 2, H, C]"
-            N, L, _, H, C = kv.shape
-            kv_seqlen = [L] * N
-            kv = kv.reshape(N * L, 2, H, C)   # [T_KV, 2, H, C]
-
+            num, length, _, height, channels = kv.shape
+            kv_seqlen = [length] * num
+            kv = kv.reshape(num * length, 2, height, channels)   # [T_KV, 2, H, C]
+        k, v = kv.unbind(dim = 1)
     elif num_all_args == 3:
-        q = args[0] if len(args) > 0 else kwargs['q']
-        k = args[1] if len(args) > 1 else kwargs['k']
-        v = args[2] if len(args) > 2 else kwargs['v']
+        q = args[0] if len(args) > 0 else kwargs["q"]
+        k = args[1] if len(args) > 1 else kwargs["k"]
+        v = args[2] if len(args) > 2 else kwargs["v"]
         assert isinstance(q, SparseTensor) and isinstance(k, (SparseTensor, torch.Tensor)) and type(k) == type(v) or \
                isinstance(q, torch.Tensor) and isinstance(k, SparseTensor) and isinstance(v, SparseTensor), \
                f"Invalid types, got {type(q)}, {type(k)}, and {type(v)}"
         assert q.shape[0] == k.shape[0] == v.shape[0], f"Batch size mismatch, got {q.shape[0]}, {k.shape[0]}, and {v.shape[0]}"
-        device = q.device
 
         if isinstance(q, SparseTensor):
             assert len(q.shape) == 3, f"Invalid shape for q, got {q.shape}, expected [N, *, H, Ci]"
@@ -156,9 +153,9 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
         else:
             assert len(q.shape) == 4, f"Invalid shape for q, got {q.shape}, expected [N, L, H, Ci]"
             s = None
-            N, L, H, CI = q.shape
-            q_seqlen = [L] * N
-            q = q.reshape(N * L, H, CI)  # [T_Q, H, Ci]
+            num, length, height, channels_in = q.shape
+            q_seqlen = [length] * num
+            q = q.reshape(num * length, height, channels_in)  # [T_Q, H, Ci]
 
         if isinstance(k, SparseTensor):
             assert len(k.shape) == 3, f"Invalid shape for k, got {k.shape}, expected [N, *, H, Ci]"
@@ -169,15 +166,11 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
         else:
             assert len(k.shape) == 4, f"Invalid shape for k, got {k.shape}, expected [N, L, H, Ci]"
             assert len(v.shape) == 4, f"Invalid shape for v, got {v.shape}, expected [N, L, H, Co]"
-            N, L, H, CI, CO = *k.shape, v.shape[-1]
-            kv_seqlen = [L] * N
-            k = k.reshape(N * L, H, CI)     # [T_KV, H, Ci]
-            v = v.reshape(N * L, H, CO)     # [T_KV, H, Co]
+            num, length, height, channels_in, channels_out = *k.shape, v.shape[-1]
+            kv_seqlen = [length] * num
+            k = k.reshape(num * length, height, channels_in)     # [T_KV, H, Ci]
+            v = v.reshape(num * length, height, channels_out)    # [T_KV, H, Co]
 
-    if num_all_args == 1:
-        q, k, v = qkv.unbind(dim=1)
-    elif num_all_args == 2:
-        k, v = kv.unbind(dim=1)
     q = q.unsqueeze(0)
     k = k.unsqueeze(0)
     v = v.unsqueeze(0)
@@ -187,4 +180,4 @@ def sparse_scaled_dot_product_attention(*args, **kwargs):
     if s is not None:
         return s.replace(out)
     else:
-        return out.reshape(N, L, H, -1)
+        return out.reshape(num, length, height, -1)

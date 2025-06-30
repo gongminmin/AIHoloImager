@@ -9,12 +9,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ...Modules.Utils import zero_module, convert_module_to_f16
+from ...Modules.Utils import ConvertModuleToFp16, ZeroModule
 from ...Modules import Sparse as sp
 from .Base import SparseTransformerBase
 
 class SparseVolumeExtractResult:
-    def __init__(self, resolution : int, x : sp.SparseTensor):
+    def __init__(self, resolution: int, x: sp.SparseTensor):
         self.resolution = resolution
         self.coords = x.coords[:, 1 :].to(torch.int32)
         self.feats = x.feats.to(torch.float16)
@@ -28,13 +28,14 @@ class SparseSubdivideBlock3d(nn.Module):
         out_channels: if specified, the number of output channels.
         num_groups: the number of groups for the group norm.
     """
+
     def __init__(
         self,
         channels: int,
         resolution: int,
         out_channels: Optional[int] = None,
         num_groups: int = 32,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super(SparseSubdivideBlock3d, self).__init__()
 
@@ -57,7 +58,7 @@ class SparseSubdivideBlock3d(nn.Module):
             sp.SparseConv3d(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
         )
         if device != "meta":
-            self.out_layers[3] = zero_module(self.out_layers[3])
+            self.out_layers[3] = ZeroModule(self.out_layers[3])
 
         if self.out_channels == channels:
             self.skip_connection = nn.Identity()
@@ -73,6 +74,7 @@ class SparseSubdivideBlock3d(nn.Module):
         Returns:
             an [N x C x ...] Tensor of outputs.
         """
+
         h = self.act_layers(x)
         h = self.sub(h)
         x = self.sub(x)
@@ -94,24 +96,22 @@ class SLatMeshDecoder(SparseTransformerBase):
         window_size: int = 8,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
-        use_checkpoint: bool = False,
         qk_rms_norm: bool = False,
         representation_config: dict = None,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super(SLatMeshDecoder, self).__init__(
-            in_channels=latent_channels,
-            model_channels=model_channels,
-            num_blocks=num_blocks,
-            num_heads=num_heads,
-            num_head_channels=num_head_channels,
-            mlp_ratio=mlp_ratio,
-            attn_mode=attn_mode,
-            window_size=window_size,
-            pe_mode=pe_mode,
-            use_fp16=use_fp16,
-            use_checkpoint=use_checkpoint,
-            qk_rms_norm=qk_rms_norm,
+            in_channels = latent_channels,
+            model_channels = model_channels,
+            num_blocks = num_blocks,
+            num_heads = num_heads,
+            num_head_channels = num_head_channels,
+            mlp_ratio = mlp_ratio,
+            attn_mode = attn_mode,
+            window_size = window_size,
+            pe_mode = pe_mode,
+            use_fp16 = use_fp16,
+            qk_rms_norm = qk_rms_norm,
             device = device,
         )
 
@@ -135,24 +135,25 @@ class SLatMeshDecoder(SparseTransformerBase):
         self.out_layer = sp.SparseLinear(model_channels // 8, self.out_channels, device = device)
 
         if device != "meta":
-            self.initialize_weights()
+            self.InitializeWeights()
         if use_fp16:
-            self.convert_to_fp16()
+            self.ConvertToFp16()
 
-    def initialize_weights(self) -> None:
-        super().initialize_weights()
+    def InitializeWeights(self) -> None:
+        super().InitializeWeights()
         # Zero-out output layers:
         nn.init.constant_(self.out_layer.weight, 0)
         nn.init.constant_(self.out_layer.bias, 0)
 
-    def convert_to_fp16(self) -> None:
+    def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
-        super().convert_to_fp16()
-        self.upsample.apply(convert_module_to_f16)
+
+        super().ConvertToFp16()
+        self.upsample.apply(ConvertModuleToFp16)
     
-    def to_representation(self, x: sp.SparseTensor) -> List[SparseVolumeExtractResult]:
+    def ToRepresentation(self, x: sp.SparseTensor) -> List[SparseVolumeExtractResult]:
         """
         Convert a batch of network outputs to 3D representations.
 
@@ -162,6 +163,7 @@ class SLatMeshDecoder(SparseTransformerBase):
         Returns:
             list of representations
         """
+
         ret = []
         for i in range(x.shape[0]):
             ret.append(SparseVolumeExtractResult(self.resolution * 4, x[i]))
@@ -173,4 +175,4 @@ class SLatMeshDecoder(SparseTransformerBase):
             h = block(h)
         h = h.type(x.dtype)
         h = self.out_layer(h)
-        return self.to_representation(h)
+        return self.ToRepresentation(h)

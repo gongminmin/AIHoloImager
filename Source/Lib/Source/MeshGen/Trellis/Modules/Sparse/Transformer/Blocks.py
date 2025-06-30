@@ -41,7 +41,6 @@ class SparseTransformerBlock(nn.Module):
         shift_sequence: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
         serialize_mode: Optional[SerializeMode] = None,
-        use_checkpoint: bool = False,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qkv_bias: bool = True,
@@ -50,7 +49,6 @@ class SparseTransformerBlock(nn.Module):
     ):
         super().__init__()
 
-        self.use_checkpoint = use_checkpoint
         self.norm1 = LayerNorm32(channels, elementwise_affine=ln_affine, eps=1e-6, device = device)
         self.norm2 = LayerNorm32(channels, elementwise_affine=ln_affine, eps=1e-6, device = device)
         self.attn = SparseMultiHeadAttention(
@@ -72,7 +70,7 @@ class SparseTransformerBlock(nn.Module):
             device = device,
         )
 
-    def _forward(self, x: SparseTensor) -> SparseTensor:
+    def forward(self, x: SparseTensor) -> SparseTensor:
         h = x.replace(self.norm1(x.feats))
         h = self.attn(h)
         x = x + h
@@ -80,9 +78,3 @@ class SparseTransformerBlock(nn.Module):
         h = self.mlp(h)
         x = x + h
         return x
-
-    def forward(self, x: SparseTensor) -> SparseTensor:
-        if self.use_checkpoint:
-            return torch.utils.checkpoint.checkpoint(self._forward, x, use_reentrant=False)
-        else:
-            return self._forward(x)

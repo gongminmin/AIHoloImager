@@ -10,7 +10,7 @@ import torch.nn as nn
 
 from ...Modules.Sparse.Transformer import SparseTransformerBlock
 from ...Modules.Transformer import AbsolutePositionEmbedder
-from ...Modules.Utils import convert_module_to_f16
+from ...Modules.Utils import ConvertModuleToFp16
 from ...Modules import Sparse as sp
 
 def BlockAttnConfig(self):
@@ -40,7 +40,6 @@ class SparseTransformerBase(nn.Module):
         window_size: Optional[int] = None,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
-        use_checkpoint: bool = False,
         qk_rms_norm: bool = False,
         device : Optional[torch.device] = None,
     ):
@@ -55,7 +54,6 @@ class SparseTransformerBase(nn.Module):
         self.attn_mode = attn_mode
         self.pe_mode = pe_mode
         self.use_fp16 = use_fp16
-        self.use_checkpoint = use_checkpoint
         self.qk_rms_norm = qk_rms_norm
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
@@ -73,7 +71,6 @@ class SparseTransformerBase(nn.Module):
                 shift_sequence=shift_sequence,
                 shift_window=shift_window,
                 serialize_mode=serialize_mode,
-                use_checkpoint=self.use_checkpoint,
                 use_rope=(pe_mode == "rope"),
                 qk_rms_norm=self.qk_rms_norm,
                 device = device,
@@ -88,13 +85,13 @@ class SparseTransformerBase(nn.Module):
         """
         return next(self.parameters()).device
 
-    def convert_to_fp16(self) -> None:
+    def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
-        self.blocks.apply(convert_module_to_f16)
+        self.blocks.apply(ConvertModuleToFp16)
 
-    def initialize_weights(self) -> None:
+    def InitializeWeights(self) -> None:
         # Initialize transformer layers:
         def _basic_init(module):
             if isinstance(module, nn.Linear):

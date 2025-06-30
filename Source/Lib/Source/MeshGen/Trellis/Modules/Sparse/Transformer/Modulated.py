@@ -28,7 +28,6 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
         shift_sequence: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
         serialize_mode: Optional[SerializeMode] = None,
-        use_checkpoint: bool = False,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
@@ -39,7 +38,6 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
     ):
         super().__init__()
 
-        self.use_checkpoint = use_checkpoint
         self.share_mod = share_mod
         self.norm1 = LayerNorm32(channels, elementwise_affine=False, eps=1e-6, device = device)
         self.norm2 = LayerNorm32(channels, elementwise_affine=True, eps=1e-6, device = device)
@@ -78,7 +76,7 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
                 nn.Linear(channels, 6 * channels, bias=True, device = device)
             )
 
-    def _forward(self, x: SparseTensor, mod: torch.Tensor, context: torch.Tensor) -> SparseTensor:
+    def forward(self, x: SparseTensor, mod: torch.Tensor, context: torch.Tensor) -> SparseTensor:
         if self.share_mod:
             shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=1)
         else:
@@ -97,9 +95,3 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
         h = h * gate_mlp
         x = x + h
         return x
-
-    def forward(self, x: SparseTensor, mod: torch.Tensor, context: torch.Tensor) -> SparseTensor:
-        if self.use_checkpoint:
-            return torch.utils.checkpoint.checkpoint(self._forward, x, mod, context, use_reentrant=False)
-        else:
-            return self._forward(x, mod, context)

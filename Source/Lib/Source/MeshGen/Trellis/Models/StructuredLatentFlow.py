@@ -13,7 +13,7 @@ import torch.nn.functional as functional
 from ..Modules.Norm import LayerNorm32
 from ..Modules.Sparse.Transformer import ModulatedSparseTransformerCrossBlock
 from ..Modules.Transformer import AbsolutePositionEmbedder
-from ..Modules.Utils import zero_module, convert_module_to_f16
+from ..Modules.Utils import ConvertModuleToFp16, ZeroModule
 from ..Modules import Sparse as sp
 from .SparseStructureFlow import TimestepEmbedder
 
@@ -37,15 +37,15 @@ class SparseResBlock3d(nn.Module):
         
         assert not (downsample and upsample), "Cannot downsample and upsample at the same time"
 
-        self.norm1 = LayerNorm32(channels, elementwise_affine=True, eps=1e-6, device = device)
-        self.norm2 = LayerNorm32(self.out_channels, elementwise_affine=False, eps=1e-6, device = device)
+        self.norm1 = LayerNorm32(channels, elementwise_affine = True, eps = 1e-6, device = device)
+        self.norm2 = LayerNorm32(self.out_channels, elementwise_affine = False, eps = 1e-6, device = device)
         self.conv1 = sp.SparseConv3d(channels, self.out_channels, 3)
         self.conv2 = sp.SparseConv3d(self.out_channels, self.out_channels, 3)
         if device != "meta":
-            self.conv2 = zero_module(self.conv2)
+            self.conv2 = ZeroModule(self.conv2)
         self.emb_layers = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(emb_channels, 2 * self.out_channels, bias=True, device = device),
+            nn.Linear(emb_channels, 2 * self.out_channels, bias = True, device = device),
         )
         self.skip_connection = sp.SparseLinear(channels, self.out_channels, device = device) if channels != self.out_channels else nn.Identity()
         self.updown = None
@@ -61,7 +61,7 @@ class SparseResBlock3d(nn.Module):
 
     def forward(self, x: sp.SparseTensor, emb: torch.Tensor) -> sp.SparseTensor:
         emb_out = self.emb_layers(emb).type(x.dtype)
-        scale, shift = torch.chunk(emb_out, 2, dim=1)
+        scale, shift = torch.chunk(emb_out, 2, dim = 1)
 
         x = self._updown(x)
         h = x.replace(self.norm1(x.feats))
@@ -91,7 +91,6 @@ class SLatFlowModel(nn.Module):
         io_block_channels: List[int] = None,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
-        use_checkpoint: bool = False,
         use_skip_connection: bool = True,
         share_mod: bool = False,
         qk_rms_norm: bool = False,
@@ -113,7 +112,6 @@ class SLatFlowModel(nn.Module):
         self.io_block_channels = io_block_channels
         self.pe_mode = pe_mode
         self.use_fp16 = use_fp16
-        self.use_checkpoint = use_checkpoint
         self.use_skip_connection = use_skip_connection
         self.share_mod = share_mod
         self.qk_rms_norm = qk_rms_norm
@@ -127,7 +125,7 @@ class SLatFlowModel(nn.Module):
         if share_mod:
             self.adaLN_modulation = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(model_channels, 6 * model_channels, bias=True, device = device)
+                nn.Linear(model_channels, 6 * model_channels, bias = True, device = device)
             )
 
         if pe_mode == "ape":
@@ -135,12 +133,12 @@ class SLatFlowModel(nn.Module):
 
         self.input_layer = sp.SparseLinear(in_channels, io_block_channels[0], device = device)
         self.input_blocks = nn.ModuleList([])
-        for chs, next_chs in zip(io_block_channels, io_block_channels[1:] + [model_channels]):
+        for chs, next_chs in zip(io_block_channels, io_block_channels[1 :] + [model_channels]):
             self.input_blocks.extend([
                 SparseResBlock3d(
                     chs,
                     model_channels,
-                    out_channels=chs,
+                    out_channels = chs,
                     device = device,
                 )
                 for _ in range(num_io_res_blocks-1)
@@ -149,8 +147,8 @@ class SLatFlowModel(nn.Module):
                 SparseResBlock3d(
                     chs,
                     model_channels,
-                    out_channels=next_chs,
-                    downsample=True,
+                    out_channels = next_chs,
+                    downsample = True,
                     device = device,
                 )
             )
@@ -159,27 +157,26 @@ class SLatFlowModel(nn.Module):
             ModulatedSparseTransformerCrossBlock(
                 model_channels,
                 cond_channels,
-                num_heads=self.num_heads,
-                mlp_ratio=self.mlp_ratio,
-                attn_mode='full',
-                use_checkpoint=self.use_checkpoint,
-                use_rope=(pe_mode == "rope"),
-                share_mod=self.share_mod,
-                qk_rms_norm=self.qk_rms_norm,
-                qk_rms_norm_cross=self.qk_rms_norm_cross,
+                num_heads = self.num_heads,
+                mlp_ratio = self.mlp_ratio,
+                attn_mode = "full",
+                use_rope = (pe_mode == "rope"),
+                share_mod = self.share_mod,
+                qk_rms_norm = self.qk_rms_norm,
+                qk_rms_norm_cross = self.qk_rms_norm_cross,
                 device = device,
             )
             for _ in range(num_blocks)
         ])
 
         self.out_blocks = nn.ModuleList([])
-        for chs, prev_chs in zip(reversed(io_block_channels), [model_channels] + list(reversed(io_block_channels[1:]))):
+        for chs, prev_chs in zip(reversed(io_block_channels), [model_channels] + list(reversed(io_block_channels[1 :]))):
             self.out_blocks.append(
                 SparseResBlock3d(
                     prev_chs * 2 if self.use_skip_connection else prev_chs,
                     model_channels,
-                    out_channels=chs,
-                    upsample=True,
+                    out_channels = chs,
+                    upsample = True,
                     device = device,
                 )
             )
@@ -187,17 +184,17 @@ class SLatFlowModel(nn.Module):
                 SparseResBlock3d(
                     chs * 2 if self.use_skip_connection else chs,
                     model_channels,
-                    out_channels=chs,
+                    out_channels = chs,
                     device = device,
                 )
-                for _ in range(num_io_res_blocks-1)
+                for _ in range(num_io_res_blocks - 1)
             ])
         self.out_layer = sp.SparseLinear(io_block_channels[0], out_channels, device = device)
 
         if device != "meta":
-            self.initialize_weights()
+            self.InitializeWeights()
         if use_fp16:
-            self.convert_to_fp16()
+            self.ConvertToFp16()
 
     @property
     def device(self) -> torch.device:
@@ -206,15 +203,15 @@ class SLatFlowModel(nn.Module):
         """
         return next(self.parameters()).device
 
-    def convert_to_fp16(self) -> None:
+    def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
-        self.input_blocks.apply(convert_module_to_f16)
-        self.blocks.apply(convert_module_to_f16)
-        self.out_blocks.apply(convert_module_to_f16)
+        self.input_blocks.apply(ConvertModuleToFp16)
+        self.blocks.apply(ConvertModuleToFp16)
+        self.out_blocks.apply(ConvertModuleToFp16)
 
-    def initialize_weights(self) -> None:
+    def InitializeWeights(self) -> None:
         # Initialize transformer layers:
         def _basic_init(module):
             if isinstance(module, nn.Linear):
@@ -224,8 +221,8 @@ class SLatFlowModel(nn.Module):
         self.apply(_basic_init)
 
         # Initialize timestep embedding MLP:
-        nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
-        nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
+        nn.init.normal_(self.t_embedder.mlp[0].weight, std = 0.02)
+        nn.init.normal_(self.t_embedder.mlp[2].weight, std = 0.02)
 
         # Zero-out adaLN modulation layers in DiT blocks:
         if self.share_mod:
@@ -255,17 +252,17 @@ class SLatFlowModel(nn.Module):
             skips.append(h.feats)
         
         if self.pe_mode == "ape":
-            h = h + self.pos_embedder(h.coords[:, 1:]).type(self.dtype)
+            h = h + self.pos_embedder(h.coords[:, 1 :]).type(self.dtype)
         for block in self.blocks:
             h = block(h, t_emb, cond)
 
         # unpack with output blocks
         for block, skip in zip(self.out_blocks, reversed(skips)):
             if self.use_skip_connection:
-                h = block(h.replace(torch.cat([h.feats, skip], dim=1)), t_emb)
+                h = block(h.replace(torch.cat([h.feats, skip], dim = 1)), t_emb)
             else:
                 h = block(h, t_emb)
 
-        h = h.replace(functional.layer_norm(h.feats, h.feats.shape[-1:]))
+        h = h.replace(functional.layer_norm(h.feats, h.feats.shape[-1 :]))
         h = self.out_layer(h.type(x.dtype))
         return h

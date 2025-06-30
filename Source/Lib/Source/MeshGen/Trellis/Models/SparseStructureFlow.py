@@ -10,26 +10,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
-from ..Modules.Spatial import patchify, unpatchify
+from ..Modules.Spatial import Patchify, Unpatchify
 from ..Modules.Transformer import AbsolutePositionEmbedder, ModulatedTransformerCrossBlock
-from ..Modules.Utils import convert_module_to_f16
+from ..Modules.Utils import ConvertModuleToFp16
 
 class TimestepEmbedder(nn.Module):
     """
     Embeds scalar timesteps into vector representations.
     """
-    def __init__(self, hidden_size, frequency_embedding_size=256, device : Optional[torch.device] = None):
+    def __init__(self, hidden_size, frequency_embedding_size = 256, device: Optional[torch.device] = None):
         super().__init__()
 
         self.mlp = nn.Sequential(
-            nn.Linear(frequency_embedding_size, hidden_size, bias=True, device = device),
+            nn.Linear(frequency_embedding_size, hidden_size, bias = True, device = device),
             nn.SiLU(),
-            nn.Linear(hidden_size, hidden_size, bias=True, device = device),
+            nn.Linear(hidden_size, hidden_size, bias = True, device = device),
         )
         self.frequency_embedding_size = frequency_embedding_size
 
     @staticmethod
-    def timestep_embedding(t, dim, max_period=10000):
+    def timestep_embedding(t, dim, max_period = 10000):
         """
         Create sinusoidal timestep embeddings.
 
@@ -46,11 +46,11 @@ class TimestepEmbedder(nn.Module):
         half = dim // 2
         freqs = torch.exp(
             -np.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half
-        ).to(device=t.device)
+        ).to(device = t.device)
         args = t[:, None].float() * freqs[None]
-        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim = -1)
         if dim % 2:
-            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim = -1)
         return embedding
 
     def forward(self, t):
@@ -73,7 +73,6 @@ class SparseStructureFlowModel(nn.Module):
         patch_size: int = 2,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
-        use_checkpoint: bool = False,
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
@@ -92,7 +91,6 @@ class SparseStructureFlowModel(nn.Module):
         self.patch_size = patch_size
         self.pe_mode = pe_mode
         self.use_fp16 = use_fp16
-        self.use_checkpoint = use_checkpoint
         self.share_mod = share_mod
         self.qk_rms_norm = qk_rms_norm
         self.qk_rms_norm_cross = qk_rms_norm_cross
@@ -102,41 +100,40 @@ class SparseStructureFlowModel(nn.Module):
         if share_mod:
             self.adaLN_modulation = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(model_channels, 6 * model_channels, bias=True, device = device)
+                nn.Linear(model_channels, 6 * model_channels, bias = True, device = device)
             )
 
         if pe_mode == "ape":
             pos_embedder = AbsolutePositionEmbedder(model_channels, 3)
-            coords = torch.meshgrid(*[torch.arange(res, device = device) for res in [resolution // patch_size] * 3], indexing='ij')
-            coords = torch.stack(coords, dim=-1).reshape(-1, 3)
+            coords = torch.meshgrid(*[torch.arange(res, device = device) for res in [resolution // patch_size] * 3], indexing = "ij")
+            coords = torch.stack(coords, dim = -1).reshape(-1, 3)
             pos_emb = pos_embedder(coords)
             self.register_buffer("pos_emb", pos_emb)
 
-        self.input_layer = nn.Linear(in_channels * patch_size**3, model_channels, device = device)
+        self.input_layer = nn.Linear(in_channels * (patch_size ** 3), model_channels, device = device)
             
         self.blocks = nn.ModuleList([
             ModulatedTransformerCrossBlock(
                 model_channels,
                 cond_channels,
-                num_heads=self.num_heads,
-                mlp_ratio=self.mlp_ratio,
-                attn_mode='full',
-                use_checkpoint=self.use_checkpoint,
-                use_rope=(pe_mode == "rope"),
-                share_mod=share_mod,
-                qk_rms_norm=self.qk_rms_norm,
-                qk_rms_norm_cross=self.qk_rms_norm_cross,
+                num_heads = self.num_heads,
+                mlp_ratio = self.mlp_ratio,
+                attn_mode = "full",
+                use_rope = (pe_mode == "rope"),
+                share_mod = share_mod,
+                qk_rms_norm = self.qk_rms_norm,
+                qk_rms_norm_cross = self.qk_rms_norm_cross,
                 device = device,
             )
             for _ in range(num_blocks)
         ])
 
-        self.out_layer = nn.Linear(model_channels, out_channels * patch_size**3, device = device)
+        self.out_layer = nn.Linear(model_channels, out_channels * (patch_size ** 3), device = device)
 
         if device != "meta":
-            self.initialize_weights()
+            self.InitializeWeights()
         if use_fp16:
-            self.convert_to_fp16()
+            self.ConvertToFp16()
 
     @property
     def device(self) -> torch.device:
@@ -145,13 +142,13 @@ class SparseStructureFlowModel(nn.Module):
         """
         return next(self.parameters()).device
 
-    def convert_to_fp16(self) -> None:
+    def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
-        self.blocks.apply(convert_module_to_f16)
+        self.blocks.apply(ConvertModuleToFp16)
 
-    def initialize_weights(self) -> None:
+    def InitializeWeights(self) -> None:
         # Initialize transformer layers:
         def _basic_init(module):
             if isinstance(module, nn.Linear):
@@ -161,8 +158,8 @@ class SparseStructureFlowModel(nn.Module):
         self.apply(_basic_init)
 
         # Initialize timestep embedding MLP:
-        nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
-        nn.init.normal_(self.t_embedder.mlp[2].weight, std=0.02)
+        nn.init.normal_(self.t_embedder.mlp[0].weight, std = 0.02)
+        nn.init.normal_(self.t_embedder.mlp[2].weight, std = 0.02)
 
         # Zero-out adaLN modulation layers in DiT blocks:
         if self.share_mod:
@@ -181,8 +178,8 @@ class SparseStructureFlowModel(nn.Module):
         assert [*x.shape] == [x.shape[0], self.in_channels, *[self.resolution] * 3], \
                 f"Input shape mismatch, got {x.shape}, expected {[x.shape[0], self.in_channels, *[self.resolution] * 3]}"
 
-        h = patchify(x, self.patch_size)
-        h = h.view(*h.shape[:2], -1).permute(0, 2, 1).contiguous()
+        h = Patchify(x, self.patch_size)
+        h = h.view(*h.shape[: 2], -1).permute(0, 2, 1).contiguous()
 
         h = self.input_layer(h)
         h = h + self.pos_emb[None]
@@ -195,10 +192,10 @@ class SparseStructureFlowModel(nn.Module):
         for block in self.blocks:
             h = block(h, t_emb, cond)
         h = h.type(x.dtype)
-        h = functional.layer_norm(h, h.shape[-1:])
+        h = functional.layer_norm(h, h.shape[-1 :])
         h = self.out_layer(h)
 
         h = h.permute(0, 2, 1).view(h.shape[0], h.shape[2], *[self.resolution // self.patch_size] * 3)
-        h = unpatchify(h, self.patch_size).contiguous()
+        h = Unpatchify(h, self.patch_size).contiguous()
 
         return h

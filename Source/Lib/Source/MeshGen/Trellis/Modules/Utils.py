@@ -10,36 +10,29 @@ import torch.nn as nn
 
 from ..Modules import Sparse as sp
 
-FP16_MODULES = (
-    nn.Conv1d,
-    nn.Conv2d,
-    nn.Conv3d,
-    nn.ConvTranspose1d,
-    nn.ConvTranspose2d,
-    nn.ConvTranspose3d,
-    nn.Linear,
-    sp.SparseConv3d,
-    sp.SparseInverseConv3d,
-    sp.SparseLinear,
-)
-
-def convert_module_to_f16(l):
+def ConvertModuleToFp16(l):
     """
     Convert primitive modules to float16.
     """
-    if isinstance(l, FP16_MODULES):
+
+    fp16_modules = (
+        nn.Conv1d,
+        nn.Conv2d,
+        nn.Conv3d,
+        nn.ConvTranspose1d,
+        nn.ConvTranspose2d,
+        nn.ConvTranspose3d,
+        nn.Linear,
+        sp.SparseConv3d,
+        sp.SparseInverseConv3d,
+        sp.SparseLinear,
+    )
+
+    if isinstance(l, fp16_modules):
         for p in l.parameters():
             p.data = p.data.half()
 
-def convert_module_to_f32(l):
-    """
-    Convert primitive modules to float32, undoing convert_module_to_f16().
-    """
-    if isinstance(l, FP16_MODULES):
-        for p in l.parameters():
-            p.data = p.data.float()
-
-def zero_module(module):
+def ZeroModule(module):
     """
     Zero out the parameters of a module and return it.
     """
@@ -47,18 +40,7 @@ def zero_module(module):
         p.detach().zero_()
     return module
 
-def scale_module(module, scale):
-    """
-    Scale the parameters of a module and return it.
-    """
-    for p in module.parameters():
-        p.detach().mul_(scale)
-    return module
-
-def modulate(x, shift, scale):
-    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
-
-def MemEfficientAttention(query : torch.Tensor, key : torch.Tensor, value : torch.Tensor, attn_mask : torch.Tensor = None) -> torch.Tensor:
+def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, attn_mask: torch.Tensor = None) -> torch.Tensor:
     """
     Memory-efficient attention using PyTorch's built-in scaled dot-product attention.
     """
@@ -70,7 +52,7 @@ def MemEfficientAttention(query : torch.Tensor, key : torch.Tensor, value : torc
     output = nn.functional.scaled_dot_product_attention(query, key, value, attn_mask)
     return output.permute(0, 2, 1, 3)   # [N, L, H, C]
 
-def BlockDiagonalMaskFromSeqlens(q_seqlen : Sequence[int], kv_seqlen : Optional[Sequence[int]] = None, causal = False) -> torch.Tensor:
+def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Optional[Sequence[int]] = None, causal = False) -> torch.Tensor:
     """
     Create a block-diagonal attention mask using nested tensors.
 

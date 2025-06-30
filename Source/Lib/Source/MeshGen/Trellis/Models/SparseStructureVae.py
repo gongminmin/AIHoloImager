@@ -10,8 +10,8 @@ import torch.nn as nn
 import torch.nn.functional as functional
 
 from ..Modules.Norm import GroupNorm32, ChannelLayerNorm32
-from ..Modules.Spatial import pixel_shuffle_3d
-from ..Modules.Utils import zero_module, convert_module_to_f16
+from ..Modules.Spatial import PixelShuffle3D
+from ..Modules.Utils import ConvertModuleToFp16, ZeroModule
 
 def NormLayer(norm_type: str, *args, **kwargs) -> nn.Module:
     if norm_type == "group":
@@ -36,10 +36,10 @@ class ResBlock3d(nn.Module):
 
         self.norm1 = NormLayer(norm_type, channels, device = device)
         self.norm2 = NormLayer(norm_type, self.out_channels, device = device)
-        self.conv1 = nn.Conv3d(channels, self.out_channels, 3, padding=1, device = device)
-        self.conv2 = nn.Conv3d(self.out_channels, self.out_channels, 3, padding=1, device = device)
+        self.conv1 = nn.Conv3d(channels, self.out_channels, 3, padding = 1, device = device)
+        self.conv2 = nn.Conv3d(self.out_channels, self.out_channels, 3, padding = 1, device = device)
         if device != "meta":
-            self.conv = zero_module(self.conv)
+            self.conv = ZeroModule(self.conv)
         self.skip_connection = nn.Conv3d(channels, self.out_channels, 1, device = device) if channels != self.out_channels else nn.Identity()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -68,7 +68,7 @@ class DownsampleBlock3d(nn.Module):
         self.out_channels = out_channels
 
         if mode == "conv":
-            self.conv = nn.Conv3d(in_channels, out_channels, 2, stride=2, device = device)
+            self.conv = nn.Conv3d(in_channels, out_channels, 2, stride = 2, device = device)
         elif mode == "avgpool":
             assert in_channels == out_channels, "Pooling mode requires in_channels to be equal to out_channels"
 
@@ -94,16 +94,16 @@ class UpsampleBlock3d(nn.Module):
         self.out_channels = out_channels
 
         if mode == "conv":
-            self.conv = nn.Conv3d(in_channels, out_channels*8, 3, padding=1, device = device)
+            self.conv = nn.Conv3d(in_channels, out_channels * 8, 3, padding = 1, device = device)
         elif mode == "nearest":
             assert in_channels == out_channels, "Nearest mode requires in_channels to be equal to out_channels"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if hasattr(self, "conv"):
             x = self.conv(x)
-            return pixel_shuffle_3d(x, 2)
+            return PixelShuffle3D(x, 2)
         else:
-            return functional.interpolate(x, scale_factor=2, mode="nearest")
+            return functional.interpolate(x, scale_factor = 2, mode = "nearest")
 
 class SparseStructureDecoder(nn.Module):
     """
@@ -140,7 +140,7 @@ class SparseStructureDecoder(nn.Module):
         self.use_fp16 = use_fp16
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
-        self.input_layer = nn.Conv3d(latent_channels, channels[0], 3, padding=1, device = device)
+        self.input_layer = nn.Conv3d(latent_channels, channels[0], 3, padding = 1, device = device)
 
         self.middle_block = nn.Sequential(*[
             ResBlock3d(channels[0], channels[0], device = device)
@@ -155,17 +155,17 @@ class SparseStructureDecoder(nn.Module):
             ])
             if i < len(channels) - 1:
                 self.blocks.append(
-                    UpsampleBlock3d(ch, channels[i+1], device = device)
+                    UpsampleBlock3d(ch, channels[i + 1], device = device)
                 )
 
         self.out_layer = nn.Sequential(
             NormLayer(norm_type, channels[-1], device = device),
             nn.SiLU(),
-            nn.Conv3d(channels[-1], out_channels, 3, padding=1, device = device)
+            nn.Conv3d(channels[-1], out_channels, 3, padding = 1, device = device)
         )
 
         if use_fp16:
-            self.convert_to_fp16()
+            self.ConvertToFp16()
 
     @property
     def device(self) -> torch.device:
@@ -174,14 +174,14 @@ class SparseStructureDecoder(nn.Module):
         """
         return next(self.parameters()).device
     
-    def convert_to_fp16(self) -> None:
+    def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
         self.use_fp16 = True
         self.dtype = torch.float16
-        self.blocks.apply(convert_module_to_f16)
-        self.middle_block.apply(convert_module_to_f16)
+        self.blocks.apply(ConvertModuleToFp16)
+        self.middle_block.apply(ConvertModuleToFp16)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.input_layer(x)

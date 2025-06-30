@@ -6,10 +6,10 @@
 from torch.nn.utils import skip_init
 
 __attributes = {
-    "SparseStructureDecoder" : "SparseStructureVae",
-    "SparseStructureFlowModel" : "SparseStructureFlow",
-    "SLatMeshDecoder" : "StructuredLatentVae",
-    "SLatFlowModel" : "StructuredLatentFlow",
+    "SparseStructureDecoder": "SparseStructureVae",
+    "SparseStructureFlowModel": "SparseStructureFlow",
+    "SLatMeshDecoder": "StructuredLatentVae",
+    "SLatFlowModel": "StructuredLatentFlow",
 }
 
 __submodules = []
@@ -30,7 +30,7 @@ def __getattr__(name):
             raise AttributeError(f"module {__name__} has no attribute {name}")
     return globals()[name]
 
-def FromPretrained(path : str, **kwargs):
+def FromPretrained(path: str, **kwargs):
     from pathlib import Path
     import json
     from safetensors.torch import load_file

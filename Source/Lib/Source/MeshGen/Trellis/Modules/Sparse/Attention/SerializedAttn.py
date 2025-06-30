@@ -3,8 +3,8 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/serialized_attn.py
 
-from typing import *
 from enum import Enum
+from typing import *
 
 __all__ = [
 ]

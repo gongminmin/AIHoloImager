@@ -25,13 +25,13 @@ from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
 class TrellisImageTo3DPipeline:
     def __init__(
         self,
-        models : dict[str, nn.Module] = None,
+        models: dict[str, nn.Module] = None,
         sparse_structure_sampler = None,
         sparse_structure_sampler_params = {},
         slat_sampler = None,
         slat_sampler_params = {},
-        slat_normalization : dict = None,
-        image_cond_model : str = None,
+        slat_normalization: dict = None,
+        image_cond_model: str = None,
     ):
         assert models != None
 
@@ -68,7 +68,7 @@ class TrellisImageTo3DPipeline:
         ])
 
     @staticmethod
-    def FromPretrained(path : str) -> "TrellisImageTo3DPipeline":
+    def FromPretrained(path: str) -> "TrellisImageTo3DPipeline":
         config_file_path = Path(path) / "pipeline.json"
 
         with open(config_file_path, "r") as file:
@@ -113,7 +113,7 @@ class TrellisImageTo3DPipeline:
             model.to(device)
 
     @torch.no_grad()
-    def EncodeImage(self, images : torch.Tensor) -> torch.Tensor:
+    def EncodeImage(self, images: torch.Tensor) -> torch.Tensor:
         assert images.ndim == 4, "Image tensor should be batched (B, C, H, W)"
         images = self.image_cond_model_transform(images).to(self.device)
         features = self.models['image_cond_model'](images, is_training = True)["x_prenorm"]
@@ -156,7 +156,7 @@ class TrellisImageTo3DPipeline:
         reso = flow_model.resolution
         noise = torch.randn(num_samples, flow_model.in_channels, reso, reso, reso).to(self.device)
         sampler_params = {**self.sparse_structure_sampler_params, **sampler_params}
-        z_s = self.sparse_structure_sampler.sample(
+        z_s = self.sparse_structure_sampler.Sample(
             flow_model,
             noise,
             **cond,
@@ -207,7 +207,7 @@ class TrellisImageTo3DPipeline:
             coords=coords,
         )
         sampler_params = {**self.slat_sampler_params, **sampler_params}
-        slat = self.slat_sampler.sample(
+        slat = self.slat_sampler.Sample(
             flow_model,
             noise,
             **cond,
@@ -238,7 +238,7 @@ class TrellisImageTo3DPipeline:
             num_steps (int): The number of steps to run the sampler for.
         """
         sampler = getattr(self, sampler_name)
-        setattr(sampler, f'_old_inference_model', sampler._inference_model)
+        setattr(sampler, f'_old_inference_model', sampler.InferenceModel)
     
         if mode == "stochastic":
             if num_images > num_steps:
@@ -246,36 +246,36 @@ class TrellisImageTo3DPipeline:
                     "This may lead to performance degradation.")
     
             cond_indices = (np.arange(num_steps) % num_images).tolist()
-            def _new_inference_model(self, model, x_t, t, cond, **kwargs):
+            def NewInferenceModel(self, model, x_t, t, cond, **kwargs):
                 cond_idx = cond_indices.pop(0)
                 cond_i = cond[cond_idx:cond_idx+1]
                 return self._old_inference_model(model, x_t, t, cond=cond_i, **kwargs)
         
         elif mode == "multidiffusion":
             from .Samplers import FlowEulerSampler
-            def _new_inference_model(self, model, x_t, t, cond, neg_cond, cfg_strength, cfg_interval, **kwargs):
+            def NewInferenceModel(self, model, x_t, t, cond, neg_cond, cfg_strength, cfg_interval, **kwargs):
                 if cfg_interval[0] <= t <= cfg_interval[1]:
                     preds = []
                     for i in range(len(cond)):
-                        preds.append(FlowEulerSampler._inference_model(self, model, x_t, t, cond[i:i+1], **kwargs))
+                        preds.append(FlowEulerSampler.InferenceModel(self, model, x_t, t, cond[i:i+1], **kwargs))
                     pred = sum(preds) / len(preds)
-                    neg_pred = FlowEulerSampler._inference_model(self, model, x_t, t, neg_cond, **kwargs)
+                    neg_pred = FlowEulerSampler.InferenceModel(self, model, x_t, t, neg_cond, **kwargs)
                     return (1 + cfg_strength) * pred - cfg_strength * neg_pred
                 else:
                     preds = []
                     for i in range(len(cond)):
-                        preds.append(FlowEulerSampler._inference_model(self, model, x_t, t, cond[i:i+1], **kwargs))
+                        preds.append(FlowEulerSampler.InferenceModel(self, model, x_t, t, cond[i:i+1], **kwargs))
                     pred = sum(preds) / len(preds)
                     return pred
             
         else:
             raise ValueError(f"Unsupported mode: {mode}")
             
-        sampler._inference_model = _new_inference_model.__get__(sampler, type(sampler))
+        sampler.InferenceModel = NewInferenceModel.__get__(sampler, type(sampler))
     
         yield
     
-        sampler._inference_model = sampler._old_inference_model
+        sampler.InferenceModel = sampler._old_inference_model
         delattr(sampler, f'_old_inference_model')
     
     @torch.no_grad()

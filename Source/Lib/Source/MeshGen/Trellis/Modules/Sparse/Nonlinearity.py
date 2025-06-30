@@ -8,10 +8,10 @@ import torch.nn as nn
 from . import SparseTensor
 
 __all__ = [
-    'SparseReLU',
-    'SparseSiLU',
-    'SparseGELU',
-    'SparseActivation'
+    "SparseReLU",
+    "SparseSiLU",
+    "SparseGELU",
+    "SparseActivatio",
 ]
 
 class SparseReLU(nn.ReLU):

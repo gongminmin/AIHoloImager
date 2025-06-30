@@ -10,13 +10,13 @@ import torch.nn as nn
 import torch.nn.functional as functional
 
 from .. import SparseTensor
-from .FullAttn import sparse_scaled_dot_product_attention
+from .FullAttn import SparseScaledDotProductAttention
 from .SerializedAttn import SerializeMode
-from .WindowedAttn import sparse_windowed_scaled_dot_product_self_attention
+from .WindowedAttn import SparseWindowedScaledDotProductSelfAttention
 from ...Attention import RotaryPositionEmbedder
 
 class SparseMultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int, device : Optional[torch.device] = None):
+    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None):
         super().__init__()
 
         self.scale = dim ** 0.5
@@ -26,9 +26,9 @@ class SparseMultiHeadRMSNorm(nn.Module):
         x_type = x.dtype
         x = x.float()
         if isinstance(x, SparseTensor):
-            x = x.replace(functional.normalize(x.feats, dim=-1))
+            x = x.replace(functional.normalize(x.feats, dim = -1))
         else:
-            x = functional.normalize(x, dim=-1)            
+            x = functional.normalize(x, dim = -1)
         return (x * self.gamma * self.scale).to(x_type)
 
 class SparseMultiHeadAttention(nn.Module):
@@ -69,10 +69,10 @@ class SparseMultiHeadAttention(nn.Module):
         self.qk_rms_norm = qk_rms_norm
 
         if self._type == "self":
-            self.to_qkv = nn.Linear(channels, channels * 3, bias=qkv_bias, device = device)
+            self.to_qkv = nn.Linear(channels, channels * 3, bias = qkv_bias, device = device)
         else:
-            self.to_q = nn.Linear(channels, channels, bias=qkv_bias, device = device)
-            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias=qkv_bias, device = device)
+            self.to_q = nn.Linear(channels, channels, bias = qkv_bias, device = device)
+            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias = qkv_bias, device = device)
         
         if self.qk_rms_norm:
             self.q_rms_norm = SparseMultiHeadRMSNorm(channels // num_heads, num_heads, device = device)
@@ -84,61 +84,61 @@ class SparseMultiHeadAttention(nn.Module):
             self.rope = RotaryPositionEmbedder(channels)
 
     @staticmethod
-    def _linear(module: nn.Linear, x: Union[SparseTensor, torch.Tensor]) -> Union[SparseTensor, torch.Tensor]:
+    def Linear(module: nn.Linear, x: Union[SparseTensor, torch.Tensor]) -> Union[SparseTensor, torch.Tensor]:
         if isinstance(x, SparseTensor):
             return x.replace(module(x.feats))
         else:
             return module(x)
 
     @staticmethod
-    def _reshape_chs(x: Union[SparseTensor, torch.Tensor], shape: Tuple[int, ...]) -> Union[SparseTensor, torch.Tensor]:
+    def ReshapeChs(x: Union[SparseTensor, torch.Tensor], shape: Tuple[int, ...]) -> Union[SparseTensor, torch.Tensor]:
         if isinstance(x, SparseTensor):
             return x.reshape(*shape)
         else:
-            return x.reshape(*x.shape[:2], *shape)
+            return x.reshape(*x.shape[: 2], *shape)
 
-    def _fused_pre(self, x: Union[SparseTensor, torch.Tensor], num_fused: int) -> Union[SparseTensor, torch.Tensor]:
+    def FusedPre(self, x: Union[SparseTensor, torch.Tensor], num_fused: int) -> Union[SparseTensor, torch.Tensor]:
         if isinstance(x, SparseTensor):
             x_feats = x.feats.unsqueeze(0)
         else:
             x_feats = x
-        x_feats = x_feats.reshape(*x_feats.shape[:2], num_fused, self.num_heads, -1)
+        x_feats = x_feats.reshape(*x_feats.shape[: 2], num_fused, self.num_heads, -1)
         return x.replace(x_feats.squeeze(0)) if isinstance(x, SparseTensor) else x_feats
 
-    def _rope(self, qkv: SparseTensor) -> SparseTensor:
-        q, k, v = qkv.feats.unbind(dim=1)   # [T, H, C]
-        q, k = self.rope(q, k, qkv.coords[:, 1:])
-        qkv = qkv.replace(torch.stack([q, k, v], dim=1)) 
+    def Rope(self, qkv: SparseTensor) -> SparseTensor:
+        q, k, v = qkv.feats.unbind(dim = 1)   # [T, H, C]
+        q, k = self.rope(q, k, qkv.coords[:, 1 :])
+        qkv = qkv.replace(torch.stack([q, k, v], dim = 1)) 
         return qkv
     
     def forward(self, x: Union[SparseTensor, torch.Tensor], context: Optional[Union[SparseTensor, torch.Tensor]] = None) -> Union[SparseTensor, torch.Tensor]:
         if self._type == "self":
-            qkv = self._linear(self.to_qkv, x)
-            qkv = self._fused_pre(qkv, num_fused=3)
+            qkv = self.Linear(self.to_qkv, x)
+            qkv = self.FusedPre(qkv, num_fused = 3)
             if self.use_rope:
-                qkv = self._rope(qkv)
+                qkv = self.Rope(qkv)
             if self.qk_rms_norm:
-                q, k, v = qkv.unbind(dim=1)
+                q, k, v = qkv.unbind(dim = 1)
                 q = self.q_rms_norm(q)
                 k = self.k_rms_norm(k)
-                qkv = qkv.replace(torch.stack([q.feats, k.feats, v.feats], dim=1))
+                qkv = qkv.replace(torch.stack([q.feats, k.feats, v.feats], dim = 1))
             if self.attn_mode == "full":
-                h = sparse_scaled_dot_product_attention(qkv)
+                h = SparseScaledDotProductAttention(qkv)
             elif self.attn_mode == "windowed":
-                h = sparse_windowed_scaled_dot_product_self_attention(
+                h = SparseWindowedScaledDotProductSelfAttention(
                     qkv, self.window_size, shift_window=self.shift_window
                 )
         else:
-            q = self._linear(self.to_q, x)
-            q = self._reshape_chs(q, (self.num_heads, -1))
-            kv = self._linear(self.to_kv, context)
-            kv = self._fused_pre(kv, num_fused=2)
+            q = self.Linear(self.to_q, x)
+            q = self.ReshapeChs(q, (self.num_heads, -1))
+            kv = self.Linear(self.to_kv, context)
+            kv = self.FusedPre(kv, num_fused = 2)
             if self.qk_rms_norm:
                 q = self.q_rms_norm(q)
-                k, v = kv.unbind(dim=1)
+                k, v = kv.unbind(dim = 1)
                 k = self.k_rms_norm(k)
-                kv = kv.replace(torch.stack([k.feats, v.feats], dim=1))
-            h = sparse_scaled_dot_product_attention(q, kv)
-        h = self._reshape_chs(h, (-1,))
-        h = self._linear(self.to_out, h)
+                kv = kv.replace(torch.stack([k.feats, v.feats], dim = 1))
+            h = SparseScaledDotProductAttention(q, kv)
+        h = self.ReshapeChs(h, (-1, ))
+        h = self.Linear(self.to_out, h)
         return h

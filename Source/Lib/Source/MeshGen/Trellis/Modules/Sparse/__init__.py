@@ -3,16 +3,13 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/__init__.py
 
-from typing import *
-
 import importlib
+from typing import *
 
 __attributes = {
     "SparseTensor": "Basic",
-    "sparse_batch_broadcast": "Basic",
-    "sparse_batch_op": "Basic",
-    "sparse_cat": "Basic",
-    "sparse_unbind": "Basic",
+    "SparseBatchBroadcast": "Basic",
+    "SparseUnbind": "Basic",
     "SparseGroupNorm": "Norm",
     "SparseLayerNorm": "Norm",
     "SparseGroupNorm32": "Norm",
@@ -22,9 +19,9 @@ __attributes = {
     "SparseGELU": "Nonlinearity",
     "SparseActivation": "Nonlinearity",
     "SparseLinear": "Linear",
-    "sparse_scaled_dot_product_attention": "Attention",
+    "SparseScaledDotProductAttention": "Attention",
     "SerializeMode": "Attention",
-    "sparse_windowed_scaled_dot_product_self_attention": "Attention",
+    "SparseWindowedScaledDotProductSelfAttention": "Attention",
     "SparseMultiHeadAttention": "Attention",
     "SparseConv3d": "Conv",
     "SparseInverseConv3d": "Conv",

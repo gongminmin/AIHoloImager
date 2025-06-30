@@ -25,59 +25,57 @@ class ModulatedTransformerCrossBlock(nn.Module):
         attn_mode: Literal["full", "windowed"] = "full",
         window_size: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
-        use_checkpoint: bool = False,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
         qkv_bias: bool = True,
         share_mod: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.use_checkpoint = use_checkpoint
         self.share_mod = share_mod
-        self.norm1 = LayerNorm32(channels, elementwise_affine=False, eps=1e-6, device = device)
-        self.norm2 = LayerNorm32(channels, elementwise_affine=True, eps=1e-6, device = device)
-        self.norm3 = LayerNorm32(channels, elementwise_affine=False, eps=1e-6, device = device)
+        self.norm1 = LayerNorm32(channels, elementwise_affine = False, eps = 1e-6, device = device)
+        self.norm2 = LayerNorm32(channels, elementwise_affine = True, eps = 1e-6, device = device)
+        self.norm3 = LayerNorm32(channels, elementwise_affine = False, eps = 1e-6, device = device)
         self.self_attn = MultiHeadAttention(
             channels,
-            num_heads=num_heads,
-            type="self",
-            attn_mode=attn_mode,
-            window_size=window_size,
-            shift_window=shift_window,
-            qkv_bias=qkv_bias,
-            use_rope=use_rope,
-            qk_rms_norm=qk_rms_norm,
+            num_heads= num_heads,
+            type = "self",
+            attn_mode = attn_mode,
+            window_size = window_size,
+            shift_window = shift_window,
+            qkv_bias = qkv_bias,
+            use_rope = use_rope,
+            qk_rms_norm = qk_rms_norm,
             device = device,
         )
         self.cross_attn = MultiHeadAttention(
             channels,
-            ctx_channels=ctx_channels,
-            num_heads=num_heads,
-            type="cross",
-            attn_mode="full",
-            qkv_bias=qkv_bias,
-            qk_rms_norm=qk_rms_norm_cross,
+            ctx_channels = ctx_channels,
+            num_heads = num_heads,
+            type = "cross",
+            attn_mode = "full",
+            qkv_bias = qkv_bias,
+            qk_rms_norm = qk_rms_norm_cross,
             device = device,
         )
         self.mlp = FeedForwardNet(
             channels,
-            mlp_ratio=mlp_ratio,
+            mlp_ratio = mlp_ratio,
             device = device,
         )
         if not share_mod:
             self.adaLN_modulation = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(channels, 6 * channels, bias=True, device = device)
+                nn.Linear(channels, 6 * channels, bias = True, device = device)
             )
 
-    def _forward(self, x: torch.Tensor, mod: torch.Tensor, context: torch.Tensor):
+    def forward(self, x: torch.Tensor, mod: torch.Tensor, context: torch.Tensor):
         if self.share_mod:
-            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim=1)
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = mod.chunk(6, dim = 1)
         else:
-            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(mod).chunk(6, dim=1)
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(mod).chunk(6, dim = 1)
         h = self.norm1(x)
         h = h * (1 + scale_msa.unsqueeze(1)) + shift_msa.unsqueeze(1)
         h = self.self_attn(h)
@@ -92,10 +90,3 @@ class ModulatedTransformerCrossBlock(nn.Module):
         h = h * gate_mlp.unsqueeze(1)
         x = x + h
         return x
-
-    def forward(self, x: torch.Tensor, mod: torch.Tensor, context: torch.Tensor):
-        if self.use_checkpoint:
-            return torch.utils.checkpoint.checkpoint(self._forward, x, mod, context, use_reentrant=False)
-        else:
-            return self._forward(x, mod, context)
-        
