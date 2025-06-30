@@ -17,8 +17,8 @@ __all__ = [
 
 class SparseTensor:
     """
-    Sparse tensor with support for both torchsparse and spconv backends.
-    
+    Sparse tensor with support for spconv backend.
+
     Parameters:
     - feats (torch.Tensor): Features of the sparse tensor.
     - coords (torch.Tensor): Coordinates of the sparse tensor.
@@ -96,20 +96,20 @@ class SparseTensor:
         shape.append(coords[:, 0].max().item() + 1)
         shape.extend([*feats.shape[1:]])
         return torch.Size(shape)
-    
+
     def CalcLayout(self, coords, batch_size):
         seq_len = torch.bincount(coords[:, 0], minlength = batch_size)
         offset = torch.cumsum(seq_len, dim = 0) 
         layout = [slice((offset[i] - seq_len[i]).item(), offset[i].item()) for i in range(batch_size)]
         return layout
-    
+
     @property
     def shape(self) -> torch.Size:
         return self._shape
-    
+
     def dim(self) -> int:
         return len(self.shape)
-    
+
     @property
     def layout(self) -> List[slice]:
         return self._layout
@@ -117,7 +117,7 @@ class SparseTensor:
     @property
     def feats(self) -> torch.Tensor:
         return self.data.features
-    
+
     @feats.setter
     def feats(self, value: torch.Tensor):
         self.data.features = value
@@ -125,7 +125,7 @@ class SparseTensor:
     @property
     def coords(self) -> torch.Tensor:
         return self.data.indices
-        
+
     @coords.setter
     def coords(self, value: torch.Tensor):
         self.data.indices = value
@@ -175,7 +175,7 @@ class SparseTensor:
         new_feats = self.feats.cpu()
         new_coords = self.coords.cpu()
         return self.replace(new_feats, new_coords)
-    
+
     def cuda(self) -> "SparseTensor":
         new_feats = self.feats.cuda()
         new_coords = self.coords.cuda()
@@ -184,11 +184,11 @@ class SparseTensor:
     def half(self) -> "SparseTensor":
         new_feats = self.feats.half()
         return self.replace(new_feats)
-    
+
     def float(self) -> "SparseTensor":
         new_feats = self.feats.float()
         return self.replace(new_feats)
-    
+
     def detach(self) -> "SparseTensor":
         new_coords = self.coords.detach()
         new_feats = self.feats.detach()
@@ -200,7 +200,7 @@ class SparseTensor:
     def reshape(self, *shape) -> "SparseTensor":
         new_feats = self.feats.reshape(self.feats.shape[0], *shape)
         return self.replace(new_feats)
-    
+
     def unbind(self, dim: int) -> List["SparseTensor"]:
         return SparseUnbind(self, dim)
 
@@ -256,7 +256,7 @@ class SparseTensor:
 
     def __neg__(self) -> "SparseTensor":
         return self.replace(-self.feats)
-    
+
     def __elemwise__(self, other: Union[torch.Tensor, "SparseTensor"], op: callable) -> "SparseTensor":
         if isinstance(other, torch.Tensor):
             try:
@@ -277,10 +277,10 @@ class SparseTensor:
 
     def __radd__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
         return self.__elemwise__(other, torch.add)
-    
+
     def __sub__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
         return self.__elemwise__(other, torch.sub)
-    
+
     def __rsub__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
         return self.__elemwise__(other, lambda x, y: torch.sub(y, x))
 
@@ -348,12 +348,13 @@ class SparseTensor:
 def SparseBatchBroadcast(input: SparseTensor, other: torch.Tensor) -> torch.Tensor:
     """
     Broadcast a 1D tensor to a sparse tensor along the batch dimension then perform an operation.
-    
+
     Args:
         input (torch.Tensor): 1D tensor to broadcast.
         target (SparseTensor): Sparse tensor to broadcast to.
         op (callable): Operation to perform after broadcasting. Defaults to torch.add.
     """
+
     coords, feats = input.coords, input.feats
     broadcasted = torch.zeros_like(feats)
     for k in range(input.shape[0]):
@@ -363,11 +364,12 @@ def SparseBatchBroadcast(input: SparseTensor, other: torch.Tensor) -> torch.Tens
 def SparseUnbind(input: SparseTensor, dim: int) -> List[SparseTensor]:
     """
     Unbind a sparse tensor along a dimension.
-    
+
     Args:
         input (SparseTensor): Sparse tensor to unbind.
         dim (int): Dimension to unbind.
     """
+
     if dim == 0:
         return [input[i] for i in range(input.shape[0])]
     else:

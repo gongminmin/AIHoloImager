@@ -9,6 +9,7 @@ def PixelShuffle3D(x: torch.Tensor, scale_factor: int) -> torch.Tensor:
     """
     3D pixel shuffle.
     """
+
     batch, channels, height, width, depth = x.shape
     channels = channels // (scale_factor ** 3)
     x = x.reshape(batch, channels, scale_factor, scale_factor, scale_factor, height, width, depth)
@@ -24,6 +25,7 @@ def Patchify(x: torch.Tensor, patch_size: int):
         x (torch.Tensor): (N, C, *spatial) tensor
         patch_size (int): Patch size
     """
+
     dim = x.dim() - 2
     for d in range(2, dim + 2):
         assert x.shape[d] % patch_size == 0, f"Dimension {d} of input tensor must be divisible by patch size, got {x.shape[d]} and {patch_size}"
@@ -41,6 +43,7 @@ def Unpatchify(x: torch.Tensor, patch_size: int):
         x (torch.Tensor): (N, C, *spatial) tensor
         patch_size (int): Patch size
     """
+
     dim = x.dim() - 2
     assert x.shape[1] % (patch_size ** dim) == 0, f"Second dimension of input tensor must be divisible by patch size to unpatchify, got {x.shape[1]} and {patch_size ** dim}"
 

@@ -23,8 +23,8 @@ __attributes = {
     "SerializeMode": "Attention",
     "SparseWindowedScaledDotProductSelfAttention": "Attention",
     "SparseMultiHeadAttention": "Attention",
-    "SparseConv3d": "Conv",
-    "SparseInverseConv3d": "Conv",
+    "SparseConv3D": "Conv",
+    "SparseInverseConv3D": "Conv",
     "SparseDownsample": "Spatial",
     "SparseUpsample": "Spatial",
     "SparseSubdivide" : "Spatial"

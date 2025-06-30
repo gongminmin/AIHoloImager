@@ -46,7 +46,7 @@ class SparseMultiHeadAttention(nn.Module):
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -73,11 +73,11 @@ class SparseMultiHeadAttention(nn.Module):
         else:
             self.to_q = nn.Linear(channels, channels, bias = qkv_bias, device = device)
             self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias = qkv_bias, device = device)
-        
+
         if self.qk_rms_norm:
             self.q_rms_norm = SparseMultiHeadRMSNorm(channels // num_heads, num_heads, device = device)
             self.k_rms_norm = SparseMultiHeadRMSNorm(channels // num_heads, num_heads, device = device)
-            
+
         self.to_out = nn.Linear(channels, channels, device = device)
 
         if use_rope:
@@ -110,7 +110,7 @@ class SparseMultiHeadAttention(nn.Module):
         q, k = self.rope(q, k, qkv.coords[:, 1 :])
         qkv = qkv.replace(torch.stack([q, k, v], dim = 1)) 
         return qkv
-    
+
     def forward(self, x: Union[SparseTensor, torch.Tensor], context: Optional[Union[SparseTensor, torch.Tensor]] = None) -> Union[SparseTensor, torch.Tensor]:
         if self._type == "self":
             qkv = self.Linear(self.to_qkv, x)

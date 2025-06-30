@@ -19,7 +19,7 @@ class SparseVolumeExtractResult:
         self.coords = x.coords[:, 1 :].to(torch.int32)
         self.feats = x.feats.to(torch.float16)
 
-class SparseSubdivideBlock3d(nn.Module):
+class SparseSubdivideBlock3D(nn.Module):
     """
     A 3D subdivide block that can subdivide the sparse tensor.
 
@@ -37,7 +37,7 @@ class SparseSubdivideBlock3d(nn.Module):
         num_groups: int = 32,
         device: Optional[torch.device] = None,
     ):
-        super(SparseSubdivideBlock3d, self).__init__()
+        super(SparseSubdivideBlock3D, self).__init__()
 
         self.channels = channels
         self.resolution = resolution
@@ -48,14 +48,14 @@ class SparseSubdivideBlock3d(nn.Module):
             sp.SparseGroupNorm32(num_groups, channels, device = device),
             sp.SparseSiLU()
         )
-        
+
         self.sub = sp.SparseSubdivide()
-        
+
         self.out_layers = nn.Sequential(
-            sp.SparseConv3d(channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
+            sp.SparseConv3D(channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
             sp.SparseGroupNorm32(num_groups, self.out_channels, device = device),
             sp.SparseSiLU(),
-            sp.SparseConv3d(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
+            sp.SparseConv3D(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
         )
         if device != "meta":
             self.out_layers[3] = ZeroModule(self.out_layers[3])
@@ -63,8 +63,8 @@ class SparseSubdivideBlock3d(nn.Module):
         if self.out_channels == channels:
             self.skip_connection = nn.Identity()
         else:
-            self.skip_connection = sp.SparseConv3d(channels, self.out_channels, 1, indice_key=f"res_{self.out_resolution}")
-        
+            self.skip_connection = sp.SparseConv3D(channels, self.out_channels, 1, indice_key=f"res_{self.out_resolution}")
+
     def forward(self, x: sp.SparseTensor) -> sp.SparseTensor:
         """
         Apply the block to a Tensor, conditioned on a timestep embedding.
@@ -119,13 +119,13 @@ class SLatMeshDecoder(SparseTransformerBase):
         self.rep_config = representation_config
         self.out_channels = 8 * 1 + 8 * 3 + 21 + 8 * 6 # 8 densities, 8 deformation vectors, 21 weights, 8 colors, 8 normals
         self.upsample = nn.ModuleList([
-            SparseSubdivideBlock3d(
+            SparseSubdivideBlock3D(
                 channels=model_channels,
                 resolution=resolution,
                 out_channels=model_channels // 4,
                 device = device,
             ),
-            SparseSubdivideBlock3d(
+            SparseSubdivideBlock3D(
                 channels=model_channels // 4,
                 resolution=resolution * 2,
                 out_channels=model_channels // 8,

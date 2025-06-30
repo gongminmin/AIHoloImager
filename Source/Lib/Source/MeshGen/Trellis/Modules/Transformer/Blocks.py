@@ -15,6 +15,7 @@ class AbsolutePositionEmbedder(nn.Module):
     """
     Embeds spatial positions into vector representations.
     """
+
     def __init__(self, channels: int, in_channels: int = 3):
         super().__init__()
 
@@ -23,8 +24,8 @@ class AbsolutePositionEmbedder(nn.Module):
         self.freq_dim = channels // in_channels // 2
         self.freqs = torch.arange(self.freq_dim, dtype = torch.float32) / self.freq_dim
         self.freqs = 1.0 / (10000 ** self.freqs)
-        
-    def _sin_cos_embedding(self, x: torch.Tensor) -> torch.Tensor:
+
+    def SinCosEmbedding(self, x: torch.Tensor) -> torch.Tensor:
         """
         Create sinusoidal position embeddings.
 
@@ -48,7 +49,7 @@ class AbsolutePositionEmbedder(nn.Module):
 
         num, dim = x.shape
         assert dim == self.in_channels, "Input dimension must match number of input channels"
-        embed = self._sin_cos_embedding(x.reshape(-1))
+        embed = self.SinCosEmbedding(x.reshape(-1))
         embed = embed.reshape(num, -1)
         if embed.shape[1] < self.channels:
             embed = torch.cat([embed, torch.zeros(num, self.channels - embed.shape[1], device = embed.device)], dim = -1)
@@ -66,4 +67,3 @@ class FeedForwardNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.mlp(x)
-        

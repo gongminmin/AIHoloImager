@@ -87,7 +87,7 @@ class SparseUpsample(nn.Module):
         out._scale = tuple([s * f for s, f in zip(input._scale, factor)])
         out._spatial_cache = input._spatial_cache
         return out
-    
+
 class SparseSubdivide(nn.Module):
     """
     Upsample a sparse tensor by a factor of `factor`.
@@ -107,7 +107,7 @@ class SparseSubdivide(nn.Module):
         new_coords = input.coords.clone()
         new_coords[:, 1:] *= 2
         new_coords = new_coords.unsqueeze(1) + n_coords.unsqueeze(0).to(new_coords.dtype)
-        
+
         new_feats = input.feats.unsqueeze(1).expand(input.feats.shape[0], factor, *input.feats.shape[1:])
         out = SparseTensor(new_feats.flatten(0, 1), new_coords.flatten(0, 1), input.shape)
         out._scale = input._scale * 2

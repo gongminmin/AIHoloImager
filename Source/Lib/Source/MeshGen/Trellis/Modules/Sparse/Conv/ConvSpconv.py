@@ -9,15 +9,15 @@ import spconv.pytorch as spconv
 
 from .. import SparseTensor
 
-class SparseConv3d(nn.Module):
+class SparseConv3D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride = 1, dilation = 1, padding = None, bias = True, indice_key = None):
-        super(SparseConv3d, self).__init__()
+        super(SparseConv3D, self).__init__()
 
         algo = spconv.ConvAlgo.Native
         if stride == 1 and (padding is None):
             self.conv = spconv.SubMConv3d(in_channels, out_channels, kernel_size, dilation = dilation, bias = bias, indice_key = indice_key, algo = algo)
         else:
-            self.conv = spconv.SparseConv3d(in_channels, out_channels, kernel_size, stride = stride, dilation = dilation, padding = padding, bias = bias, indice_key = indice_key, algo = algo)
+            self.conv = spconv.SparseConv3D(in_channels, out_channels, kernel_size, stride = stride, dilation = dilation, padding = padding, bias = bias, indice_key = indice_key, algo = algo)
         self.stride = tuple(stride) if isinstance(stride, (list, tuple)) else (stride, stride, stride)
         self.padding = padding
 
@@ -38,7 +38,7 @@ class SparseConv3d(nn.Module):
 
         out = SparseTensor(
             new_data, shape = torch.Size(new_shape), layout = new_layout,
-            scale=tuple([s * stride for s, stride in zip(x._scale, self.stride)]),
+            scale = tuple([s * stride for s, stride in zip(x._scale, self.stride)]),
             spatial_cache = x._spatial_cache,
         )
 
@@ -48,11 +48,11 @@ class SparseConv3d(nn.Module):
  
         return out
 
-class SparseInverseConv3d(nn.Module):
+class SparseInverseConv3D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride = 1, dilation = 1, bias = True, indice_key = None):
-        super(SparseInverseConv3d, self).__init__()
+        super(SparseInverseConv3D, self).__init__()
 
-        self.conv = spconv.SparseInverseConv3d(in_channels, out_channels, kernel_size, bias = bias, indice_key = indice_key)
+        self.conv = spconv.SparseInverseConv3D(in_channels, out_channels, kernel_size, bias = bias, indice_key = indice_key)
         self.stride = tuple(stride) if isinstance(stride, (list, tuple)) else (stride, stride, stride)
 
     def forward(self, x: SparseTensor) -> SparseTensor:

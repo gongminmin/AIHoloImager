@@ -21,7 +21,7 @@ def NormLayer(norm_type: str, *args, **kwargs) -> nn.Module:
     else:
         raise ValueError(f"Invalid norm type {norm_type}")
 
-class ResBlock3d(nn.Module):
+class ResBlock3D(nn.Module):
     def __init__(
         self,
         channels: int,
@@ -41,7 +41,7 @@ class ResBlock3d(nn.Module):
         if device != "meta":
             self.conv = ZeroModule(self.conv)
         self.skip_connection = nn.Conv3d(channels, self.out_channels, 1, device = device) if channels != self.out_channels else nn.Identity()
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm1(x)
         h = functional.silu(h)
@@ -87,7 +87,7 @@ class UpsampleBlock3d(nn.Module):
         device : Optional[torch.device] = None,
     ):
         super().__init__()
-        
+
         assert mode in ["conv", "nearest"], f"Invalid mode {mode}"
 
         self.in_channels = in_channels
@@ -117,7 +117,8 @@ class SparseStructureDecoder(nn.Module):
         num_res_blocks_middle (int): Number of residual blocks in the middle.
         norm_type (Literal["group", "layer"]): Type of normalization layer.
         use_fp16 (bool): Whether to use FP16.
-    """ 
+    """
+
     def __init__(
         self,
         out_channels: int,
@@ -143,14 +144,14 @@ class SparseStructureDecoder(nn.Module):
         self.input_layer = nn.Conv3d(latent_channels, channels[0], 3, padding = 1, device = device)
 
         self.middle_block = nn.Sequential(*[
-            ResBlock3d(channels[0], channels[0], device = device)
+            ResBlock3D(channels[0], channels[0], device = device)
             for _ in range(num_res_blocks_middle)
         ])
 
         self.blocks = nn.ModuleList([])
         for i, ch in enumerate(channels):
             self.blocks.extend([
-                ResBlock3d(ch, ch, device = device)
+                ResBlock3D(ch, ch, device = device)
                 for _ in range(num_res_blocks)
             ])
             if i < len(channels) - 1:
@@ -172,22 +173,24 @@ class SparseStructureDecoder(nn.Module):
         """
         Return the device of the model.
         """
+
         return next(self.parameters()).device
-    
+
     def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
+
         self.use_fp16 = True
         self.dtype = torch.float16
         self.blocks.apply(ConvertModuleToFp16)
         self.middle_block.apply(ConvertModuleToFp16)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.input_layer(x)
-        
+
         h = h.type(self.dtype)
-                
+
         h = self.middle_block(h)
         for block in self.blocks:
             h = block(h)

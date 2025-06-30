@@ -20,7 +20,7 @@ class SparseFeedForwardNet(nn.Module):
 
         self.mlp = nn.Sequential(
             SparseLinear(channels, int(channels * mlp_ratio), device = device),
-            SparseGELU(approximate="tanh"),
+            SparseGELU(approximate = "tanh"),
             SparseLinear(int(channels * mlp_ratio), channels, device = device),
         )
 
@@ -31,6 +31,7 @@ class SparseTransformerBlock(nn.Module):
     """
     Sparse Transformer block (MSA + FFN).
     """
+
     def __init__(
         self,
         channels: int,
@@ -45,7 +46,7 @@ class SparseTransformerBlock(nn.Module):
         qk_rms_norm: bool = False,
         qkv_bias: bool = True,
         ln_affine: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -53,20 +54,20 @@ class SparseTransformerBlock(nn.Module):
         self.norm2 = LayerNorm32(channels, elementwise_affine=ln_affine, eps=1e-6, device = device)
         self.attn = SparseMultiHeadAttention(
             channels,
-            num_heads=num_heads,
-            attn_mode=attn_mode,
-            window_size=window_size,
-            shift_sequence=shift_sequence,
-            shift_window=shift_window,
-            serialize_mode=serialize_mode,
-            qkv_bias=qkv_bias,
-            use_rope=use_rope,
-            qk_rms_norm=qk_rms_norm,
+            num_heads = num_heads,
+            attn_mode = attn_mode,
+            window_size = window_size,
+            shift_sequence = shift_sequence,
+            shift_window = shift_window,
+            serialize_mode = serialize_mode,
+            qkv_bias = qkv_bias,
+            use_rope = use_rope,
+            qk_rms_norm = qk_rms_norm,
             device = device,
         )
         self.mlp = SparseFeedForwardNet(
             channels,
-            mlp_ratio=mlp_ratio,
+            mlp_ratio = mlp_ratio,
             device = device,
         )
 

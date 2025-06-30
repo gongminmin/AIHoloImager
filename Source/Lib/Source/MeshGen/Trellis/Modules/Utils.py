@@ -23,8 +23,8 @@ def ConvertModuleToFp16(l):
         nn.ConvTranspose2d,
         nn.ConvTranspose3d,
         nn.Linear,
-        sp.SparseConv3d,
-        sp.SparseInverseConv3d,
+        sp.SparseConv3D,
+        sp.SparseInverseConv3D,
         sp.SparseLinear,
     )
 
@@ -36,6 +36,7 @@ def ZeroModule(module):
     """
     Zero out the parameters of a module and return it.
     """
+
     for p in module.parameters():
         p.detach().zero_()
     return module
@@ -44,6 +45,7 @@ def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.T
     """
     Memory-efficient attention using PyTorch's built-in scaled dot-product attention.
     """
+
     query = query.permute(0, 2, 1, 3)   # [N, H, L, C]
     key = key.permute(0, 2, 1, 3)   # [N, H, L, C]
     value = value.permute(0, 2, 1, 3)   # [N, H, L, C]
@@ -60,10 +62,11 @@ def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Optional[Se
         q_seqlen (Sequence[int]): Query sequence lengths.
         kv_seqlen (Optional[Sequence[int]]): Key/value sequence lengths.
         causal (bool): If True, apply causal masking within each sequence.
-    
+
     Returns:
         torch.Tensor: Mask of shape (sum(q_seqlen), sum(q_seqlen)).
     """
+
     import numpy
     total_q_len = numpy.sum(q_seqlen)
 

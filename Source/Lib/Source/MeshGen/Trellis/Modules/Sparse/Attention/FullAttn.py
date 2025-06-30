@@ -93,7 +93,7 @@ def SparseScaledDotProductAttention(*args, **kwargs):
     }
     num_all_args = len(args) + len(kwargs)
     assert num_all_args in arg_names_dict, f"Invalid number of arguments, got {num_all_args}, expected 1, 2, or 3"
-    for key in arg_names_dict[num_all_args][len(args):]:
+    for key in arg_names_dict[num_all_args][len(args) :]:
         assert key in kwargs, f"Missing argument {key}"
 
     if num_all_args == 1:

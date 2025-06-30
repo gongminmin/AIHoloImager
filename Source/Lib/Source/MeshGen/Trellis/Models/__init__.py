@@ -41,6 +41,12 @@ def FromPretrained(path: str, **kwargs):
     with open(config_file_path, "r") as file:
         config = json.load(file)
     model = skip_init(__getattr__(config["name"]), **config["args"], **kwargs)
-    model.load_state_dict(load_file(model_file_path))
+    state_dict = load_file(model_file_path)
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        if key.find("adaLN_modulation") != -1:
+            key = key.replace("adaLN_modulation", "ada_ln_modulation")
+        new_state_dict[key] = value
+    model.load_state_dict(new_state_dict)
 
     return model

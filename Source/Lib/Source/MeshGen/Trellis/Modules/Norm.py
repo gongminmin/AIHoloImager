@@ -17,6 +17,7 @@ class GroupNorm32(nn.GroupNorm):
     """
     A GroupNorm layer that converts to float32 before the forward pass.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

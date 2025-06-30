@@ -17,6 +17,7 @@ def BlockAttnConfig(self):
     """
     Return the attention configuration of the model.
     """
+
     for i in range(self.num_blocks):
         if self.attn_mode == "full":
             yield "full", None, None, None, None
@@ -28,6 +29,7 @@ class SparseTransformerBase(nn.Module):
     Sparse Transformer without output layers.
     Serve as the base class for encoder and decoder.
     """
+
     def __init__(
         self,
         in_channels: int,
@@ -64,15 +66,15 @@ class SparseTransformerBase(nn.Module):
         self.blocks = nn.ModuleList([
             SparseTransformerBlock(
                 model_channels,
-                num_heads=self.num_heads,
-                mlp_ratio=self.mlp_ratio,
-                attn_mode=attn_mode,
-                window_size=window_size,
-                shift_sequence=shift_sequence,
-                shift_window=shift_window,
-                serialize_mode=serialize_mode,
+                num_heads = self.num_heads,
+                mlp_ratio = self.mlp_ratio,
+                attn_mode = attn_mode,
+                window_size = window_size,
+                shift_sequence = shift_sequence,
+                shift_window = shift_window,
+                serialize_mode = serialize_mode,
                 use_rope=(pe_mode == "rope"),
-                qk_rms_norm=self.qk_rms_norm,
+                qk_rms_norm = self.qk_rms_norm,
                 device = device,
             )
             for attn_mode, window_size, shift_sequence, shift_window, serialize_mode in BlockAttnConfig(self)
@@ -83,22 +85,24 @@ class SparseTransformerBase(nn.Module):
         """
         Return the device of the model.
         """
+
         return next(self.parameters()).device
 
     def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
+
         self.blocks.apply(ConvertModuleToFp16)
 
     def InitializeWeights(self) -> None:
         # Initialize transformer layers:
-        def _basic_init(module):
+        def BasicInit(module):
             if isinstance(module, nn.Linear):
                 torch.nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-        self.apply(_basic_init)
+        self.apply(BasicInit)
 
     def forward(self, x: sp.SparseTensor) -> sp.SparseTensor:
         h = self.input_layer(x)

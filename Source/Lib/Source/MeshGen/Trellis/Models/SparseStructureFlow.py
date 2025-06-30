@@ -18,6 +18,7 @@ class TimestepEmbedder(nn.Module):
     """
     Embeds scalar timesteps into vector representations.
     """
+
     def __init__(self, hidden_size, frequency_embedding_size = 256, device: Optional[torch.device] = None):
         super().__init__()
 
@@ -29,7 +30,7 @@ class TimestepEmbedder(nn.Module):
         self.frequency_embedding_size = frequency_embedding_size
 
     @staticmethod
-    def timestep_embedding(t, dim, max_period = 10000):
+    def TimestepEmbedding(t, dim, max_period = 10000):
         """
         Create sinusoidal timestep embeddings.
 
@@ -42,19 +43,20 @@ class TimestepEmbedder(nn.Module):
         Returns:
             an (N, D) Tensor of positional embeddings.
         """
+
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
         half = dim // 2
         freqs = torch.exp(
-            -np.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half
+            -np.log(max_period) * torch.arange(start=0, end=half, dtype = torch.float32) / half
         ).to(device = t.device)
-        args = t[:, None].float() * freqs[None]
+        args = t.unsqueeze(-1).float() * freqs.unsqueeze(0)
         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim = -1)
         if dim % 2:
-            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim = -1)
+            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, : 1])], dim = -1)
         return embedding
 
     def forward(self, t):
-        t_freq = self.timestep_embedding(t, self.frequency_embedding_size)
+        t_freq = self.TimestepEmbedding(t, self.frequency_embedding_size)
         t_emb = self.mlp(t_freq)
         return t_emb
 
@@ -76,7 +78,7 @@ class SparseStructureFlowModel(nn.Module):
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
@@ -98,7 +100,7 @@ class SparseStructureFlowModel(nn.Module):
 
         self.t_embedder = TimestepEmbedder(model_channels, device = device)
         if share_mod:
-            self.adaLN_modulation = nn.Sequential(
+            self.ada_ln_modulation = nn.Sequential(
                 nn.SiLU(),
                 nn.Linear(model_channels, 6 * model_channels, bias = True, device = device)
             )
@@ -111,7 +113,7 @@ class SparseStructureFlowModel(nn.Module):
             self.register_buffer("pos_emb", pos_emb)
 
         self.input_layer = nn.Linear(in_channels * (patch_size ** 3), model_channels, device = device)
-            
+
         self.blocks = nn.ModuleList([
             ModulatedTransformerCrossBlock(
                 model_channels,
@@ -140,22 +142,24 @@ class SparseStructureFlowModel(nn.Module):
         """
         Return the device of the model.
         """
+
         return next(self.parameters()).device
 
     def ConvertToFp16(self) -> None:
         """
         Convert the torso of the model to float16.
         """
+
         self.blocks.apply(ConvertModuleToFp16)
 
     def InitializeWeights(self) -> None:
         # Initialize transformer layers:
-        def _basic_init(module):
+        def BasicInit(module):
             if isinstance(module, nn.Linear):
                 torch.nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-        self.apply(_basic_init)
+        self.apply(BasicInit)
 
         # Initialize timestep embedding MLP:
         nn.init.normal_(self.t_embedder.mlp[0].weight, std = 0.02)
@@ -163,12 +167,12 @@ class SparseStructureFlowModel(nn.Module):
 
         # Zero-out adaLN modulation layers in DiT blocks:
         if self.share_mod:
-            nn.init.constant_(self.adaLN_modulation[-1].weight, 0)
-            nn.init.constant_(self.adaLN_modulation[-1].bias, 0)
+            nn.init.constant_(self.ada_ln_modulation[-1].weight, 0)
+            nn.init.constant_(self.ada_ln_modulation[-1].bias, 0)
         else:
             for block in self.blocks:
-                nn.init.constant_(block.adaLN_modulation[-1].weight, 0)
-                nn.init.constant_(block.adaLN_modulation[-1].bias, 0)
+                nn.init.constant_(block.ada_ln_modulation[-1].weight, 0)
+                nn.init.constant_(block.ada_ln_modulation[-1].bias, 0)
 
         # Zero-out output layers:
         nn.init.constant_(self.out_layer.weight, 0)
@@ -182,10 +186,10 @@ class SparseStructureFlowModel(nn.Module):
         h = h.view(*h.shape[: 2], -1).permute(0, 2, 1).contiguous()
 
         h = self.input_layer(h)
-        h = h + self.pos_emb[None]
+        h = h + self.pos_emb.unsqueeze(0)
         t_emb = self.t_embedder(t)
         if self.share_mod:
-            t_emb = self.adaLN_modulation(t_emb)
+            t_emb = self.ada_ln_modulation(t_emb)
         t_emb = t_emb.type(self.dtype)
         h = h.type(self.dtype)
         cond = cond.type(self.dtype)
