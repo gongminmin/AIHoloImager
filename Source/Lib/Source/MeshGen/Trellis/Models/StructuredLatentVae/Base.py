@@ -13,16 +13,16 @@ from ...Modules.Transformer import AbsolutePositionEmbedder
 from ...Modules.Utils import ConvertModuleToFp16
 from ...Modules import Sparse as sp
 
-def BlockAttnConfig(self):
+def BlockAttnConfig(num_blocks, attn_mode, window_size):
     """
     Return the attention configuration of the model.
     """
 
-    for i in range(self.num_blocks):
-        if self.attn_mode == "full":
-            yield "full", None, None, None, None
-        elif self.attn_mode == "swin":
-            yield "windowed", self.window_size, None, self.window_size // 2 * (i % 2), None
+    for i in range(num_blocks):
+        if attn_mode == "full":
+            yield "full", None, None
+        elif attn_mode == "swin":
+            yield "windowed", window_size, window_size // 2 * (i % 2)
 
 class SparseTransformerBase(nn.Module):
     """
@@ -43,20 +43,13 @@ class SparseTransformerBase(nn.Module):
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
         qk_rms_norm: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.in_channels = in_channels
-        self.model_channels = model_channels
-        self.num_blocks = num_blocks
-        self.window_size = window_size
-        self.num_heads = num_heads or model_channels // num_head_channels
-        self.mlp_ratio = mlp_ratio
-        self.attn_mode = attn_mode
+        if num_heads is None:
+            num_heads = model_channels // num_head_channels
         self.pe_mode = pe_mode
-        self.use_fp16 = use_fp16
-        self.qk_rms_norm = qk_rms_norm
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
         if pe_mode == "ape":
@@ -66,18 +59,16 @@ class SparseTransformerBase(nn.Module):
         self.blocks = nn.ModuleList([
             SparseTransformerBlock(
                 model_channels,
-                num_heads = self.num_heads,
-                mlp_ratio = self.mlp_ratio,
+                num_heads = num_heads,
+                mlp_ratio = mlp_ratio,
                 attn_mode = attn_mode,
                 window_size = window_size,
-                shift_sequence = shift_sequence,
                 shift_window = shift_window,
-                serialize_mode = serialize_mode,
-                use_rope=(pe_mode == "rope"),
-                qk_rms_norm = self.qk_rms_norm,
+                use_rope = (pe_mode == "rope"),
+                qk_rms_norm = qk_rms_norm,
                 device = device,
             )
-            for attn_mode, window_size, shift_sequence, shift_window, serialize_mode in BlockAttnConfig(self)
+            for attn_mode, window_size, shift_window in BlockAttnConfig(num_blocks, attn_mode, window_size)
         ])
 
     @property

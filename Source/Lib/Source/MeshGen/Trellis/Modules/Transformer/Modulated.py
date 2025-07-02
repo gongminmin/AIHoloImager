@@ -24,8 +24,6 @@ class ModulatedTransformerCrossBlock(nn.Module):
         num_heads: int,
         mlp_ratio: float = 4.0,
         attn_mode: Literal["full", "windowed"] = "full",
-        window_size: Optional[int] = None,
-        shift_window: Optional[Tuple[int, int, int]] = None,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
@@ -41,11 +39,9 @@ class ModulatedTransformerCrossBlock(nn.Module):
         self.norm3 = LayerNorm32(channels, elementwise_affine = False, eps = 1e-6, device = device)
         self.self_attn = MultiHeadAttention(
             channels,
-            num_heads= num_heads,
+            num_heads = num_heads,
             type = "self",
             attn_mode = attn_mode,
-            window_size = window_size,
-            shift_window = shift_window,
             qkv_bias = qkv_bias,
             use_rope = use_rope,
             qk_rms_norm = qk_rms_norm,

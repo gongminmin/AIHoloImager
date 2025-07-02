@@ -47,7 +47,7 @@ class TimestepEmbedder(nn.Module):
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
         half = dim // 2
         freqs = torch.exp(
-            -np.log(max_period) * torch.arange(start=0, end=half, dtype = torch.float32) / half
+            -np.log(max_period) * torch.arange(start = 0, end = half, dtype = torch.float32) / half
         ).to(device = t.device)
         args = t.unsqueeze(-1).float() * freqs.unsqueeze(0)
         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim = -1)
@@ -84,15 +84,9 @@ class SparseStructureFlowModel(nn.Module):
 
         self.resolution = resolution
         self.in_channels = in_channels
-        self.model_channels = model_channels
-        self.cond_channels = cond_channels
-        self.out_channels = out_channels
-        self.num_blocks = num_blocks
         self.num_heads = num_heads or model_channels // num_head_channels
         self.mlp_ratio = mlp_ratio
         self.patch_size = patch_size
-        self.pe_mode = pe_mode
-        self.use_fp16 = use_fp16
         self.share_mod = share_mod
         self.qk_rms_norm = qk_rms_norm
         self.qk_rms_norm_cross = qk_rms_norm_cross

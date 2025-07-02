@@ -8,14 +8,14 @@ from typing import *
 import torch
 import torch.nn as nn
 
-from ..Attention import SparseMultiHeadAttention, SerializeMode
+from ..Attention import SparseMultiHeadAttention
 from ..Basic import SparseTensor
 from ..Linear import SparseLinear
 from ..Nonlinearity import SparseGELU
 from ...Norm import LayerNorm32
 
 class SparseFeedForwardNet(nn.Module):
-    def __init__(self, channels: int, mlp_ratio: float = 4.0, device : Optional[torch.device] = None):
+    def __init__(self, channels: int, mlp_ratio: float = 4.0, device: Optional[torch.device] = None):
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -39,9 +39,7 @@ class SparseTransformerBlock(nn.Module):
         mlp_ratio: float = 4.0,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "full",
         window_size: Optional[int] = None,
-        shift_sequence: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
-        serialize_mode: Optional[SerializeMode] = None,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qkv_bias: bool = True,
@@ -50,16 +48,14 @@ class SparseTransformerBlock(nn.Module):
     ):
         super().__init__()
 
-        self.norm1 = LayerNorm32(channels, elementwise_affine=ln_affine, eps=1e-6, device = device)
-        self.norm2 = LayerNorm32(channels, elementwise_affine=ln_affine, eps=1e-6, device = device)
+        self.norm1 = LayerNorm32(channels, elementwise_affine = ln_affine, eps = 1e-6, device = device)
+        self.norm2 = LayerNorm32(channels, elementwise_affine = ln_affine, eps = 1e-6, device = device)
         self.attn = SparseMultiHeadAttention(
             channels,
             num_heads = num_heads,
             attn_mode = attn_mode,
             window_size = window_size,
-            shift_sequence = shift_sequence,
             shift_window = shift_window,
-            serialize_mode = serialize_mode,
             qkv_bias = qkv_bias,
             use_rope = use_rope,
             qk_rms_norm = qk_rms_norm,

@@ -86,7 +86,6 @@ set(aihi_files
     Source/MeshGen/Trellis/Modules/Attention/__init__.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/FullAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/Modules.py
-    Source/MeshGen/Trellis/Modules/Sparse/Attention/SerializedAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/WindowedAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/__init__.py
     Source/MeshGen/Trellis/Modules/Sparse/Conv/ConvSpconv.py
@@ -250,7 +249,6 @@ set(py_files
     Source/MeshGen/Trellis/Modules/Attention/__init__.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/FullAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/Modules.py
-    Source/MeshGen/Trellis/Modules/Sparse/Attention/SerializedAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/WindowedAttn.py
     Source/MeshGen/Trellis/Modules/Sparse/Attention/__init__.py
     Source/MeshGen/Trellis/Modules/Sparse/Conv/ConvSpconv.py

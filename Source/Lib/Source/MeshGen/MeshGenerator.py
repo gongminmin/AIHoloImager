@@ -85,7 +85,7 @@ class MeshGenerator:
 
     def DensityFeatures(self):
         return self.density_features
-        
+
     def DeformationFeatures(self):
         return self.deformation_features
 

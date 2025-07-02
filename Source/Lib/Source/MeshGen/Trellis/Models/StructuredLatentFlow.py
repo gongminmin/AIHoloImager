@@ -25,34 +25,32 @@ class SparseResBlock3D(nn.Module):
         out_channels: Optional[int] = None,
         downsample: bool = False,
         upsample: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.channels = channels
-        self.emb_channels = emb_channels
-        self.out_channels = out_channels or channels
-        self.downsample = downsample
-        self.upsample = upsample
+        if out_channels is None:
+            out_channels = channels
 
         assert not (downsample and upsample), "Cannot downsample and upsample at the same time"
 
         self.norm1 = LayerNorm32(channels, elementwise_affine = True, eps = 1e-6, device = device)
-        self.norm2 = LayerNorm32(self.out_channels, elementwise_affine = False, eps = 1e-6, device = device)
-        self.conv1 = sp.SparseConv3D(channels, self.out_channels, 3)
-        self.conv2 = sp.SparseConv3D(self.out_channels, self.out_channels, 3)
+        self.norm2 = LayerNorm32(out_channels, elementwise_affine = False, eps = 1e-6, device = device)
+        self.conv1 = sp.SparseConv3D(channels, out_channels, 3)
+        self.conv2 = sp.SparseConv3D(out_channels, out_channels, 3)
         if device != "meta":
             self.conv2 = ZeroModule(self.conv2)
         self.emb_layers = nn.Sequential(
             nn.SiLU(),
-            nn.Linear(emb_channels, 2 * self.out_channels, bias = True, device = device),
+            nn.Linear(emb_channels, 2 * out_channels, bias = True, device = device),
         )
-        self.skip_connection = sp.SparseLinear(channels, self.out_channels, device = device) if channels != self.out_channels else nn.Identity()
-        self.updown = None
-        if self.downsample:
+        self.skip_connection = sp.SparseLinear(channels, out_channels, device = device) if channels != out_channels else nn.Identity()
+        if downsample:
             self.updown = sp.SparseDownsample(2)
-        elif self.upsample:
+        elif upsample:
             self.updown = sp.SparseUpsample(2)
+        else:
+            self.updown = None
 
     def UpDown(self, x: sp.SparseTensor) -> sp.SparseTensor:
         if self.updown is not None:
@@ -95,27 +93,16 @@ class SLatFlowModel(nn.Module):
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.resolution = resolution
         self.in_channels = in_channels
-        self.model_channels = model_channels
-        self.cond_channels = cond_channels
-        self.out_channels = out_channels
-        self.num_blocks = num_blocks
-        self.num_heads = num_heads or model_channels // num_head_channels
-        self.mlp_ratio = mlp_ratio
-        self.patch_size = patch_size
-        self.num_io_res_blocks = num_io_res_blocks
-        self.io_block_channels = io_block_channels
+        if num_heads is None:
+            num_heads = model_channels // num_head_channels
         self.pe_mode = pe_mode
-        self.use_fp16 = use_fp16
         self.use_skip_connection = use_skip_connection
         self.share_mod = share_mod
-        self.qk_rms_norm = qk_rms_norm
-        self.qk_rms_norm_cross = qk_rms_norm_cross
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
         assert int(np.log2(patch_size)) == np.log2(patch_size), "Patch size must be a power of 2"
@@ -157,13 +144,13 @@ class SLatFlowModel(nn.Module):
             ModulatedSparseTransformerCrossBlock(
                 model_channels,
                 cond_channels,
-                num_heads = self.num_heads,
-                mlp_ratio = self.mlp_ratio,
+                num_heads = num_heads,
+                mlp_ratio = mlp_ratio,
                 attn_mode = "full",
                 use_rope = (pe_mode == "rope"),
                 share_mod = self.share_mod,
-                qk_rms_norm = self.qk_rms_norm,
-                qk_rms_norm_cross = self.qk_rms_norm_cross,
+                qk_rms_norm = qk_rms_norm,
+                qk_rms_norm_cross = qk_rms_norm_cross,
                 device = device,
             )
             for _ in range(num_blocks)

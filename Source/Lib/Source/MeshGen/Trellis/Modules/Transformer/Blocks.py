@@ -8,7 +8,6 @@ from typing import *
 import torch
 import torch.nn as nn
 
-from ..Attention import MultiHeadAttention
 from ..Norm import LayerNorm32
 
 class AbsolutePositionEmbedder(nn.Module):
@@ -21,8 +20,8 @@ class AbsolutePositionEmbedder(nn.Module):
 
         self.channels = channels
         self.in_channels = in_channels
-        self.freq_dim = channels // in_channels // 2
-        self.freqs = torch.arange(self.freq_dim, dtype = torch.float32) / self.freq_dim
+        freq_dim = channels // in_channels // 2
+        self.freqs = torch.arange(freq_dim, dtype = torch.float32) / freq_dim
         self.freqs = 1.0 / (10000 ** self.freqs)
 
     def SinCosEmbedding(self, x: torch.Tensor) -> torch.Tensor:
@@ -52,11 +51,11 @@ class AbsolutePositionEmbedder(nn.Module):
         embed = self.SinCosEmbedding(x.reshape(-1))
         embed = embed.reshape(num, -1)
         if embed.shape[1] < self.channels:
-            embed = torch.cat([embed, torch.zeros(num, self.channels - embed.shape[1], device = embed.device)], dim = -1)
+            embed = torch.cat((embed, torch.zeros(num, self.channels - embed.shape[1], device = embed.device)), dim = -1)
         return embed
 
 class FeedForwardNet(nn.Module):
-    def __init__(self, channels: int, mlp_ratio: float = 4.0, device : Optional[torch.device] = None):
+    def __init__(self, channels: int, mlp_ratio: float = 4.0, device: Optional[torch.device] = None):
         super().__init__()
 
         self.mlp = nn.Sequential(

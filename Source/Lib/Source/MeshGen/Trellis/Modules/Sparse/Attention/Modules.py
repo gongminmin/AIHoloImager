@@ -11,7 +11,6 @@ import torch.nn.functional as functional
 
 from .. import SparseTensor
 from .FullAttn import SparseScaledDotProductAttention
-from .SerializedAttn import SerializeMode
 from .WindowedAttn import SparseWindowedScaledDotProductSelfAttention
 from ...Attention import RotaryPositionEmbedder
 
@@ -40,9 +39,7 @@ class SparseMultiHeadAttention(nn.Module):
         type: Literal["self", "cross"] = "self",
         attn_mode: Literal["full", "windowed"] = "full",
         window_size: Optional[int] = None,
-        shift_sequence: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
-        serialize_mode: Optional[SerializeMode] = None,
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
@@ -56,27 +53,26 @@ class SparseMultiHeadAttention(nn.Module):
         assert type == "self" or attn_mode == "full", "Cross-attention only supports full attention"
         assert type == "self" or use_rope is False, "Rotary position embeddings only supported for self-attention"
 
-        self.channels = channels
-        self.ctx_channels = ctx_channels if ctx_channels is not None else channels
+        head_dim = channels // num_heads
+        if ctx_channels is None:
+            ctx_channels = channels
         self.num_heads = num_heads
-        self._type = type
+        self.type = type
         self.attn_mode = attn_mode
         self.window_size = window_size
-        self.shift_sequence = shift_sequence
         self.shift_window = shift_window
-        self.serialize_mode = serialize_mode
         self.use_rope = use_rope
         self.qk_rms_norm = qk_rms_norm
 
-        if self._type == "self":
+        if self.type == "self":
             self.to_qkv = nn.Linear(channels, channels * 3, bias = qkv_bias, device = device)
         else:
             self.to_q = nn.Linear(channels, channels, bias = qkv_bias, device = device)
-            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias = qkv_bias, device = device)
+            self.to_kv = nn.Linear(ctx_channels, channels * 2, bias = qkv_bias, device = device)
 
         if self.qk_rms_norm:
-            self.q_rms_norm = SparseMultiHeadRMSNorm(channels // num_heads, num_heads, device = device)
-            self.k_rms_norm = SparseMultiHeadRMSNorm(channels // num_heads, num_heads, device = device)
+            self.q_rms_norm = SparseMultiHeadRMSNorm(head_dim, num_heads, device = device)
+            self.k_rms_norm = SparseMultiHeadRMSNorm(head_dim, num_heads, device = device)
 
         self.to_out = nn.Linear(channels, channels, device = device)
 
@@ -112,7 +108,7 @@ class SparseMultiHeadAttention(nn.Module):
         return qkv
 
     def forward(self, x: Union[SparseTensor, torch.Tensor], context: Optional[Union[SparseTensor, torch.Tensor]] = None) -> Union[SparseTensor, torch.Tensor]:
-        if self._type == "self":
+        if self.type == "self":
             qkv = self.Linear(self.to_qkv, x)
             qkv = self.FusedPre(qkv, num_fused = 3)
             if self.use_rope:
@@ -126,7 +122,7 @@ class SparseMultiHeadAttention(nn.Module):
                 h = SparseScaledDotProductAttention(qkv)
             elif self.attn_mode == "windowed":
                 h = SparseWindowedScaledDotProductSelfAttention(
-                    qkv, self.window_size, shift_window=self.shift_window
+                    qkv, self.window_size, shift_window = self.shift_window
                 )
         else:
             q = self.Linear(self.to_q, x)

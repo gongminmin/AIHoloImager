@@ -47,30 +47,3 @@ class SparseConv3D(nn.Module):
             out.RegisterSpatialCache(f"conv_{self.stride}_sort_bwd", bwd)
  
         return out
-
-class SparseInverseConv3D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, dilation = 1, bias = True, indice_key = None):
-        super(SparseInverseConv3D, self).__init__()
-
-        self.conv = spconv.SparseInverseConv3D(in_channels, out_channels, kernel_size, bias = bias, indice_key = indice_key)
-        self.stride = tuple(stride) if isinstance(stride, (list, tuple)) else (stride, stride, stride)
-
-    def forward(self, x: SparseTensor) -> SparseTensor:
-        spatial_changed = any(s != 1 for s in self.stride)
-        if spatial_changed:
-            # recover the original spconv order
-            data = x.GetSpatialCache(f"conv_{self.stride}_unsorted_data")
-            bwd = x.GetSpatialCache(f"conv_{self.stride}_sort_bwd")
-            data = data.replace_feature(x.feats[bwd])
-        else:
-            data = x.data
-
-        new_data = self.conv(data)
-        new_shape = [x.shape[0], self.conv.out_channels]
-        new_layout = None if spatial_changed else x.layout
-        out = SparseTensor(
-            new_data, shape = torch.Size(new_shape), layout = new_layout,
-            scale = tuple([s // stride for s, stride in zip(x._scale, self.stride)]),
-            spatial_cache = x._spatial_cache,
-        )
-        return out

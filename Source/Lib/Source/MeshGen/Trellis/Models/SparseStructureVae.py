@@ -27,20 +27,20 @@ class ResBlock3D(nn.Module):
         channels: int,
         out_channels: Optional[int] = None,
         norm_type: Literal["group", "layer"] = "layer",
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.channels = channels
-        self.out_channels = out_channels or channels
+        if out_channels is None:
+            out_channels = channels
 
         self.norm1 = NormLayer(norm_type, channels, device = device)
-        self.norm2 = NormLayer(norm_type, self.out_channels, device = device)
-        self.conv1 = nn.Conv3d(channels, self.out_channels, 3, padding = 1, device = device)
-        self.conv2 = nn.Conv3d(self.out_channels, self.out_channels, 3, padding = 1, device = device)
+        self.norm2 = NormLayer(norm_type, out_channels, device = device)
+        self.conv1 = nn.Conv3d(channels, out_channels, 3, padding = 1, device = device)
+        self.conv2 = nn.Conv3d(out_channels, out_channels, 3, padding = 1, device = device)
         if device != "meta":
             self.conv = ZeroModule(self.conv)
-        self.skip_connection = nn.Conv3d(channels, self.out_channels, 1, device = device) if channels != self.out_channels else nn.Identity()
+        self.skip_connection = nn.Conv3d(channels, out_channels, 1, device = device) if channels != out_channels else nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm1(x)
@@ -52,46 +52,17 @@ class ResBlock3D(nn.Module):
         h = h + self.skip_connection(x)
         return h
 
-class DownsampleBlock3d(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        mode: Literal["conv", "avgpool"] = "conv",
-        device : Optional[torch.device] = None,
-    ):
-        super().__init__()
-
-        assert mode in ["conv", "avgpool"], f"Invalid mode {mode}"
-
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
-        if mode == "conv":
-            self.conv = nn.Conv3d(in_channels, out_channels, 2, stride = 2, device = device)
-        elif mode == "avgpool":
-            assert in_channels == out_channels, "Pooling mode requires in_channels to be equal to out_channels"
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if hasattr(self, "conv"):
-            return self.conv(x)
-        else:
-            return functional.avg_pool3d(x, 2)
-
-class UpsampleBlock3d(nn.Module):
+class UpsampleBlock3D(nn.Module):
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         mode: Literal["conv", "nearest"] = "conv",
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
         assert mode in ["conv", "nearest"], f"Invalid mode {mode}"
-
-        self.in_channels = in_channels
-        self.out_channels = out_channels
 
         if mode == "conv":
             self.conv = nn.Conv3d(in_channels, out_channels * 8, 3, padding = 1, device = device)
@@ -128,16 +99,10 @@ class SparseStructureDecoder(nn.Module):
         num_res_blocks_middle: int = 2,
         norm_type: Literal["group", "layer"] = "layer",
         use_fp16: bool = False,
-        device : Optional[torch.device] = None,
+        device: Optional[torch.device] = None,
     ):
         super().__init__()
 
-        self.out_channels = out_channels
-        self.latent_channels = latent_channels
-        self.num_res_blocks = num_res_blocks
-        self.channels = channels
-        self.num_res_blocks_middle = num_res_blocks_middle
-        self.norm_type = norm_type
         self.use_fp16 = use_fp16
         self.dtype = torch.float16 if use_fp16 else torch.float32
 
@@ -156,7 +121,7 @@ class SparseStructureDecoder(nn.Module):
             ])
             if i < len(channels) - 1:
                 self.blocks.append(
-                    UpsampleBlock3d(ch, channels[i + 1], device = device)
+                    UpsampleBlock3D(ch, channels[i + 1], device = device)
                 )
 
         self.out_layer = nn.Sequential(

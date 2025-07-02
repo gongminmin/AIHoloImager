@@ -39,10 +39,10 @@ class SparseSubdivideBlock3D(nn.Module):
     ):
         super(SparseSubdivideBlock3D, self).__init__()
 
-        self.channels = channels
-        self.resolution = resolution
-        self.out_resolution = resolution * 2
-        self.out_channels = out_channels or channels
+        out_resolution = resolution * 2
+        if out_channels is None:
+            out_channels = channels
+        indice_key = f"res_{out_resolution}"
 
         self.act_layers = nn.Sequential(
             sp.SparseGroupNorm32(num_groups, channels, device = device),
@@ -52,18 +52,18 @@ class SparseSubdivideBlock3D(nn.Module):
         self.sub = sp.SparseSubdivide()
 
         self.out_layers = nn.Sequential(
-            sp.SparseConv3D(channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
-            sp.SparseGroupNorm32(num_groups, self.out_channels, device = device),
+            sp.SparseConv3D(channels, out_channels, 3, indice_key = indice_key),
+            sp.SparseGroupNorm32(num_groups, out_channels, device = device),
             sp.SparseSiLU(),
-            sp.SparseConv3D(self.out_channels, self.out_channels, 3, indice_key=f"res_{self.out_resolution}"),
+            sp.SparseConv3D(out_channels, out_channels, 3, indice_key = indice_key),
         )
         if device != "meta":
             self.out_layers[3] = ZeroModule(self.out_layers[3])
 
-        if self.out_channels == channels:
+        if out_channels == channels:
             self.skip_connection = nn.Identity()
         else:
-            self.skip_connection = sp.SparseConv3D(channels, self.out_channels, 1, indice_key=f"res_{self.out_resolution}")
+            self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indice_key = indice_key)
 
     def forward(self, x: sp.SparseTensor) -> sp.SparseTensor:
         """
@@ -116,23 +116,22 @@ class SLatMeshDecoder(SparseTransformerBase):
         )
 
         self.resolution = resolution
-        self.rep_config = representation_config
-        self.out_channels = 8 * 1 + 8 * 3 + 21 + 8 * 6 # 8 densities, 8 deformation vectors, 21 weights, 8 colors, 8 normals
+        out_channels = 8 * 1 + 8 * 3 + 21 + 8 * 6 # 8 densities, 8 deformation vectors, 21 weights, 8 colors, 8 normals
         self.upsample = nn.ModuleList([
             SparseSubdivideBlock3D(
-                channels=model_channels,
-                resolution=resolution,
-                out_channels=model_channels // 4,
+                channels = model_channels,
+                resolution = resolution,
+                out_channels = model_channels // 4,
                 device = device,
             ),
             SparseSubdivideBlock3D(
-                channels=model_channels // 4,
-                resolution=resolution * 2,
-                out_channels=model_channels // 8,
+                channels = model_channels // 4,
+                resolution = resolution * 2,
+                out_channels = model_channels // 8,
                 device = device,
             )
         ])
-        self.out_layer = sp.SparseLinear(model_channels // 8, self.out_channels, device = device)
+        self.out_layer = sp.SparseLinear(model_channels // 8, out_channels, device = device)
 
         if device != "meta":
             self.InitializeWeights()

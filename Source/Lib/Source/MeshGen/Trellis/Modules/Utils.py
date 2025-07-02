@@ -24,7 +24,6 @@ def ConvertModuleToFp16(l):
         nn.ConvTranspose3d,
         nn.Linear,
         sp.SparseConv3D,
-        sp.SparseInverseConv3D,
         sp.SparseLinear,
     )
 

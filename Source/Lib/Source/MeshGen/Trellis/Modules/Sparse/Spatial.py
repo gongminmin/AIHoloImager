@@ -74,7 +74,7 @@ class SparseUpsample(nn.Module):
 
     def forward(self, input: SparseTensor) -> SparseTensor:
         dim = input.coords.shape[-1] - 1
-        factor = self.factor if isinstance(self.factor, tuple) else (self.factor,) * dim
+        factor = self.factor if isinstance(self.factor, tuple) else (self.factor, ) * dim
         assert dim == len(factor), 'Input coordinates must have the same dimension as the upsample factor.'
 
         new_coords = input.GetSpatialCache(f"upsample_{factor}_coords")
@@ -105,7 +105,7 @@ class SparseSubdivide(nn.Module):
         factor = n_coords.shape[0]
         assert factor == 2 ** dim
         new_coords = input.coords.clone()
-        new_coords[:, 1:] *= 2
+        new_coords[:, 1 :] *= 2
         new_coords = new_coords.unsqueeze(1) + n_coords.unsqueeze(0).to(new_coords.dtype)
 
         new_feats = input.feats.unsqueeze(1).expand(input.feats.shape[0], factor, *input.feats.shape[1:])

@@ -28,23 +28,22 @@ class RotaryPositionEmbedder(nn.Module):
         assert hidden_size % 2 == 0, "Hidden size must be divisible by 2"
 
         self.hidden_size = hidden_size
-        self.in_channels = in_channels
-        self.freq_dim = hidden_size // in_channels // 2
-        self.freqs = torch.arange(self.freq_dim, dtype = torch.float32) / self.freq_dim
+        freq_dim = hidden_size // in_channels // 2
+        self.freqs = torch.arange(freq_dim, dtype = torch.float32) / freq_dim
         self.freqs = 1.0 / (10000 ** self.freqs)
-        
-    def _get_phases(self, indices: torch.Tensor) -> torch.Tensor:
+
+    def GetPhases(self, indices: torch.Tensor) -> torch.Tensor:
         self.freqs = self.freqs.to(indices.device)
         phases = torch.outer(indices, self.freqs)
         phases = torch.polar(torch.ones_like(phases), phases)
         return phases
-        
-    def _rotary_embedding(self, x: torch.Tensor, phases: torch.Tensor) -> torch.Tensor:
+
+    def RotaryEmbedding(self, x: torch.Tensor, phases: torch.Tensor) -> torch.Tensor:
         x_complex = torch.view_as_complex(x.float().reshape(*x.shape[: -1], -1, 2))
         x_rotated = x_complex * phases
         x_embed = torch.view_as_real(x_rotated).reshape(*x_rotated.shape[: -1], -1).to(x.dtype)
         return x_embed
-        
+
     def forward(self, q: torch.Tensor, k: torch.Tensor, indices: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -57,15 +56,15 @@ class RotaryPositionEmbedder(nn.Module):
             indices = torch.arange(q.shape[-2], device = q.device)
             if len(q.shape) > 2:
                 indices = indices.unsqueeze(0).expand(q.shape[: -2] + (-1, ))
-        
-        phases = self._get_phases(indices.reshape(-1)).reshape(*indices.shape[: -1], -1)
+
+        phases = self.GetPhases(indices.reshape(-1)).reshape(*indices.shape[: -1], -1)
         if phases.shape[1] < self.hidden_size // 2:
             phases = torch.cat([phases, torch.polar(
                 torch.ones(*phases.shape[: -1], self.hidden_size // 2 - phases.shape[1], device = phases.device),
                 torch.zeros(*phases.shape[: -1], self.hidden_size // 2 - phases.shape[1], device = phases.device)
             )], dim = -1)
-        q_embed = self._rotary_embedding(q, phases)
-        k_embed = self._rotary_embedding(k, phases)
+        q_embed = self.RotaryEmbedding(q, phases)
+        k_embed = self.RotaryEmbedding(k, phases)
         return q_embed, k_embed
     
 class MultiHeadAttention(nn.Module):
@@ -76,8 +75,6 @@ class MultiHeadAttention(nn.Module):
         ctx_channels: Optional[int] = None,
         type: Literal["self", "cross"] = "self",
         attn_mode: Literal["full", "windowed"] = "full",
-        window_size: Optional[int] = None,
-        shift_window: Optional[Tuple[int, int, int]] = None,
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
@@ -89,39 +86,37 @@ class MultiHeadAttention(nn.Module):
         assert type in ["self", "cross"], f"Invalid attention type: {type}"
         assert attn_mode in ["full", "windowed"], f"Invalid attention mode: {attn_mode}"
         assert type == "self" or attn_mode == "full", "Cross-attention only supports full attention"
-        
+
         if attn_mode == "windowed":
             raise NotImplementedError("Windowed attention is not yet implemented")
-        
-        self.channels = channels
-        self.head_dim = channels // num_heads
-        self.ctx_channels = ctx_channels if ctx_channels is not None else channels
+
+        head_dim = channels // num_heads
+        if ctx_channels is None:
+            ctx_channels = channels
         self.num_heads = num_heads
-        self._type = type
+        self.type = type
         self.attn_mode = attn_mode
-        self.window_size = window_size
-        self.shift_window = shift_window
         self.use_rope = use_rope
         self.qk_rms_norm = qk_rms_norm
 
-        if self._type == "self":
+        if self.type == "self":
             self.to_qkv = nn.Linear(channels, channels * 3, bias = qkv_bias, device = device)
         else:
             self.to_q = nn.Linear(channels, channels, bias = qkv_bias, device = device)
-            self.to_kv = nn.Linear(self.ctx_channels, channels * 2, bias = qkv_bias, device = device)
-            
+            self.to_kv = nn.Linear(ctx_channels, channels * 2, bias = qkv_bias, device = device)
+
         if self.qk_rms_norm:
-            self.q_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads, device = device)
-            self.k_rms_norm = MultiHeadRMSNorm(self.head_dim, num_heads, device = device)
-            
+            self.q_rms_norm = MultiHeadRMSNorm(head_dim, num_heads, device = device)
+            self.k_rms_norm = MultiHeadRMSNorm(head_dim, num_heads, device = device)
+
         self.to_out = nn.Linear(channels, channels, device = device)
 
         if use_rope:
             self.rope = RotaryPositionEmbedder(channels)
-    
+
     def forward(self, x: torch.Tensor, context: Optional[torch.Tensor] = None, indices: Optional[torch.Tensor] = None) -> torch.Tensor:
         batch, length, channels = x.shape
-        if self._type == "self":
+        if self.type == "self":
             qkv = self.to_qkv(x)
             qkv = qkv.reshape(batch, length, 3, self.num_heads, -1)
             if self.use_rope:

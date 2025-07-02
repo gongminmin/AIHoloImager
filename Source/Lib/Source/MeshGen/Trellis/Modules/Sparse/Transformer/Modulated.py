@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from ..Basic import SparseTensor
-from ..Attention import SparseMultiHeadAttention, SerializeMode
+from ..Attention import SparseMultiHeadAttention
 from ...Norm import LayerNorm32
 from .Blocks import SparseFeedForwardNet
 
@@ -28,7 +28,6 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
         window_size: Optional[int] = None,
         shift_sequence: Optional[int] = None,
         shift_window: Optional[Tuple[int, int, int]] = None,
-        serialize_mode: Optional[SerializeMode] = None,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
@@ -48,9 +47,7 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
             type = "self",
             attn_mode = attn_mode,
             window_size = window_size,
-            shift_sequence = shift_sequence,
             shift_window = shift_window,
-            serialize_mode = serialize_mode,
             qkv_bias = qkv_bias,
             use_rope = use_rope,
             qk_rms_norm = qk_rms_norm,
