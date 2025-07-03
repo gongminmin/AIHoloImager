@@ -69,7 +69,7 @@ class SparseTensor:
             self.data = spconv.SparseConvTensor(feats.reshape(feats.shape[0], -1), coords, spatial_shape, shape[0], **kwargs)
             self.data._features = feats
         elif method_id == 1:
-            data, shape, layout = args + (None,) * (3 - len(args))
+            data, shape, layout = args + (None, ) * (3 - len(args))
             if "data" in kwargs:
                 data = kwargs["data"]
                 del kwargs["data"]
@@ -94,7 +94,7 @@ class SparseTensor:
     def CalcShape(self, feats, coords):
         shape = []
         shape.append(coords[:, 0].max().item() + 1)
-        shape.extend([*feats.shape[1:]])
+        shape.extend([*feats.shape[1 :]])
         return torch.Size(shape)
 
     def CalcLayout(self, coords, batch_size):
@@ -158,11 +158,11 @@ class SparseTensor:
                 device = args[0]
         if "dtype" in kwargs:
             assert dtype is None, "to() received multiple values for argument 'dtype'"
-            dtype = kwargs['dtype']
+            dtype = kwargs["dtype"]
         if "device" in kwargs:
             assert device is None, "to() received multiple values for argument 'device'"
-            device = kwargs['device']
-        
+            device = kwargs["device"]
+
         new_feats = self.feats.to(device = device, dtype = dtype)
         new_coords = self.coords.to(device = device)
         return self.replace(new_feats, new_coords)
@@ -225,7 +225,7 @@ class SparseTensor:
         new_data.int8_scale = self.data.int8_scale
         if coords is not None:
             new_data.indices = coords
-        new_tensor = SparseTensor(new_data, shape=torch.Size(new_shape), layout = self.layout, scale = self._scale, spatial_cache = self._spatial_cache)
+        new_tensor = SparseTensor(new_data, shape = torch.Size(new_shape), layout = self.layout, scale = self._scale, spatial_cache = self._spatial_cache)
         return new_tensor
 
     @staticmethod
