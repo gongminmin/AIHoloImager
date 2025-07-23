@@ -3,6 +3,8 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/conv/conv_spconv.py
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import spconv.pytorch as spconv
@@ -10,10 +12,10 @@ import spconv.pytorch as spconv
 from .. import SparseTensor
 
 class SparseConv3D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, dilation = 1, bias = True, indice_key = None):
+    def __init__(self, in_channels, out_channels, kernel_size, dilation = 1, bias = True, indices_key = None, device: Optional[torch.device] = None):
         super(SparseConv3D, self).__init__()
 
-        self.conv = spconv.SubMConv3d(in_channels, out_channels, kernel_size, dilation = dilation, bias = bias, indice_key = indice_key)
+        self.conv = spconv.SubMConv3d(in_channels, out_channels, kernel_size, dilation = dilation, bias = bias, indice_key = indices_key)
 
     def forward(self, x: SparseTensor) -> SparseTensor:
         new_data = self.conv(x.data)

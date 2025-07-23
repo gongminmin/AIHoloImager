@@ -42,7 +42,7 @@ class SparseSubdivideBlock3D(nn.Module):
         out_resolution = resolution * 2
         if out_channels is None:
             out_channels = channels
-        indice_key = f"res_{out_resolution}"
+        indices_key = f"res_{out_resolution}"
 
         self.act_layers = nn.Sequential(
             sp.SparseGroupNorm32(num_groups, channels, device = device),
@@ -52,10 +52,10 @@ class SparseSubdivideBlock3D(nn.Module):
         self.sub = sp.SparseSubdivide()
 
         self.out_layers = nn.Sequential(
-            sp.SparseConv3D(channels, out_channels, 3, indice_key = indice_key),
+            sp.SparseConv3D(channels, out_channels, 3, indices_key = indices_key, device = device),
             sp.SparseGroupNorm32(num_groups, out_channels, device = device),
             sp.SparseSiLU(),
-            sp.SparseConv3D(out_channels, out_channels, 3, indice_key = indice_key),
+            sp.SparseConv3D(out_channels, out_channels, 3, indices_key = indices_key, device = device),
         )
         if device != "meta":
             self.out_layers[3] = ZeroModule(self.out_layers[3])
@@ -63,7 +63,7 @@ class SparseSubdivideBlock3D(nn.Module):
         if out_channels == channels:
             self.skip_connection = nn.Identity()
         else:
-            self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indice_key = indice_key)
+            self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indices_key = indices_key, device = device)
 
     def forward(self, x: sp.SparseTensor) -> sp.SparseTensor:
         """

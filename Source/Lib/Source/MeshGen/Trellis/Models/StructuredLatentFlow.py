@@ -36,8 +36,8 @@ class SparseResBlock3D(nn.Module):
 
         self.norm1 = LayerNorm32(channels, elementwise_affine = True, eps = 1e-6, device = device)
         self.norm2 = LayerNorm32(out_channels, elementwise_affine = False, eps = 1e-6, device = device)
-        self.conv1 = sp.SparseConv3D(channels, out_channels, 3)
-        self.conv2 = sp.SparseConv3D(out_channels, out_channels, 3)
+        self.conv1 = sp.SparseConv3D(channels, out_channels, 3, device = device)
+        self.conv2 = sp.SparseConv3D(out_channels, out_channels, 3, device = device)
         if device != "meta":
             self.conv2 = ZeroModule(self.conv2)
         self.emb_layers = nn.Sequential(
