@@ -422,7 +422,7 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto iter = stall_resources_.begin(); iter != stall_resources_.end();)
         {
-            if (std::get<1>(*iter) <= completed_fence)
+            if (std::get<1>(*iter) < completed_fence)
             {
                 iter = stall_resources_.erase(iter);
             }
@@ -479,7 +479,7 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
-            if (alloc->fence_val <= completed_fence)
+            if (alloc->fence_val < completed_fence)
             {
                 alloc->cmd_allocator->Reset();
                 return *alloc;
