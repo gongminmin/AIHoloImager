@@ -3,11 +3,6 @@
 
 #include "GpuDiffRender.hpp"
 
-#include <algorithm>
-#include <array>
-#include <map>
-#include <tuple>
-
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
@@ -17,6 +12,8 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
 
+#include "CompiledShader/AntiAliasConstructOppoVertCs.h"
+#include "CompiledShader/AntiAliasConstructOppoVertHashCs.h"
 #include "CompiledShader/AntialiasBwdCs.h"
 #include "CompiledShader/AntialiasFwdCs.h"
 #include "CompiledShader/AntialiasIndirectCs.h"
@@ -73,6 +70,20 @@ namespace AIHoloImager
             interpolate_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
+        {
+            anti_alias_construct_oppo_vert_hash_cb_ = GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesHashConstantBuffer>(
+                gpu_system_, L"anti_alias_construct_oppo_vert_hash_cb_");
+
+            const ShaderInfo shader = {AntiAliasConstructOppoVertHashCs_shader, 1, 1, 1};
+            anti_alias_construct_oppo_vert_hash_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            anti_alias_construct_oppo_vert_cb_ = GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesConstantBuffer>(
+                gpu_system_, L"anti_alias_construct_oppo_vert_cb_");
+
+            const ShaderInfo shader = {AntiAliasConstructOppoVertCs_shader, 1, 2, 1};
+            anti_alias_construct_oppo_vert_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
         {
             anti_alias_indirect_args_cb_ =
                 GpuConstantBufferOfType<AntiAliasIndirectArgsConstantBuffer>(gpu_system_, L"anti_alias_indirect_args_cb_");
@@ -284,64 +295,59 @@ namespace AIHoloImager
 
     void GpuDiffRender::AntiAliasConstructOppositeVertices(GpuCommandList& cmd_list, const GpuBuffer& indices, GpuBuffer& opposite_vertices)
     {
-        const uint32_t num_faces = indices.Size() / sizeof(glm::uvec3);
+        const uint32_t num_indices = indices.Size() / sizeof(uint32_t);
 
-        // TODO: Port it to GPU
+        GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
-        auto indices_data = std::make_unique<uint32_t[]>(num_faces * 3);
-        const auto rb_future = cmd_list.ReadBackAsync(indices, indices_data.get(), indices.Size());
-        rb_future.wait();
-
-        const auto gen_key = [](uint32_t v0, uint32_t v1) -> std::tuple<uint32_t, uint32_t> { return std::minmax(v0, v1); };
-
-        std::map<std::tuple<uint32_t, uint32_t>, std::array<uint32_t, 2>> edges;
-        for (uint32_t i = 0; i < num_faces; ++i)
+        const uint32_t expected_hash_buff_size = num_indices * 2 * sizeof(glm::uvec3);
+        if (opposite_vertices_hash_.Size() != expected_hash_buff_size)
         {
-            for (uint32_t j = 0; j < 3; ++j)
+            opposite_vertices_hash_ = GpuBuffer(gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
+            opposite_vertices_hash_srv_ = GpuShaderResourceView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
+            opposite_vertices_hash_uav_ = GpuUnorderedAccessView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
+        }
+        opposite_vertices_hash_.Name(L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices_hash");
+
+        {
+            constexpr uint32_t BlockDim = 256;
+
+            anti_alias_construct_oppo_vert_hash_cb_->num_indices = num_indices;
+            anti_alias_construct_oppo_vert_hash_cb_->hash_size = opposite_vertices_hash_.Size() / sizeof(glm::uvec3);
+            anti_alias_construct_oppo_vert_hash_cb_.UploadStaging();
+
             {
-                const auto key = gen_key(indices_data[i * 3 + ((j + 1) % 3)], indices_data[i * 3 + ((j + 2) % 3)]);
-                const auto this_vertex = indices_data[i * 3 + j];
-                auto iter = edges.find(key);
-                if (iter != edges.end())
-                {
-                    iter->second[1] = this_vertex;
-                }
-                else
-                {
-                    edges[key] = {this_vertex, ~0U};
-                }
+                const uint32_t clear_clr[] = {~0U, ~0U, ~0U, ~0U};
+                cmd_list.Clear(opposite_vertices_hash_uav_, clear_clr);
             }
+
+            const GpuConstantBuffer* cbs[] = {&anti_alias_construct_oppo_vert_hash_cb_};
+            const GpuShaderResourceView* srvs[] = {&indices_srv};
+            GpuUnorderedAccessView* uavs[] = {&opposite_vertices_hash_uav_};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(anti_alias_construct_oppo_vert_hash_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
         }
 
         if (opposite_vertices.Size() != indices.Size())
         {
-            opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::None);
+            opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
         }
         opposite_vertices.Name(L"GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices");
 
-        cmd_list.Upload(opposite_vertices, [num_faces, &indices_data, &gen_key, &edges](void* dst_data) {
-            uint32_t* opposite_vertices_ptr = reinterpret_cast<uint32_t*>(dst_data);
+        {
+            constexpr uint32_t BlockDim = 256;
 
-            for (uint32_t i = 0; i < num_faces; ++i)
-            {
-                for (uint32_t j = 0; j < 3; ++j)
-                {
-                    const auto key = gen_key(indices_data[i * 3 + ((j + 1) % 3)], indices_data[i * 3 + ((j + 2) % 3)]);
-                    const auto this_vertex = indices_data[i * 3 + j];
-                    const auto iter = edges.find(key);
-                    assert(iter != edges.end());
-                    if (iter->second[0] == this_vertex)
-                    {
-                        opposite_vertices_ptr[i * 3 + j] = iter->second[1];
-                    }
-                    else
-                    {
-                        assert(iter->second[1] == this_vertex);
-                        opposite_vertices_ptr[i * 3 + j] = iter->second[0];
-                    }
-                }
-            }
-        });
+            anti_alias_construct_oppo_vert_cb_->num_indices = num_indices;
+            anti_alias_construct_oppo_vert_cb_->hash_size = opposite_vertices_hash_.Size() / sizeof(glm::uvec3);
+            anti_alias_construct_oppo_vert_cb_.UploadStaging();
+
+            GpuUnorderedAccessView oppo_vert_uav(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
+
+            const GpuConstantBuffer* cbs[] = {&anti_alias_construct_oppo_vert_cb_};
+            const GpuShaderResourceView* srvs[] = {&indices_srv, &opposite_vertices_hash_srv_};
+            GpuUnorderedAccessView* uavs[] = {&oppo_vert_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(anti_alias_construct_oppo_vert_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id,

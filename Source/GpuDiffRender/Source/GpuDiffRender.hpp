@@ -82,6 +82,27 @@ namespace AIHoloImager
         GpuBuffer silhouette_info_;
         GpuShaderResourceView silhouette_info_srv_;
         GpuUnorderedAccessView silhouette_info_uav_;
+        GpuBuffer opposite_vertices_hash_;
+        GpuShaderResourceView opposite_vertices_hash_srv_;
+        GpuUnorderedAccessView opposite_vertices_hash_uav_;
+
+        struct AntiAliasConstructOppositeVerticesHashConstantBuffer
+        {
+            uint32_t num_indices;
+            uint32_t hash_size;
+            uint32_t padding[2];
+        };
+        GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesHashConstantBuffer> anti_alias_construct_oppo_vert_hash_cb_;
+        GpuComputePipeline anti_alias_construct_oppo_vert_hash_pipeline_;
+
+        struct AntiAliasConstructOppositeVerticesConstantBuffer
+        {
+            uint32_t num_indices;
+            uint32_t hash_size;
+            uint32_t padding[2];
+        };
+        GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesConstantBuffer> anti_alias_construct_oppo_vert_cb_;
+        GpuComputePipeline anti_alias_construct_oppo_vert_pipeline_;
 
         struct AntiAliasFwdConstantBuffer
         {

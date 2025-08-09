@@ -86,3 +86,14 @@ void RightUpCoord(uint32_t2 center_coord, uint32_t2 tex_size, out uint32_t2 righ
     right_coord = uint32_t2(min(center_coord.x + 1, tex_size.x - 1), center_coord.y);
     up_coord = uint32_t2(center_coord.x, max(center_coord.y, 1) - 1);
 }
+
+uint32_t HashFunc(uint32_t2 val)
+{
+    uint32_t h = val.x ^ val.y;
+    h ^= h >> 16;
+    h *= 0x85EBCA6BU;
+    h ^= h >> 13;
+    h *= 0xC2B2AE35U;
+    h ^= h >> 16;
+    return h;
+}

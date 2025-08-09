@@ -3,6 +3,8 @@
 
 set(aihi_gpu_diff_rast_files
     Source/Shader/AntiAliasBwdCs.hlsl
+    Source/Shader/AntiAliasConstructOppoVertCs.hlsl
+    Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl
     Source/Shader/AntiAliasFwdCs.hlsl
     Source/Shader/AntiAliasIndirectCs.hlsl
     Source/Shader/Common.hlslh
@@ -36,6 +38,8 @@ AddShaderFile(Source/Shader/InterpolateBwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasIndirectCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasBwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/AntiAliasConstructOppoVertCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl "cs" "main")
 
 set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
 
