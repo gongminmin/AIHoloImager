@@ -3,6 +3,8 @@
 
 #include "MiniCudaRt.hpp"
 
+#include <cassert>
+
 namespace AIHoloImager
 {
     MiniCudaRt::MiniCudaRt() : cudart_dll_("cudart64_12.dll")
@@ -147,5 +149,13 @@ namespace AIHoloImager
     {
         assert(*this && cuda_free_);
         return cuda_free_(dev_ptr);
+    }
+
+    std::string CombineFileLine(MiniCudaRt::Error_t err, std::string_view file, uint32_t line)
+    {
+        std::ostringstream ss;
+        ss << "CUDA error of 0x" << std::hex << std::setfill('0') << std::setw(8) << static_cast<uint32_t>(err);
+        ss << CombineFileLine(std::move(file), line);
+        return ss.str();
     }
 } // namespace AIHoloImager

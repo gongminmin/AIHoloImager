@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Base/Dll.hpp"
+#include "Base/ErrorHandling.hpp"
 #include "Base/Noncopyable.hpp"
 
 // Keep some entries we used from CUDA runtime, so we don't need to reference to CUDA Toolkit
@@ -313,4 +314,31 @@ namespace AIHoloImager
         CudaFreeMipmappedArray cuda_free_mipmapped_array_{};
         CudaFree cuda_free_{};
     };
+
+    std::string CombineFileLine(MiniCudaRt::Error_t err, std::string_view file, uint32_t line);
+
+    class CudaErrorException : public std::runtime_error
+    {
+    public:
+        CudaErrorException(MiniCudaRt::Error_t err, std::string_view file, uint32_t line)
+            : std::runtime_error(CombineFileLine(err, std::move(file), line)), err_(err)
+        {
+        }
+
+        MiniCudaRt::Error_t Error() const noexcept
+        {
+            return err_;
+        }
+
+    private:
+        const MiniCudaRt::Error_t err_;
+    };
 } // namespace AIHoloImager
+
+#define TIFCE(err)                                                           \
+    {                                                                        \
+        if (err != MiniCudaRt::Error_t::Success)                             \
+        {                                                                    \
+            throw AIHoloImager::CudaErrorException(err, __FILE__, __LINE__); \
+        }                                                                    \
+    }

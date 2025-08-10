@@ -19,8 +19,6 @@ set(aihi_gpu_diff_rast_files
     Source/GpuDiffRender.hpp
     Source/Torch/GpuDiffRenderTorch.cpp
     Source/Torch/GpuDiffRenderTorch.hpp
-    Source/Torch/MiniCudaRt.cpp
-    Source/Torch/MiniCudaRt.hpp
     Source/Torch/PyTorchBindings.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_diff_rast_files})
@@ -75,20 +73,15 @@ target_link_directories(AIHoloImagerGpuDiffRender
 
 target_link_libraries(AIHoloImagerGpuDiffRender
     PRIVATE
+        AIHoloImagerBase
+        AIHoloImagerGpuSystem
+        AIHoloImagerTensorConverter
+        glm
         c10.lib
         torch_cpu.lib
         torch.lib
         torch_python.lib
         Python3::Python
-)
-
-target_link_libraries(AIHoloImagerGpuDiffRender
-    PUBLIC
-        AIHoloImagerBase
-        AIHoloImagerGpuSystem
-
-    PRIVATE
-        glm
 )
 
 set_target_properties(AIHoloImagerGpuDiffRender

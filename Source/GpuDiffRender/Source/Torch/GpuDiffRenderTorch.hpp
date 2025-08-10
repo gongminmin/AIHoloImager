@@ -25,7 +25,7 @@
 #include "../GpuDiffRender.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuTexture.hpp"
-#include "MiniCudaRt.hpp"
+#include "TensorConverter/TensorConverter.hpp"
 
 namespace AIHoloImager
 {
@@ -70,29 +70,13 @@ namespace AIHoloImager
             const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
         std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
 
-        void Convert(
-            GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name);
-        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name);
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type);
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex);
-
-        MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource);
-        void WaitExternalSemaphore(uint64_t fence_val);
-        void SignalExternalSemaphore(uint64_t fence_val);
-        MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format);
-
     private:
         GpuSystem& gpu_system_;
         torch::Device torch_device_;
 
         GpuDiffRender gpu_dr_;
 
-        MiniCudaRt cuda_rt_;
-
-        bool uses_cuda_copy_;
-        MiniCudaRt::ExternalSemaphore_t ext_semaphore_{};
-        MiniCudaRt::Stream_t copy_stream_{};
+        TensorConverter tensor_converter_;
 
         struct RasterizeIntermediate
         {

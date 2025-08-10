@@ -1,0 +1,421 @@
+// Copyright (c) 2025 Minmin Gong
+//
+
+#include "TensorConverter/TensorConverter.hpp"
+
+#include "Base/ErrorHandling.hpp"
+#include "Gpu/GpuCommandList.hpp"
+#include "MiniCudaRt.hpp"
+
+namespace AIHoloImager
+{
+    class TensorConverter::Impl
+    {
+    public:
+        Impl(GpuSystem& gpu_system, torch::Device torch_device) : gpu_system_(gpu_system), torch_device_(torch_device)
+        {
+            uses_cuda_copy_ = false;
+            if ((torch_device.type() == torch::DeviceType::CUDA) && cuda_rt_)
+            {
+                int device_index = 0;
+                if (torch_device.has_index())
+                {
+                    device_index = torch_device.index();
+                }
+
+                MiniCudaRt::DeviceProp device_prop{};
+                TIFCE(cuda_rt_.GetDeviceProperties(&device_prop, device_index));
+
+                const LUID gpu_luid = gpu_system_.NativeDevice()->GetAdapterLuid();
+
+                uses_cuda_copy_ = (std::memcmp(&gpu_luid, device_prop.luid, sizeof(gpu_luid)) == 0);
+            }
+
+            if (uses_cuda_copy_)
+            {
+                MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
+                ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
+                ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle();
+                ext_semaphore_handle_desc.flags = 0;
+                TIFCE(cuda_rt_.ImportExternalSemaphore(&ext_semaphore_, &ext_semaphore_handle_desc));
+
+                TIFCE(cuda_rt_.StreamCreate(&copy_stream_));
+            }
+        }
+
+        ~Impl()
+        {
+            if (uses_cuda_copy_)
+            {
+                cuda_rt_.DestroyExternalSemaphore(ext_semaphore_);
+                cuda_rt_.StreamDestroy(copy_stream_);
+            }
+        }
+
+        void Convert(
+            GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+        {
+            assert(tensor.device() == torch_device_);
+
+            const uint32_t size = static_cast<uint32_t>(tensor.nbytes());
+
+            if (uses_cuda_copy_)
+            {
+                flags |= GpuResourceFlag::Shareable;
+            }
+
+            if (buff.Size() != size)
+            {
+                buff = GpuBuffer(gpu_system_, size, heap, flags);
+            }
+            buff.Name(std::move(name));
+
+            if (uses_cuda_copy_)
+            {
+                tensor = tensor.contiguous();
+
+                GpuBuffer default_buff;
+                GpuBuffer* copy_buff;
+                if (heap != GpuHeap::Default)
+                {
+                    default_buff = GpuBuffer(gpu_system_, size, GpuHeap::Default, flags);
+                    copy_buff = &default_buff;
+                }
+                else
+                {
+                    copy_buff = &buff;
+                }
+
+                MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(*copy_buff);
+
+                MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
+                ext_mem_buffer_desc.size = size;
+                ext_mem_buffer_desc.offset = 0;
+                ext_mem_buffer_desc.flags = 0;
+
+                void* ext_mem_ptr;
+                TIFCE(cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc));
+
+                TIFCE(
+                    cuda_rt_.MemcpyAsync(ext_mem_ptr, tensor.const_data_ptr(), size, MiniCudaRt::MemcpyKind::DeviceToDevice, copy_stream_));
+
+                TIFCE(cuda_rt_.Free(ext_mem_ptr));
+                TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
+
+                const uint64_t fence_val = gpu_system_.FenceValue() + 1;
+                this->SignalExternalSemaphore(fence_val);
+                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+
+                if (heap != GpuHeap::Default)
+                {
+                    cmd_list.Copy(buff, *copy_buff);
+                }
+            }
+            else
+            {
+                tensor = tensor.to(torch::kCPU).contiguous();
+                cmd_list.Upload(buff, tensor.const_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+            }
+        }
+
+        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
+            std::wstring_view name)
+        {
+            assert(tensor.device() == torch_device_);
+            assert(tensor.size(-1) == FormatChannels(format));
+            assert(tensor.element_size() == FormatChannelSize(format));
+
+            if (uses_cuda_copy_)
+            {
+                flags |= GpuResourceFlag::Shareable;
+            }
+
+            const uint32_t width = static_cast<uint32_t>(tensor.size(-2));
+            const uint32_t height = static_cast<uint32_t>(tensor.size(-3));
+
+            if ((tex.Width(0) != width) || (tex.Height(0) != height) || (tex.Format() != format))
+            {
+                tex = GpuTexture2D(gpu_system_, width, height, 1, format, flags);
+            }
+            tex.Name(std::move(name));
+
+            if (uses_cuda_copy_)
+            {
+                tensor = tensor.contiguous();
+
+                MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
+
+                MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
+                ext_mem_mip_desc.extent = {width, height, 1};
+                ext_mem_mip_desc.format_desc = this->FormatDesc(format);
+                ext_mem_mip_desc.num_levels = 1;
+                ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
+
+                MiniCudaRt::MipmappedArray_t cu_mip_array;
+                TIFCE(cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc));
+
+                MiniCudaRt::Array_t cu_array;
+                TIFCE(cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0));
+
+                MiniCudaRt::Memcpy3DParams p{};
+                p.src_ptr.ptr = tensor.mutable_data_ptr();
+                p.src_ptr.pitch = width * FormatSize(format);
+                p.src_ptr.x_size = width;
+                p.src_ptr.y_size = height;
+                p.dst_array = cu_array;
+                p.extent = ext_mem_mip_desc.extent;
+                p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
+                TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
+
+                TIFCE(cuda_rt_.FreeMipmappedArray(cu_mip_array));
+                TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
+
+                const uint64_t fence_val = gpu_system_.FenceValue() + 1;
+                this->SignalExternalSemaphore(fence_val);
+                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+            }
+            else
+            {
+                tensor = tensor.to(torch::kCPU).contiguous();
+                cmd_list.Upload(tex, 0, tensor.const_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+            }
+        }
+
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type)
+        {
+            auto opts = torch::TensorOptions().dtype(data_type);
+            torch::Tensor tensor;
+            if (uses_cuda_copy_)
+            {
+                uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
+                this->WaitExternalSemaphore(fence_val);
+
+                MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(buff);
+
+                MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
+                ext_mem_buffer_desc.size = buff.Size();
+                ext_mem_buffer_desc.offset = 0;
+                ext_mem_buffer_desc.flags = 0;
+
+                void* ext_mem_ptr;
+                TIFCE(cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc));
+
+                opts = opts.device(torch_device_);
+                tensor = torch::empty(size, opts);
+
+                TIFCE(cuda_rt_.MemcpyAsync(
+                    tensor.mutable_data_ptr(), ext_mem_ptr, tensor.nbytes(), MiniCudaRt::MemcpyKind::DeviceToDevice, copy_stream_));
+
+                TIFCE(cuda_rt_.Free(ext_mem_ptr));
+                TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
+
+                ++fence_val;
+                this->SignalExternalSemaphore(fence_val);
+                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+            }
+            else
+            {
+                opts = opts.device(torch::kCPU);
+                tensor = torch::empty(size, opts);
+                const auto rb_future = cmd_list.ReadBackAsync(buff, tensor.mutable_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+                rb_future.wait();
+                if (torch_device_.type() != torch::DeviceType::CPU)
+                {
+                    tensor = tensor.to(torch_device_);
+                }
+            }
+
+            return tensor;
+        }
+
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex)
+        {
+            const uint32_t width = tex.Width(0);
+            const uint32_t height = tex.Height(0);
+            const GpuFormat fmt = tex.Format();
+            const uint32_t num_channels = FormatChannels(fmt);
+
+            const GpuBaseFormat base_fmt = BaseFormat(fmt);
+            torch::Dtype data_type;
+            switch (base_fmt)
+            {
+            case GpuBaseFormat::Float:
+                data_type = torch::kFloat32;
+                break;
+
+            case GpuBaseFormat::Sint:
+            case GpuBaseFormat::Uint:
+                data_type = torch::kInt32;
+                break;
+
+            default:
+                Unreachable("Invalid format");
+            }
+
+            auto opts = torch::TensorOptions().dtype(data_type);
+            torch::Tensor tensor;
+            if (uses_cuda_copy_)
+            {
+                uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
+                this->WaitExternalSemaphore(fence_val);
+
+                MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
+
+                MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
+                ext_mem_mip_desc.extent = {width, height, 1};
+                ext_mem_mip_desc.format_desc = this->FormatDesc(fmt);
+                ext_mem_mip_desc.num_levels = 1;
+                ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
+
+                MiniCudaRt::MipmappedArray_t cu_mip_array;
+                TIFCE(cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc));
+
+                MiniCudaRt::Array_t cu_array;
+                TIFCE(cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0));
+
+                opts = opts.device(torch_device_);
+                tensor = torch::empty({1, height, width, num_channels}, opts);
+
+                MiniCudaRt::Memcpy3DParams p{};
+                p.src_array = cu_array;
+                p.dst_ptr.ptr = tensor.mutable_data_ptr();
+                p.dst_ptr.pitch = width * FormatSize(fmt);
+                p.dst_ptr.x_size = width;
+                p.dst_ptr.y_size = height;
+                p.extent = ext_mem_mip_desc.extent;
+                p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
+                TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
+
+                TIFCE(cuda_rt_.FreeMipmappedArray(cu_mip_array));
+                TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
+
+                ++fence_val;
+                this->SignalExternalSemaphore(fence_val);
+                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+            }
+            else
+            {
+                opts = opts.device(torch::kCPU);
+                tensor = torch::empty({1, height, width, num_channels}, opts);
+                const auto rb_future = cmd_list.ReadBackAsync(tex, 0, tensor.mutable_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
+                rb_future.wait();
+                if (torch_device_.type() != torch::DeviceType::CPU)
+                {
+                    tensor = tensor.to(torch_device_);
+                }
+            }
+
+            return tensor;
+        }
+
+    private:
+        MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource)
+        {
+            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
+
+            const auto res_desc = resource.NativeResource()->GetDesc();
+            const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &res_desc);
+
+            MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};
+            ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
+            ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
+            ext_mem_handle_desc.size = alloc_info.SizeInBytes;
+            ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
+
+            MiniCudaRt::ExternalMemory_t ext_mem;
+            TIFCE(cuda_rt_.ImportExternalMemory(&ext_mem, &ext_mem_handle_desc));
+            return ext_mem;
+        }
+
+        void WaitExternalSemaphore(uint64_t fence_val)
+        {
+            MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{};
+            ext_semaphore_wait_params.params.fence.value = fence_val;
+            TIFCE(cuda_rt_.WaitExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_wait_params, 1, copy_stream_));
+        }
+
+        void SignalExternalSemaphore(uint64_t fence_val)
+        {
+            MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{};
+            ext_semaphore_signal_params.params.fence.value = fence_val;
+            TIFCE(cuda_rt_.SignalExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_signal_params, 1, copy_stream_));
+        }
+
+        MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format)
+        {
+            const GpuBaseFormat base_fmt = BaseFormat(format);
+            const uint32_t num_channels = FormatChannels(format);
+
+            MiniCudaRt::ChannelFormatKind kind;
+            int ch_bytes;
+            switch (base_fmt)
+            {
+            case GpuBaseFormat::Float:
+                kind = MiniCudaRt::ChannelFormatKind::Float;
+                ch_bytes = sizeof(float);
+                break;
+
+            case GpuBaseFormat::Sint:
+                kind = MiniCudaRt::ChannelFormatKind::Signed;
+                ch_bytes = sizeof(int32_t);
+                break;
+
+            case GpuBaseFormat::Uint:
+                kind = MiniCudaRt::ChannelFormatKind::Unsigned;
+                ch_bytes = sizeof(uint32_t);
+                break;
+
+            default:
+                Unreachable("Invalid format");
+            }
+
+            int channel_size[4] = {};
+            for (uint32_t i = 0; i < num_channels; ++i)
+            {
+                channel_size[i] = ch_bytes * 8;
+            }
+
+            return cuda_rt_.CreateChannelDesc(channel_size[0], channel_size[1], channel_size[2], channel_size[3], kind);
+        }
+
+    private:
+        GpuSystem& gpu_system_;
+        torch::Device torch_device_;
+
+        MiniCudaRt cuda_rt_;
+
+        bool uses_cuda_copy_;
+        MiniCudaRt::ExternalSemaphore_t ext_semaphore_{};
+        MiniCudaRt::Stream_t copy_stream_{};
+    };
+
+    TensorConverter::TensorConverter(GpuSystem& gpu_system, torch::Device torch_device)
+        : impl_(std::make_unique<Impl>(gpu_system, torch_device))
+    {
+    }
+
+    TensorConverter::~TensorConverter() = default;
+
+    void TensorConverter::Convert(
+        GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+    {
+        impl_->Convert(cmd_list, std::move(tensor), buff, heap, flags, name);
+    }
+
+    void TensorConverter::Convert(
+        GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+    {
+        impl_->Convert(cmd_list, std::move(tensor), tex, format, flags, name);
+    }
+
+    torch::Tensor TensorConverter::Convert(
+        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type)
+    {
+        return impl_->Convert(cmd_list, buff, size, data_type);
+    }
+
+    torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex)
+    {
+        return impl_->Convert(cmd_list, tex);
+    }
+} // namespace AIHoloImager
