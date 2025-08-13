@@ -372,18 +372,12 @@ namespace AIHoloImager
 
     void GpuSystem::GpuWait(CmdQueueType type, uint64_t fence_value)
     {
-        uint64_t wait_fence_value;
-        if (fence_value == MaxFenceValue)
-        {
-            wait_fence_value = fence_val_;
-            ++fence_val_;
-        }
-        else
+        if (fence_value != MaxFenceValue)
         {
             fence_val_ = std::max(fence_val_, fence_value);
-            wait_fence_value = fence_val_;
         }
-        this->GetOrCreateCommandQueue(type).cmd_queue->Wait(fence_.Get(), wait_fence_value);
+        this->GetOrCreateCommandQueue(type).cmd_queue->Wait(fence_.Get(), fence_val_);
+        ++fence_val_;
     }
 
     uint64_t GpuSystem::FenceValue() const noexcept
@@ -422,7 +416,7 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto iter = stall_resources_.begin(); iter != stall_resources_.end();)
         {
-            if (std::get<1>(*iter) < completed_fence)
+            if (std::get<1>(*iter) <= completed_fence)
             {
                 iter = stall_resources_.erase(iter);
             }
@@ -479,7 +473,7 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
-            if (alloc->fence_val < completed_fence)
+            if (alloc->fence_val <= completed_fence)
             {
                 alloc->cmd_allocator->Reset();
                 return *alloc;
