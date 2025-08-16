@@ -90,11 +90,16 @@ namespace AIHoloImager
 
                 PythonSystem::GilGuard guard;
 
+                auto& gpu_system = aihi_.GpuSystemInstance();
                 auto& python_system = aihi_.PythonSystemInstance();
 
                 mesh_generator_module_ = python_system.Import("MeshGenerator");
                 mesh_generator_class_ = python_system.GetAttr(*mesh_generator_module_, "MeshGenerator");
-                mesh_generator_ = python_system.CallObject(*mesh_generator_class_);
+                auto args = python_system.MakeTuple(1);
+                {
+                    python_system.SetTupleItem(*args, 0, python_system.MakeObject(reinterpret_cast<void*>(&gpu_system)));
+                }
+                mesh_generator_ = python_system.CallObject(*mesh_generator_class_, *args);
                 mesh_generator_gen_features_method_ = python_system.GetAttr(*mesh_generator_, "GenFeatures");
                 mesh_generator_resolution_method_ = python_system.GetAttr(*mesh_generator_, "Resolution");
                 mesh_generator_coords_method_ = python_system.GetAttr(*mesh_generator_, "Coords");

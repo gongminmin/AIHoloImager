@@ -65,6 +65,13 @@ class SparseSubdivideBlock3D(nn.Module):
         else:
             self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indices_key = indices_key, device = device)
 
+    def SetGpuSystem(self, gpu_system):
+        for layer in self.out_layers:
+            if isinstance(layer, sp.SparseConv3D):
+                layer.SetGpuSystem(gpu_system)
+        if isinstance(self.skip_connection, sp.SparseConv3D):
+            self.skip_connection.SetGpuSystem(gpu_system)
+
     def forward(self, x: sp.SparseTensor) -> sp.SparseTensor:
         """
         Apply the block to a Tensor, conditioned on a timestep embedding.
@@ -151,7 +158,12 @@ class SLatMeshDecoder(SparseTransformerBase):
 
         super().ConvertToFp16()
         self.upsample.apply(ConvertModuleToFp16)
-    
+
+    def SetGpuSystem(self, gpu_system):
+        for block in self.upsample:
+            if isinstance(block, SparseSubdivideBlock3D):
+                block.SetGpuSystem(gpu_system)
+
     def ToRepresentation(self, x: sp.SparseTensor) -> List[SparseVolumeExtractResult]:
         """
         Convert a batch of network outputs to 3D representations.

@@ -175,6 +175,7 @@ class TrellisImageTo3DPipeline:
 
     def DecodeSlat(
         self,
+        gpu_system,
         slat: sp.SparseTensor,
     ) -> list:
         """
@@ -187,10 +188,13 @@ class TrellisImageTo3DPipeline:
             list: A list of decoded structured latent.
         """
 
-        return self.models["slat_decoder_mesh"](slat)
+        decoder_model = self.models["slat_decoder_mesh"]
+        decoder_model.SetGpuSystem(gpu_system)
+        return decoder_model(slat)
 
     def SampleSlat(
         self,
+        gpu_system,
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
         coords: torch.Tensor,
@@ -207,6 +211,7 @@ class TrellisImageTo3DPipeline:
 
         # Sample structured latent
         flow_model = self.models["slat_flow_model"]
+        flow_model.SetGpuSystem(gpu_system)
         noise = sp.SparseTensor(
             feats = torch.randn(coords.shape[0], flow_model.in_channels).to(self.device),
             coords = coords,
@@ -286,6 +291,7 @@ class TrellisImageTo3DPipeline:
     @torch.no_grad()
     def Run(
         self,
+        gpu_system,
         images: torch.Tensor,
         num_samples: int = 1,
         sparse_structure_sampler_params: dict = {},
@@ -310,13 +316,13 @@ class TrellisImageTo3DPipeline:
         num_images = images.shape[0]
         if num_images == 1:
             coords = self.SampleSparseStructure(cond, neg_cond, num_samples, sparse_structure_sampler_params)
-            slat = self.SampleSlat(cond, neg_cond, coords, slat_sampler_params)
+            slat = self.SampleSlat(gpu_system, cond, neg_cond, coords, slat_sampler_params)
         else:
             ss_steps = {**self.sparse_structure_sampler_params, **sparse_structure_sampler_params}.get("steps")
             with self.InjectSamplerMultiImage("sparse_structure_sampler", num_images, ss_steps, mode = mode):
                 coords = self.SampleSparseStructure(cond, neg_cond, num_samples, sparse_structure_sampler_params)
             slat_steps = {**self.slat_sampler_params, **slat_sampler_params}.get("steps")
             with self.InjectSamplerMultiImage("slat_sampler", num_images, slat_steps, mode = mode):
-                slat = self.SampleSlat(cond, neg_cond, coords, slat_sampler_params)
+                slat = self.SampleSlat(gpu_system, cond, neg_cond, coords, slat_sampler_params)
 
-        return self.DecodeSlat(slat)
+        return self.DecodeSlat(gpu_system, slat)

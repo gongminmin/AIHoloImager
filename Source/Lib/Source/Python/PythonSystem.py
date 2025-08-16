@@ -32,11 +32,6 @@ def InitPySys(device : str):
         from pathlib import Path
         this_py_dir = Path(__file__).parent.resolve()
 
-        # pywintypes imports modules in these directories
-        import sys
-        sys.path.append(str(this_py_dir / "Python/Lib/site-packages/win32"))
-        sys.path.append(str(this_py_dir / "Python/Lib/site-packages/win32/lib"))
-
 general_device = None
 def GeneralDevice():
     global general_device

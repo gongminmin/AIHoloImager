@@ -301,4 +301,4 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels AIHoloImagerGpuDiffRender)
+add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)

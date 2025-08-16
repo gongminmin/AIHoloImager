@@ -7,7 +7,6 @@ from typing import *
 
 import torch
 import torch.nn as nn
-import spconv.pytorch as spconv
 
 __all__ = [
     "SparseTensor",
@@ -17,18 +16,13 @@ __all__ = [
 
 class SparseTensor:
     """
-    Sparse tensor with support for spconv backend.
+    Sparse tensor in coordinate format
 
     Parameters:
     - feats (torch.Tensor): Features of the sparse tensor.
     - coords (torch.Tensor): Coordinates of the sparse tensor.
     - shape (torch.Size): Shape of the sparse tensor.
     - layout (List[slice]): Layout of the sparse tensor for each batch
-    - data (spconv.SparseConvTensor): Sparse tensor data used for convolusion
-
-    NOTE:
-    - Data corresponding to a same batch should be contiguous.
-    - Coords should be in [0, 1023]
     """
 
     @overload
@@ -40,56 +34,54 @@ class SparseTensor:
         ...
 
     def __init__(self, *args, **kwargs):
-        method_id = 0
-        if len(args) != 0:
-            method_id = 0 if isinstance(args[0], torch.Tensor) else 1
+        feats, coords, shape, layout = args + (None, ) * (4 - len(args))
+        if "feats" in kwargs:
+            feats = kwargs["feats"]
+            del kwargs["feats"]
+        if "coords" in kwargs:
+            coords = kwargs["coords"]
+            del kwargs["coords"]
+        if "shape" in kwargs:
+            shape = kwargs["shape"]
+            del kwargs["shape"]
+        if "layout" in kwargs:
+            layout = kwargs["layout"]
+            del kwargs["layout"]
+        if "scale" in kwargs:
+            scale = kwargs["scale"]
+            del kwargs["scale"]
         else:
-            method_id = 1 if "data" in kwargs else 0
+            scale = (1, 1, 1)
+        if "spatial_cache" in kwargs:
+            spatial_cache = kwargs["spatial_cache"]
+            del kwargs["spatial_cache"]
+        else:
+            spatial_cache = {}
 
-        if method_id == 0:
-            feats, coords, shape, layout = args + (None, ) * (4 - len(args))
-            if "feats" in kwargs:
-                feats = kwargs["feats"]
-                del kwargs["feats"]
-            if "coords" in kwargs:
-                coords = kwargs["coords"]
-                del kwargs["coords"]
-            if "shape" in kwargs:
-                shape = kwargs["shape"]
-                del kwargs["shape"]
-            if "layout" in kwargs:
-                layout = kwargs["layout"]
-                del kwargs["layout"]
-
-            if shape is None:
-                shape = self.CalcShape(feats, coords)
-            if layout is None:
-                layout = self.CalcLayout(coords, shape[0])
+        if shape is None:
+            shape = self.CalcShape(feats, coords)
+        if layout is None:
+            layout = self.CalcLayout(coords, shape[0])
+        if "spatial_shape" in kwargs:
+            spatial_shape = kwargs["spatial_shape"]
+            del kwargs["spatial_shape"]
+        else:
             spatial_shape = list(coords.max(0)[0] + 1)[1 :]
-            self.data = spconv.SparseConvTensor(feats.reshape(feats.shape[0], -1), coords, spatial_shape, shape[0], **kwargs)
-            self.data._features = feats
-        elif method_id == 1:
-            data, shape, layout = args + (None, ) * (3 - len(args))
-            if "data" in kwargs:
-                data = kwargs["data"]
-                del kwargs["data"]
-            if "shape" in kwargs:
-                shape = kwargs["shape"]
-                del kwargs["shape"]
-            if "layout" in kwargs:
-                layout = kwargs["layout"]
-                del kwargs["layout"]
+        if "batch_size" in kwargs:
+            batch_size = kwargs["batch_size"]
+            del kwargs["batch_size"]
+        else:
+            batch_size = shape[0]
 
-            self.data = data
-            if shape is None:
-                shape = self.CalcShape(self.feats, self.coords)
-            if layout is None:
-                layout = self.CalcLayout(self.coords, shape[0])
+        self.values = feats
+        self.indices = coords
+        self.spatial_shape = spatial_shape
+        self.batch_size = batch_size
 
         self._shape = shape
         self._layout = layout
-        self._scale = kwargs.get("scale", (1, 1, 1))
-        self._spatial_cache = kwargs.get("spatial_cache", {})
+        self._scale = scale
+        self._spatial_cache = spatial_cache
 
     def CalcShape(self, feats, coords):
         shape = []
@@ -116,19 +108,19 @@ class SparseTensor:
 
     @property
     def feats(self) -> torch.Tensor:
-        return self.data.features
+        return self.values
 
     @feats.setter
     def feats(self, value: torch.Tensor):
-        self.data.features = value
+        self.values = value
 
     @property
     def coords(self) -> torch.Tensor:
-        return self.data.indices
+        return self.indices
 
     @coords.setter
     def coords(self, value: torch.Tensor):
-        self.data.indices = value
+        self.indices = value
 
     @property
     def dtype(self):
@@ -194,9 +186,6 @@ class SparseTensor:
         new_feats = self.feats.detach()
         return self.replace(new_feats, new_coords)
 
-    def dense(self) -> torch.Tensor:
-        return self.data.dense()
-
     def reshape(self, *shape) -> "SparseTensor":
         new_feats = self.feats.reshape(self.feats.shape[0], *shape)
         return self.replace(new_feats)
@@ -207,25 +196,11 @@ class SparseTensor:
     def replace(self, feats: torch.Tensor, coords: Optional[torch.Tensor] = None) -> "SparseTensor":
         new_shape = [self.shape[0]]
         new_shape.extend(feats.shape[1 :])
-        new_data = spconv.SparseConvTensor(
-            self.data.features.reshape(self.data.features.shape[0], -1),
-            self.data.indices,
-            self.data.spatial_shape,
-            self.data.batch_size,
-            self.data.grid,
-            self.data.voxel_num,
-            self.data.indice_dict
-        )
-        new_data._features = feats
-        new_data.benchmark = self.data.benchmark
-        new_data.benchmark_record = self.data.benchmark_record
-        new_data.thrust_allocator = self.data.thrust_allocator
-        new_data._timer = self.data._timer
-        new_data.force_algo = self.data.force_algo
-        new_data.int8_scale = self.data.int8_scale
+        indices = self.coords
         if coords is not None:
-            new_data.indices = coords
-        new_tensor = SparseTensor(new_data, shape = torch.Size(new_shape), layout = self.layout, scale = self._scale, spatial_cache = self._spatial_cache)
+            indices = coords
+        new_tensor = SparseTensor(feats, indices, shape = torch.Size(new_shape), layout = self.layout, spatial_shape = self.spatial_shape,
+            batch_size = self.batch_size, scale = self._scale, spatial_cache = self._spatial_cache)
         return new_tensor
 
     @staticmethod
@@ -311,7 +286,7 @@ class SparseTensor:
                 raise ValueError(f"Unknown index type: {idx.dtype}")
         else:
             raise ValueError(f"Unknown index type: {type(idx)}")
-        
+
         coords = []
         feats = []
         for new_idx, old_idx in enumerate(idx):
@@ -320,7 +295,7 @@ class SparseTensor:
             feats.append(self.feats[self.layout[old_idx]])
         coords = torch.cat(coords, dim = 0).contiguous()
         feats = torch.cat(feats, dim = 0).contiguous()
-        return SparseTensor(feats = feats, coords=coords)
+        return SparseTensor(feats = feats, coords = coords)
 
     def RegisterSpatialCache(self, key, value) -> None:
         """

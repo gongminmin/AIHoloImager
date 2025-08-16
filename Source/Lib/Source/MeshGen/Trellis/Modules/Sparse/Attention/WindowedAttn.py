@@ -85,7 +85,7 @@ def SparseWindowedScaledDotProductSelfAttention(
 
     height = qkv.feats.shape[2]
     channels = qkv.feats.shape[3]
-    
+
     qkv_feats = qkv.feats[fwd_indices]      # [M, 3, H, C]
 
     if all([seq_len == window_size for seq_len in seq_lens]):

@@ -46,6 +46,11 @@ def FromPretrained(path: str, **kwargs):
     for key, value in state_dict.items():
         if key.find("adaLN_modulation") != -1:
             key = key.replace("adaLN_modulation", "ada_ln_modulation")
+        elif key.startswith("upsample.") or key.startswith("input_blocks.") or key.startswith("out_blocks."):
+            if key.endswith("conv.weight"):
+                key = key.replace("conv.weight", "weight")
+            elif key.endswith("conv.bias"):
+                key = key.replace("conv.bias", "bias")
         new_state_dict[key] = value
     model.load_state_dict(new_state_dict)
 

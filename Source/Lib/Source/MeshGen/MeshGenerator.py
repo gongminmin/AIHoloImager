@@ -9,10 +9,11 @@ from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes, Tensor
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
-    def __init__(self):
+    def __init__(self, gpu_system):
         this_py_dir = Path(__file__).parent.resolve()
 
         self.device = ComputeDevice()
+        self.gpu_system = gpu_system
 
         pretrained_dir = this_py_dir / "Models/TRELLIS-image-large"
         self.pipeline = TrellisImageTo3DPipeline.FromPretrained(pretrained_dir)
@@ -35,6 +36,7 @@ class MeshGenerator:
 
         steps = max(images.shape[0] * 3, 25)
         sparse_volume = self.pipeline.Run(
+            self.gpu_system,
             images,
             sparse_structure_sampler_params = {
                 "steps" : steps,

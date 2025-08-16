@@ -1,0 +1,15 @@
+// Copyright (c) 2025 Minmin Gong
+//
+
+#pragma once
+
+uint32_t HashFunc(uint32_t4 val)
+{
+    uint32_t h = val.x ^ val.y;
+    h ^= h >> 16;
+    h *= 0x85EBCA6BU;
+    h ^= val.z ^ (h >> 13);
+    h *= 0xC2B2AE35U;
+    h ^= val.w ^ (h >> 16);
+    return h;
+}

@@ -6,113 +6,6 @@ execute_process(
 set(deployed_files )
 
 set(py_files
-    ccimport/buildtools/writer.py
-    ccimport/buildtools/__init__.py
-    ccimport/buildmeta.py
-    ccimport/compat.py
-    ccimport/constants.py
-    ccimport/core.py
-    ccimport/global_cfg.py
-    ccimport/loader.py
-    ccimport/source_iter.py
-    ccimport/utils.py
-    ccimport/__init__.py
-    cumm/conv/algospec/all.py
-    cumm/conv/algospec/simt.py
-    cumm/conv/algospec/turing.py
-    cumm/conv/algospec/volta.py
-    cumm/conv/algospec/__init__.py
-    cumm/conv/bases.py
-    cumm/conv/input_iters.py
-    cumm/conv/kernel.py
-    cumm/conv/main.py
-    cumm/conv/nvrtc_code.py
-    cumm/conv/params.py
-    cumm/conv/sparse_iters.py
-    cumm/conv/__init__.py
-    cumm/cudasim/checkers.py
-    cumm/cudasim/debug.py
-    cumm/cudasim/__init__.py
-    cumm/gemm/algospec/all.py
-    cumm/gemm/algospec/bases.py
-    cumm/gemm/algospec/core.py
-    cumm/gemm/algospec/simt.py
-    cumm/gemm/algospec/turing.py
-    cumm/gemm/algospec/volta.py
-    cumm/gemm/algospec/__init__.py
-    cumm/gemm/arch/cpasync.py
-    cumm/gemm/arch/instmma.py
-    cumm/gemm/arch/ldmatrix.py
-    cumm/gemm/arch/memory.py
-    cumm/gemm/arch/tensorop.py
-    cumm/gemm/arch/__init__.py
-    cumm/gemm/blockmma/mma.py
-    cumm/gemm/blockmma/mma_multistage.py
-    cumm/gemm/blockmma/__init__.py
-    cumm/gemm/core/metaarray.py
-    cumm/gemm/core/__init__.py
-    cumm/gemm/gemmmath/__init__.py
-    cumm/gemm/outputs/__init__.py
-    cumm/gemm/output_op/apply.py
-    cumm/gemm/output_op/linear.py
-    cumm/gemm/output_op/__init__.py
-    cumm/gemm/wmma/simt.py
-    cumm/gemm/wmma/turing.py
-    cumm/gemm/wmma/volta.py
-    cumm/gemm/wmma/__init__.py
-    cumm/gemm/bases.py
-    cumm/gemm/codeops.py
-    cumm/gemm/constants.py
-    cumm/gemm/kernel.py
-    cumm/gemm/layout.py
-    cumm/gemm/layout_tensorop.py
-    cumm/gemm/main.py
-    cumm/gemm/mask.py
-    cumm/gemm/mask_iters.py
-    cumm/gemm/nvrtc_code.py
-    cumm/gemm/out_iters.py
-    cumm/gemm/thread_map.py
-    cumm/gemm/turing_iters.py
-    cumm/gemm/turing_my_iters.py
-    cumm/gemm/turing_out_iters.py
-    cumm/gemm/utils.py
-    cumm/gemm/volta_iters.py
-    cumm/gemm/volta_out_iters.py
-    cumm/gemm/__init__.py
-    cumm/nvrtc/__init__.py
-    cumm/tensorview/gemm.py
-    cumm/tensorview/utils.py
-    cumm/tensorview/__init__.py
-    cumm/utils/richprint.py
-    cumm/utils/__init__.py
-    cumm/common.py
-    cumm/constants.py
-    cumm/dtypes.py
-    cumm/__init__.py
-    cumm/__version__.py
-    lark/parsers/cyk.py
-    lark/parsers/earley.py
-    lark/parsers/earley_common.py
-    lark/parsers/earley_forest.py
-    lark/parsers/grammar_analysis.py
-    lark/parsers/lalr_analysis.py
-    lark/parsers/lalr_interactive_parser.py
-    lark/parsers/lalr_parser.py
-    lark/parsers/lalr_parser_state.py
-    lark/parsers/xearley.py
-    lark/parsers/__init__.py
-    lark/common.py
-    lark/exceptions.py
-    lark/grammar.py
-    lark/lark.py
-    lark/lexer.py
-    lark/load_grammar.py
-    lark/parser_frontends.py
-    lark/parse_tree_builder.py
-    lark/tree.py
-    lark/utils.py
-    lark/visitors.py
-    lark/__init__.py
     mpmath/calculus/approximation.py
     mpmath/calculus/calculus.py
     mpmath/calculus/differentiation.py
@@ -164,9 +57,6 @@ set(py_files
     mpmath/usertools.py
     mpmath/visualization.py
     mpmath/__init__.py
-    ninja/ninja_syntax.py
-    ninja/_version.py
-    ninja/__init__.py
     numpy/char/__init__.py
     numpy/core/_utils.py
     numpy/core/__init__.py
@@ -302,38 +192,6 @@ set(py_files
     numpy/_pytesttester.py
     numpy/__config__.py
     numpy/__init__.py
-    pccm/builder/inliner.py
-    pccm/builder/pybind.py
-    pccm/builder/__init__.py
-    pccm/core/buildmeta.py
-    pccm/core/codegen.py
-    pccm/core/funccode.py
-    pccm/core/inspecttools.py
-    pccm/core/markers.py
-    pccm/core/parsers.py
-    pccm/core/__init__.py
-    pccm/middlewares/expose_main.py
-    pccm/middlewares/pybind.py
-    pccm/middlewares/__init__.py
-    pccm/source/core.py
-    pccm/source/__init__.py
-    pccm/targets/cuda.py
-    pccm/targets/cuda_ptx.py
-    pccm/targets/__init__.py
-    pccm/constants.py
-    pccm/utils.py
-    pccm/__init__.py
-    portalocker/constants.py
-    portalocker/exceptions.py
-    portalocker/portalocker.py
-    portalocker/redis.py
-    portalocker/types.py
-    portalocker/utils.py
-    portalocker/__about__.py
-    portalocker/__init__.py
-    pybind11/commands.py
-    pybind11/_version.py
-    pybind11/__init__.py
     PIL/ExifTags.py
     PIL/features.py
     PIL/GimpGradientFile.py
@@ -612,29 +470,6 @@ set(py_files
     scipy/_distributor_init.py
     scipy/__config__.py
     scipy/__init__.py
-    spconv/pytorch/constants.py
-    spconv/pytorch/conv.py
-    spconv/pytorch/core.py
-    spconv/pytorch/cppcore.py
-    spconv/pytorch/functional.py
-    spconv/pytorch/hash.py
-    spconv/pytorch/identity.py
-    spconv/pytorch/modules.py
-    spconv/pytorch/ops.py
-    spconv/pytorch/pool.py
-    spconv/pytorch/tables.py
-    spconv/pytorch/__init__.py
-    spconv/utils/__init__.py
-    spconv/algo.py
-    spconv/algocore.py
-    spconv/build.py
-    spconv/constants.py
-    spconv/core.py
-    spconv/cppconstants.py
-    spconv/debug_utils.py
-    spconv/tools.py
-    spconv/__init__.py
-    spconv/__version__.py
     sympy/algebras/quaternion.py
     sympy/algebras/__init__.py
     sympy/assumptions/relation/binrel.py
@@ -2244,13 +2079,6 @@ set(py_files
     tqdm/__init__.py
     typing_extensions.py
 )
-if(WIN32)
-    set(py_files ${py_files}
-        win32/lib/pywintypes.py
-        win32/lib/win32con.py
-        win32/lib/winerror.py
-    )
-endif()
 foreach(src_file ${py_files})
     set(src_file "Lib/site-packages/${src_file}")
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
@@ -2272,8 +2100,6 @@ endforeach()
 set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-win_amd64.pyd)
 
 set(copy_files
-    cumm/core_cc.${py_suffix}
-    lark/grammars/common.lark
     numpy/_core/_multiarray_umath.${py_suffix}
     numpy/linalg/_umath_linalg.${py_suffix}
     numpy/fft/_pocketfft_umath.${py_suffix}
@@ -2353,7 +2179,6 @@ set(copy_files
     scipy/_lib/_uarray/_uarray.${py_suffix}
     scipy/_lib/messagestream.${py_suffix}
     scipy/_lib/_ccallback_c.${py_suffix}
-    spconv/core_cc.${py_suffix}
     torch/_C.${py_suffix}
     torch/functional.py
     torch/_dynamo/config.py
@@ -2400,13 +2225,6 @@ set(copy_files
     torchvision/zlib.dll
     torchvision/models/densenet.py
 )
-if(WIN32)
-    set(copy_files ${copy_files}
-        pywin32_system32/pywintypes${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll
-        win32/win32file.pyd
-        win32/_win32sysloader.pyd
-    )
-endif()
 foreach(src_file ${copy_files})
     set(src_file "Lib/site-packages/${src_file}")
     set(dst_file "${aihi_output_dir}/Python/${src_file}")

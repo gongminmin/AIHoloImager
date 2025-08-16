@@ -57,6 +57,10 @@ class SparseResBlock3D(nn.Module):
             x = self.updown(x)
         return x
 
+    def SetGpuSystem(self, gpu_system):
+        self.conv1.SetGpuSystem(gpu_system)
+        self.conv2.SetGpuSystem(gpu_system)
+
     def forward(self, x: sp.SparseTensor, emb: torch.Tensor) -> sp.SparseTensor:
         emb_out = self.emb_layers(emb).type(x.dtype)
         scale, shift = torch.chunk(emb_out, 2, dim = 1)
@@ -225,6 +229,14 @@ class SLatFlowModel(nn.Module):
         # Zero-out output layers:
         nn.init.constant_(self.out_layer.weight, 0)
         nn.init.constant_(self.out_layer.bias, 0)
+
+    def SetGpuSystem(self, gpu_system):
+        for block in self.input_blocks:
+            if isinstance(block, SparseResBlock3D):
+                block.SetGpuSystem(gpu_system)
+        for block in self.out_blocks:
+            if isinstance(block, SparseResBlock3D):
+                block.SetGpuSystem(gpu_system)
 
     def forward(self, x: sp.SparseTensor, t: torch.Tensor, cond: torch.Tensor) -> sp.SparseTensor:
         h = self.input_layer(x).type(self.dtype)
