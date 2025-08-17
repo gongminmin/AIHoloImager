@@ -301,7 +301,7 @@ namespace AIHoloImager
     class MarchingCubes::Impl
     {
     public:
-        Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
+        explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
             edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Upload, GpuResourceFlag::None, L"edge_table_buff");
             {

@@ -12,7 +12,7 @@ namespace AIHoloImager
     class Delighter::Impl
     {
     public:
-        Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
+        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Delighter init (async)");

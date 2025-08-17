@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <filesystem>
-
 #include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"

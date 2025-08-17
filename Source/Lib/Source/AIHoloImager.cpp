@@ -60,27 +60,27 @@ namespace AIHoloImager
             }
         }
 
-        const std::filesystem::path& ExeDir() override
+        const std::filesystem::path& ExeDir() noexcept override
         {
             return exe_dir_;
         }
 
-        const std::filesystem::path& TmpDir() override
+        const std::filesystem::path& TmpDir() noexcept override
         {
             return tmp_dir_;
         }
 
-        GpuSystem& GpuSystemInstance() override
+        GpuSystem& GpuSystemInstance() noexcept override
         {
             return gpu_system_;
         }
 
-        PythonSystem& PythonSystemInstance() override
+        PythonSystem& PythonSystemInstance() noexcept override
         {
             return python_system_;
         }
 
-        PerfProfiler& PerfProfilerInstance() override
+        PerfProfiler& PerfProfilerInstance() noexcept override
         {
             return profiler_;
         }
