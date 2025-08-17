@@ -43,7 +43,7 @@ namespace AIHoloImager
             }
         }
 
-        ~Impl()
+        ~Impl() noexcept
         {
             if (cuda_copy_enabled_)
             {
@@ -52,8 +52,8 @@ namespace AIHoloImager
             }
         }
 
-        void Convert(
-            GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
+            std::wstring_view name) const
         {
             const bool uses_cuda_copy = cuda_copy_enabled_ && this->SameTorchDevice(tensor.device());
             const uint32_t size = static_cast<uint32_t>(tensor.nbytes());
@@ -118,7 +118,7 @@ namespace AIHoloImager
         }
 
         void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name)
+            std::wstring_view name) const
         {
             assert(tensor.size(-1) == FormatChannels(format));
             assert(tensor.element_size() == FormatChannelSize(format));
@@ -181,7 +181,7 @@ namespace AIHoloImager
             }
         }
 
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type)
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
         {
             auto opts = torch::TensorOptions().dtype(data_type);
             torch::Tensor tensor;
@@ -228,7 +228,7 @@ namespace AIHoloImager
             return tensor;
         }
 
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex)
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
         {
             const uint32_t width = tex.Width(0);
             const uint32_t height = tex.Height(0);
@@ -309,7 +309,7 @@ namespace AIHoloImager
         }
 
     private:
-        MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource)
+        MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
             ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
@@ -327,21 +327,21 @@ namespace AIHoloImager
             return ext_mem;
         }
 
-        void WaitExternalSemaphore(uint64_t fence_val)
+        void WaitExternalSemaphore(uint64_t fence_val) const
         {
             MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{};
             ext_semaphore_wait_params.params.fence.value = fence_val;
             TIFCE(cuda_rt_.WaitExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_wait_params, 1, copy_stream_));
         }
 
-        void SignalExternalSemaphore(uint64_t fence_val)
+        void SignalExternalSemaphore(uint64_t fence_val) const
         {
             MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{};
             ext_semaphore_signal_params.params.fence.value = fence_val;
             TIFCE(cuda_rt_.SignalExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_signal_params, 1, copy_stream_));
         }
 
-        MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format)
+        MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format) const noexcept
         {
             const GpuBaseFormat base_fmt = BaseFormat(format);
             const uint32_t num_channels = FormatChannels(format);
@@ -416,27 +416,27 @@ namespace AIHoloImager
     {
     }
 
-    TensorConverter::~TensorConverter() = default;
+    TensorConverter::~TensorConverter() noexcept = default;
 
     void TensorConverter::Convert(
-        GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+        GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const
     {
         impl_->Convert(cmd_list, std::move(tensor), buff, heap, flags, std::move(name));
     }
 
-    void TensorConverter::Convert(
-        GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+    void TensorConverter::Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format,
+        GpuResourceFlag flags, std::wstring_view name) const
     {
         impl_->Convert(cmd_list, std::move(tensor), tex, format, flags, std::move(name));
     }
 
     torch::Tensor TensorConverter::Convert(
-        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type)
+        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
     {
         return impl_->Convert(cmd_list, buff, size, data_type);
     }
 
-    torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex)
+    torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
     {
         return impl_->Convert(cmd_list, tex);
     }

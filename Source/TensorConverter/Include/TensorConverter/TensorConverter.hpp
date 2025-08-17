@@ -30,14 +30,15 @@ namespace AIHoloImager
     {
     public:
         TensorConverter(GpuSystem& gpu_system, torch::Device torch_device);
-        ~TensorConverter();
+        ~TensorConverter() noexcept;
 
-        void Convert(
-            GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name);
+        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
+            std::wstring_view name) const;
         void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name);
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type);
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex);
+            std::wstring_view name) const;
+        torch::Tensor Convert(
+            GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
 
     private:
         class Impl;

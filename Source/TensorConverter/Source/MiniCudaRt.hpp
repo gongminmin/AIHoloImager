@@ -239,59 +239,62 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept;
 
-        Error_t GetDeviceProperties(DeviceProp* prop, int32_t device);
+        Error_t GetDeviceProperties(DeviceProp* prop, int32_t device) const noexcept;
 
-        ChannelFormatDesc CreateChannelDesc(int32_t x, int32_t y, int32_t z, int32_t w, ChannelFormatKind fmt);
+        ChannelFormatDesc CreateChannelDesc(int32_t x, int32_t y, int32_t z, int32_t w, ChannelFormatKind fmt) const noexcept;
 
-        Error_t ImportExternalMemory(ExternalMemory_t* ext_mem_out, const ExternalMemoryHandleDesc* mem_handle_desc);
-        Error_t DestroyExternalMemory(ExternalMemory_t ext_mem);
-        Error_t ExternalMemoryGetMappedBuffer(void** dev_ptr, ExternalMemory_t ext_mem, const ExternalMemoryBufferDesc* buffer_desc);
+        Error_t ImportExternalMemory(ExternalMemory_t* ext_mem_out, const ExternalMemoryHandleDesc* mem_handle_desc) const noexcept;
+        Error_t DestroyExternalMemory(ExternalMemory_t ext_mem) const noexcept;
+        Error_t ExternalMemoryGetMappedBuffer(
+            void** dev_ptr, ExternalMemory_t ext_mem, const ExternalMemoryBufferDesc* buffer_desc) const noexcept;
         Error_t ExternalMemoryGetMappedMipmappedArray(
-            MipmappedArray_t* mipmap, ExternalMemory_t ext_mem, const ExternalMemoryMipmappedArrayDesc* mipmap_desc);
+            MipmappedArray_t* mipmap, ExternalMemory_t ext_mem, const ExternalMemoryMipmappedArrayDesc* mipmap_desc) const noexcept;
 
-        Error_t ImportExternalSemaphore(ExternalSemaphore_t* ext_sem_out, const ExternalSemaphoreHandleDesc* sem_handle_desc);
-        Error_t DestroyExternalSemaphore(ExternalSemaphore_t ext_sem);
+        Error_t ImportExternalSemaphore(
+            ExternalSemaphore_t* ext_sem_out, const ExternalSemaphoreHandleDesc* sem_handle_desc) const noexcept;
+        Error_t DestroyExternalSemaphore(ExternalSemaphore_t ext_sem) const noexcept;
         Error_t WaitExternalSemaphoresAsync(const ExternalSemaphore_t* ext_sem_array, const ExternalSemaphoreWaitParams* params_array,
-            uint32_t num_ext_sems, Stream_t stream = 0);
+            uint32_t num_ext_sems, Stream_t stream = 0) const noexcept;
         Error_t SignalExternalSemaphoresAsync(const ExternalSemaphore_t* ext_sem_array, const ExternalSemaphoreSignalParams* params_array,
-            uint32_t num_ext_sems, Stream_t stream = 0);
+            uint32_t num_ext_sems, Stream_t stream = 0) const noexcept;
 
-        Error_t StreamCreate(Stream_t* stream_out);
-        Error_t StreamDestroy(Stream_t stream);
+        Error_t StreamCreate(Stream_t* stream_out) const noexcept;
+        Error_t StreamDestroy(Stream_t stream) const noexcept;
 
-        Error_t MemcpyAsync(void* dst, const void* src, size_t count, MemcpyKind kind, Stream_t stream);
-        Error_t Memcpy3DAsync(const Memcpy3DParams* p, Stream_t stream);
+        Error_t MemcpyAsync(void* dst, const void* src, size_t count, MemcpyKind kind, Stream_t stream) const noexcept;
+        Error_t Memcpy3DAsync(const Memcpy3DParams* p, Stream_t stream) const noexcept;
 
-        Error_t GetMipmappedArrayLevel(Array_t* level_array, MipmappedArray_const_t mipmapped_array, uint32_t level);
-        Error_t FreeMipmappedArray(MipmappedArray_t mipmapped_array);
+        Error_t GetMipmappedArrayLevel(Array_t* level_array, MipmappedArray_const_t mipmapped_array, uint32_t level) const noexcept;
+        Error_t FreeMipmappedArray(MipmappedArray_t mipmapped_array) const noexcept;
 
-        Error_t Free(void* dev_ptr);
+        Error_t Free(void* dev_ptr) const noexcept;
 
     private:
-        using CudaGetDeviceProperties_v2 = Error_t(CUDART_API*)(DeviceProp* prop, int32_t device);
-        using CudaCreateChannelDesc = ChannelFormatDesc(CUDART_API*)(int32_t x, int32_t y, int32_t z, int32_t w, ChannelFormatKind fmt);
+        using CudaGetDeviceProperties_v2 = Error_t(CUDART_API*)(DeviceProp* prop, int32_t device) noexcept;
+        using CudaCreateChannelDesc = ChannelFormatDesc(CUDART_API*)(
+            int32_t x, int32_t y, int32_t z, int32_t w, ChannelFormatKind fmt) noexcept;
         using CudaImportExternalMemory = Error_t(CUDART_API*)(
-            ExternalMemory_t* ext_mem_out, const ExternalMemoryHandleDesc* mem_handle_desc);
-        using CudaDestroyExternalMemory = Error_t(CUDART_API*)(ExternalMemory_t ext_mem);
+            ExternalMemory_t* ext_mem_out, const ExternalMemoryHandleDesc* mem_handle_desc) noexcept;
+        using CudaDestroyExternalMemory = Error_t(CUDART_API*)(ExternalMemory_t ext_mem) noexcept;
         using CudaExternalMemoryGetMappedBuffer = Error_t(CUDART_API*)(
-            void** dev_ptr, ExternalMemory_t ext_mem, const ExternalMemoryBufferDesc* buffer_desc);
+            void** dev_ptr, ExternalMemory_t ext_mem, const ExternalMemoryBufferDesc* buffer_desc) noexcept;
         using CudaExternalMemoryGetMappedMipmappedArray = Error_t(CUDART_API*)(
-            MipmappedArray_t* mipmap, ExternalMemory_t ext_mem, const ExternalMemoryMipmappedArrayDesc* mipmap_desc);
+            MipmappedArray_t* mipmap, ExternalMemory_t ext_mem, const ExternalMemoryMipmappedArrayDesc* mipmap_desc) noexcept;
         using CudaImportExternalSemaphore = Error_t(CUDART_API*)(
-            ExternalSemaphore_t* ext_sem_out, const ExternalSemaphoreHandleDesc* sem_handle_desc);
-        using CudaDestroyExternalSemaphore = Error_t(CUDART_API*)(ExternalSemaphore_t ext_sem);
+            ExternalSemaphore_t* ext_sem_out, const ExternalSemaphoreHandleDesc* sem_handle_desc) noexcept;
+        using CudaDestroyExternalSemaphore = Error_t(CUDART_API*)(ExternalSemaphore_t ext_sem) noexcept;
         using CudaSignalExternalSemaphoresAsync_v2 = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
-            const ExternalSemaphoreSignalParams* params_array, uint32_t num_ext_sems, Stream_t stream);
+            const ExternalSemaphoreSignalParams* params_array, uint32_t num_ext_sems, Stream_t stream) noexcept;
         using CudaWaitExternalSemaphoresAsync_v2 = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
-            const ExternalSemaphoreWaitParams* params_array, uint32_t num_ext_sems, Stream_t stream);
-        using CudaStreamCreate = Error_t(CUDART_API*)(Stream_t* stream_out);
-        using CudaStreamDestroy = Error_t(CUDART_API*)(Stream_t stream);
-        using CudaMemcpyAsync = Error_t(CUDART_API*)(void* dst, const void* src, size_t count, MemcpyKind kind, Stream_t stream);
-        using CudaMemcpy3DAsync = Error_t(CUDART_API*)(const Memcpy3DParams* p, Stream_t stream);
+            const ExternalSemaphoreWaitParams* params_array, uint32_t num_ext_sems, Stream_t stream) noexcept;
+        using CudaStreamCreate = Error_t(CUDART_API*)(Stream_t* stream_out) noexcept;
+        using CudaStreamDestroy = Error_t(CUDART_API*)(Stream_t stream) noexcept;
+        using CudaMemcpyAsync = Error_t(CUDART_API*)(void* dst, const void* src, size_t count, MemcpyKind kind, Stream_t stream) noexcept;
+        using CudaMemcpy3DAsync = Error_t(CUDART_API*)(const Memcpy3DParams* p, Stream_t stream) noexcept;
         using CudaGetMipmappedArrayLevel = Error_t(CUDART_API*)(
-            Array_t* level_array, MipmappedArray_const_t mipmapped_array, uint32_t level);
-        using CudaFreeMipmappedArray = Error_t(__stdcall*)(MipmappedArray_t mipmapped_array);
-        using CudaFree = Error_t(CUDART_API*)(void* dev_ptr);
+            Array_t* level_array, MipmappedArray_const_t mipmapped_array, uint32_t level) noexcept;
+        using CudaFreeMipmappedArray = Error_t(__stdcall*)(MipmappedArray_t mipmapped_array) noexcept;
+        using CudaFree = Error_t(CUDART_API*)(void* dev_ptr) noexcept;
 
     private:
         Dll cudart_dll_;
