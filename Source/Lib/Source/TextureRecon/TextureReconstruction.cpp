@@ -93,15 +93,13 @@ namespace AIHoloImager
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
+            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
                 GpuResourceFlag::None, L"mesh_vb");
-            std::memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
-            mesh_vb.Unmap(GpuRange{0, mesh_vb.Size()});
+            cmd_list.Upload(mesh_vb, mesh.VertexBuffer().data(), mesh_vb.Size());
 
-            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
+            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
                 GpuResourceFlag::None, L"mesh_ib");
-            std::memcpy(mesh_ib.Map(), mesh.IndexBuffer().data(), mesh_ib.Size());
-            mesh_ib.Unmap(GpuRange{0, mesh_ib.Size()});
+            cmd_list.Upload(mesh_ib, mesh.IndexBuffer().data(), mesh_ib.Size());
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;

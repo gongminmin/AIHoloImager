@@ -1044,15 +1044,7 @@ namespace AIHoloImager
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             GpuBuffer pos_vb(
-                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Upload, GpuResourceFlag::None, L"pos_vb");
-            {
-                glm::vec3* pos_data = pos_vb.Map<glm::vec3>();
-                for (uint32_t i = 0; i < num_vertices; ++i)
-                {
-                    pos_data[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                }
-                pos_vb.Unmap(GpuRange{0, pos_vb.Size()});
-            }
+                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default, GpuResourceFlag::None, L"pos_vb");
 
             GpuShaderResourceView pos_srv(gpu_system, pos_vb, GpuFormat::RGB32_Float);
             GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
@@ -1064,6 +1056,14 @@ namespace AIHoloImager
             constexpr uint32_t BlockDim = 256;
 
             GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            cmd_list.Upload(pos_vb, [num_vertices, &mesh, pos_attrib_index](void* dst_data) {
+                glm::vec3* pos_data = reinterpret_cast<glm::vec3*>(dst_data);
+                for (uint32_t i = 0; i < num_vertices; ++i)
+                {
+                    pos_data[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
+                }
+            });
 
             const GpuConstantBuffer* cbs[] = {&apply_vertex_color_cb_};
             const GpuShaderResourceView* srvs[] = {&color_vol_srv, &pos_srv};

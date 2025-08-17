@@ -303,17 +303,16 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
-            edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Upload, GpuResourceFlag::None, L"edge_table_buff");
-            {
-                std::memcpy(edge_table_buff_.Map(), EdgeTable, sizeof(EdgeTable));
-                edge_table_buff_.Unmap(GpuRange{0, edge_table_buff_.Size()});
-            }
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Default, GpuResourceFlag::None, L"edge_table_buff");
+            cmd_list.Upload(edge_table_buff_, EdgeTable, sizeof(EdgeTable));
             edge_table_srv_ = GpuShaderResourceView(gpu_system_, edge_table_buff_, GpuFormat::R16_Uint);
 
-            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Upload,
+            triangle_table_buff_ = GpuBuffer(gpu_system_, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Default,
                 GpuResourceFlag::None, L"triangle_table_buff");
-            {
-                uint16_t* triangle_table_buff_ptr = triangle_table_buff_.Map<uint16_t>();
+            cmd_list.Upload(triangle_table_buff_, [](void* dst_data) {
+                uint16_t* triangle_table_buff_ptr = reinterpret_cast<uint16_t*>(dst_data);
                 for (size_t i = 0; i < std::size(TriangleTable); ++i)
                 {
                     for (uint32_t j = 0; j < 16; ++j)
@@ -321,9 +320,10 @@ namespace AIHoloImager
                         triangle_table_buff_ptr[i * 16 + j] = TriangleTable[i][j];
                     }
                 }
-                triangle_table_buff_.Unmap(GpuRange{0, triangle_table_buff_.Size()});
-            }
+            });
             triangle_table_srv_ = GpuShaderResourceView(gpu_system_, triangle_table_buff_, GpuFormat::R16_Uint);
+
+            gpu_system_.Execute(std::move(cmd_list));
 
             {
                 calc_cube_indices_cb_ = GpuConstantBufferOfType<CalcCubeIndicesConstantBuffer>(gpu_system_, L"calc_cube_indices_cb_");

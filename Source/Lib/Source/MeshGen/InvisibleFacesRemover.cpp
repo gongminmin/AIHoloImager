@@ -145,15 +145,10 @@ namespace AIHoloImager
             const auto& vertex_desc = mesh.MeshVertexDesc();
             const uint32_t vertex_stride = vertex_desc.Stride();
 
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
+            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
                 GpuResourceFlag::None, L"vb");
-            std::memcpy(vb.Map(), mesh.VertexBuffer().data(), vb.Size());
-            vb.Unmap(GpuRange{0, vb.Size()});
-
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Upload,
+            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
                 GpuResourceFlag::None, L"ib");
-            std::memcpy(ib.Map(), mesh.IndexBuffer().data(), ib.Size());
-            ib.Unmap(GpuRange{0, ib.Size()});
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
             const uint32_t num_faces = num_indices / 3;
@@ -181,6 +176,10 @@ namespace AIHoloImager
             }
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+            cmd_list.Upload(vb, mesh.VertexBuffer().data(), vb.Size());
+            cmd_list.Upload(ib, mesh.IndexBuffer().data(), ib.Size());
+
             {
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
                 cmd_list.Clear(view_counter_uav_, clear_clr);
