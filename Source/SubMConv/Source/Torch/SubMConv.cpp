@@ -15,7 +15,8 @@
 namespace AIHoloImager
 {
     SubMConv3DHelper::SubMConv3DHelper(size_t gpu_system, torch::Device torch_device)
-        : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), torch_device_(torch_device), tensor_converter_(gpu_system_, torch_device)
+        : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), torch_device_(std::move(torch_device)),
+          tensor_converter_(gpu_system_, torch_device_)
     {
         {
             const ShaderInfo shader = {BuildCoordHashCs_shader, 1, 1, 1};
@@ -140,6 +141,6 @@ namespace AIHoloImager
 
         gpu_system_.Execute(std::move(cmd_list));
 
-        return {nei_indices, nei_indices_size};
+        return {std::move(nei_indices), std::move(nei_indices_size)};
     }
 } // namespace AIHoloImager

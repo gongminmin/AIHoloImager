@@ -10,8 +10,8 @@ using namespace torch::autograd;
 namespace AIHoloImager
 {
     GpuDiffRenderTorch::GpuDiffRenderTorch(size_t gpu_system, torch::Device torch_device)
-        : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), torch_device_(torch_device), gpu_dr_(gpu_system_),
-          tensor_converter_(gpu_system_, torch_device)
+        : gpu_system_(*reinterpret_cast<GpuSystem*>(gpu_system)), torch_device_(std::move(torch_device)), gpu_dr_(gpu_system_),
+          tensor_converter_(gpu_system_, torch_device_)
     {
     }
 
