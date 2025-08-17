@@ -91,6 +91,8 @@ namespace AIHoloImager
             std::filesystem::create_directories(output_dir);
 #endif
 
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Upload,
                 GpuResourceFlag::None, L"mesh_vb");
             std::memcpy(mesh_vb.Map(), mesh.VertexBuffer().data(), mesh_vb.Size());
@@ -103,19 +105,17 @@ namespace AIHoloImager
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
-            this->FlattenMesh(mesh_vb, vertex_stride, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
+            this->FlattenMesh(cmd_list, mesh_vb, vertex_stride, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
                 Texture pos_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA32_Float);
                 const auto pos_rb_future = cmd_list.ReadBackAsync(flatten_pos_tex, 0, pos_tex.Data(), pos_tex.DataSize());
 
                 Texture normal_tex(flatten_normal_tex.Width(0), flatten_normal_tex.Height(0), ElementFormat::RGBA8_UNorm);
                 const auto normal_rb_future = cmd_list.ReadBackAsync(flatten_normal_tex, 0, normal_tex.Data(), normal_tex.DataSize());
 
-                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.ExecuteAndReset(cmd_list);
 
                 pos_rb_future.wait();
                 pos_tex.ConvertInPlace(ElementFormat::RGB32_Float);
@@ -127,31 +127,31 @@ namespace AIHoloImager
 #endif
 
             TextureReconstruction::Result result;
-            result.color_tex = this->GenTextureFromPhotos(
-                mesh_vb, vertex_stride, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size);
+            result.color_tex = this->GenTextureFromPhotos(cmd_list, mesh_vb, vertex_stride, mesh_ib, model_mtx, world_obb, flatten_pos_tex,
+                flatten_normal_tex, sfm_input, texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
                 SaveMesh(mesh, output_dir / "MeshTextured.glb");
 
-                auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 const auto rb_future = cmd_list.ReadBackAsync(result.color_tex, 0, projective_tex.Data(), projective_tex.DataSize());
-                gpu_system_.Execute(std::move(cmd_list));
+                gpu_system_.ExecuteAndReset(cmd_list);
 
                 rb_future.wait();
                 SaveTexture(projective_tex, output_dir / "Projective.png");
             }
 #endif
 
-            result.pos_tex = std::move(flatten_pos_tex);
+            gpu_system_.Execute(std::move(cmd_list));
 
+            result.pos_tex = std::move(flatten_pos_tex);
             return result;
         }
 
     private:
-        void FlattenMesh(const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx,
-            uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
+        void FlattenMesh(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib,
+            const glm::mat4x4& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -162,8 +162,6 @@ namespace AIHoloImager
 
             GpuRenderTargetView pos_rtv(gpu_system_, flatten_pos_tex);
             GpuRenderTargetView normal_rtv(gpu_system_, flatten_normal_tex);
-
-            GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
             GpuConstantBufferOfType<FlattenConstantBuffer> flatten_cb(gpu_system_, L"flatten_cb");
             flatten_cb->model_mtx = glm::transpose(model_mtx);
@@ -190,16 +188,11 @@ namespace AIHoloImager
 
             cmd_list.Render(
                 flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
-
-            flatten_pos_tex.Transition(cmd_list, GpuResourceState::Common);
-            flatten_normal_tex.Transition(cmd_list, GpuResourceState::Common);
-
-            gpu_system_.Execute(std::move(cmd_list));
         }
 
-        GpuTexture2D GenTextureFromPhotos(const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib,
-            const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
+        GpuTexture2D GenTextureFromPhotos(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, uint32_t vertex_stride,
+            const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex,
+            const GpuTexture2D& flatten_normal_tex, const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -208,10 +201,8 @@ namespace AIHoloImager
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
 
             {
-                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 const float black[] = {0, 0, 0, 0};
                 cmd_list.Clear(accum_color_uav, black);
-                gpu_system_.Execute(std::move(cmd_list));
             }
 
             GpuShaderResourceView flatten_pos_srv(gpu_system_, flatten_pos_tex, 0);
@@ -223,8 +214,6 @@ namespace AIHoloImager
 
                 const auto& view = sfm_input.views[i];
                 const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
-
-                GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::DepthStencil, L"shadow_map_tex");
@@ -252,16 +241,15 @@ namespace AIHoloImager
                 {
                     Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
                     const auto rb_future = cmd_list.ReadBackAsync(accum_color_tex, 0, color_tex.Data(), color_tex.DataSize());
+                    gpu_system_.ExecuteAndReset(cmd_list);
                     rb_future.wait();
                     SaveTexture(color_tex, aihi_.TmpDir() / "Texture" / std::format("Projective_{}.png", i));
                 }
 #endif
-
-                gpu_system_.Execute(std::move(cmd_list));
             }
             std::cout << "\n";
 
-            return this->ResolveTexture(texture_size, accum_color_tex);
+            return this->ResolveTexture(cmd_list, texture_size, accum_color_tex);
         }
 
         void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, const GpuBuffer& ib, uint32_t num_indices,
@@ -318,11 +306,9 @@ namespace AIHoloImager
             cmd_list.Compute(project_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
         }
 
-        GpuTexture2D ResolveTexture(uint32_t texture_size, const GpuTexture2D& accum_color_tex)
+        GpuTexture2D ResolveTexture(GpuCommandList& cmd_list, uint32_t texture_size, const GpuTexture2D& accum_color_tex)
         {
             constexpr uint32_t BlockDim = 16;
-
-            GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
             GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"color_tex");
             GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
@@ -339,8 +325,6 @@ namespace AIHoloImager
 
             const GpuCommandList::ShaderBinding cs_shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(resolve_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
-
-            gpu_system_.Execute(std::move(cmd_list));
 
             return color_tex;
         }
