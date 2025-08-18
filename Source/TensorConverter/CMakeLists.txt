@@ -10,7 +10,7 @@ set(aihi_tensor_converter_files
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_tensor_converter_files})
 
-add_library(AIHoloImagerTensorConverter STATIC
+add_library(AIHoloImagerTensorConverter SHARED
     ${aihi_tensor_converter_files}
 )
 

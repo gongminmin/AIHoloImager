@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include <stdexcept>
+#include <string_view>
+
 #include "Base/Dll.hpp"
-#include "Base/ErrorHandling.hpp"
 #include "Base/Noncopyable.hpp"
 
 // Keep some entries we used from CUDA runtime, so we don't need to reference to CUDA Toolkit

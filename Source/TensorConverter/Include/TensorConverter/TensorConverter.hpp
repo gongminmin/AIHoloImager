@@ -5,40 +5,64 @@
 
 #include <memory>
 
-#ifdef _MSC_VER
-    #pragma warning(push)
-    #pragma warning(disable : 4100) // Ignore unreferenced formal parameters
-    #pragma warning(disable : 4127) // Ignore constant conditional expression
-    #pragma warning(disable : 4244) // Ignore type conversion from `int` to `float`
-    #pragma warning(disable : 4251) // Ignore non dll-interface as member
-    #pragma warning(disable : 4267) // Ignore type conversion from `size_t` to something else
-    #pragma warning(disable : 4324) // Ignore padded structure
-    #pragma warning(disable : 4275) // Ignore non dll-interface base class
-#endif
-#include <torch/types.h>
-#ifdef _MSC_VER
-    #pragma warning(pop)
-#endif
-
+#include "Base/MiniWindows.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
+
+#ifdef _WIN32
+    #define AIHI_SYMBOL_EXPORT __declspec(dllexport)
+    #define AIHI_SYMBOL_IMPORT __declspec(dllimport)
+#else
+    #define AIHI_SYMBOL_EXPORT __attribute__((visibility("default")))
+    #define AIHI_SYMBOL_IMPORT
+#endif
+
+#ifdef AIHoloImagerTensorConverter_EXPORTS
+    #define AIHI_TC_API AIHI_SYMBOL_EXPORT
+#else
+    #define AIHI_TC_API AIHI_SYMBOL_IMPORT
+#endif
+
+typedef struct _object PyObject;
+
+namespace c10
+{
+    struct Device;
+    template <typename T>
+    class ArrayRef;
+    using IntArrayRef = c10::ArrayRef<int64_t>;
+    enum class ScalarType : int8_t;
+} // namespace c10
+
+namespace at
+{
+    class Tensor;
+}
+
+namespace torch
+{
+    using Device = c10::Device;
+    using Tensor = at::Tensor;
+    using IntArrayRef = c10::IntArrayRef;
+    using Dtype = c10::ScalarType;
+} // namespace torch
 
 namespace AIHoloImager
 {
     class TensorConverter
     {
     public:
-        TensorConverter(GpuSystem& gpu_system, torch::Device torch_device);
-        ~TensorConverter() noexcept;
+        AIHI_TC_API TensorConverter(GpuSystem& gpu_system, const torch::Device& torch_device);
+        AIHI_TC_API ~TensorConverter() noexcept;
 
-        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
-            std::wstring_view name) const;
-        void Convert(GpuCommandList& cmd_list, torch::Tensor tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name) const;
-        torch::Tensor Convert(
+        AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuBuffer& buff, GpuHeap heap,
+            GpuResourceFlag flags, std::wstring_view name) const;
+        AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture2D& tex, GpuFormat format,
+            GpuResourceFlag flags, std::wstring_view name) const;
+        AIHI_TC_API torch::Tensor Convert(
             GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
+        AIHI_TC_API torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
 
     private:
         class Impl;

@@ -5,6 +5,8 @@
 
 #include <cassert>
 
+#include "Base/ErrorHandling.hpp"
+
 namespace AIHoloImager
 {
     MiniCudaRt::MiniCudaRt() : cudart_dll_("cudart64_12.dll")
