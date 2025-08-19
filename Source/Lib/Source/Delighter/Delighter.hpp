@@ -6,9 +6,10 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
-#include "AIHoloImager/Texture.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuTexture.hpp"
 
 namespace AIHoloImager
 {
@@ -23,7 +24,7 @@ namespace AIHoloImager
 
         Delighter& operator=(Delighter&& other) noexcept;
 
-        Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset);
+        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset);
 
     private:
         class Impl;

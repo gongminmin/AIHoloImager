@@ -7,6 +7,8 @@
 
 #include "Util/PerfProfiler.hpp"
 
+#include "CompiledShader/Delighter/MergeMaskCs.h"
+
 namespace AIHoloImager
 {
     class Delighter::Impl
@@ -14,6 +16,8 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi)
         {
+            PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Delighter generator init");
+
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Delighter init (async)");
 
@@ -26,6 +30,13 @@ namespace AIHoloImager
                 delighter_ = python_system.CallObject(*delighter_class_);
                 delighter_process_method_ = python_system.GetAttr(*delighter_, "Process");
             });
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            {
+                const ShaderInfo shader = {MergeMaskCs_shader, 1, 1, 1};
+                merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
+            }
         }
 
         ~Impl()
@@ -47,53 +58,46 @@ namespace AIHoloImager
             delighter_module_.reset();
         }
 
-        Texture Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
+        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset)
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Delighter process");
-
-            const uint32_t width = image.Width();
-            const uint32_t height = image.Height();
 
             constexpr uint32_t Gap = 32;
             glm::uvec4 expanded_roi;
             expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(roi.x)) - Gap, 0U);
             expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(roi.y)) - Gap, 0U);
-            expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(roi.z)) + Gap, width);
-            expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(roi.w)) + Gap, height);
+            expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(roi.z)) + Gap, image.Width(0));
+            expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(roi.w)) + Gap, image.Height(0));
 
             offset = glm::uvec2(expanded_roi.x, expanded_roi.y);
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
 
             const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
             const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
             const uint32_t fmt_size = FormatSize(image.Format());
-            Texture roi_image(roi_width, roi_height, image.Format());
-            {
-                std::byte* dst = roi_image.Data();
-                const std::byte* src = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
-                const uint32_t dst_row_pitch = roi_width * fmt_size;
-                const uint32_t src_row_pitch = width * fmt_size;
-                for (uint32_t y = 0; y < roi_height; ++y)
-                {
-                    std::memcpy(dst, src, dst_row_pitch);
-                    dst += dst_row_pitch;
-                    src += src_row_pitch;
-                }
-            }
+            GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(), GpuResourceFlag::UnorderedAccess, L"roi_image");
+            cmd_list.Copy(roi_image, 0, 0, 0, 0, image, 0, GpuBox{expanded_roi.x, expanded_roi.y, 0, expanded_roi.z, expanded_roi.w, 1});
+
+            const uint32_t roi_data_size = roi_height * roi_width * fmt_size;
+            auto roi_data = std::make_unique<std::byte[]>(roi_data_size);
+            const auto roi_rb_future = cmd_list.ReadBackAsync(roi_image, 0, roi_data.get(), roi_data_size);
 
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
             }
+            roi_rb_future.wait();
 
-            Texture out_image;
+            GpuTexture2D delighted_tex(
+                gpu_system, roi_width, roi_height, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"delighted_tex");
             {
                 PythonSystem::GilGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(4);
                 {
-                    auto py_image = python_system.MakeObject(
-                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(roi_image.Data()), roi_image.DataSize()));
+                    auto py_image = python_system.MakeObject(std::span<const std::byte>(roi_data.get(), roi_data_size));
                     python_system.SetTupleItem(*args, 0, std::move(py_image));
 
                     python_system.SetTupleItem(*args, 1, python_system.MakeObject(roi_width));
@@ -103,24 +107,45 @@ namespace AIHoloImager
 
                 const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
 
-                out_image = Texture(roi_width, roi_height, ElementFormat::RGBA8_UNorm);
-                std::byte* dst = reinterpret_cast<std::byte*>(out_image.Data());
-                const std::byte* src = python_system.ToBytes(*output_roi_image).data();
-                const std::byte* src_mask = &image.Data()[(expanded_roi.y * width + expanded_roi.x) * fmt_size];
-                for (uint32_t y = 0; y < roi_height; ++y)
+                cmd_list.Upload(delighted_tex, 0,
+                    [roi_width, roi_height, &python_system, &output_roi_image](
+                        void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
+                        std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
+                        const std::byte* src = python_system.ToBytes(*output_roi_image).data();
+                        for (uint32_t y = 0; y < roi_height; ++y)
+                        {
+                            for (uint32_t x = 0; x < roi_width; ++x)
+                            {
+                                const uint32_t dst_img_offset = y * row_pitch + x * 4;
+                                const uint32_t src_img_offset = (y * roi_width + x) * 3;
+                                dst[dst_img_offset + 0] = src[src_img_offset + 0];
+                                dst[dst_img_offset + 1] = src[src_img_offset + 1];
+                                dst[dst_img_offset + 2] = src[src_img_offset + 2];
+                            }
+                        }
+                    });
+
                 {
-                    for (uint32_t x = 0; x < roi_width; ++x)
-                    {
-                        const uint32_t img_offset = y * roi_width + x;
-                        dst[img_offset * 4 + 0] = src[img_offset * 3 + 0];
-                        dst[img_offset * 4 + 1] = src[img_offset * 3 + 1];
-                        dst[img_offset * 4 + 2] = src[img_offset * 3 + 2];
-                        dst[img_offset * 4 + 3] = src_mask[(y * width + x) * fmt_size + 3];
-                    }
+                    constexpr uint32_t BlockDim = 16;
+
+                    GpuShaderResourceView cropped_srv(gpu_system, roi_image);
+
+                    GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
+
+                    auto merge_mask_cb = GpuConstantBufferOfType<MergeMaskConstantBuffer>(gpu_system, L"merge_mask_cb");
+                    merge_mask_cb->dest_size.x = roi_width;
+                    merge_mask_cb->dest_size.y = roi_height;
+                    merge_mask_cb.UploadStaging();
+
+                    const GpuConstantBuffer* cbs[] = {&merge_mask_cb};
+                    const GpuShaderResourceView* srvs[] = {&cropped_srv};
+                    GpuUnorderedAccessView* uavs[] = {&delighted_uav};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    cmd_list.Compute(merge_mask_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
             }
 
-            return out_image;
+            return delighted_tex;
         }
 
     private:
@@ -131,6 +156,13 @@ namespace AIHoloImager
         PyObjectPtr delighter_;
         PyObjectPtr delighter_process_method_;
         std::future<void> py_init_future_;
+
+        struct MergeMaskConstantBuffer
+        {
+            glm::uvec2 dest_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline merge_mask_pipeline_;
     };
 
     Delighter::Delighter(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
@@ -142,8 +174,8 @@ namespace AIHoloImager
     Delighter::Delighter(Delighter&& other) noexcept = default;
     Delighter& Delighter::operator=(Delighter&& other) noexcept = default;
 
-    Texture Delighter::Process(const Texture& image, const glm::uvec4& roi, glm::uvec2& offset)
+    GpuTexture2D Delighter::Process(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset)
     {
-        return impl_->Process(image, roi, offset);
+        return impl_->Process(cmd_list, image, roi, offset);
     }
 } // namespace AIHoloImager

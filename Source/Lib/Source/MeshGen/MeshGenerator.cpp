@@ -547,12 +547,9 @@ namespace AIHoloImager
 
                 GpuTexture2D rotated_roi_tex;
                 {
-                    const uint32_t delighted_width = view.delighted_image.Width();
-                    const uint32_t delighted_height = view.delighted_image.Height();
-                    GpuTexture2D delighted_tex(gpu_system, delighted_width, delighted_height, 1, ToGpuFormat(view.delighted_image.Format()),
-                        GpuResourceFlag::None, L"delighted_tex");
-                    cmd_list.Upload(delighted_tex, 0, view.delighted_image.Data(), view.delighted_image.DataSize());
-                    GpuShaderResourceView delighted_srv(gpu_system, delighted_tex);
+                    const uint32_t delighted_width = view.delighted_tex.Width(0);
+                    const uint32_t delighted_height = view.delighted_tex.Height(0);
+                    GpuShaderResourceView delighted_srv(gpu_system, view.delighted_tex);
 
                     GpuConstantBufferOfType<RotateConstantBuffer> rotation_cb(gpu_system, L"rotation_cb");
 

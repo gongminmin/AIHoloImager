@@ -23,6 +23,7 @@ set(aihi_files
     Source/Mesh.cpp
     Source/Texture.cpp
     Source/pch.hpp
+    Source/Delighter/Shader/MergeMaskCs.hlsl
     Source/Delighter/Delighter.cpp
     Source/Delighter/Delighter.hpp
     Source/Delighter/Delighter.py
@@ -149,6 +150,7 @@ add_library(AIHoloImagerLib STATIC
     ${aihi_files}
 )
 
+AddShaderFile(Source/Delighter/Shader/MergeMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/CalcBBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/ErosionDilationCs.hlsl "cs" "main")

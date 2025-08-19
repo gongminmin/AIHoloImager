@@ -218,10 +218,7 @@ namespace AIHoloImager
                 GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
-                GpuTexture2D photo_tex(gpu_system_, view.delighted_image.Width(), view.delighted_image.Height(), 1, GpuFormat::RGBA8_UNorm,
-                    GpuResourceFlag::None, L"photo_tex");
-                GpuShaderResourceView photo_srv(gpu_system_, photo_tex);
-                cmd_list.Upload(photo_tex, 0, view.delighted_image.Data(), view.delighted_image.DataSize());
+                GpuShaderResourceView photo_srv(gpu_system_, view.delighted_tex);
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
@@ -232,8 +229,8 @@ namespace AIHoloImager
                 this->GenShadowMap(cmd_list, mesh_vb, vertex_stride, mesh_ib, num_indices, mvp_mtx, vp_offset, intrinsic, shadow_map_dsv);
 
                 this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, vp_offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
-                    photo_srv, view.delighted_offset, glm::uvec2(view.delighted_image.Width(), view.delighted_image.Height()),
-                    shadow_map_srv, accum_color_uav);
+                    photo_srv, view.delighted_offset, glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0)), shadow_map_srv,
+                    accum_color_uav);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {

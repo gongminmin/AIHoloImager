@@ -14,6 +14,7 @@
 #include "AIHoloImager/Texture.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuTexture.hpp"
 #include "Util/BoundingBox.hpp"
 
 namespace AIHoloImager
@@ -25,6 +26,7 @@ namespace AIHoloImager
     public:
         struct View
         {
+            GpuTexture2D delighted_tex;
             Texture delighted_image;
             glm::uvec2 delighted_offset;
 

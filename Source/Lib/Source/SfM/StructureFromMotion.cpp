@@ -615,13 +615,14 @@ namespace AIHoloImager
                         glm::uvec4 roi;
                         mask_gen_.Generate(cmd_list, undistort_gpu_tex, roi);
 
-                        const auto rb_future = cmd_list.ReadBackAsync(undistort_gpu_tex, 0, image_mask.Data(), image_mask.DataSize());
+                        result_view.delighted_tex = delighter_.Process(cmd_list, undistort_gpu_tex, roi, result_view.delighted_offset);
 
+                        result_view.delighted_image =
+                            Texture(result_view.delighted_tex.Width(0), result_view.delighted_tex.Height(0), ElementFormat::RGBA8_UNorm);
+                        const auto rb_future = cmd_list.ReadBackAsync(
+                            result_view.delighted_tex, 0, result_view.delighted_image.Data(), result_view.delighted_image.DataSize());
                         gpu_system.Execute(std::move(cmd_list));
-
                         rb_future.wait();
-
-                        result_view.delighted_image = delighter_.Process(image_mask, roi, result_view.delighted_offset);
                     }
                 }
                 else
