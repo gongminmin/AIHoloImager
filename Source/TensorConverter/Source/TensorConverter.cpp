@@ -3,6 +3,11 @@
 
 #include "TensorConverter/TensorConverter.hpp"
 
+#ifdef _DEBUG
+    #undef _DEBUG // Stop linking to python<ver>_d.lib
+#endif
+#include <Python.h>
+
 #ifdef _MSC_VER
     #pragma warning(push)
     #pragma warning(disable : 4100) // Ignore unreferenced formal parameters
@@ -17,6 +22,15 @@
 #ifdef _MSC_VER
     #pragma warning(pop)
 #endif
+#ifdef _MSC_VER
+    #pragma warning(push)
+    #pragma warning(disable : 4251) // Ignore non dll-interface as member
+    #pragma warning(disable : 4275) // Ignore non dll-interface base class
+#endif
+#include <torch/csrc/autograd/python_variable.h>
+#ifdef _MSC_VER
+    #pragma warning(pop)
+#endif
 
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -27,6 +41,10 @@ namespace AIHoloImager
     class TensorConverter::Impl
     {
     public:
+        Impl(GpuSystem& gpu_system, std::string_view torch_device) : Impl(gpu_system, torch::Device(std::string(std::move(torch_device))))
+        {
+        }
+
         Impl(GpuSystem& gpu_system, torch::Device torch_device) : gpu_system_(gpu_system), torch_device_(std::move(torch_device))
         {
             cuda_copy_enabled_ = false;
@@ -263,6 +281,10 @@ namespace AIHoloImager
                 data_type = torch::kInt32;
                 break;
 
+            case GpuBaseFormat::UNorm:
+                data_type = torch::kUInt8;
+                break;
+
             default:
                 Unreachable("Invalid format");
             }
@@ -323,6 +345,32 @@ namespace AIHoloImager
             return tensor;
         }
 
+        void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
+            std::wstring_view name) const
+        {
+            const torch::Tensor& tensor = THPVariable_Unpack(const_cast<PyObject*>(&py_tensor));
+            this->Convert(cmd_list, tensor, buff, heap, flags, std::move(name));
+        }
+
+        void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
+            std::wstring_view name) const
+        {
+            const torch::Tensor& tensor = THPVariable_Unpack(const_cast<PyObject*>(&py_tensor));
+            this->Convert(cmd_list, tensor, tex, format, flags, std::move(name));
+        }
+
+        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+        {
+            const torch::Tensor tensor = this->Convert(cmd_list, buff, size, data_type);
+            return THPVariable_Wrap(tensor);
+        }
+
+        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+        {
+            const torch::Tensor tensor = this->Convert(cmd_list, tex);
+            return THPVariable_Wrap(tensor);
+        }
+
     private:
         MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
@@ -380,6 +428,11 @@ namespace AIHoloImager
                 ch_bytes = sizeof(uint32_t);
                 break;
 
+            case GpuBaseFormat::UNorm:
+                kind = MiniCudaRt::ChannelFormatKind::Unsigned;
+                ch_bytes = sizeof(uint8_t);
+                break;
+
             default:
                 Unreachable("Invalid format");
             }
@@ -426,6 +479,11 @@ namespace AIHoloImager
         MiniCudaRt::Stream_t copy_stream_{};
     };
 
+    TensorConverter::TensorConverter(GpuSystem& gpu_system, std::string_view torch_device)
+        : impl_(std::make_unique<Impl>(gpu_system, std::move(torch_device)))
+    {
+    }
+
     TensorConverter::TensorConverter(GpuSystem& gpu_system, const torch::Device& torch_device)
         : impl_(std::make_unique<Impl>(gpu_system, torch_device))
     {
@@ -454,5 +512,28 @@ namespace AIHoloImager
     torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
     {
         return impl_->Convert(cmd_list, tex);
+    }
+
+    void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap,
+        GpuResourceFlag flags, std::wstring_view name) const
+    {
+        impl_->ConvertPy(cmd_list, py_tensor, buff, heap, flags, std::move(name));
+    }
+
+    void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format,
+        GpuResourceFlag flags, std::wstring_view name) const
+    {
+        impl_->ConvertPy(cmd_list, py_tensor, tex, format, flags, std::move(name));
+    }
+
+    PyObject* TensorConverter::ConvertPy(
+        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+    {
+        return impl_->ConvertPy(cmd_list, buff, size, data_type);
+    }
+
+    PyObject* TensorConverter::ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+    {
+        return impl_->ConvertPy(cmd_list, tex);
     }
 } // namespace AIHoloImager

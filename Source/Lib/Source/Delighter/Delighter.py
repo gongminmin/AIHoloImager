@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from torch.nn.utils import skip_init
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
 def Round32(x):
@@ -123,8 +123,7 @@ class Delighter:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Process(self, image, width, height, channels):
-        image = TensorFromBytes(image, torch.uint8, height * width * channels, self.device)
+    def Process(self, image: torch.Tensor, width: int, height: int, channels: int) -> torch.Tensor:
         image = image.reshape(height, width, channels)
 
         float_image = image.permute(2, 0, 1)
@@ -173,7 +172,9 @@ class Delighter:
         result_image = (result_image * 255).byte()
         result_image = result_image.permute(1, 2, 0)
 
-        return TensorToBytes(result_image)
+        alpha_channel = torch.full((result_image.shape[0], result_image.shape[1], 1), 255, dtype = result_image.dtype, device = self.device)
+        result_image = torch.cat((result_image, alpha_channel), -1)
+        return result_image
 
     def LoadModels(self, paths):
         self.models = [None] * 4

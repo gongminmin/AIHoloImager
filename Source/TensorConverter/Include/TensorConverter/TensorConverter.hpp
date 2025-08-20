@@ -53,6 +53,7 @@ namespace AIHoloImager
     class TensorConverter
     {
     public:
+        AIHI_TC_API TensorConverter(GpuSystem& gpu_system, std::string_view torch_device);
         AIHI_TC_API TensorConverter(GpuSystem& gpu_system, const torch::Device& torch_device);
         AIHI_TC_API ~TensorConverter() noexcept;
 
@@ -63,6 +64,14 @@ namespace AIHoloImager
         AIHI_TC_API torch::Tensor Convert(
             GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
         AIHI_TC_API torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
+
+        AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap,
+            GpuResourceFlag flags, std::wstring_view name) const;
+        AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format,
+            GpuResourceFlag flags, std::wstring_view name) const;
+        AIHI_TC_API PyObject* ConvertPy(
+            GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
+        AIHI_TC_API PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
 
     private:
         class Impl;

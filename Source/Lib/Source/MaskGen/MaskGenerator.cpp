@@ -128,10 +128,10 @@ namespace AIHoloImager
                 image_max_gpu_tex_ =
                     GpuTexture2D(gpu_system, 1, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"image_max_gpu_tex_");
                 normalized_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, GpuFormat::R32_Float,
-                    GpuResourceFlag::UnorderedAccess, L"normalized_gpu_tex_");
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"normalized_gpu_tex_");
 
-                pred_gpu_tex_ = GpuTexture2D(
-                    gpu_system, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float, GpuResourceFlag::UnorderedAccess, L"pred_gpu_tex_");
+                pred_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"pred_gpu_tex_");
                 pred_min_max_gpu_tex_ =
                     GpuTexture2D(gpu_system, 2, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"pred_min_max_gpu_tex_");
                 mask_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, L"mask_gpu_tex_");
@@ -274,26 +274,25 @@ namespace AIHoloImager
                 cmd_list.Compute(normalize_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
 
-            const uint32_t normalized_data_size = U2NetInputDim * U2NetInputDim * U2NetInputChannels;
-            auto normalized_image = std::make_unique<float[]>(normalized_data_size);
-            const auto rb_future =
-                cmd_list.ReadBackAsync(normalized_gpu_tex_, 0, normalized_image.get(), normalized_data_size * sizeof(float));
+            auto& tensor_converter = aihi_.TensorConverterInstance();
+
+            PyObjectPtr normalized_image_tensor;
+            {
+                PythonSystem::GilGuard guard;
+                normalized_image_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, normalized_gpu_tex_));
+            }
 
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
             }
-            rb_future.wait();
 
             {
                 PythonSystem::GilGuard guard;
 
                 auto args = python_system.MakeTuple(5);
                 {
-                    auto py_image =
-                        python_system.MakeObject(std::span<const std::byte>(reinterpret_cast<const std::byte*>(normalized_image.get()),
-                            U2NetInputDim * U2NetInputDim * U2NetInputChannels * sizeof(float)));
-                    python_system.SetTupleItem(*args, 0, std::move(py_image));
+                    python_system.SetTupleItem(*args, 0, std::move(normalized_image_tensor));
 
                     python_system.SetTupleItem(*args, 1, python_system.MakeObject(U2NetInputDim));
                     python_system.SetTupleItem(*args, 2, python_system.MakeObject(U2NetInputDim));
@@ -302,9 +301,8 @@ namespace AIHoloImager
                 }
 
                 auto py_pred = python_system.CallObject(*mask_generator_gen_method_, *args);
-                auto pred_span = python_system.ToBytes(*py_pred);
-                assert(pred_span.size() == U2NetInputDim * U2NetInputDim * sizeof(float));
-                cmd_list.Upload(pred_gpu_tex_, 0, pred_span.data(), pred_span.size());
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_pred, pred_gpu_tex_, GpuFormat::R32_Float, GpuResourceFlag::UnorderedAccess, L"pred_gpu_tex_");
             }
 
             {

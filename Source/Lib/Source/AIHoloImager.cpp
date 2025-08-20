@@ -25,7 +25,7 @@ namespace AIHoloImager
     public:
         Impl(DeviceType device, const std::filesystem::path& tmp_dir)
             : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true),
-              python_system_(GetDeviceName(device), exe_dir_)
+              python_system_(GetDeviceName(device), exe_dir_), tensor_converter_(gpu_system_, GetDeviceName(device))
         {
         }
 
@@ -85,6 +85,11 @@ namespace AIHoloImager
             return profiler_;
         }
 
+        TensorConverter& TensorConverterInstance() noexcept override
+        {
+            return tensor_converter_;
+        }
+
         Mesh Generate(const std::filesystem::path& input_path, uint32_t texture_size)
         {
             StructureFromMotion::Result sfm_result;
@@ -111,6 +116,8 @@ namespace AIHoloImager
         GpuSystem gpu_system_;
         PythonSystem python_system_;
         PerfProfiler profiler_;
+
+        TensorConverter tensor_converter_;
     };
 
     AIHoloImager::AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(device, tmp_dir))

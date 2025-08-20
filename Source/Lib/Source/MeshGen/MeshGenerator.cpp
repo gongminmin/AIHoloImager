@@ -40,7 +40,6 @@
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
-#include "Util/FormatConversion.hpp"
 #include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
@@ -203,7 +202,7 @@ namespace AIHoloImager
 
             Aabb obj_aabb;
             glm::vec3 up_vec;
-            std::vector<Texture> rotated_images;
+            std::vector<GpuTexture2D> rotated_images;
             {
                 std::cout << "Rotating images...\n";
 
@@ -532,18 +531,17 @@ namespace AIHoloImager
             return glm::vec3(plane);
         }
 
-        std::vector<Texture> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
+        std::vector<GpuTexture2D> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
+            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
             const glm::vec4 target_up_vec_ws = glm::vec4(up_vec.x, up_vec.y, up_vec.z, 0);
 
-            std::vector<Texture> rotated_images(sfm_input.views.size());
+            std::vector<GpuTexture2D> rotated_images(sfm_input.views.size());
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
                 const auto& view = sfm_input.views[i];
-
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 GpuTexture2D rotated_roi_tex;
                 {
@@ -601,8 +599,9 @@ namespace AIHoloImager
 
                 GpuTexture2D resized_rotated_roi_x_tex(gpu_system, ResizedImageSize, rotated_height, 1, ColorFmt,
                     GpuResourceFlag::UnorderedAccess, L"resized_rotated_roi_x_tex");
-                GpuTexture2D resized_rotated_roi_tex(gpu_system, ResizedImageSize, ResizedImageSize, 1, ColorFmt,
-                    GpuResourceFlag::UnorderedAccess, L"resized_rotated_roi_tex");
+                auto& resized_rotated_roi_tex = rotated_images[i];
+                resized_rotated_roi_tex = GpuTexture2D(gpu_system, ResizedImageSize, ResizedImageSize, 1, ColorFmt,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"resized_rotated_roi_tex");
                 {
                     constexpr uint32_t BlockDim = 16;
 
@@ -643,20 +642,14 @@ namespace AIHoloImager
                     cmd_list.Compute(
                         resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(ResizedImageSize, BlockDim), 1, shader_binding);
                 }
-
-                auto& resized_rotated_roi_cpu_tex = rotated_images[i];
-                resized_rotated_roi_cpu_tex = Texture(
-                    resized_rotated_roi_tex.Width(0), resized_rotated_roi_tex.Height(0), ToElementFormat(resized_rotated_roi_tex.Format()));
-                auto rb_future = cmd_list.ReadBackAsync(
-                    resized_rotated_roi_tex, 0, resized_rotated_roi_cpu_tex.Data(), resized_rotated_roi_cpu_tex.DataSize());
-                gpu_system.Execute(std::move(cmd_list));
-                rb_future.wait();
             }
+
+            gpu_system.Execute(std::move(cmd_list));
 
             return rotated_images;
         }
 
-        Mesh GenMesh(std::span<const Texture> input_images, GpuTexture3D& color_tex)
+        Mesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -676,45 +669,42 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
+                auto& tensor_converter = aihi_.TensorConverterInstance();
 
-                auto args = python_system.MakeTuple(4);
+                cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                auto args = python_system.MakeTuple(1);
                 {
                     const uint32_t num_images = static_cast<uint32_t>(input_images.size());
                     auto imgs_args = python_system.MakeTuple(num_images);
                     for (uint32_t i = 0; i < num_images; ++i)
                     {
-                        const auto& input_image = input_images[i];
-                        auto image_data = python_system.MakeObject(
-                            std::span<const std::byte>(reinterpret_cast<const std::byte*>(input_image.Data()), input_image.DataSize()));
+                        auto image_data = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, input_images[i]));
                         python_system.SetTupleItem(*imgs_args, i, std::move(image_data));
                     }
                     python_system.SetTupleItem(*args, 0, std::move(imgs_args));
-
-                    python_system.SetTupleItem(*args, 1, python_system.MakeObject(input_images[0].Width()));
-                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(input_images[0].Height()));
-                    python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(input_images[0].Format())));
                 }
+                gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
 
                 python_system.CallObject(*mesh_generator_gen_features_method_, *args);
 
                 const auto py_grid_res = python_system.CallObject(*mesh_generator_resolution_method_);
                 grid_res = python_system.Cast<uint32_t>(*py_grid_res);
 
-                const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
-                const auto coords = python_system.ToSpan<const glm::uvec3>(*py_coords);
-
                 cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                GpuBuffer coords_buff(gpu_system, static_cast<uint32_t>(coords.size() * sizeof(glm::uvec3)), GpuHeap::Default,
-                    GpuResourceFlag::None, L"coords_buff");
-                cmd_list.Upload(coords_buff, coords.data(), coords_buff.Size());
+                const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
+                GpuBuffer coords_buff;
+                tensor_converter.ConvertPy(cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::None, L"coords_buff");
                 GpuShaderResourceView coords_srv(gpu_system, coords_buff, GpuFormat::RGB32_Uint);
 
                 index_vol_tex = GpuTexture3D(
                     gpu_system, grid_res, grid_res, grid_res, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"index_vol_tex");
                 {
+                    const uint32_t num_features = coords_buff.Size() / sizeof(glm::uvec3);
+
                     GpuConstantBufferOfType<ScatterIndexConstantBuffer> scatter_index_cb(gpu_system, L"scatter_index_cb");
-                    scatter_index_cb->num_features = static_cast<uint32_t>(coords.size());
+                    scatter_index_cb->num_features = num_features;
                     scatter_index_cb.UploadStaging();
 
                     GpuUnorderedAccessView index_vol_uav(gpu_system, index_vol_tex);
@@ -728,29 +718,20 @@ namespace AIHoloImager
                     GpuUnorderedAccessView* uavs[] = {&index_vol_uav};
                     const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
 
-                    cmd_list.Compute(scatter_index_pipeline_, DivUp(static_cast<uint32_t>(coords.size()), BlockDim), 1, 1, shader_binding);
+                    cmd_list.Compute(scatter_index_pipeline_, DivUp(num_features, BlockDim), 1, 1, shader_binding);
                 }
 
                 const auto py_density_features = python_system.CallObject(*mesh_generator_density_features_method_);
-                const auto density_features = python_system.ToSpan<const uint16_t>(*py_density_features);
+                tensor_converter.ConvertPy(cmd_list, *py_density_features, density_features_buff, GpuHeap::Default, GpuResourceFlag::None,
+                    L"density_features_buff");
 
                 const auto py_deformation_features = python_system.CallObject(*mesh_generator_deformation_features_method_);
-                const auto deformation_features = python_system.ToSpan<const glm::u16vec3>(*py_deformation_features);
+                tensor_converter.ConvertPy(cmd_list, *py_deformation_features, deformation_features_buff, GpuHeap::Default,
+                    GpuResourceFlag::None, L"deformation_features_buff");
 
                 const auto py_color_features = python_system.CallObject(*mesh_generator_color_features_method_);
-                const auto color_features = python_system.ToSpan<const glm::u16vec3>(*py_color_features);
-
-                density_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(density_features.size() * sizeof(uint16_t)),
-                    GpuHeap::Default, GpuResourceFlag::None, L"density_features_buff");
-                cmd_list.Upload(density_features_buff, density_features.data(), density_features_buff.Size());
-
-                deformation_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(deformation_features.size() * sizeof(glm::u16vec3)),
-                    GpuHeap::Default, GpuResourceFlag::None, L"deformation_features_buff");
-                cmd_list.Upload(deformation_features_buff, deformation_features.data(), deformation_features_buff.Size());
-
-                color_features_buff = GpuBuffer(gpu_system, static_cast<uint32_t>(color_features.size() * sizeof(glm::u16vec3)),
-                    GpuHeap::Default, GpuResourceFlag::None, L"color_features_buff");
-                cmd_list.Upload(color_features_buff, color_features.data(), color_features_buff.Size());
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_color_features, color_features_buff, GpuHeap::Default, GpuResourceFlag::None, L"color_features_buff");
             }
 
             GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);

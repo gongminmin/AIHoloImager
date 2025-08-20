@@ -75,30 +75,31 @@ namespace AIHoloImager
 
             const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
             const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
-            const uint32_t fmt_size = FormatSize(image.Format());
-            GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(), GpuResourceFlag::UnorderedAccess, L"roi_image");
+            GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(),
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"roi_image");
             cmd_list.Copy(roi_image, 0, 0, 0, 0, image, 0, GpuBox{expanded_roi.x, expanded_roi.y, 0, expanded_roi.z, expanded_roi.w, 1});
 
-            const uint32_t roi_data_size = roi_height * roi_width * fmt_size;
-            auto roi_data = std::make_unique<std::byte[]>(roi_data_size);
-            const auto roi_rb_future = cmd_list.ReadBackAsync(roi_image, 0, roi_data.get(), roi_data_size);
+            auto& tensor_converter = aihi_.TensorConverterInstance();
+
+            PyObjectPtr roi_tensor;
+            {
+                PythonSystem::GilGuard guard;
+                roi_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, roi_image));
+            }
 
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
             }
-            roi_rb_future.wait();
 
-            GpuTexture2D delighted_tex(
-                gpu_system, roi_width, roi_height, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"delighted_tex");
+            GpuTexture2D delighted_tex;
             {
                 PythonSystem::GilGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(4);
                 {
-                    auto py_image = python_system.MakeObject(std::span<const std::byte>(roi_data.get(), roi_data_size));
-                    python_system.SetTupleItem(*args, 0, std::move(py_image));
+                    python_system.SetTupleItem(*args, 0, std::move(roi_tensor));
 
                     python_system.SetTupleItem(*args, 1, python_system.MakeObject(roi_width));
                     python_system.SetTupleItem(*args, 2, python_system.MakeObject(roi_height));
@@ -106,24 +107,8 @@ namespace AIHoloImager
                 }
 
                 const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
-
-                cmd_list.Upload(delighted_tex, 0,
-                    [roi_width, roi_height, &python_system, &output_roi_image](
-                        void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
-                        std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
-                        const std::byte* src = python_system.ToBytes(*output_roi_image).data();
-                        for (uint32_t y = 0; y < roi_height; ++y)
-                        {
-                            for (uint32_t x = 0; x < roi_width; ++x)
-                            {
-                                const uint32_t dst_img_offset = y * row_pitch + x * 4;
-                                const uint32_t src_img_offset = (y * roi_width + x) * 3;
-                                dst[dst_img_offset + 0] = src[src_img_offset + 0];
-                                dst[dst_img_offset + 1] = src[src_img_offset + 1];
-                                dst[dst_img_offset + 2] = src[src_img_offset + 2];
-                            }
-                        }
-                    });
+                tensor_converter.ConvertPy(
+                    cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"delighted_tex");
 
                 {
                     constexpr uint32_t BlockDim = 16;

@@ -52,4 +52,6 @@ target_link_libraries(AIHoloImagerTensorConverter
         c10.lib
         torch_cpu.lib
         torch.lib
+        torch_python.lib
+        Python3::Python
 )

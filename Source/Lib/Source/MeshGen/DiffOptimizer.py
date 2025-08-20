@@ -94,16 +94,13 @@ class DiffOptimizer:
         crop_images = []
         resolutions = []
         for i in range(0, num_views):
-            cropped_data = view_images[i][0]
+            roi_image = view_images[i][0].squeeze(0)
             cropped_x = view_images[i][1]
             cropped_y = view_images[i][2]
-            cropped_width = view_images[i][3]
-            cropped_height = view_images[i][4]
-            image_width = view_images[i][5]
-            image_height = view_images[i][6]
-
-            roi_image = TensorFromBytes(cropped_data, torch.uint8, cropped_height * cropped_width * self.image_channels)
-            roi_image = roi_image.reshape(cropped_height, cropped_width, self.image_channels)
+            cropped_width = roi_image.shape[1]
+            cropped_height = roi_image.shape[0]
+            image_width = view_images[i][3]
+            image_height = view_images[i][4]
 
             rois[i] = torch.tensor([cropped_x, cropped_y, cropped_x + cropped_width, cropped_y + cropped_height])
 

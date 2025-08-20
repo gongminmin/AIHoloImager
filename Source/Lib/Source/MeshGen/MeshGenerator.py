@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, PurgeTorchCache
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
@@ -24,12 +24,10 @@ class MeshGenerator:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def GenFeatures(self, images, width, height, num_channels):
+    def GenFeatures(self, images):
         torch_images = []
         for image in images:
-            image = TensorFromBytes(image, torch.uint8, height * width * num_channels, self.device)
-            image = image.reshape(height, width, num_channels)
-            image = image.permute(2, 0, 1)
+            image = image.squeeze(0).permute(2, 0, 1)
             image = image[0 : 3, :, :].float() / 255
             torch_images.append(image)
         images = torch.stack(torch_images).contiguous()
@@ -49,7 +47,7 @@ class MeshGenerator:
         )[0]
 
         self.resolution = sparse_volume.resolution
-        self.coords = TensorToBytes(sparse_volume.coords)
+        self.coords = sparse_volume.coords
 
         DensitySize = 8 * 1
         DeformationSize = 8 * 3
@@ -58,14 +56,12 @@ class MeshGenerator:
 
         start_offset = 0;
 
-        density_features = sparse_volume.feats[:, start_offset : start_offset + DensitySize]
+        self.density_features = sparse_volume.feats[:, start_offset : start_offset + DensitySize]
         density_bias = -1.0 / self.resolution
-        density_features += density_bias
-        self.density_features = TensorToBytes(density_features)
+        self.density_features += density_bias
         start_offset += DensitySize
 
-        deformation_features = sparse_volume.feats[:, start_offset : start_offset + DeformationSize]
-        self.deformation_features = TensorToBytes(deformation_features)
+        self.deformation_features = sparse_volume.feats[:, start_offset : start_offset + DeformationSize]
         start_offset += DeformationSize
 
         start_offset += WeightSize
@@ -76,20 +72,19 @@ class MeshGenerator:
             indices.append(start_offset + i * (3 + 3) + 1)
             indices.append(start_offset + i * (3 + 3) + 2)
         indices = torch.tensor(indices, device = self.device)
-        color_features = torch.index_select(sparse_volume.feats, -1, indices)
-        self.color_features = TensorToBytes(color_features)
+        self.color_features = torch.index_select(sparse_volume.feats, -1, indices)
 
     def Resolution(self):
         return self.resolution
 
-    def Coords(self):
+    def Coords(self) -> torch.Tensor:
         return self.coords
 
-    def DensityFeatures(self):
+    def DensityFeatures(self) -> torch.Tensor:
         return self.density_features
 
-    def DeformationFeatures(self):
+    def DeformationFeatures(self) -> torch.Tensor:
         return self.deformation_features
 
-    def ColorFeatures(self):
+    def ColorFeatures(self) -> torch.Tensor:
         return self.color_features

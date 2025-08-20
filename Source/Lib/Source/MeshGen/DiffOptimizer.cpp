@@ -14,6 +14,7 @@
 #endif
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
@@ -70,6 +71,8 @@ namespace AIHoloImager
             glm::vec4 perspective;
             glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
+            auto& tensor_converter = aihi_.TensorConverterInstance();
+
             const auto& vertex_desc = mesh.MeshVertexDesc();
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
             const uint32_t color_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Color, 0);
@@ -112,6 +115,9 @@ namespace AIHoloImager
             {
                 PythonSystem::GilGuard guard;
 
+                auto& gpu_system = aihi_.GpuSystemInstance();
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(12);
                 {
@@ -132,21 +138,18 @@ namespace AIHoloImager
                     auto imgs_args = python_system.MakeTuple(num_images);
                     for (uint32_t i = 0; i < num_images; ++i)
                     {
-                        auto img_tuple = python_system.MakeTuple(7);
+                        auto img_tuple = python_system.MakeTuple(5);
 
                         const auto& view = sfm_input.views[i];
                         const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                        const auto& delighted_image = view.delighted_image;
-                        auto image = python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(delighted_image.Data()), delighted_image.DataSize()));
+                        const auto& delighted_tex = view.delighted_tex;
+                        PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
                         python_system.SetTupleItem(*img_tuple, 0, std::move(image));
                         python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(view.delighted_offset.x));
                         python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(view.delighted_offset.y));
-                        python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(delighted_image.Width()));
-                        python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(delighted_image.Height()));
-                        python_system.SetTupleItem(*img_tuple, 5, python_system.MakeObject(intrinsic.width));
-                        python_system.SetTupleItem(*img_tuple, 6, python_system.MakeObject(intrinsic.height));
+                        python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(intrinsic.width));
+                        python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(intrinsic.height));
 
                         python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                     }
@@ -168,6 +171,7 @@ namespace AIHoloImager
                     python_system.SetTupleItem(*args, 11,
                         python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation))));
                 }
+                gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
 
                 auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_method_, *args);
 

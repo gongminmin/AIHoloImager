@@ -7,6 +7,7 @@
 
 #include "Gpu/GpuSystem.hpp"
 #include "Python/PythonSystem.hpp"
+#include "TensorConverter/TensorConverter.hpp"
 #include "Util/PerfProfiler.hpp"
 
 namespace AIHoloImager
@@ -22,5 +23,7 @@ namespace AIHoloImager
         virtual GpuSystem& GpuSystemInstance() noexcept = 0;
         virtual PythonSystem& PythonSystemInstance() noexcept = 0;
         virtual PerfProfiler& PerfProfilerInstance() noexcept = 0;
+
+        virtual TensorConverter& TensorConverterInstance() noexcept = 0;
     };
 } // namespace AIHoloImager

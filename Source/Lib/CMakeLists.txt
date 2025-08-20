@@ -224,6 +224,7 @@ target_link_libraries(AIHoloImagerLib
         xatlas
         AIHoloImagerBase
         AIHoloImagerGpuSystem
+        AIHoloImagerTensorConverter
 )
 
 set(py_files
@@ -304,3 +305,14 @@ foreach(py_file ${py_files})
 endforeach()
 
 add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)
+
+if(MSVC)
+    target_link_libraries(AIHoloImagerLib
+        PUBLIC
+            delayimp.lib
+    )
+    target_link_options(AIHoloImagerLib
+        PUBLIC
+            "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerTensorConverter>"
+    )
+endif()
