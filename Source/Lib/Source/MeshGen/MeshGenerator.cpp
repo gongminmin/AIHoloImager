@@ -213,9 +213,16 @@ namespace AIHoloImager
                 rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
+                auto& gpu_system = aihi_.GpuSystemInstance();
                 for (size_t i = 0; i < rotated_images.size(); ++i)
                 {
-                    SaveTexture(rotated_images[i], output_dir / std::format("Rotated_{}.png", i));
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    Texture rotated_image(rotated_images[i].Width(0), rotated_images[i].Height(0), ElementFormat::RGBA8_UNorm);
+                    const auto rb_future = cmd_list.ReadBackAsync(rotated_images[i], 0, rotated_image.Data(), rotated_image.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+                    rb_future.wait();
+
+                    SaveTexture(rotated_image, output_dir / std::format("Rotated_{}.png", i));
                 }
 #endif
             }
