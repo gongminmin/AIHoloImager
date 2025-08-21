@@ -208,8 +208,7 @@ namespace AIHoloImager
 
                 PerfRegion rotating_perf(profiler, "Rotating images");
 
-                obj_aabb = this->ForegroundObjectAabb(sfm_input);
-                up_vec = this->SceneUpVector(sfm_input, obj_aabb.Center());
+                this->StatForegroundObject(obj_aabb, up_vec, sfm_input);
                 rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -435,107 +434,85 @@ namespace AIHoloImager
             return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
         }
 
-        Aabb ForegroundObjectAabb(const StructureFromMotion::Result& sfm_input)
+        void StatForegroundObject(Aabb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input)
         {
-            Aabb bb;
-            for (const auto& landmark : sfm_input.structure)
-            {
-                for (const auto& ob : landmark.obs)
-                {
-                    const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
-                    const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+            auto& gpu_system = aihi_.GpuSystemInstance();
 
-                    const auto& view = sfm_input.views[ob.view_id];
-
-                    const uint32_t delighted_beg_x = view.delighted_offset.x;
-                    const uint32_t delighted_beg_y = view.delighted_offset.y;
-                    const uint32_t delighted_end_x = view.delighted_offset.x + view.delighted_image.Width();
-                    const uint32_t delighted_end_y = view.delighted_offset.y + view.delighted_image.Height();
-                    const uint32_t delighted_width = view.delighted_image.Width();
-
-                    if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
-                    {
-                        const std::byte* delighted_image_data = view.delighted_image.Data();
-                        const uint32_t fmt_size = FormatSize(view.delighted_image.Format());
-                        const uint32_t delighted_x = x - delighted_beg_x;
-                        const uint32_t delighted_y = y - delighted_beg_y;
-                        const std::byte mask = delighted_image_data[(delighted_y * delighted_width + delighted_x) * fmt_size + 3];
-                        if (mask > std::byte(0x7F))
-                        {
-                            bb.AddPoint(glm::vec3(landmark.point));
-                        }
-                    }
-                }
-            }
-
-            return bb;
-        }
-
-        glm::vec3 SceneUpVector(const StructureFromMotion::Result& sfm_input, const glm::vec3& centroid)
-        {
-            std::vector<bool> point_used(sfm_input.structure.size(), false);
+            bb = Aabb();
+            std::vector<uint8_t> point_used(sfm_input.structure.size(), 0);
             std::vector<glm::vec3> plane_points;
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
                 const auto& view = sfm_input.views[i];
 
-                const std::byte* delighted_image_data = view.delighted_image.Data();
-                const uint32_t fmt_size = FormatSize(view.delighted_image.Format());
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                Texture delighted_image(view.delighted_tex.Width(0), view.delighted_tex.Height(0), ElementFormat::RGBA8_UNorm);
+                const auto rb_future = cmd_list.ReadBackAsync(view.delighted_tex, 0, delighted_image.Data(), delighted_image.DataSize());
+                gpu_system.Execute(std::move(cmd_list));
+                rb_future.wait();
+
+                const std::byte* delighted_image_data = delighted_image.Data();
+                const uint32_t fmt_size = FormatSize(delighted_image.Format());
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x = view.delighted_offset.x - Gap;
-                const uint32_t beg_y = view.delighted_offset.y + view.delighted_image.Height() / 2;
-                const uint32_t end_x = view.delighted_offset.x + view.delighted_image.Width() + Gap;
-                const uint32_t end_y = view.delighted_offset.y + view.delighted_image.Height() + Gap;
+                const uint32_t beg_y = view.delighted_offset.y + delighted_image.Height() / 2;
+                const uint32_t end_x = view.delighted_offset.x + delighted_image.Width() + Gap;
+                const uint32_t end_y = view.delighted_offset.y + delighted_image.Height() + Gap;
 
                 const uint32_t delighted_beg_x = view.delighted_offset.x;
                 const uint32_t delighted_beg_y = view.delighted_offset.y;
-                const uint32_t delighted_end_x = view.delighted_offset.x + view.delighted_image.Width();
-                const uint32_t delighted_end_y = view.delighted_offset.y + view.delighted_image.Height();
-                const uint32_t delighted_width = view.delighted_image.Width();
+                const uint32_t delighted_end_x = view.delighted_offset.x + delighted_image.Width();
+                const uint32_t delighted_end_y = view.delighted_offset.y + delighted_image.Height();
+                const uint32_t delighted_width = delighted_image.Width();
 
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
-                    if (!point_used[j])
+                    const auto& landmark = sfm_input.structure[j];
+                    for (const auto& ob : landmark.obs)
                     {
-                        const auto& landmark = sfm_input.structure[j];
-                        for (const auto& ob : landmark.obs)
+                        if (ob.view_id == i)
                         {
-                            if (ob.view_id == i)
+                            const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                            const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+
+                            bool is_background = true;
+                            if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
                             {
-                                const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
-                                const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
-                                if ((x >= beg_x) && (y >= beg_y) && (x < end_x) && (y < end_y))
+                                const uint32_t delighted_x = x - delighted_beg_x;
+                                const uint32_t delighted_y = y - delighted_beg_y;
+                                const std::byte mask = delighted_image_data[(delighted_y * delighted_width + delighted_x) * fmt_size + 3];
+                                if (mask > std::byte(0x7F))
                                 {
-                                    bool is_background = true;
-                                    if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
+                                    if (!(point_used[j] & 0x1U))
                                     {
-                                        const uint32_t delighted_x = x - delighted_beg_x;
-                                        const uint32_t delighted_y = y - delighted_beg_y;
-                                        const std::byte mask =
-                                            delighted_image_data[(delighted_y * delighted_width + delighted_x) * fmt_size + 3];
-                                        is_background = (mask <= std::byte(0x7F));
+                                        bb.AddPoint(glm::vec3(landmark.point));
+                                        point_used[j] |= 0x1U;
                                     }
 
-                                    if (is_background)
-                                    {
-                                        plane_points.push_back(landmark.point);
-                                        point_used[j] = true;
-                                    }
+                                    is_background = false;
                                 }
                             }
+
+                            if ((!(point_used[j] & 0x2U)) && ((x >= beg_x) && (y >= beg_y) && (x < end_x) && (y < end_y)) && is_background)
+                            {
+                                plane_points.push_back(landmark.point);
+                                point_used[j] |= 0x2U;
+                            }
+
+                            break;
                         }
                     }
                 }
             }
 
             glm::vec4 plane = this->FitPlane(plane_points);
-            if (glm::dot(glm::vec3(plane), centroid) + plane.w < 0)
+            if (glm::dot(glm::vec3(plane), bb.Center()) + plane.w < 0)
             {
                 plane = -plane;
             }
 
-            return glm::vec3(plane);
+            up_vec = glm::vec3(plane);
         }
 
         std::vector<GpuTexture2D> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)

@@ -27,7 +27,6 @@ namespace AIHoloImager
         struct View
         {
             GpuTexture2D delighted_tex;
-            Texture delighted_image;
             glm::uvec2 delighted_offset;
 
             uint32_t intrinsic_id;
