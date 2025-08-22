@@ -58,14 +58,10 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     float2 undistort_coord = dtid.xy;
     float2 distort_coord = GetDistortedCoord(undistort_coord);
 
-    float4 color;
+    float4 color = float4(0, 0, 0, 1);
     if (all(bool4(distort_coord >= 0, distort_coord < width_height.xy)))
     {
-        color = distorted_tex.SampleLevel(bilinear_sampler, distort_coord * width_height.zw, 0);
-    }
-    else
-    {
-        color = float4(0, 0, 0, 1);
+        color.rgb = distorted_tex.SampleLevel(bilinear_sampler, distort_coord * width_height.zw, 0).rgb;
     }
 
     undistorted_tex[dtid.xy] = color;

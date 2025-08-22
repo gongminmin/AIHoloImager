@@ -534,7 +534,7 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(const SfM_Data& sfm_data, std::vector<Texture>& images)
+        Result ExportResult(const SfM_Data& sfm_data, const std::vector<Texture>& images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -585,29 +585,43 @@ namespace AIHoloImager
                     const auto& center = mvg_pose.center();
                     result_view.center = {center.x(), center.y(), center.z()};
 
-                    Texture& image_mask = images[mvg_view.first];
+                    const Texture& image = images[mvg_view.first];
 
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        image_mask.ConvertInPlace(ElementFormat::RGBA8_UNorm);
-
-                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image_mask.Width()) ||
-                            (distort_gpu_tex.Height(0) != image_mask.Height()))
+                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) ||
+                            (distort_gpu_tex.Height(0) != image.Height()))
                         {
-                            distort_gpu_tex = GpuTexture2D(gpu_system, image_mask.Width(), image_mask.Height(), 1, ColorFmt,
-                                GpuResourceFlag::None, L"distort_gpu_tex");
+                            distort_gpu_tex = GpuTexture2D(
+                                gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
                         }
-                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != image_mask.Width()) ||
-                            (undistort_gpu_tex.Height(0) != image_mask.Height()))
+                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != image.Width()) ||
+                            (undistort_gpu_tex.Height(0) != image.Height()))
                         {
-                            undistort_gpu_tex = GpuTexture2D(gpu_system, image_mask.Width(), image_mask.Height(), 1, ColorFmt,
+                            undistort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
                                 GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
                         }
 
                         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        cmd_list.Upload(distort_gpu_tex, 0, image_mask.Data(), image_mask.DataSize());
+                        cmd_list.Upload(
+                            distort_gpu_tex, 0, [&image](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
+                                const uint32_t width = image.Width();
+                                const uint32_t height = image.Height();
+                                const uint32_t src_channels = FormatChannels(image.Format());
+                                const uint32_t dst_channels = FormatChannels(ColorFmt);
+                                const std::byte* src = image.Data();
+                                std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
+                                for (uint32_t y = 0; y < height; ++y)
+                                {
+                                    for (uint32_t x = 0; x < width; ++x)
+                                    {
+                                        std::memcpy(
+                                            &dst[y * row_pitch + x * dst_channels], &src[(y * width + x) * src_channels], src_channels);
+                                    }
+                                }
+                            });
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
