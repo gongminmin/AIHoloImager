@@ -236,13 +236,17 @@ namespace AIHoloImager
                             }
                             else
                             {
-                                std::cerr << image_file_path.stem() << ": Focal length is missing.\n";
+                                std::cerr << image_file_path.filename() << ": Focal length is missing.\n";
                             }
+                        }
+                        else
+                        {
+                            std::cerr << image_file_path.filename() << ": Exif info is missing.\n";
                         }
                     }
                     else
                     {
-                        std::cerr << image_file_path.filename() << ": Unsupported image file format.\n";
+                        std::cerr << image_file_path.filename() << ": Unable to read Exif info.\n";
                     }
 
                     // Group camera that share common properties, leads to more faster & stable BA.
@@ -587,15 +591,35 @@ namespace AIHoloImager
 
                     const Texture& image = images[mvg_view.first];
 
+                    if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) || (distort_gpu_tex.Height(0) != image.Height()))
+                    {
+                        distort_gpu_tex =
+                            GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
+                    }
+
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                    cmd_list.Upload(
+                        distort_gpu_tex, 0, [&image](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
+                            const uint32_t width = image.Width();
+                            const uint32_t height = image.Height();
+                            const uint32_t src_channels = FormatChannels(image.Format());
+                            const uint32_t dst_channels = FormatChannels(ColorFmt);
+                            const std::byte* src = image.Data();
+                            std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
+                            for (uint32_t y = 0; y < height; ++y)
+                            {
+                                for (uint32_t x = 0; x < width; ++x)
+                                {
+                                    std::memcpy(&dst[y * row_pitch + x * dst_channels], &src[(y * width + x) * src_channels], src_channels);
+                                }
+                            }
+                        });
+
+                    GpuTexture2D* process_tex;
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) ||
-                            (distort_gpu_tex.Height(0) != image.Height()))
-                        {
-                            distort_gpu_tex = GpuTexture2D(
-                                gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
-                        }
                         if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != image.Width()) ||
                             (undistort_gpu_tex.Height(0) != image.Height()))
                         {
@@ -603,35 +627,21 @@ namespace AIHoloImager
                                 GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
                         }
 
-                        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-                        cmd_list.Upload(
-                            distort_gpu_tex, 0, [&image](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
-                                const uint32_t width = image.Width();
-                                const uint32_t height = image.Height();
-                                const uint32_t src_channels = FormatChannels(image.Format());
-                                const uint32_t dst_channels = FormatChannels(ColorFmt);
-                                const std::byte* src = image.Data();
-                                std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
-                                for (uint32_t y = 0; y < height; ++y)
-                                {
-                                    for (uint32_t x = 0; x < width; ++x)
-                                    {
-                                        std::memcpy(
-                                            &dst[y * row_pitch + x * dst_channels], &src[(y * width + x) * src_channels], src_channels);
-                                    }
-                                }
-                            });
-
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
                         Undistort(cmd_list, static_cast<const Pinhole_Intrinsic_Radial_K3&>(camera), distort_gpu_tex, undistort_gpu_tex);
 
-                        glm::uvec4 roi;
-                        mask_gen_.Generate(cmd_list, undistort_gpu_tex, roi);
-
-                        result_view.delighted_tex = delighter_.Process(cmd_list, undistort_gpu_tex, roi, result_view.delighted_offset);
-                        gpu_system.Execute(std::move(cmd_list));
+                        process_tex = &undistort_gpu_tex;
                     }
+                    else
+                    {
+                        process_tex = &distort_gpu_tex;
+                    }
+
+                    glm::uvec4 roi;
+                    mask_gen_.Generate(cmd_list, *process_tex, roi);
+
+                    result_view.delighted_tex = delighter_.Process(cmd_list, *process_tex, roi, result_view.delighted_offset);
+                    gpu_system.Execute(std::move(cmd_list));
                 }
                 else
                 {

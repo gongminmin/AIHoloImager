@@ -289,10 +289,10 @@ class MoGeModel(nn.Module):
     @torch.inference_mode()
     def Focal(
         self,
-        image : torch.Tensor,
-        resolution_level : int = 9,
-        num_tokens : int = None,
-        use_fp16 : bool = True,
+        image: torch.Tensor,
+        resolution_level: int = 9,
+        num_tokens: int = None,
+        use_fp16: bool = True,
     ) -> Dict[str, torch.Tensor]:
         """
         User-friendly inference function
@@ -305,13 +305,11 @@ class MoGeModel(nn.Module):
 
         focal length in pixels.
         """
-        if image.dim() == 3:
-            omit_batch_dim = True
-            image = image.unsqueeze(0)
-        else:
-            omit_batch_dim = False
 
-        original_height, original_width = image.shape[-2 : ]
+        if image.dim() == 3:
+            image = image.unsqueeze(0)
+
+        original_height, original_width = image.shape[-2 :]
         area = original_height * original_width
         aspect_ratio = original_width / original_height
 
