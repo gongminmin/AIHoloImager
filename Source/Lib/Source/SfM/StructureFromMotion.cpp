@@ -63,6 +63,9 @@
 #include "Gpu/GpuTexture.hpp"
 #include "MaskGen/MaskGenerator.hpp"
 #include "Util/PerfProfiler.hpp"
+#ifdef AIHI_KEEP_INTERMEDIATES
+    #include "AIHoloImager/Mesh.hpp"
+#endif
 
 #include "CompiledShader/SfM/UndistortCs.h"
 
@@ -147,7 +150,7 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data =
                 this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return this->ExportResult(processed_sfm_data, images);
+            return this->ExportResult(processed_sfm_data, images, sfm_tmp_dir);
         }
 
     private:
@@ -538,7 +541,8 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(const SfM_Data& sfm_data, const std::vector<Texture>& images)
+        Result ExportResult(
+            const SfM_Data& sfm_data, const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -670,6 +674,42 @@ namespace AIHoloImager
                     }
                 }
             }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            {
+                const VertexAttrib pos_clr_vertex_attribs[] = {
+                    {VertexAttrib::Semantic::Position, 0, 3},
+                    {VertexAttrib::Semantic::Color, 0, 3},
+                };
+                constexpr uint32_t PosAttribIndex = 0;
+                constexpr uint32_t ColorAttribIndex = 1;
+                const VertexDesc pos_clr_vertex_desc(pos_clr_vertex_attribs);
+
+                {
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
+
+                    for (const auto& landmark : ret.structure)
+                    {
+                        const uint32_t vertex_index = pc_mesh.NumVertices();
+                        pc_mesh.ResizeVertices(vertex_index + 1);
+
+                        pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = glm::vec3(landmark.point);
+
+                        const auto& ob = landmark.obs[0];
+                        const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                        const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+                        const auto& image = images[ob.view_id];
+                        const std::byte* image_data = image.Data();
+                        const uint32_t offset = (y * image.Width() + x) * FormatChannels(image.Format());
+
+                        pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) =
+                            glm::vec3(image_data[offset + 0], image_data[offset + 1], image_data[offset + 2]) / 255.0f;
+                    }
+
+                    SaveMesh(pc_mesh, tmp_dir / "PointCloud.ply");
+                }
+            }
+#endif
 
             return ret;
         }

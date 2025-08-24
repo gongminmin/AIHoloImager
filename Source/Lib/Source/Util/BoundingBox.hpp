@@ -21,6 +21,8 @@ namespace AIHoloImager
         glm::vec3 Center() const;
         glm::vec3 Extents() const;
         glm::vec3 Size() const;
+
+        static void GetCorners(const Aabb& aabb, std::span<glm::vec3> corners);
     };
 
     struct Obb

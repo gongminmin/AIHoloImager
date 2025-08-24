@@ -11,6 +11,17 @@
 
 namespace
 {
+    constexpr glm::vec3 BoxOffsets[] = {
+        {-1.0f, -1.0f, +1.0f},
+        {+1.0f, -1.0f, +1.0f},
+        {+1.0f, +1.0f, +1.0f},
+        {-1.0f, +1.0f, +1.0f},
+        {-1.0f, -1.0f, -1.0f},
+        {+1.0f, -1.0f, -1.0f},
+        {+1.0f, +1.0f, -1.0f},
+        {-1.0f, +1.0f, -1.0f},
+    };
+
     bool SolveCubic(float e, float f, float g, glm::vec3& ev) noexcept
     {
         const float p = f - e * e / 3;
@@ -209,6 +220,16 @@ namespace AIHoloImager
         return max - min;
     }
 
+    void Aabb::GetCorners(const Aabb& aabb, std::span<glm::vec3> corners)
+    {
+        const glm::vec3 center = aabb.Center();
+        const glm::vec3 extents = aabb.Extents();
+        for (size_t i = 0; i < std::min(corners.size(), std::size(BoxOffsets)); ++i)
+        {
+            corners[i] = extents * BoxOffsets[i] + center;
+        }
+    }
+
     Obb Obb::FromPoints(const glm::vec3* positions, uint32_t stride, uint32_t num_vertices)
     {
         auto get_pos = [&](uint32_t index) {
@@ -284,17 +305,6 @@ namespace AIHoloImager
 
     void Obb::GetCorners(const Obb& obb, std::span<glm::vec3> corners)
     {
-        constexpr glm::vec3 BoxOffsets[] = {
-            {-1.0f, -1.0f, +1.0f},
-            {+1.0f, -1.0f, +1.0f},
-            {+1.0f, +1.0f, +1.0f},
-            {-1.0f, +1.0f, +1.0f},
-            {-1.0f, -1.0f, -1.0f},
-            {+1.0f, -1.0f, -1.0f},
-            {+1.0f, +1.0f, -1.0f},
-            {-1.0f, +1.0f, -1.0f},
-        };
-
         for (size_t i = 0; i < std::min(corners.size(), std::size(BoxOffsets)); ++i)
         {
             corners[i] = obb.orientation * (obb.extents * BoxOffsets[i]) + obb.center;
