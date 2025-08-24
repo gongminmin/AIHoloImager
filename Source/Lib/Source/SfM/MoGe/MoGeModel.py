@@ -4,6 +4,7 @@
 # Based on MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/v1.py
 
 import importlib
+from numbers import Number
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import warnings
@@ -14,7 +15,7 @@ import torch.nn.functional as functional
 from torch.nn.utils import skip_init
 
 from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
-from .Geometry import NormalizedViewPlaneUv, RecoverFocal
+from .Geometry import NormalizedViewPlaneUv, RecoverFocalShift, IntrinsicsFromFocalCenter, UnprojectCV, ImageUV
 
 class ResidualConvBlock(nn.Module):
     def __init__(
@@ -322,7 +323,70 @@ class MoGeModel(nn.Module):
 
         mask_binary = mask > self.mask_threshold
 
-        # Get camera-space point map. (Focal here is the focal length relative to half the image diagonal)
-        focal = RecoverFocal(points, mask_binary)
+        # Focal here is the focal length relative to half the image diagonal
+        focal, _ = RecoverFocalShift(points, mask_binary)
         fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
         return fy.item() * original_height
+
+    @torch.inference_mode()
+    def PointCloud(
+        self, 
+        image: torch.Tensor,
+        fov_x: Union[Number, torch.Tensor],
+        resolution_level: int = 9,
+        num_tokens : int = None,
+        use_fp16 : bool = True,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        User-friendly inference function
+
+        ### Parameters
+        - `image`: input image tensor of shape (B, 3, H, W) or (3, H, W)
+        - `resolution_level`: the resolution level to use for the output point map in 0-9. Default: 9 (highest)
+        - `fov_x`: the horizontal camera FoV in degrees. If None, it will be inferred from the predicted point map. Default: None
+            
+        ### Returns
+        point cloud in camera space, tensor of shape (B, H, W, 3) or (H, W, 3).
+        """
+
+        if image.dim() == 3:
+            omit_batch_dim = True
+            image = image.unsqueeze(0)
+
+        original_height, original_width = image.shape[-2 :]
+        area = original_height * original_width
+        aspect_ratio = original_width / original_height
+
+        if num_tokens is None:
+            min_tokens, max_tokens = self.num_tokens_range
+            num_tokens = int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
+
+        min_area = 500 * 500
+        max_area = 700 * 700
+        expected_area = min_area + (max_area - min_area) * (resolution_level / 9)
+
+        if expected_area != area:
+            expected_width, expected_height = int(original_width * (expected_area / area) ** 0.5), int(original_height * (expected_area / area) ** 0.5)
+            image = functional.interpolate(image, (expected_height, expected_width), mode = "bicubic", align_corners = False, antialias = True)
+
+        with torch.autocast(device_type = image.device.type, dtype = torch.float16, enabled = use_fp16):
+            points, mask = self.forward(image, num_tokens)
+
+        mask_binary = mask > self.mask_threshold
+
+        # Get camera-space point map. (Focal here is the focal length relative to half the image diagonal)
+        focal = aspect_ratio / (1 + aspect_ratio ** 2) ** 0.5 / torch.tan(torch.deg2rad(torch.as_tensor(fov_x, device = points.device, dtype = points.dtype) / 2))
+        if focal.ndim == 0:
+            focal = focal[None].expand(points.shape[0])
+        _, shift = RecoverFocalShift(points, mask_binary, focal = focal)
+        fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
+        fx = fy / aspect_ratio
+        intrinsics = IntrinsicsFromFocalCenter(fx, fy, 0.5, 0.5)
+        depth = points[..., 2] + shift[..., None, None]
+
+        points = UnprojectCV(ImageUV(width = expected_width, height = expected_height, dtype = points.dtype, device = points.device), depth, intrinsics = intrinsics[..., None, :, :])
+
+        if omit_batch_dim:
+            points = points.squeeze(0)
+
+        return points

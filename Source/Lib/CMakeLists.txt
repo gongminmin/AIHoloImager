@@ -122,7 +122,7 @@ set(aihi_files
     Source/SfM/MoGe/__init__.py
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/ConvertDatasheet.py
-    Source/SfM/FocalEstimator.py
+    Source/SfM/PointCloudEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
     Source/TextureRecon/Shader/FlattenVs.hlsl
@@ -282,7 +282,7 @@ set(py_files
     Source/SfM/MoGe/Geometry.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
-    Source/SfM/FocalEstimator.py
+    Source/SfM/PointCloudEstimator.py
 )
 foreach(py_file ${py_files})
     string(REPLACE "/" ";" path_list ${py_file})

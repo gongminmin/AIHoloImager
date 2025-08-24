@@ -99,10 +99,11 @@ namespace AIHoloImager
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
-                focal_estimator_module_ = python_system.Import("FocalEstimator");
-                focal_estimator_class_ = python_system.GetAttr(*focal_estimator_module_, "FocalEstimator");
-                focal_estimator_ = python_system.CallObject(*focal_estimator_class_);
-                focal_estimator_process_method_ = python_system.GetAttr(*focal_estimator_, "Process");
+                point_cloud_estimator_module_ = python_system.Import("PointCloudEstimator");
+                point_cloud_estimator_class_ = python_system.GetAttr(*point_cloud_estimator_module_, "PointCloudEstimator");
+                point_cloud_estimator_ = python_system.CallObject(*point_cloud_estimator_class_);
+                point_cloud_estimator_focal_method_ = python_system.GetAttr(*point_cloud_estimator_, "Focal");
+                point_cloud_estimator_point_cloud_method_ = python_system.GetAttr(*point_cloud_estimator_, "PointCloud");
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -125,36 +126,45 @@ namespace AIHoloImager
             PythonSystem::GilGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
-            auto focal_estimator_destroy_method = python_system.GetAttr(*focal_estimator_, "Destroy");
-            python_system.CallObject(*focal_estimator_destroy_method);
+            auto point_cloud_estimator_destroy_method = python_system.GetAttr(*point_cloud_estimator_, "Destroy");
+            python_system.CallObject(*point_cloud_estimator_);
 
-            focal_estimator_destroy_method.reset();
-            focal_estimator_process_method_.reset();
-            focal_estimator_.reset();
-            focal_estimator_class_.reset();
-            focal_estimator_module_.reset();
+            point_cloud_estimator_destroy_method.reset();
+            point_cloud_estimator_focal_method_.reset();
+            point_cloud_estimator_point_cloud_method_.reset();
+            point_cloud_estimator_.reset();
+            point_cloud_estimator_class_.reset();
+            point_cloud_estimator_module_.reset();
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential)
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
-            std::vector<Texture> images;
-            SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
-            FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
-            const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
-            const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
-
             const auto sfm_tmp_dir = aihi_.TmpDir() / "Sfm";
             std::filesystem::create_directories(sfm_tmp_dir);
 
-            const SfM_Data processed_sfm_data =
-                this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-            return this->ExportResult(processed_sfm_data, images, sfm_tmp_dir);
+            std::vector<Texture> images;
+            SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
+            if (images.size() > 1)
+            {
+                FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
+                const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
+                const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
+
+                const SfM_Data processed_sfm_data =
+                    this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
+                return this->ExportResult(processed_sfm_data, images, sfm_tmp_dir);
+            }
+            else
+            {
+                sfm_data.poses.emplace(0, geometry::Pose3());
+                return this->ExportResult(sfm_data, images, sfm_tmp_dir);
+            }
         }
 
     private:
-        SfM_Data IntrinsicAnalysis(const std::filesystem::path& image_dir, std::vector<Texture>& images) const
+        SfM_Data IntrinsicAnalysis(const std::filesystem::path& input_path, std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
@@ -189,15 +199,25 @@ namespace AIHoloImager
                 }
             }
 
+            std::filesystem::path image_dir;
             std::vector<std::filesystem::path> input_image_paths;
-            for (const auto& dir_entry : std::filesystem::directory_iterator{image_dir})
+            if (std::filesystem::is_directory(input_path))
             {
-                if (dir_entry.is_regular_file())
+                image_dir = input_path;
+                for (const auto& dir_entry : std::filesystem::directory_iterator{image_dir})
                 {
-                    input_image_paths.push_back(std::filesystem::relative(dir_entry.path(), image_dir).string());
+                    if (dir_entry.is_regular_file())
+                    {
+                        input_image_paths.push_back(std::filesystem::relative(dir_entry.path(), image_dir).string());
+                    }
                 }
+                std::sort(input_image_paths.begin(), input_image_paths.end());
             }
-            std::sort(input_image_paths.begin(), input_image_paths.end());
+            else
+            {
+                image_dir = input_path.parent_path();
+                input_image_paths.push_back(input_path.filename());
+            }
             images.resize(input_image_paths.size());
 
             struct CameraInfo
@@ -334,7 +354,7 @@ namespace AIHoloImager
                                 python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
                             }
 
-                            auto py_focal = python_system.CallObject(*focal_estimator_process_method_, *args);
+                            auto py_focal = python_system.CallObject(*point_cloud_estimator_focal_method_, *args);
                             sum_focal += python_system.Cast<double>(*py_focal);
                         }
                     }
@@ -656,21 +676,104 @@ namespace AIHoloImager
             distort_gpu_tex = GpuTexture2D();
             undistort_gpu_tex = GpuTexture2D();
 
-            ret.structure.reserve(sfm_data.GetLandmarks().size());
-            for (const auto& mvg_vertex : sfm_data.GetLandmarks())
+            if (images.size() > 1)
             {
-                const auto& mvg_landmark = mvg_vertex.second;
-                auto& result_landmark = ret.structure.emplace_back();
-                result_landmark.point = {mvg_landmark.X.x(), mvg_landmark.X.y(), mvg_landmark.X.z()};
-                for (const auto& mvg_observation : mvg_landmark.obs)
+                ret.structure.reserve(sfm_data.GetLandmarks().size());
+                for (const auto& mvg_vertex : sfm_data.GetLandmarks())
                 {
-                    const auto iter = view_id_mapping.find(mvg_observation.first);
-                    if (iter != view_id_mapping.end())
+                    const auto& mvg_landmark = mvg_vertex.second;
+                    auto& result_landmark = ret.structure.emplace_back();
+                    result_landmark.point = {mvg_landmark.X.x(), mvg_landmark.X.y(), mvg_landmark.X.z()};
+                    for (const auto& mvg_observation : mvg_landmark.obs)
                     {
-                        auto& result_observation = result_landmark.obs.emplace_back();
-                        result_observation.view_id = iter->second;
-                        result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
-                        result_observation.feat_id = mvg_observation.second.id_feat;
+                        const auto iter = view_id_mapping.find(mvg_observation.first);
+                        if (iter != view_id_mapping.end())
+                        {
+                            auto& result_observation = result_landmark.obs.emplace_back();
+                            result_observation.view_id = iter->second;
+                            result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
+                            result_observation.feat_id = mvg_observation.second.id_feat;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                {
+                    PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                    py_init_future_.wait();
+                }
+                {
+                    const Texture& image = images[0];
+
+                    PythonSystem::GilGuard guard;
+
+                    auto& python_system = aihi_.PythonSystemInstance();
+                    auto args = python_system.MakeTuple(5);
+                    {
+                        auto py_image = python_system.MakeObject(
+                            std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
+                        python_system.SetTupleItem(*args, 0, std::move(py_image));
+
+                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
+                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
+                        python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
+
+                        const double fx = ret.intrinsics[0].k[0].x;
+                        const float fov_x = glm::degrees(static_cast<float>(2 * std::atan(image.Width() / (2 * fx))));
+                        python_system.SetTupleItem(*args, 4, python_system.MakeObject(fov_x));
+                    }
+
+                    auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, *args);
+
+                    const auto point_cloud = python_system.ToSpan<const glm::vec3>(*python_system.GetTupleItem(*py_point_cloud_items, 0));
+                    const uint32_t point_cloud_width = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 1));
+                    const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
+
+                    ret.structure.reserve(point_cloud_width * point_cloud_height);
+                    for (int y = 0; y < static_cast<int>(point_cloud_height); ++y)
+                    {
+                        for (uint32_t x = 0; x < point_cloud_width; ++x)
+                        {
+                            const glm::vec3& p = point_cloud[y * point_cloud_width + x];
+                            if (p.z > 0)
+                            {
+                                bool valid = true;
+                                for (int32_t dy = -1; valid && (dy <= 1); ++dy)
+                                {
+                                    for (int32_t dx = -1; valid && (dx <= 1); ++dx)
+                                    {
+                                        if ((dx != 0) || (dy != 0))
+                                        {
+                                            const int32_t nx = static_cast<int32_t>(x) + dx;
+                                            const int32_t ny = static_cast<int32_t>(y) + dy;
+                                            if ((nx >= 0) && (nx < static_cast<int32_t>(point_cloud_width)) && (ny >= 0) &&
+                                                (ny < static_cast<int32_t>(point_cloud_height)))
+                                            {
+                                                const glm::vec3& np = point_cloud[ny * point_cloud_width + nx];
+                                                if ((np.z > 0) && (p.z - np.z > 0.05f))
+                                                {
+                                                    valid = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (valid)
+                                {
+                                    auto& result_landmark = ret.structure.emplace_back();
+                                    result_landmark.point = {p.x, p.y, p.z};
+
+                                    auto& result_observation = result_landmark.obs.emplace_back();
+                                    result_observation.view_id = 0;
+                                    result_observation.point = {
+                                        (x + 0.5f) / point_cloud_width * image.Width(), (y + 0.5f) / point_cloud_height * image.Height()};
+                                    result_observation.feat_id = y * point_cloud_width + x;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -749,10 +852,11 @@ namespace AIHoloImager
     private:
         AIHoloImagerInternal& aihi_;
 
-        PyObjectPtr focal_estimator_module_;
-        PyObjectPtr focal_estimator_class_;
-        PyObjectPtr focal_estimator_;
-        PyObjectPtr focal_estimator_process_method_;
+        PyObjectPtr point_cloud_estimator_module_;
+        PyObjectPtr point_cloud_estimator_class_;
+        PyObjectPtr point_cloud_estimator_;
+        PyObjectPtr point_cloud_estimator_focal_method_;
+        PyObjectPtr point_cloud_estimator_point_cloud_method_;
         std::future<void> py_init_future_;
 
         struct UndistortConstantBuffer

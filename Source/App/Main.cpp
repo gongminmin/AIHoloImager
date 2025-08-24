@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
     // clang-format off
     options.add_options()
         ("H,help", "Produce help message.")
-        ("I,input-path", "The directory that contains the input image sequence.", cxxopts::value<std::string>())
+        ("I,input-path", "The directory that contains the input image sequence, or a single image file.", cxxopts::value<std::string>())
         ("O,output-path", "The path of the output mesh (\"<input-dir>/Output/Mesh.glb\" by default).", cxxopts::value<std::string>())
         ("D,device", "The computation device for inferencing (cuda or cpu; cuda by default).", cxxopts::value<std::string>())
         ("v,version", "Version.");
@@ -64,7 +64,12 @@ int main(int argc, char* argv[])
     }
     else
     {
-        output_path = input_path / "Output/Mesh.glb";
+        std::filesystem::path input_dir = input_path;
+        if (std::filesystem::is_regular_file(input_path))
+        {
+            input_dir = input_path.parent_path();
+        }
+        output_path = input_dir / "Output/Mesh.glb";
     }
 
     auto device = AIHoloImager::AIHoloImager::DeviceType::Cuda;
