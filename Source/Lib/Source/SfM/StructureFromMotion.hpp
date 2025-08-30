@@ -47,7 +47,6 @@ namespace AIHoloImager
         {
             uint32_t view_id;
             glm::dvec2 point;
-            uint32_t feat_id;
         };
 
         struct Landmark

@@ -148,19 +148,18 @@ namespace AIHoloImager
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
             if (images.size() > 1)
             {
-                FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
+                const FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
                 const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
                 const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
 
-                const SfM_Data processed_sfm_data =
-                    this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
-                return this->ExportResult(processed_sfm_data, images, sfm_tmp_dir);
+                sfm_data = this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
             }
             else
             {
                 sfm_data.poses.emplace(0, geometry::Pose3());
-                return this->ExportResult(sfm_data, images, sfm_tmp_dir);
             }
+
+            return this->ExportResult(sfm_data, images, sfm_tmp_dir);
         }
 
     private:
@@ -446,11 +445,11 @@ namespace AIHoloImager
             Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
 
             const Pair_Set pairs = exhaustivePairs(sfm_data.GetViews().size());
-            std::cout << "Matching on # pairs: " << pairs.size() << '\n';
+            std::cout << std::format("Matching on # pairs: {}\n", pairs.size());
 
             PairWiseMatches map_putative_matches;
             matcher.Match(regions_provider, pairs, map_putative_matches);
-            std::cout << "# putative pairs: " << map_putative_matches.size() << '\n';
+            std::cout << std::format("# putative pairs: {}\n", map_putative_matches.size());
 
             return map_putative_matches;
         }
@@ -669,42 +668,26 @@ namespace AIHoloImager
                 }
                 else
                 {
-                    std::cout << "Cannot read the corresponding pose or intrinsic of view " << mvg_view.first << '\n';
+                    std::cout << std::format("Cannot read the corresponding pose or intrinsic of view {}\n", mvg_view.first);
                 }
             }
 
             distort_gpu_tex = GpuTexture2D();
             undistort_gpu_tex = GpuTexture2D();
 
-            if (images.size() > 1)
-            {
-                ret.structure.reserve(sfm_data.GetLandmarks().size());
-                for (const auto& mvg_vertex : sfm_data.GetLandmarks())
-                {
-                    const auto& mvg_landmark = mvg_vertex.second;
-                    auto& result_landmark = ret.structure.emplace_back();
-                    result_landmark.point = {mvg_landmark.X.x(), mvg_landmark.X.y(), mvg_landmark.X.z()};
-                    for (const auto& mvg_observation : mvg_landmark.obs)
-                    {
-                        const auto iter = view_id_mapping.find(mvg_observation.first);
-                        if (iter != view_id_mapping.end())
-                        {
-                            auto& result_observation = result_landmark.obs.emplace_back();
-                            result_observation.view_id = iter->second;
-                            result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
-                            result_observation.feat_id = mvg_observation.second.id_feat;
-                        }
-                    }
-                }
-            }
-            else
+            const auto& sfm_landmarks = sfm_data.GetLandmarks();
+            if (sfm_landmarks.empty())
             {
                 {
                     PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                     py_init_future_.wait();
                 }
                 {
+                    PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Gen point cloud");
+
                     const Texture& image = images[0];
+                    const uint32_t width = image.Width();
+                    const uint32_t height = image.Height();
 
                     PythonSystem::GilGuard guard;
 
@@ -715,12 +698,12 @@ namespace AIHoloImager
                             std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
                         python_system.SetTupleItem(*args, 0, std::move(py_image));
 
-                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
-                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
+                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(width));
+                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(height));
                         python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
 
                         const double fx = ret.intrinsics[0].k[0].x;
-                        const float fov_x = glm::degrees(static_cast<float>(2 * std::atan(image.Width() / (2 * fx))));
+                        const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
                         python_system.SetTupleItem(*args, 4, python_system.MakeObject(fov_x));
                     }
 
@@ -731,7 +714,7 @@ namespace AIHoloImager
                     const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
 
                     ret.structure.reserve(point_cloud_width * point_cloud_height);
-                    for (int y = 0; y < static_cast<int>(point_cloud_height); ++y)
+                    for (uint32_t y = 0; y < point_cloud_height; ++y)
                     {
                         for (uint32_t x = 0; x < point_cloud_width; ++x)
                         {
@@ -769,10 +752,29 @@ namespace AIHoloImager
                                     auto& result_observation = result_landmark.obs.emplace_back();
                                     result_observation.view_id = 0;
                                     result_observation.point = {
-                                        (x + 0.5f) / point_cloud_width * image.Width(), (y + 0.5f) / point_cloud_height * image.Height()};
-                                    result_observation.feat_id = y * point_cloud_width + x;
+                                        (x + 0.5f) / point_cloud_width * width, (y + 0.5f) / point_cloud_height * height};
                                 }
                             }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ret.structure.reserve(sfm_landmarks.size());
+                for (const auto& mvg_vertex : sfm_landmarks)
+                {
+                    const auto& mvg_landmark = mvg_vertex.second;
+                    auto& result_landmark = ret.structure.emplace_back();
+                    result_landmark.point = {mvg_landmark.X.x(), mvg_landmark.X.y(), mvg_landmark.X.z()};
+                    for (const auto& mvg_observation : mvg_landmark.obs)
+                    {
+                        const auto iter = view_id_mapping.find(mvg_observation.first);
+                        if (iter != view_id_mapping.end())
+                        {
+                            auto& result_observation = result_landmark.obs.emplace_back();
+                            result_observation.view_id = iter->second;
+                            result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
                         }
                     }
                 }
@@ -901,7 +903,7 @@ namespace AIHoloImager
     glm::mat4x4 CalcProjMatrix(const StructureFromMotion::PinholeIntrinsic& intrinsic, float near_plane, float far_plane)
     {
         const double fy = intrinsic.k[1].y;
-        const float fov = static_cast<float>(2 * std::atan(intrinsic.height / (2 * fy)));
+        const float fov = static_cast<float>(2 * std::atan2(intrinsic.height, 2 * fy));
         return glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
     }
 
