@@ -64,10 +64,10 @@ namespace AIHoloImager
 
             constexpr uint32_t Gap = 32;
             glm::uvec4 expanded_roi;
-            expanded_roi.x = std::max(static_cast<uint32_t>(std::floor(roi.x)) - Gap, 0U);
-            expanded_roi.y = std::max(static_cast<uint32_t>(std::floor(roi.y)) - Gap, 0U);
-            expanded_roi.z = std::min(static_cast<uint32_t>(std::ceil(roi.z)) + Gap, image.Width(0));
-            expanded_roi.w = std::min(static_cast<uint32_t>(std::ceil(roi.w)) + Gap, image.Height(0));
+            expanded_roi.x = std::max(static_cast<int32_t>(std::floor(roi.x) - Gap), 0);
+            expanded_roi.y = std::max(static_cast<int32_t>(std::floor(roi.y) - Gap), 0);
+            expanded_roi.z = std::min(static_cast<int32_t>(std::ceil(roi.z) + Gap), static_cast<int32_t>(image.Width(0)));
+            expanded_roi.w = std::min(static_cast<int32_t>(std::ceil(roi.w) + Gap), static_cast<int32_t>(image.Height(0)));
 
             offset = glm::uvec2(expanded_roi.x, expanded_roi.y);
 

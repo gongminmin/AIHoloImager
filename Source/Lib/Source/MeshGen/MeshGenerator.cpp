@@ -204,7 +204,7 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
 
                 const GpuStaticSampler bilinear_sampler(
-                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Border);
 
                 rotate_pipeline_ = GpuRenderPipeline(gpu_system, GpuRenderPipeline::PrimitiveTopology::TriangleStrip, shaders,
                     GpuVertexAttribs({}), std::span(&bilinear_sampler, 1), states);
@@ -563,7 +563,8 @@ namespace AIHoloImager
                 const uint32_t fmt_size = FormatSize(delighted_image.Format());
 
                 constexpr uint32_t Gap = 32;
-                const uint32_t beg_x = view.delighted_offset.x - Gap;
+                const uint32_t beg_x =
+                    static_cast<uint32_t>(std::max(static_cast<int32_t>(view.delighted_offset.x) - static_cast<int32_t>(Gap), 0));
                 const uint32_t beg_y = view.delighted_offset.y + delighted_image.Height() / 2;
                 const uint32_t end_x = view.delighted_offset.x + delighted_image.Width() + Gap;
                 const uint32_t end_y = view.delighted_offset.y + delighted_image.Height() + Gap;

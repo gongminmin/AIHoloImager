@@ -117,6 +117,11 @@ class DiffOptimizer:
             else:
                 resolution = (image_width, image_height)
 
+            rois[i][0] = max(rois[i][0], 0)
+            rois[i][1] = max(rois[i][1], 0)
+            rois[i][2] = min(rois[i][2], image.shape[1])
+            rois[i][3] = min(rois[i][3], image.shape[0])
+
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()
             crop_img = crop_img * torch.clamp(crop_img[..., -1 : ], 0, 1)
