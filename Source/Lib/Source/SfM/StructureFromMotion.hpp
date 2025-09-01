@@ -70,7 +70,7 @@ namespace AIHoloImager
 
         StructureFromMotion& operator=(StructureFromMotion&& other) noexcept;
 
-        Result Process(const std::filesystem::path& input_path, bool sequential);
+        Result Process(const std::filesystem::path& input_path, bool sequential, bool no_delight);
 
     private:
         class Impl;

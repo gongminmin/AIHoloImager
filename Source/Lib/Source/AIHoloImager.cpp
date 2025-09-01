@@ -90,12 +90,12 @@ namespace AIHoloImager
             return tensor_converter_;
         }
 
-        Mesh Generate(const std::filesystem::path& input_path, uint32_t texture_size)
+        Mesh Generate(const std::filesystem::path& input_path, uint32_t texture_size, bool no_delight)
         {
             StructureFromMotion::Result sfm_result;
             {
                 StructureFromMotion sfm(*this);
-                sfm_result = sfm.Process(input_path, true);
+                sfm_result = sfm.Process(input_path, true, no_delight);
             }
 
             Mesh result_mesh;
@@ -128,8 +128,8 @@ namespace AIHoloImager
 
     AIHoloImager& AIHoloImager::operator=(AIHoloImager&& rhs) noexcept = default;
 
-    Mesh AIHoloImager::Generate(const std::filesystem::path& input_path, uint32_t texture_size)
+    Mesh AIHoloImager::Generate(const std::filesystem::path& input_path, uint32_t texture_size, bool no_delight)
     {
-        return impl_->Generate(input_path, texture_size);
+        return impl_->Generate(input_path, texture_size, no_delight);
     }
 } // namespace AIHoloImager

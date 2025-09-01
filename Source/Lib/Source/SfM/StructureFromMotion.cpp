@@ -137,7 +137,7 @@ namespace AIHoloImager
             point_cloud_estimator_module_.reset();
         }
 
-        Result Process(const std::filesystem::path& input_path, bool sequential)
+        Result Process(const std::filesystem::path& input_path, bool sequential, bool no_delight)
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
@@ -159,7 +159,7 @@ namespace AIHoloImager
                 sfm_data.poses.emplace(0, geometry::Pose3());
             }
 
-            return this->ExportResult(sfm_data, images, sfm_tmp_dir);
+            return this->ExportResult(sfm_data, images, no_delight, sfm_tmp_dir);
         }
 
     private:
@@ -560,8 +560,8 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(
-            const SfM_Data& sfm_data, const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir)
+        Result ExportResult(const SfM_Data& sfm_data, const std::vector<Texture>& images, bool no_delight,
+            [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -663,7 +663,15 @@ namespace AIHoloImager
                     glm::uvec4 roi;
                     mask_gen_.Generate(cmd_list, *process_tex, roi);
 
-                    result_view.delighted_tex = delighter_.Process(cmd_list, *process_tex, roi, result_view.delighted_offset);
+                    GpuTexture2D roi_image = this->CropImage(cmd_list, *process_tex, roi, result_view.delighted_offset);
+                    if (no_delight)
+                    {
+                        result_view.delighted_tex = std::move(roi_image);
+                    }
+                    else
+                    {
+                        result_view.delighted_tex = delighter_.Process(cmd_list, roi_image);
+                    }
                     gpu_system.Execute(std::move(cmd_list));
                 }
                 else
@@ -851,6 +859,28 @@ namespace AIHoloImager
                 undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, shader_binding);
         }
 
+        GpuTexture2D CropImage(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset)
+        {
+            constexpr uint32_t Gap = 32;
+            glm::uvec4 expanded_roi;
+            expanded_roi.x = std::max(static_cast<int32_t>(std::floor(roi.x) - Gap), 0);
+            expanded_roi.y = std::max(static_cast<int32_t>(std::floor(roi.y) - Gap), 0);
+            expanded_roi.z = std::min(static_cast<int32_t>(std::ceil(roi.z) + Gap), static_cast<int32_t>(image.Width(0)));
+            expanded_roi.w = std::min(static_cast<int32_t>(std::ceil(roi.w) + Gap), static_cast<int32_t>(image.Height(0)));
+
+            offset = glm::uvec2(expanded_roi.x, expanded_roi.y);
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
+            const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
+            GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(),
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"roi_image");
+            cmd_list.Copy(roi_image, 0, 0, 0, 0, image, 0, GpuBox{expanded_roi.x, expanded_roi.y, 0, expanded_roi.z, expanded_roi.w, 1});
+
+            return roi_image;
+        }
+
     private:
         AIHoloImagerInternal& aihi_;
 
@@ -887,9 +917,9 @@ namespace AIHoloImager
     StructureFromMotion::StructureFromMotion(StructureFromMotion&& other) noexcept = default;
     StructureFromMotion& StructureFromMotion::operator=(StructureFromMotion&& other) noexcept = default;
 
-    StructureFromMotion::Result StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential)
+    StructureFromMotion::Result StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential, bool no_delight)
     {
-        return impl_->Process(image_dir, sequential);
+        return impl_->Process(image_dir, sequential, no_delight);
     }
 
     glm::mat4x4 CalcViewMatrix(const StructureFromMotion::View& view)

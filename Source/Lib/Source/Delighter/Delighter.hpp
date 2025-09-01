@@ -24,7 +24,7 @@ namespace AIHoloImager
 
         Delighter& operator=(Delighter&& other) noexcept;
 
-        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset);
+        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image);
 
     private:
         class Impl;

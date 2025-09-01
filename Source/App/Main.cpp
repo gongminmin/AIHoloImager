@@ -24,6 +24,7 @@ int main(int argc, char* argv[])
         ("I,input-path", "The directory that contains the input image sequence, or a single image file.", cxxopts::value<std::string>())
         ("O,output-path", "The path of the output mesh (\"<input-dir>/Output/Mesh.glb\" by default).", cxxopts::value<std::string>())
         ("D,device", "The computation device for inferencing (cuda or cpu; cuda by default).", cxxopts::value<std::string>())
+        ("no-delight", "Disable image delighting.");
         ("v,version", "Version.");
     // clang-format on
 
@@ -94,6 +95,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    const bool no_delight = (vm.count("no-delight") > 0);
+
     std::filesystem::create_directories(output_path.parent_path());
 
     const auto tmp_dir = output_path.parent_path() / "Tmp";
@@ -104,7 +107,7 @@ int main(int argc, char* argv[])
     try
     {
         AIHoloImager::AIHoloImager imager(device, tmp_dir);
-        const AIHoloImager::Mesh mesh = imager.Generate(input_path, 2048);
+        const AIHoloImager::Mesh mesh = imager.Generate(input_path, 2048, no_delight);
         AIHoloImager::SaveMesh(mesh, output_path);
 
 #ifndef AIHI_KEEP_INTERMEDIATES
