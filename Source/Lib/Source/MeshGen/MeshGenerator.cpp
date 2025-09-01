@@ -4,6 +4,7 @@
 #include "MeshGenerator.hpp"
 
 #include <array>
+#include <bit>
 #include <cassert>
 #include <future>
 #include <iostream>
@@ -158,6 +159,15 @@ namespace AIHoloImager
         return mesh;
     }
 #endif
+
+    uint32_t LogNextPowerOf2(uint32_t n)
+    {
+        if (n <= 1)
+        {
+            return 1;
+        }
+        return 32 - std::countl_zero(n - 1);
+    }
 
     class MeshGenerator::Impl
     {
@@ -1468,7 +1478,12 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             constexpr uint32_t BlockDim = 16;
-            constexpr uint32_t DilateTimes = std::is_same_v<GpuTextureT, GpuTexture2D> ? Dilate2DTimes : Dilate3DTimes;
+            uint32_t max_size = std::max(tex.Width(0), tex.Height(0));
+            if constexpr (std::is_same_v<GpuTextureT, GpuTexture3D>)
+            {
+                max_size = std::max(max_size, tex.Depth(0));
+            }
+            const uint32_t dilate_times = LogNextPowerOf2(max_size);
             const GpuComputePipeline& dilate_pipeline = std::is_same_v<GpuTextureT, GpuTexture2D> ? dilate_pipeline_ : dilate_3d_pipeline_;
 
             GpuConstantBufferOfType<DilateConstantBuffer> dilate_cb(gpu_system, L"dilate_cb");
@@ -1483,7 +1498,7 @@ namespace AIHoloImager
             GpuTextureT* texs[] = {&tex, &tmp_tex};
             GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
             GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
-            for (uint32_t i = 0; i < DilateTimes; ++i)
+            for (uint32_t i = 0; i < dilate_times; ++i)
             {
                 const uint32_t src = i & 1;
                 const uint32_t dst = src ? 0 : 1;
@@ -1496,7 +1511,7 @@ namespace AIHoloImager
                     texs[dst]->Depth(0), shader_binding);
             }
 
-            if constexpr (DilateTimes & 1)
+            if (dilate_times & 1)
             {
                 return &tmp_tex;
             }
@@ -1583,8 +1598,6 @@ namespace AIHoloImager
         GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb_;
         GpuComputePipeline apply_vertex_color_pipeline_;
 
-        static constexpr uint32_t Dilate2DTimes = 4;
-        static constexpr uint32_t Dilate3DTimes = 8;
         static constexpr float GridScale = 2.0f;
         static constexpr uint32_t ResizedImageSize = 518;
 
