@@ -41,7 +41,8 @@ namespace AIHoloImager
     class TensorConverter::Impl
     {
     public:
-        Impl(GpuSystem& gpu_system, std::string_view torch_device) : Impl(gpu_system, torch::Device(std::string(std::move(torch_device))))
+        Impl(GpuSystem& gpu_system, std::string_view torch_device)
+            : Impl(gpu_system, torch::Device(TorchDeviceType(std::move(torch_device))))
         {
         }
 
@@ -82,6 +83,20 @@ namespace AIHoloImager
             {
                 cuda_rt_.DestroyExternalSemaphore(ext_semaphore_);
                 cuda_rt_.StreamDestroy(copy_stream_);
+            }
+        }
+
+        static torch::DeviceType TorchDeviceType(std::string_view torch_device)
+        {
+            // Must match AIHoloImager::Impl::GetDeviceName
+
+            if (torch_device == "cuda")
+            {
+                return torch::DeviceType::CUDA;
+            }
+            else
+            {
+                return torch::DeviceType::CPU;
             }
         }
 
