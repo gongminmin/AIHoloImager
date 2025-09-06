@@ -8,6 +8,7 @@
 #include <directx/d3d12.h>
 
 #include "Base/ErrorHandling.hpp"
+#include "Base/Util.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -34,8 +35,15 @@ namespace AIHoloImager
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, D3D12_RESOURCE_DIMENSION dim, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
-        : GpuResource(gpu_system), curr_states_(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON), format_(format)
+        : GpuResource(gpu_system), format_(format)
     {
+        if (mip_levels == 0)
+        {
+            mip_levels = LogNextPowerOf2(std::max({width, height, depth}));
+        }
+
+        curr_states_.resize(array_size * mip_levels * NumPlanes(format), D3D12_RESOURCE_STATE_COMMON);
+
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
 
         const D3D12_HEAP_PROPERTIES default_heap_prop = {

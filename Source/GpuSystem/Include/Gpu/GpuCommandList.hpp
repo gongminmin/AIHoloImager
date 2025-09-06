@@ -125,6 +125,8 @@ namespace AIHoloImager
         void Close();
         void Reset(GpuCommandAllocatorInfo& cmd_alloc_info);
 
+        void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
+
         GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept
         {
             return cmd_alloc_info_;

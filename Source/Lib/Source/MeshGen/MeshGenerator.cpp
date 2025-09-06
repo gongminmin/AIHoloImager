@@ -31,6 +31,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec3.hpp>
 
+#include "Base/Util.hpp"
 #include "DiffOptimizer.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -159,15 +160,6 @@ namespace AIHoloImager
         return mesh;
     }
 #endif
-
-    uint32_t LogNextPowerOf2(uint32_t n)
-    {
-        if (n <= 1)
-        {
-            return 1;
-        }
-        return 32 - std::countl_zero(n - 1);
-    }
 
     class MeshGenerator::Impl
     {

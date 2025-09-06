@@ -9,6 +9,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuDescriptorHeap.hpp
     Include/Gpu/GpuFormat.hpp
     Include/Gpu/GpuMemoryAllocator.hpp
+    Include/Gpu/GpuMipmapper.hpp
     Include/Gpu/GpuResource.hpp
     Include/Gpu/GpuResourceViews.hpp
     Include/Gpu/GpuSampler.hpp
@@ -17,6 +18,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuUtil.hpp
     Include/Gpu/GpuVertexAttrib.hpp
+    Source/Shader/GenMipmapCs.hlsl
     Source/GpuBuffer.cpp
     Source/GpuCommandList.cpp
     Source/GpuConstantBuffer.cpp
@@ -24,6 +26,7 @@ set(aihi_gpu_system_files
     Source/GpuDescriptorHeap.cpp
     Source/GpuFormat.cpp
     Source/GpuMemoryAllocator.cpp
+    Source/GpuMipmapper.cpp
     Source/GpuResource.cpp
     Source/GpuResourceViews.cpp
     Source/GpuSampler.cpp
@@ -35,6 +38,8 @@ set(aihi_gpu_system_files
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})
 
+AddShaderFile(Source/Shader/GenMipmapCs.hlsl "cs" "main")
+
 add_library(AIHoloImagerGpuSystem STATIC
     ${aihi_gpu_system_files}
 )
@@ -45,6 +50,7 @@ target_include_directories(AIHoloImagerGpuSystem
 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
 target_precompile_headers(AIHoloImagerGpuSystem

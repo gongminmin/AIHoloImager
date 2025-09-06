@@ -151,6 +151,8 @@ namespace AIHoloImager
             TIFHR(device_->CreateCommandSignature(
                 &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), dispatch_indirect_signature_.PutVoid()));
         }
+
+        mipmapper_ = GpuMipmapper(*this);
     }
 
     GpuSystem::~GpuSystem()
@@ -576,5 +578,10 @@ namespace AIHoloImager
     ID3D12CommandSignature* GpuSystem::NativeDispatchIndirectSignature() const noexcept
     {
         return dispatch_indirect_signature_.Get();
+    }
+
+    GpuMipmapper& GpuSystem::Mipmapper() noexcept
+    {
+        return mipmapper_;
     }
 } // namespace AIHoloImager

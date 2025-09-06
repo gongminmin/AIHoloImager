@@ -10,6 +10,7 @@ set(aihi_base_files
     Include/Base/Noncopyable.hpp
     Include/Base/SmartPtrHelper.hpp
     Include/Base/Timer.hpp
+    Include/Base/Util.hpp
     Include/Base/Uuid.hpp
     Source/Dll.cpp
     Source/Errorhandling.cpp

@@ -14,6 +14,7 @@
 #include "Base/SmartPtrHelper.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuMemoryAllocator.hpp"
+#include "Gpu/GpuMipmapper.hpp"
 
 namespace AIHoloImager
 {
@@ -98,6 +99,8 @@ namespace AIHoloImager
 
         ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
 
+        GpuMipmapper& Mipmapper() noexcept;
+
     private:
         struct CmdQueue
         {
@@ -135,6 +138,8 @@ namespace AIHoloImager
         std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
 
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
+
+        GpuMipmapper mipmapper_;
     };
 
     constexpr uint32_t DivUp(uint32_t a, uint32_t b) noexcept

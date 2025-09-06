@@ -1006,4 +1006,10 @@ namespace AIHoloImager
 
         return srv_uav_desc_block;
     }
+
+    void GpuCommandList::GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter)
+    {
+        auto& mipmapper = gpu_system_->Mipmapper();
+        mipmapper.Generate(*this, texture, filter);
+    }
 } // namespace AIHoloImager
