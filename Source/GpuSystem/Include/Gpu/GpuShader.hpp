@@ -24,6 +24,7 @@ namespace AIHoloImager
         uint32_t num_cbs = 0;
         uint32_t num_srvs = 0;
         uint32_t num_uavs = 0;
+        uint32_t num_samplers = 0;
     };
 
     class GpuRenderPipeline
@@ -68,7 +69,7 @@ namespace AIHoloImager
     public:
         GpuRenderPipeline() noexcept;
         GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
-            const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states);
+            const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers, const States& states);
         ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
@@ -90,7 +91,7 @@ namespace AIHoloImager
 
     public:
         GpuComputePipeline() noexcept;
-        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> samplers);
+        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers);
         ~GpuComputePipeline();
 
         GpuComputePipeline(GpuComputePipeline&& other) noexcept;

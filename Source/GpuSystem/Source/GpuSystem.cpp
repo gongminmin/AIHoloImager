@@ -38,7 +38,9 @@ namespace AIHoloImager
           dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           shader_visible_cbv_srv_uav_desc_allocator_(
-              *this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+              *this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
+          sampler_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          shader_visible_sampler_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
         bool debug_dxgi = false;
         ComPtr<IDXGIFactory4> dxgi_factory;
@@ -155,6 +157,8 @@ namespace AIHoloImager
     {
         this->CpuWait();
 
+        shader_visible_sampler_desc_allocator_.Clear();
+        sampler_desc_allocator_.Clear();
         shader_visible_cbv_srv_uav_desc_allocator_.Clear();
         cbv_srv_uav_desc_allocator_.Clear();
         dsv_desc_allocator_.Clear();
@@ -243,6 +247,11 @@ namespace AIHoloImager
         return cbv_srv_uav_desc_allocator_.DescriptorSize();
     }
 
+    uint32_t GpuSystem::SamplerDescSize() const noexcept
+    {
+        return sampler_desc_allocator_.DescriptorSize();
+    }
+
     GpuDescriptorBlock GpuSystem::AllocRtvDescBlock(uint32_t size)
     {
         return rtv_desc_allocator_.Allocate(size);
@@ -301,6 +310,36 @@ namespace AIHoloImager
     void GpuSystem::ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
     {
         return shader_visible_cbv_srv_uav_desc_allocator_.Reallocate(desc_block, fence_val_, size);
+    }
+
+    GpuDescriptorBlock GpuSystem::AllocSamplerDescBlock(uint32_t size)
+    {
+        return sampler_desc_allocator_.Allocate(size);
+    }
+
+    void GpuSystem::DeallocSamplerDescBlock(GpuDescriptorBlock&& desc_block)
+    {
+        return sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    void GpuSystem::ReallocSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
+    {
+        return sampler_desc_allocator_.Reallocate(desc_block, fence_val_, size);
+    }
+
+    GpuDescriptorBlock GpuSystem::AllocShaderVisibleSamplerDescBlock(uint32_t size)
+    {
+        return shader_visible_sampler_desc_allocator_.Allocate(size);
+    }
+
+    void GpuSystem::DeallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock&& desc_block)
+    {
+        return shader_visible_sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    void GpuSystem::ReallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
+    {
+        return shader_visible_sampler_desc_allocator_.Reallocate(desc_block, fence_val_, size);
     }
 
     GpuMemoryBlock GpuSystem::AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -394,6 +433,8 @@ namespace AIHoloImager
         dsv_desc_allocator_.Clear();
         cbv_srv_uav_desc_allocator_.Clear();
         shader_visible_cbv_srv_uav_desc_allocator_.Clear();
+        sampler_desc_allocator_.Clear();
+        shader_visible_sampler_desc_allocator_.Clear();
 
         for (auto& cmd_queue : cmd_queues_)
         {
@@ -433,6 +474,8 @@ namespace AIHoloImager
         dsv_desc_allocator_.ClearStallPages(completed_fence);
         cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
         shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
+        sampler_desc_allocator_.ClearStallPages(completed_fence);
+        shader_visible_sampler_desc_allocator_.ClearStallPages(completed_fence);
     }
 
     GpuSystem::CmdQueue& GpuSystem::GetOrCreateCommandQueue(CmdQueueType type)

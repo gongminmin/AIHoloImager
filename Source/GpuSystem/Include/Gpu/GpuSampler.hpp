@@ -8,14 +8,14 @@
 #include <directx/d3d12.h>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuDescriptorAllocator.hpp"
 
 namespace AIHoloImager
 {
-    class GpuStaticSampler
-    {
-        DISALLOW_COPY_AND_ASSIGN(GpuStaticSampler)
+    class GpuSystem;
 
-    public:
+    struct GpuSampler
+    {
         enum class Filter
         {
             Point,
@@ -51,10 +51,15 @@ namespace AIHoloImager
             AddressModes(AddressMode uvw);
             AddressModes(AddressMode amu, AddressMode amv, AddressMode amw);
         };
+    };
+
+    class GpuStaticSampler : public GpuSampler
+    {
+        DISALLOW_COPY_AND_ASSIGN(GpuStaticSampler)
 
     public:
         GpuStaticSampler() noexcept;
-        GpuStaticSampler(const Filters& filters, const AddressModes& addr_modes);
+        GpuStaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
         ~GpuStaticSampler();
 
         GpuStaticSampler(GpuStaticSampler&& other) noexcept;
@@ -64,5 +69,26 @@ namespace AIHoloImager
 
     private:
         D3D12_STATIC_SAMPLER_DESC sampler_;
+    };
+
+    class GpuDynamicSampler : public GpuSampler
+    {
+        DISALLOW_COPY_AND_ASSIGN(GpuDynamicSampler)
+
+    public:
+        explicit GpuDynamicSampler(GpuSystem& gpu_system) noexcept;
+        GpuDynamicSampler(GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
+        ~GpuDynamicSampler();
+
+        GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
+        GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
+
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+
+    private:
+        GpuSystem* gpu_system_ = nullptr;
+
+        GpuDescriptorBlock desc_block_;
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 } // namespace AIHoloImager

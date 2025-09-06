@@ -9,6 +9,7 @@
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuResourceViews.hpp"
+#include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
@@ -67,6 +68,7 @@ namespace AIHoloImager
             std::span<const GpuConstantBuffer*> cbs;
             std::span<const GpuShaderResourceView*> srvs;
             std::span<GpuUnorderedAccessView*> uavs;
+            std::span<const GpuDynamicSampler*> samplers;
         };
 
     public:

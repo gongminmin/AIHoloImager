@@ -59,6 +59,7 @@ namespace AIHoloImager
         uint32_t RtvDescSize() const noexcept;
         uint32_t DsvDescSize() const noexcept;
         uint32_t CbvSrvUavDescSize() const noexcept;
+        uint32_t SamplerDescSize() const noexcept;
 
         GpuDescriptorBlock AllocRtvDescBlock(uint32_t size);
         void DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block);
@@ -72,6 +73,12 @@ namespace AIHoloImager
         GpuDescriptorBlock AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size);
         void DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block);
         void ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
+        GpuDescriptorBlock AllocSamplerDescBlock(uint32_t size);
+        void DeallocSamplerDescBlock(GpuDescriptorBlock&& desc_block);
+        void ReallocSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
+        GpuDescriptorBlock AllocShaderVisibleSamplerDescBlock(uint32_t size);
+        void DeallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock&& desc_block);
+        void ReallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
 
         GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment);
         void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block);
@@ -122,6 +129,8 @@ namespace AIHoloImager
         GpuDescriptorAllocator dsv_desc_allocator_;
         GpuDescriptorAllocator cbv_srv_uav_desc_allocator_;
         GpuDescriptorAllocator shader_visible_cbv_srv_uav_desc_allocator_;
+        GpuDescriptorAllocator sampler_desc_allocator_;
+        GpuDescriptorAllocator shader_visible_sampler_desc_allocator_;
 
         std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
 

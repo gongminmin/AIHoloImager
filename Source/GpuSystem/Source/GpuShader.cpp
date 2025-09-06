@@ -37,13 +37,13 @@ namespace AIHoloImager
 {
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
-        const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> samplers, const States& states)
+        const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers, const States& states)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
         uint32_t num_desc_ranges = 0;
         for (const auto& shader : shaders)
         {
-            num_desc_ranges += (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
+            num_desc_ranges += (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0) + (shader.num_samplers ? 1 : 0);
         }
 
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
@@ -58,6 +58,12 @@ namespace AIHoloImager
             if (shader.num_uavs != 0)
             {
                 ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                ++range_index;
+            }
+            if (shader.num_samplers != 0)
+            {
+                ranges[range_index] = {
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, shader.num_samplers, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
                 ++range_index;
             }
         }
@@ -110,6 +116,12 @@ namespace AIHoloImager
                     ++root_index;
                     ++range_index;
                 }
+                if (shader.num_samplers != 0)
+                {
+                    root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
+                    ++root_index;
+                    ++range_index;
+                }
                 for (uint32_t i = 0; i < shader.num_cbs; ++i)
                 {
                     root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
@@ -125,14 +137,14 @@ namespace AIHoloImager
             flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         }
 
-        auto d3d12_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(samplers.size());
-        for (uint32_t i = 0; i < samplers.size(); ++i)
+        auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
+        for (uint32_t i = 0; i < static_samplers.size(); ++i)
         {
-            d3d12_samplers[i] = samplers[i].NativeStaticSampler(i);
+            d3d12_static_samplers[i] = static_samplers[i].NativeStaticSampler(i);
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-            num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()), d3d12_samplers.get(), flags};
+            num_root_params, root_params.get(), static_cast<uint32_t>(static_samplers.size()), d3d12_static_samplers.get(), flags};
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;
@@ -261,10 +273,11 @@ namespace AIHoloImager
 
 
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
-    GpuComputePipeline::GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> samplers)
+    GpuComputePipeline::GpuComputePipeline(
+        GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
         : root_sig_(gpu_system, nullptr), pso_(gpu_system, nullptr)
     {
-        const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0);
+        const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0) + (shader.num_samplers ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
         if (shader.num_srvs != 0)
@@ -275,6 +288,11 @@ namespace AIHoloImager
         if (shader.num_uavs != 0)
         {
             ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ++range_index;
+        }
+        if (shader.num_samplers != 0)
+        {
+            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, shader.num_samplers, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
             ++range_index;
         }
 
@@ -297,6 +315,12 @@ namespace AIHoloImager
                 ++root_index;
                 ++range_index;
             }
+            if (shader.num_samplers != 0)
+            {
+                root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
+                ++root_index;
+                ++range_index;
+            }
             for (uint32_t i = 0; i < shader.num_cbs; ++i)
             {
                 root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
@@ -304,14 +328,14 @@ namespace AIHoloImager
             }
         }
 
-        auto d3d12_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(samplers.size());
-        for (uint32_t i = 0; i < samplers.size(); ++i)
+        auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
+        for (uint32_t i = 0; i < static_samplers.size(); ++i)
         {
-            d3d12_samplers[i] = samplers[i].NativeStaticSampler(i);
+            d3d12_static_samplers[i] = static_samplers[i].NativeStaticSampler(i);
         }
 
-        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(), static_cast<uint32_t>(samplers.size()),
-            d3d12_samplers.get(), D3D12_ROOT_SIGNATURE_FLAG_NONE};
+        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(),
+            static_cast<uint32_t>(static_samplers.size()), d3d12_static_samplers.get(), D3D12_ROOT_SIGNATURE_FLAG_NONE};
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;
