@@ -23,10 +23,13 @@ PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
 {
     pybind11::class_<GpuDiffRenderTorch>(mod, "GpuDiffRenderTorch")
         .def(pybind11::init<size_t, torch::Device>())
-        .def("Rasterize", &GpuDiffRenderTorch::Rasterize)
-        .def("Interpolate", &GpuDiffRenderTorch::Interpolate)
-        .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices)
-        .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias);
+        .def("Rasterize", &GpuDiffRenderTorch::Rasterize, py::arg("positions"), py::arg("indices"), py::arg("resolution"),
+            py::arg("viewport") = py::none())
+        .def("Interpolate", &GpuDiffRenderTorch::Interpolate, py::arg("vtx_attribs"), py::arg("barycentric"), py::arg("prim_id"),
+            py::arg("indices"))
+        .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices, py::arg("indices"))
+        .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias, py::arg("shading"), py::arg("prim_id"), py::arg("positions"), py::arg("indices"),
+            py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none());
 
     pybind11::class_<GpuDiffRenderTorch::Viewport>(mod, "Viewport")
         .def(pybind11::init<>())
