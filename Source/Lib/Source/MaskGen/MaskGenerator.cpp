@@ -162,7 +162,7 @@ namespace AIHoloImager
 
                     constexpr uint32_t BlockDim = 16;
 
-                    GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
+                    const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
 
                     const GpuConstantBuffer* cbs[] = {&calc_bbox_cb};
                     const GpuShaderResourceView* srvs[] = {&input_srv};
@@ -203,7 +203,7 @@ namespace AIHoloImager
             cmd_list.Upload(pred_min_max_gpu_tex_, 0, InitMinMax, sizeof(InitMinMax));
 
             {
-                GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
+                const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
                 GpuUnorderedAccessView output_uav(gpu_system, downsampled_x_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, L"downsample_x_cb");
@@ -221,7 +221,7 @@ namespace AIHoloImager
                 cmd_list.Compute(downsample_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
             }
             {
-                GpuShaderResourceView input_srv(gpu_system, downsampled_x_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, downsampled_x_gpu_tex_);
                 GpuUnorderedAccessView output_uav(gpu_system, downsampled_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, L"downsample_y_cb");
@@ -243,7 +243,7 @@ namespace AIHoloImager
             }
 
             {
-                GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
                 GpuUnorderedAccessView max_uav(gpu_system, image_max_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_image_cb(gpu_system, L"stat_image_cb");
@@ -258,8 +258,8 @@ namespace AIHoloImager
                 cmd_list.Compute(stat_image_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
             {
-                GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
-                GpuShaderResourceView max_srv(gpu_system, image_max_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
+                const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_tex_);
                 GpuUnorderedAccessView normalized_uav(gpu_system, normalized_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> normalize_image_cb(gpu_system, L"normalize_image_cb");
@@ -306,7 +306,7 @@ namespace AIHoloImager
             }
 
             {
-                GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
                 GpuUnorderedAccessView min_max_uav(gpu_system, pred_min_max_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_pred_cb(gpu_system, L"stat_pred_cb");
@@ -322,8 +322,8 @@ namespace AIHoloImager
             }
 
             {
-                GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
-                GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
+                const GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_tex_);
                 GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_x_cb(gpu_system, L"upsample_x_cb");
@@ -344,7 +344,7 @@ namespace AIHoloImager
                 cmd_list.Compute(upsample_pipeline_, DivUp(roi_width, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
             {
-                GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
                 GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_y_cb(gpu_system, L"upsample_y_cb");
@@ -373,7 +373,7 @@ namespace AIHoloImager
                 };
 
                 {
-                    GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
+                    const GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
                     GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                     GpuConstantBufferOfType<ErosionDilateConstantBuffer> erosion_cb(gpu_system, L"erosion_cb");
@@ -399,7 +399,7 @@ namespace AIHoloImager
                         erosion_dilation_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
                 {
-                    GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
+                    const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
                     GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                     GpuConstantBufferOfType<ErosionDilateConstantBuffer> dilation_cb(gpu_system, L"dilation_cb");
@@ -433,7 +433,7 @@ namespace AIHoloImager
                 static_assert(std::size(Weights) == BlurKernelRadius * 2 + 1);
 
                 {
-                    GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
+                    const GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
                     GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                     GpuConstantBufferOfType<GaussianBlurConstantBuffer> gaussian_blur_x_cb(gpu_system, L"gaussian_blur_x_cb");
@@ -453,7 +453,7 @@ namespace AIHoloImager
                     cmd_list.Compute(gaussian_blur_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
                 {
-                    GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
+                    const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
                     GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                     GpuConstantBufferOfType<GaussianBlurConstantBuffer> gaussian_blur_y_cb(gpu_system, L"gaussian_blur_y_cb");
@@ -478,7 +478,7 @@ namespace AIHoloImager
                 const uint32_t width = image_gpu_tex.Width(0);
                 const uint32_t height = image_gpu_tex.Height(0);
 
-                GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
+                const GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
                 GpuUnorderedAccessView output_uav(gpu_system, image_gpu_tex);
 
                 GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, L"merge_mask_cb");

@@ -203,8 +203,8 @@ namespace AIHoloImager
                 cmd_list.Clear(accum_color_uav, black);
             }
 
-            GpuShaderResourceView flatten_pos_srv(gpu_system_, flatten_pos_tex, 0);
-            GpuShaderResourceView flatten_normal_srv(gpu_system_, flatten_normal_tex, 0);
+            const GpuShaderResourceView flatten_pos_srv(gpu_system_, flatten_pos_tex, 0);
+            const GpuShaderResourceView flatten_normal_srv(gpu_system_, flatten_normal_tex, 0);
 
             for (size_t i = 0; i < sfm_input.views.size(); ++i)
             {
@@ -215,10 +215,10 @@ namespace AIHoloImager
 
                 GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::DepthStencil, L"shadow_map_tex");
-                GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex);
+                const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
-                GpuShaderResourceView photo_srv(gpu_system_, view.delighted_tex);
+                const GpuShaderResourceView photo_srv(gpu_system_, view.delighted_tex);
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
@@ -308,7 +308,7 @@ namespace AIHoloImager
             GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"color_tex");
             GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
 
-            GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
+            const GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
 
             GpuConstantBufferOfType<ResolveTextureConstantBuffer> resolve_texture_cb(gpu_system_, L"resolve_texture_cb");
             resolve_texture_cb->texture_size = texture_size;

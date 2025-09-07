@@ -848,7 +848,7 @@ namespace AIHoloImager
             undistort_cb->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb.UploadStaging();
 
-            GpuShaderResourceView input_srv(gpu_system, input_tex);
+            const GpuShaderResourceView input_srv(gpu_system, input_tex);
             GpuUnorderedAccessView output_uav(gpu_system, output_tex);
 
             const GpuConstantBuffer* cbs[] = {&undistort_cb};

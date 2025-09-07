@@ -101,7 +101,7 @@ namespace AIHoloImager
                 {
                     constexpr uint32_t BlockDim = 16;
 
-                    GpuShaderResourceView image_srv(gpu_system, image);
+                    const GpuShaderResourceView image_srv(gpu_system, image);
 
                     GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
 

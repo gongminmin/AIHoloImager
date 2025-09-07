@@ -348,7 +348,7 @@ namespace AIHoloImager
 
             const uint32_t total_cubes = size * size * size;
 
-            GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation);
+            const GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation);
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -360,7 +360,7 @@ namespace AIHoloImager
 
             GpuBuffer cube_offsets_buff(
                 gpu_system_, total_cubes * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"cube_offsets_buff");
-            GpuShaderResourceView cube_offsets_srv(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
+            const GpuShaderResourceView cube_offsets_srv(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
             {
                 GpuConstantBufferOfType<CalcCubeIndicesConstantBuffer> calc_cube_indices_cb(gpu_system_, L"calc_cube_indices_cb");
                 calc_cube_indices_cb->size = size;
@@ -446,9 +446,9 @@ namespace AIHoloImager
                 gen_vertices_indices_cb->scale = scale;
                 gen_vertices_indices_cb.UploadStaging();
 
-                GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
-                GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
-                GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
+                const GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
+                const GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
+                const GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
                 GpuBuffer mesh_vertices_buff(gpu_system_, num_vertices * sizeof(glm::vec3), GpuHeap::Default,
                     GpuResourceFlag::UnorderedAccess, L"mesh_vertices_buff");

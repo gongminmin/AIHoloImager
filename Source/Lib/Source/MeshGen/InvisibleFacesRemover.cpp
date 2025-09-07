@@ -284,7 +284,7 @@ namespace AIHoloImager
             filter_faces_cb->threshold = NumViews / 100;
             filter_faces_cb.UploadStaging();
 
-            GpuShaderResourceView index_srv(gpu_system_, index_buff, GpuFormat::R32_Uint);
+            const GpuShaderResourceView index_srv(gpu_system_, index_buff, GpuFormat::R32_Uint);
             GpuUnorderedAccessView filtered_index_uav(gpu_system_, filtered_index_buff, GpuFormat::R32_Uint);
 
             const GpuConstantBuffer* cbs[] = {&filter_faces_cb};

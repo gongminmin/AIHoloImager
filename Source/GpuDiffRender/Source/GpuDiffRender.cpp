@@ -209,10 +209,10 @@ namespace AIHoloImager
         interpolate_fwd_cb->num_attribs = num_attribs_per_vtx;
         interpolate_fwd_cb.UploadStaging();
 
-        GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
-        GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-        GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
-        GpuShaderResourceView index_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+        const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
+        const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+        const GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
+        const GpuShaderResourceView index_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
         GpuUnorderedAccessView shading_uav(gpu_system_, shading, GpuFormat::R32_Float);
 
@@ -255,11 +255,11 @@ namespace AIHoloImager
         interpolate_bwd_cb->num_attribs = num_attribs_per_vtx;
         interpolate_bwd_cb.UploadStaging();
 
-        GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
-        GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-        GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
-        GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-        GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, GpuFormat::R32_Float);
+        const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
+        const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+        const GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
+        const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+        const GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, GpuFormat::R32_Float);
 
         GpuUnorderedAccessView grad_vtx_attribs_uav(gpu_system_, grad_vtx_attribs, GpuFormat::R32_Uint);
         GpuUnorderedAccessView grad_barycentric_uav(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
@@ -284,7 +284,7 @@ namespace AIHoloImager
     {
         const uint32_t num_indices = indices.Size() / sizeof(uint32_t);
 
-        GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+        const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
         const uint32_t expected_hash_buff_size = num_indices * 2 * sizeof(glm::uvec3);
         if (opposite_vertices_hash_.Size() != expected_hash_buff_size)
@@ -376,11 +376,11 @@ namespace AIHoloImager
             anti_alias_fwd_cb->num_attribs = num_attribs;
             anti_alias_fwd_cb.UploadStaging();
 
-            GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
-            GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-            GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-            GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-            GpuShaderResourceView opposite_vertices_srv(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
+            const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+            const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView opposite_vertices_srv(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
 
             GpuUnorderedAccessView anti_aliased_uav(gpu_system_, anti_aliased, GpuFormat::R32_Uint);
 
@@ -441,11 +441,11 @@ namespace AIHoloImager
             anti_alias_bwd_cb->num_attribs = num_attribs;
             anti_alias_bwd_cb.UploadStaging();
 
-            GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
-            GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-            GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-            GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-            GpuShaderResourceView grad_anti_aliased_srv(gpu_system_, grad_anti_aliased, GpuFormat::R32_Float);
+            const GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
+            const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+            const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView grad_anti_aliased_srv(gpu_system_, grad_anti_aliased, GpuFormat::R32_Float);
 
             GpuUnorderedAccessView grad_shading_uav(gpu_system_, grad_shading, GpuFormat::R32_Uint);
             GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, GpuFormat::R32_Uint);
