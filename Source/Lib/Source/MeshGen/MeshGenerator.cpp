@@ -227,9 +227,6 @@ namespace AIHoloImager
             const GpuStaticSampler trilinear_sampler(
                 {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
             {
-                merge_texture_cb_ = GpuConstantBufferOfType<MergeTextureConstantBuffer>(gpu_system, L"merge_texture_cb_");
-                merge_texture_cb_->inv_scale = 1 / GridScale;
-
                 const ShaderInfo shader = {MergeTextureCs_shader, 1, 2, 1};
                 merge_texture_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
@@ -242,9 +239,6 @@ namespace AIHoloImager
                 dilate_3d_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                apply_vertex_color_cb_ = GpuConstantBufferOfType<ApplyVertexColorConstantBuffer>(gpu_system, L"apply_vertex_color_cb_");
-                apply_vertex_color_cb_->inv_scale = 1 / GridScale;
-
                 const ShaderInfo shader = {ApplyVertexColorCs_shader, 1, 2, 1};
                 apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
@@ -703,7 +697,7 @@ namespace AIHoloImager
                     GpuShaderResourceView input_srv(gpu_system, rotated_roi_tex);
                     GpuUnorderedAccessView output_uav(gpu_system, resized_rotated_roi_x_tex);
 
-                    auto downsample_x_cb = GpuConstantBufferOfType<ResizeConstantBuffer>(gpu_system, L"downsample_x_cb");
+                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, L"downsample_x_cb");
                     downsample_x_cb->src_roi = glm::uvec4(0, 0, rotated_width, rotated_height);
                     downsample_x_cb->dest_size = glm::uvec2(ResizedImageSize, rotated_height);
                     downsample_x_cb->scale = static_cast<float>(rotated_width) / ResizedImageSize;
@@ -723,7 +717,7 @@ namespace AIHoloImager
                     GpuShaderResourceView input_srv(gpu_system, resized_rotated_roi_x_tex);
                     GpuUnorderedAccessView output_uav(gpu_system, resized_rotated_roi_tex);
 
-                    auto downsample_y_cb = GpuConstantBufferOfType<ResizeConstantBuffer>(gpu_system, L"downsample_y_cb");
+                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, L"downsample_y_cb");
                     downsample_y_cb->src_roi = glm::uvec4(0, 0, ResizedImageSize, rotated_height);
                     downsample_y_cb->dest_size = glm::uvec2(ResizedImageSize, ResizedImageSize);
                     downsample_y_cb->scale = static_cast<float>(rotated_height) / ResizedImageSize;
@@ -1110,8 +1104,11 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             const uint32_t num_vertices = mesh.NumVertices();
-            apply_vertex_color_cb_->num_vertices = num_vertices;
-            apply_vertex_color_cb_.UploadStaging();
+
+            GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb(gpu_system, L"apply_vertex_color_cb");
+            apply_vertex_color_cb->inv_scale = 1 / GridScale;
+            apply_vertex_color_cb->num_vertices = num_vertices;
+            apply_vertex_color_cb.UploadStaging();
 
             const auto& vertex_desc = mesh.MeshVertexDesc();
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
@@ -1138,7 +1135,7 @@ namespace AIHoloImager
                 }
             });
 
-            const GpuConstantBuffer* cbs[] = {&apply_vertex_color_cb_};
+            const GpuConstantBuffer* cbs[] = {&apply_vertex_color_cb};
             const GpuShaderResourceView* srvs[] = {&color_vol_srv, &pos_srv};
             GpuUnorderedAccessView* uavs[] = {&color_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -1438,16 +1435,19 @@ namespace AIHoloImager
             GpuUnorderedAccessView merged_uav(gpu_system, color_tex);
 
             const uint32_t texture_size = color_tex.Width(0);
-            merge_texture_cb_->inv_model = glm::transpose(glm::inverse(model_mtx));
-            merge_texture_cb_->texture_size = texture_size;
-            merge_texture_cb_.UploadStaging();
+
+            GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, L"merge_texture_cb");
+            merge_texture_cb->inv_scale = 1 / GridScale;
+            merge_texture_cb->inv_model = glm::transpose(glm::inverse(model_mtx));
+            merge_texture_cb->texture_size = texture_size;
+            merge_texture_cb.UploadStaging();
 
             GpuShaderResourceView pos_srv(gpu_system, pos_tex);
             GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
 
             constexpr uint32_t BlockDim = 16;
 
-            const GpuConstantBuffer* cbs[] = {&merge_texture_cb_};
+            const GpuConstantBuffer* cbs[] = {&merge_texture_cb};
             const GpuShaderResourceView* srvs[] = {&color_vol_srv, &pos_srv};
             GpuUnorderedAccessView* uavs[] = {&merged_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -1570,7 +1570,6 @@ namespace AIHoloImager
             float inv_scale;
             uint32_t padding[2];
         };
-        GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb_;
         GpuComputePipeline merge_texture_pipeline_;
 
         struct DilateConstantBuffer
@@ -1587,7 +1586,6 @@ namespace AIHoloImager
             float inv_scale;
             uint32_t padding[2];
         };
-        GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb_;
         GpuComputePipeline apply_vertex_color_pipeline_;
 
         static constexpr float GridScale = 2.0f;

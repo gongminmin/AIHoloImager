@@ -108,8 +108,6 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            undistort_cb_ = GpuConstantBufferOfType<UndistortConstantBuffer>(gpu_system, L"undistort_cb_");
-
             const GpuStaticSampler bilinear_sampler(
                 {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
@@ -834,24 +832,26 @@ namespace AIHoloImager
 
             constexpr uint32_t BlockDim = 16;
 
+            GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb(gpu_system, L"undistort_cb");
+
             const auto& k = camera.K();
-            undistort_cb_->k.x = static_cast<float>(k(0, 0));
-            undistort_cb_->k.y = static_cast<float>(k(0, 2));
-            undistort_cb_->k.z = static_cast<float>(k(1, 2));
+            undistort_cb->k.x = static_cast<float>(k(0, 0));
+            undistort_cb->k.y = static_cast<float>(k(0, 2));
+            undistort_cb->k.z = static_cast<float>(k(1, 2));
             const auto& params = camera.getParams();
-            undistort_cb_->params.x = static_cast<float>(params[3]);
-            undistort_cb_->params.y = static_cast<float>(params[4]);
-            undistort_cb_->params.z = static_cast<float>(params[5]);
-            undistort_cb_->width_height.x = static_cast<float>(input_tex.Width(0));
-            undistort_cb_->width_height.y = static_cast<float>(input_tex.Height(0));
-            undistort_cb_->width_height.z = 1.0f / input_tex.Width(0);
-            undistort_cb_->width_height.w = 1.0f / input_tex.Height(0);
-            undistort_cb_.UploadStaging();
+            undistort_cb->params.x = static_cast<float>(params[3]);
+            undistort_cb->params.y = static_cast<float>(params[4]);
+            undistort_cb->params.z = static_cast<float>(params[5]);
+            undistort_cb->width_height.x = static_cast<float>(input_tex.Width(0));
+            undistort_cb->width_height.y = static_cast<float>(input_tex.Height(0));
+            undistort_cb->width_height.z = 1.0f / input_tex.Width(0);
+            undistort_cb->width_height.w = 1.0f / input_tex.Height(0);
+            undistort_cb.UploadStaging();
 
             GpuShaderResourceView input_srv(gpu_system, input_tex);
             GpuUnorderedAccessView output_uav(gpu_system, output_tex);
 
-            const GpuConstantBuffer* cbs[] = {&undistort_cb_};
+            const GpuConstantBuffer* cbs[] = {&undistort_cb};
             const GpuShaderResourceView* srvs[] = {&input_srv};
             GpuUnorderedAccessView* uavs[] = {&output_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
@@ -899,7 +899,6 @@ namespace AIHoloImager
             float padding_1;
             glm::vec4 width_height;
         };
-        GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb_;
         GpuComputePipeline undistort_pipeline_;
 
         MaskGenerator mask_gen_;

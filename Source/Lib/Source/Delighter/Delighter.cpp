@@ -105,7 +105,7 @@ namespace AIHoloImager
 
                     GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
 
-                    auto merge_mask_cb = GpuConstantBufferOfType<MergeMaskConstantBuffer>(gpu_system, L"merge_mask_cb");
+                    GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, L"merge_mask_cb");
                     merge_mask_cb->dest_size.x = width;
                     merge_mask_cb->dest_size.y = height;
                     merge_mask_cb.UploadStaging();

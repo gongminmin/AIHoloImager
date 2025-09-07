@@ -53,7 +53,6 @@ namespace AIHoloImager
             glm::uvec2 gbuffer_size;
             uint32_t padding[2];
         };
-        GpuConstantBufferOfType<RasterizeBwdConstantBuffer> rasterize_bwd_cb_;
         GpuComputePipeline rasterize_bwd_pipeline_;
 
         struct InterpolateFwdConstantBuffer
@@ -62,7 +61,6 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        GpuConstantBufferOfType<InterpolateFwdConstantBuffer> interpolate_fwd_cb_;
         GpuComputePipeline interpolate_fwd_pipeline_;
 
         struct InterpolateBwdConstantBuffer
@@ -71,7 +69,6 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        GpuConstantBufferOfType<InterpolateBwdConstantBuffer> interpolate_bwd_cb_;
         GpuComputePipeline interpolate_bwd_pipeline_;
 
         GpuComputePipeline anti_alias_indirect_pipeline_;
@@ -92,7 +89,6 @@ namespace AIHoloImager
             uint32_t hash_size;
             uint32_t padding[2];
         };
-        GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesHashConstantBuffer> anti_alias_construct_oppo_vert_hash_cb_;
         GpuComputePipeline anti_alias_construct_oppo_vert_hash_pipeline_;
 
         struct AntiAliasConstructOppositeVerticesConstantBuffer
@@ -101,7 +97,6 @@ namespace AIHoloImager
             uint32_t hash_size;
             uint32_t padding[2];
         };
-        GpuConstantBufferOfType<AntiAliasConstructOppositeVerticesConstantBuffer> anti_alias_construct_oppo_vert_cb_;
         GpuComputePipeline anti_alias_construct_oppo_vert_pipeline_;
 
         struct AntiAliasFwdConstantBuffer
@@ -111,7 +106,6 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        GpuConstantBufferOfType<AntiAliasFwdConstantBuffer> anti_alias_fwd_cb_;
         GpuComputePipeline anti_alias_fwd_pipeline_;
 
         struct AntiAliasIndirectArgsConstantBuffer
@@ -130,7 +124,6 @@ namespace AIHoloImager
             uint32_t num_attribs;
             uint32_t padding[1];
         };
-        GpuConstantBufferOfType<AntiAliasBwdConstantBuffer> anti_alias_bwd_cb_;
         GpuComputePipeline anti_alias_bwd_pipeline_;
     };
 } // namespace AIHoloImager
