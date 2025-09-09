@@ -23,7 +23,7 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input);
+        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input);
 
     private:
         class Impl;

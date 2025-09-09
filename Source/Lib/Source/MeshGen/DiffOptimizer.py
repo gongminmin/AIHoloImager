@@ -65,10 +65,10 @@ class DiffOptimizer:
         del self.gpu_dr
         PurgeTorchCache()
 
-    def Optimize(self,
-                 vtx_positions, vtx_colors, num_vertices, indices, num_indices,
-                 view_images, view_proj_mtxs, transform_offsets, num_views,
-                 scale, rotation, translation):
+    def OptimizeTransform(self,
+                          vtx_positions, vtx_colors, num_vertices, indices, num_indices,
+                          view_images, view_proj_mtxs, transform_offsets, num_views,
+                          scale, rotation, translation):
         PurgeTorchCache()
 
         vtx_positions = TensorFromBytes(vtx_positions, torch.float32, num_vertices * 3, self.device)

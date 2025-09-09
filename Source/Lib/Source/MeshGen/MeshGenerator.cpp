@@ -164,7 +164,8 @@ namespace AIHoloImager
     class MeshGenerator::Impl
     {
     public:
-        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi)
+        explicit Impl(AIHoloImagerInternal& aihi)
+            : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi), optimizer_(aihi)
         {
             PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Mesh generator init");
 
@@ -396,10 +397,7 @@ namespace AIHoloImager
                 }
 #endif
 
-                {
-                    DiffOptimizer optimizer(aihi_);
-                    optimizer.Optimize(pos_color_mesh, model_mtx, sfm_input);
-                }
+                optimizer_.OptimizeTransform(pos_color_mesh, model_mtx, sfm_input);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
@@ -1530,6 +1528,8 @@ namespace AIHoloImager
         InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
+
+        DiffOptimizer optimizer_;
 
         struct RotateConstantBuffer
         {

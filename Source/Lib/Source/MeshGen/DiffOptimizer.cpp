@@ -39,7 +39,7 @@ namespace AIHoloImager
                     python_system.SetTupleItem(*args, 0, python_system.MakeObject(reinterpret_cast<void*>(&gpu_system)));
                 }
                 diff_optimizer_ = python_system.CallObject(*diff_optimizer_class_, *args);
-                diff_optimizer_opt_method_ = python_system.GetAttr(*diff_optimizer_, "Optimize");
+                diff_optimizer_opt_transform_method_ = python_system.GetAttr(*diff_optimizer_, "OptimizeTransform");
             });
         }
 
@@ -56,13 +56,13 @@ namespace AIHoloImager
             python_system.CallObject(*diff_optimizer_destroy_method);
 
             diff_optimizer_destroy_method.reset();
-            diff_optimizer_opt_method_.reset();
+            diff_optimizer_opt_transform_method_.reset();
             diff_optimizer_.reset();
             diff_optimizer_class_.reset();
             diff_optimizer_module_.reset();
         }
 
-        void Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
+        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
         {
             glm::vec3 scale;
             glm::quat rotation;
@@ -173,7 +173,7 @@ namespace AIHoloImager
                 }
                 gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
 
-                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_method_, *args);
+                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_, *args);
 
                 const auto scale_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 0));
                 const auto rotate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 1));
@@ -191,7 +191,7 @@ namespace AIHoloImager
         PyObjectPtr diff_optimizer_module_;
         PyObjectPtr diff_optimizer_class_;
         PyObjectPtr diff_optimizer_;
-        PyObjectPtr diff_optimizer_opt_method_;
+        PyObjectPtr diff_optimizer_opt_transform_method_;
         std::future<void> py_init_future_;
     };
 
@@ -204,8 +204,8 @@ namespace AIHoloImager
     DiffOptimizer::DiffOptimizer(DiffOptimizer&& other) noexcept = default;
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
-    void DiffOptimizer::Optimize(Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
+    void DiffOptimizer::OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
     {
-        impl_->Optimize(mesh, model_mtx, sfm_input);
+        impl_->OptimizeTransform(mesh, model_mtx, sfm_input);
     }
 } // namespace AIHoloImager
