@@ -24,12 +24,17 @@ namespace AIHoloImager
 
         void Generate(GpuCommandList& cmd_list, GpuTexture2D& texture, GpuSampler::Filter filter)
         {
+            const uint32_t num_levels = texture.MipLevels();
+            if (num_levels == 1)
+            {
+                return;
+            }
+
             constexpr uint32_t BlockDim = 16;
 
             const GpuDynamicSampler sampler(
                 gpu_system_, GpuSampler::Filters(filter, filter), GpuSampler::AddressModes(GpuDynamicSampler::AddressMode::Clamp));
 
-            const uint32_t num_levels = texture.MipLevels();
             for (uint32_t i = 1; i < num_levels; ++i)
             {
                 const uint32_t this_width = texture.Width(i);
