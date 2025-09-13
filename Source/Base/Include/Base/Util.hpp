@@ -11,5 +11,5 @@ constexpr uint32_t LogNextPowerOf2(uint32_t n)
     {
         return 1;
     }
-    return sizeof(uint32_t) * 8 - std::countl_zero(n - 1);
+    return sizeof(uint32_t) * 8 - std::countl_zero(n - 1) + 1;
 }

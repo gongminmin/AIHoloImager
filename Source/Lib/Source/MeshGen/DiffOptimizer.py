@@ -51,7 +51,7 @@ def NormalizeQuat(q):
 
 def LogNextPowerOf2(x):
     assert(x > 0)
-    return (x - 1).bit_length()
+    return (x - 1).bit_length() + 1
 
 class DiffOptimizer:
     def __init__(self, gpu_system):
@@ -339,9 +339,9 @@ class DiffOptimizer:
         mask_tex = (mask_tex != 0)
         mask_tex = mask_tex.contiguous()
 
-        max_mip_level = LogNextPowerOf2(max(texture_width, texture_height))
+        mip_levels = LogNextPowerOf2(max(texture_width, texture_height))
 
-        texture = self.FitTexture(texture, mask_tex, max_mip_level, vtx_positions, vtx_uv, indices, crop_images, mvp_mtxs, viewports, cropped_roi, cropped_resolution)
+        texture = self.FitTexture(texture, mask_tex, mip_levels, vtx_positions, vtx_uv, indices, crop_images, mvp_mtxs, viewports, cropped_roi, cropped_resolution)
         texture = (texture * 255.0).clamp(0, 255).to(torch.uint8)
         return TensorToBytes(texture)
 
@@ -374,7 +374,7 @@ class DiffOptimizer:
         return image
 
     def FitTexture(self,
-                   texture, mask_tex, max_mip_level,
+                   texture, mask_tex, mip_levels,
                    vtx_positions, vtx_uv, indices,
                    crop_images, mvp_mtxs, viewports, rois,
                    resolutions, num_iter = 500):
@@ -416,7 +416,7 @@ class DiffOptimizer:
             scheduler.step(loss)
 
             with torch.no_grad():
-                texture_opt[:] = self.Dilate(texture_opt, mask_tex, max_mip_level)
+                texture_opt[:] = self.Dilate(texture_opt, mask_tex, mip_levels)
 
             loss_sum += loss_val
             n += 1
