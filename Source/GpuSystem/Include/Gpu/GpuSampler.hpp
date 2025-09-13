@@ -14,8 +14,9 @@ namespace AIHoloImager
 {
     class GpuSystem;
 
-    struct GpuSampler
+    class GpuSampler
     {
+    public:
         enum class Filter
         {
             Point,
@@ -28,9 +29,10 @@ namespace AIHoloImager
             Filter mag;
             Filter mip;
 
-            Filters(Filter filter);
-            Filters(Filter min_filter, Filter mag_filter);
-            Filters(Filter min_filter, Filter mag_filter, Filter mip_filter);
+            Filters() noexcept;
+            Filters(Filter filter) noexcept;
+            Filters(Filter min_filter, Filter mag_filter) noexcept;
+            Filters(Filter min_filter, Filter mag_filter, Filter mip_filter) noexcept;
         };
 
         enum class AddressMode
@@ -48,19 +50,37 @@ namespace AIHoloImager
             AddressMode v;
             AddressMode w;
 
-            AddressModes(AddressMode uvw);
-            AddressModes(AddressMode amu, AddressMode amv, AddressMode amw);
+            AddressModes() noexcept;
+            AddressModes(AddressMode uvw) noexcept;
+            AddressModes(AddressMode amu, AddressMode amv, AddressMode amw) noexcept;
         };
+
+        const GpuSampler::Filters& SamplerFilters() const noexcept
+        {
+            return filters_;
+        }
+        const GpuSampler::AddressModes& SamplerAddressModes() const noexcept
+        {
+            return addr_modes_;
+        }
+
+    protected:
+        GpuSampler() noexcept;
+        GpuSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) noexcept;
+        ~GpuSampler() noexcept;
+
+        GpuSampler::Filters filters_;
+        GpuSampler::AddressModes addr_modes_;
     };
 
-    class GpuStaticSampler : public GpuSampler
+    class GpuStaticSampler final : public GpuSampler
     {
         DISALLOW_COPY_AND_ASSIGN(GpuStaticSampler)
 
     public:
         GpuStaticSampler() noexcept;
         GpuStaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
-        ~GpuStaticSampler();
+        ~GpuStaticSampler() noexcept;
 
         GpuStaticSampler(GpuStaticSampler&& other) noexcept;
         GpuStaticSampler& operator=(GpuStaticSampler&& other) noexcept;
@@ -68,18 +88,18 @@ namespace AIHoloImager
         D3D12_STATIC_SAMPLER_DESC NativeStaticSampler(uint32_t register_index) const noexcept;
 
     private:
-        D3D12_STATIC_SAMPLER_DESC sampler_;
+        D3D12_STATIC_SAMPLER_DESC sampler_{};
     };
 
-    class GpuDynamicSampler : public GpuSampler
+    class GpuDynamicSampler final : public GpuSampler
     {
         DISALLOW_COPY_AND_ASSIGN(GpuDynamicSampler)
 
     public:
         GpuDynamicSampler() noexcept;
-        explicit GpuDynamicSampler(GpuSystem& gpu_system) noexcept;
+        explicit GpuDynamicSampler(GpuSystem& gpu_system);
         GpuDynamicSampler(GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
-        ~GpuDynamicSampler();
+        ~GpuDynamicSampler() noexcept;
 
         GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
         GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
@@ -94,6 +114,6 @@ namespace AIHoloImager
         GpuDescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
 
-        D3D12_SAMPLER_DESC sampler_;
+        D3D12_SAMPLER_DESC sampler_{};
     };
 } // namespace AIHoloImager

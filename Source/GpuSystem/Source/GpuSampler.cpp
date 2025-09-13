@@ -116,40 +116,50 @@ namespace AIHoloImager
     }
 
 
-    GpuSampler::Filters::Filters(Filter filter) : Filters(filter, filter, filter)
+    GpuSampler::Filters::Filters() noexcept : Filters(Filter::Point)
     {
     }
-
-    GpuSampler::Filters::Filters(Filter min_filter, Filter mag_filter) : Filters(min_filter, mag_filter, Filter::Point)
+    GpuSampler::Filters::Filters(Filter filter) noexcept : Filters(filter, filter, filter)
     {
     }
-
-    GpuSampler::Filters::Filters(Filter min_filter, Filter mag_filter, Filter mip_filter)
+    GpuSampler::Filters::Filters(Filter min_filter, Filter mag_filter) noexcept : Filters(min_filter, mag_filter, Filter::Point)
+    {
+    }
+    GpuSampler::Filters::Filters(Filter min_filter, Filter mag_filter, Filter mip_filter) noexcept
         : min(min_filter), mag(mag_filter), mip(mip_filter)
     {
     }
 
 
-    GpuSampler::AddressModes::AddressModes(AddressMode uvw) : AddressModes(uvw, uvw, uvw)
+    GpuSampler::AddressModes::AddressModes() noexcept : AddressModes(AddressMode::Wrap)
+    {
+    }
+    GpuSampler::AddressModes::AddressModes(AddressMode uvw) noexcept : AddressModes(uvw, uvw, uvw)
+    {
+    }
+    GpuSampler::AddressModes::AddressModes(AddressMode amu, AddressMode amv, AddressMode amw) noexcept : u(amu), v(amv), w(amw)
     {
     }
 
-    GpuSampler::AddressModes::AddressModes(AddressMode amu, AddressMode amv, AddressMode amw) : u(amu), v(amv), w(amw)
+
+    GpuSampler::GpuSampler() noexcept = default;
+    GpuSampler::GpuSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) noexcept
+        : filters_(filters), addr_modes_(addr_modes)
     {
     }
+    GpuSampler::~GpuSampler() noexcept = default;
 
 
     GpuStaticSampler::GpuStaticSampler() noexcept
         : GpuStaticSampler({Filter::Point, Filter::Point, Filter::Point}, {AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp})
     {
     }
-
-    GpuStaticSampler::GpuStaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) : sampler_{}
+    GpuStaticSampler::GpuStaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
     {
         FillSamplerDesc(sampler_, filters, addr_modes);
     }
 
-    GpuStaticSampler::~GpuStaticSampler() = default;
+    GpuStaticSampler::~GpuStaticSampler() noexcept = default;
 
     GpuStaticSampler::GpuStaticSampler(GpuStaticSampler&& other) noexcept = default;
     GpuStaticSampler& GpuStaticSampler::operator=(GpuStaticSampler&& other) noexcept = default;
@@ -163,7 +173,7 @@ namespace AIHoloImager
 
 
     GpuDynamicSampler::GpuDynamicSampler() noexcept = default;
-    GpuDynamicSampler::GpuDynamicSampler(GpuSystem& gpu_system) noexcept
+    GpuDynamicSampler::GpuDynamicSampler(GpuSystem& gpu_system)
         : GpuDynamicSampler(
               gpu_system, {Filter::Point, Filter::Point, Filter::Point}, {AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp})
     {
@@ -178,7 +188,7 @@ namespace AIHoloImager
         gpu_system_->NativeDevice()->CreateSampler(&sampler_, cpu_handle_);
     }
 
-    GpuDynamicSampler::~GpuDynamicSampler() = default;
+    GpuDynamicSampler::~GpuDynamicSampler() noexcept = default;
 
     GpuDynamicSampler::GpuDynamicSampler(GpuDynamicSampler&& other) noexcept = default;
     GpuDynamicSampler& GpuDynamicSampler::operator=(GpuDynamicSampler&& other) noexcept = default;
