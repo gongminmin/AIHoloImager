@@ -1,7 +1,7 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-set(aihi_gpu_diff_rast_files
+set(aihi_gpu_diff_render_files
     Source/Shader/AntiAliasBwdCs.hlsl
     Source/Shader/AntiAliasConstructOppoVertCs.hlsl
     Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl
@@ -14,6 +14,8 @@ set(aihi_gpu_diff_rast_files
     Source/Shader/RasterizeFwdGs.hlsl
     Source/Shader/RasterizeFwdPs.hlsl
     Source/Shader/RasterizeFwdVs.hlsl
+    Source/Shader/TextureBwdCs.hlsl
+    Source/Shader/TextureFwdCs.hlsl
     Source/pch.hpp
     Source/GpuDiffRender.cpp
     Source/GpuDiffRender.hpp
@@ -21,10 +23,10 @@ set(aihi_gpu_diff_rast_files
     Source/Torch/GpuDiffRenderTorch.hpp
     Source/Torch/PyTorchBindings.cpp
 )
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_diff_rast_files})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_diff_render_files})
 
 add_library(AIHoloImagerGpuDiffRender SHARED
-    ${aihi_gpu_diff_rast_files}
+    ${aihi_gpu_diff_render_files}
 )
 
 AddShaderFile(Source/Shader/RasterizeFwdVs.hlsl "vs" "main")
@@ -38,6 +40,8 @@ AddShaderFile(Source/Shader/AntiAliasFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasBwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasConstructOppoVertCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/TextureFwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/TextureBwdCs.hlsl "cs" "main")
 
 set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
 

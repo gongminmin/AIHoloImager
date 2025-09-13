@@ -4,7 +4,6 @@
 #include "MeshGenerator.hpp"
 
 #include <array>
-#include <bit>
 #include <cassert>
 #include <future>
 #include <iostream>
@@ -44,9 +43,14 @@
 #include "Util/BoundingBox.hpp"
 #include "Util/PerfProfiler.hpp"
 
+#define OPT_TEXTURE 0
+
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
 #include "CompiledShader/MeshGen/Dilate3DCs.h"
 #include "CompiledShader/MeshGen/DilateCs.h"
+#if OPT_TEXTURE
+    #include "CompiledShader/MeshGen/ExtractMaskCs.h"
+#endif
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/MergeTextureCs.h"
 #include "CompiledShader/MeshGen/ResizeCs.h"
@@ -243,6 +247,12 @@ namespace AIHoloImager
                 const ShaderInfo shader = {ApplyVertexColorCs_shader, 1, 2, 1};
                 apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
+#if OPT_TEXTURE
+            {
+                const ShaderInfo shader = {ExtractMaskCs_shader, 1, 1, 1};
+                extract_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
+            }
+#endif
         }
 
         ~Impl()
@@ -271,6 +281,7 @@ namespace AIHoloImager
 
         Mesh Generate(const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
+            auto& gpu_system = aihi_.GpuSystemInstance();
             auto& profiler = aihi_.PerfProfilerInstance();
             PerfRegion process_perf(profiler, "Mesh generator process");
 
@@ -299,7 +310,6 @@ namespace AIHoloImager
                     SaveMesh(bb_mesh, output_dir / "Aabb.glb");
                 }
 
-                auto& gpu_system = aihi_.GpuSystemInstance();
                 for (size_t i = 0; i < rotated_images.size(); ++i)
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
@@ -445,6 +455,7 @@ namespace AIHoloImager
                 mesh = mesh.UnwrapUv(texture_size, 2);
             }
 
+            Texture mask_tex(texture_size, texture_size, ElementFormat::R8_UNorm);
             {
                 std::cout << "Generating texture...\n";
 
@@ -455,20 +466,49 @@ namespace AIHoloImager
 
                 Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 {
-                    auto& gpu_system = aihi_.GpuSystemInstance();
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                     this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
+
+#if OPT_TEXTURE
+                    std::future<void> mask_rb_future;
+                    {
+                        constexpr uint32_t BlockDim = 16;
+
+                        GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
+                            GpuResourceFlag::UnorderedAccess, L"mask_gpu_tex");
+
+                        GpuShaderResourceView input_srv(gpu_system, texture_result.color_tex);
+                        GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
+
+                        auto extract_mask_cb = GpuConstantBufferOfType<ExtractMaskConstantBuffer>(gpu_system, L"extract_mask_cb");
+                        extract_mask_cb->texture_size = glm::uvec2(texture_size, texture_size);
+                        extract_mask_cb.UploadStaging();
+
+                        const GpuConstantBuffer* cbs[] = {&extract_mask_cb};
+                        const GpuShaderResourceView* srvs[] = {&input_srv};
+                        GpuUnorderedAccessView* uavs[] = {&mask_uav};
+                        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                        cmd_list.Compute(
+                            extract_mask_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
+
+                        mask_rb_future = cmd_list.ReadBackAsync(mask_gpu_tex, 0, mask_tex.Data(), mask_tex.DataSize());
+                        gpu_system.ExecuteAndReset(cmd_list);
+                    }
+#endif
 
                     GpuTexture2D dilated_tmp_gpu_tex(gpu_system, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
                         texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
 
                     GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
 
-                    const auto rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
+                    const auto dilated_rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
 
-                    rb_future.wait();
+#if OPT_TEXTURE
+                    mask_rb_future.wait();
+#endif
+                    dilated_rb_future.wait();
                 }
 
                 mesh.AlbedoTexture() = std::move(merged_tex);
@@ -477,6 +517,16 @@ namespace AIHoloImager
                 SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
 #endif
             }
+
+#if OPT_TEXTURE
+            {
+                std::cout << "Optimizing texture...\n";
+
+                PerfRegion opt_texture_perf(profiler, "Optimize texture");
+
+                optimizer_.OptimizeTexture(mesh, model_mtx, sfm_input, mask_tex);
+            }
+#endif
 
             {
                 PerfRegion aligning_perf(profiler, "Align mesh");
@@ -1587,6 +1637,15 @@ namespace AIHoloImager
             uint32_t padding[2];
         };
         GpuComputePipeline apply_vertex_color_pipeline_;
+
+#if OPT_TEXTURE
+        struct ExtractMaskConstantBuffer
+        {
+            glm::uvec2 texture_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline extract_mask_pipeline_;
+#endif
 
         static constexpr float GridScale = 2.0f;
         static constexpr uint32_t ResizedImageSize = 518;

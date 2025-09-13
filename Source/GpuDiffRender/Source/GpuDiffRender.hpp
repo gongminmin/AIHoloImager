@@ -8,6 +8,7 @@
 
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuCommandList.hpp"
+#include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
@@ -38,6 +39,11 @@ namespace AIHoloImager
         void AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
             const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
             GpuBuffer& grad_positions);
+
+        void TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& vtx_uv,
+            const GpuDynamicSampler& sampler, GpuTexture2D& image);
+        void TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& vtx_uv,
+            const GpuBuffer& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_vtx_uv);
 
     private:
         GpuSystem& gpu_system_;
@@ -125,5 +131,23 @@ namespace AIHoloImager
             uint32_t padding[1];
         };
         GpuComputePipeline anti_alias_bwd_pipeline_;
+
+        struct TextureFwdConstantBuffer
+        {
+            glm::uvec2 gbuffer_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline texture_fwd_pipeline_;
+
+        struct TextureBwdConstantBuffer
+        {
+            glm::uvec2 gbuffer_size;
+            glm::uvec2 tex_size;
+            uint32_t num_channels;
+            uint32_t min_mag_filter_linear;
+            uint32_t address_mode;
+            uint32_t padding[1];
+        };
+        GpuComputePipeline texture_bwd_pipeline_;
     };
 } // namespace AIHoloImager

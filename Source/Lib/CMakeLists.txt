@@ -59,6 +59,7 @@ set(aihi_files
     Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
+    Source/MeshGen/Shader/ExtractMaskCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/ResizeCs.hlsl
@@ -183,6 +184,7 @@ AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
 AddShaderFile(Source/TextureRecon/Shader/GenShadowMapVs.hlsl "vs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ProjectTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ResolveTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ExtractMaskCs.hlsl "cs" "main")
 
 target_include_directories(AIHoloImagerLib
     PUBLIC

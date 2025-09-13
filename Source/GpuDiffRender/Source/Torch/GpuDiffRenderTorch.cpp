@@ -310,4 +310,140 @@ namespace AIHoloImager
 
         return {std::move(grad_shading), std::move(grad_positions)};
     }
+
+    torch::Tensor GpuDiffRenderTorch::Texture(
+        torch::Tensor texture, torch::Tensor prim_id, torch::Tensor vtx_uv, std::string_view filter, std::string_view address_mode)
+    {
+        struct TextureAutogradFunc : public Function<TextureAutogradFunc>
+        {
+            static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor texture, torch::Tensor prim_id,
+                torch::Tensor vtx_uv, std::string_view filter, std::string_view address_mode)
+            {
+                auto textured =
+                    dr->TextureFwd(std::move(texture), std::move(prim_id), std::move(vtx_uv), std::move(filter), std::move(address_mode));
+                ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                return textured;
+            }
+
+            static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+            {
+                auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+
+                torch::Tensor grad_textured = std::move(grad_outputs[0]);
+                auto [grad_texture, grad_vtx_uv] = dr->TextureBwd(std::move(grad_textured));
+                return {torch::Tensor(), std::move(grad_texture), torch::Tensor(), std::move(grad_vtx_uv), torch::Tensor(), torch::Tensor(),
+                    torch::Tensor()};
+            }
+        };
+
+        return TextureAutogradFunc::apply(this, texture, std::move(prim_id), std::move(vtx_uv), std::move(filter), std::move(address_mode));
+    }
+
+    torch::Tensor GpuDiffRenderTorch::TextureFwd(
+        torch::Tensor texture, torch::Tensor prim_id, torch::Tensor vtx_uv, std::string_view filter, std::string_view address_mode)
+    {
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+        const uint32_t num_channels = static_cast<uint32_t>(texture.sizes().back());
+        GpuFormat fmt;
+        switch (num_channels)
+        {
+        case 1:
+            fmt = GpuFormat::R32_Float;
+            break;
+        case 2:
+            fmt = GpuFormat::RG32_Float;
+            break;
+        case 4:
+            fmt = GpuFormat::RGBA32_Float;
+            break;
+
+        default:
+            Unreachable(std::format("Unsupported texture channels: {}", num_channels));
+            fmt = GpuFormat::Unknown;
+        }
+
+        tensor_converter_.Convert(cmd_list, std::move(texture), texture_intermediate_.texture, fmt, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.TextureFwd.texture");
+        tensor_converter_.Convert(cmd_list, std::move(prim_id), texture_intermediate_.prim_id, GpuFormat::R32_Uint, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.TextureFwd.prim_id");
+        tensor_converter_.Convert(cmd_list, std::move(vtx_uv), texture_intermediate_.vtx_uv, GpuHeap::Default, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.TextureFwd.vtx_uv");
+
+        if (filter == "auto")
+        {
+            filter = "linear";
+        }
+
+        GpuSampler::Filter min_mag_filter;
+        if (filter == "point")
+        {
+            min_mag_filter = GpuSampler::Filter::Point;
+        }
+        else if (filter == "linear")
+        {
+            min_mag_filter = GpuSampler::Filter::Linear;
+        }
+        else
+        {
+            Unreachable(std::format("Unsupported sampler filter: {}", filter));
+        }
+
+        GpuSampler::AddressMode uvw_address_mode;
+        if (address_mode == "wrap")
+        {
+            uvw_address_mode = GpuSampler::AddressMode::Wrap;
+        }
+        else if (address_mode == "mirror")
+        {
+            uvw_address_mode = GpuSampler::AddressMode::Mirror;
+        }
+        else if (address_mode == "clamp")
+        {
+            uvw_address_mode = GpuSampler::AddressMode::Clamp;
+        }
+        else
+        {
+            Unreachable(std::format("Unsupported sampler address mode: {}", address_mode));
+        }
+
+        texture_intermediate_.sampler =
+            GpuDynamicSampler(gpu_system_, GpuSampler::Filters(min_mag_filter, min_mag_filter), GpuSampler::AddressModes(uvw_address_mode));
+
+        gpu_dr_.TextureFwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.vtx_uv,
+            texture_intermediate_.sampler, texture_intermediate_.image);
+
+        torch::Tensor image = tensor_converter_.Convert(cmd_list, texture_intermediate_.image);
+
+        gpu_system_.Execute(std::move(cmd_list));
+
+        return image;
+    }
+
+    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::TextureBwd(torch::Tensor grad_image)
+    {
+        const uint32_t gbuffer_width = texture_intermediate_.prim_id.Width(0);
+        const uint32_t gbuffer_height = texture_intermediate_.prim_id.Height(0);
+        const uint32_t tex_width = texture_intermediate_.texture.Width(0);
+        const uint32_t tex_height = texture_intermediate_.texture.Height(0);
+        const uint32_t num_channels = FormatChannels(texture_intermediate_.texture.Format());
+
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+        tensor_converter_.Convert(cmd_list, std::move(grad_image), texture_intermediate_.grad_image, GpuHeap::Default,
+            GpuResourceFlag::None, L"GpuDiffRenderTorch.TextureBwd.grad_image");
+
+        gpu_dr_.TextureBwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.vtx_uv,
+            texture_intermediate_.grad_image, texture_intermediate_.sampler, texture_intermediate_.grad_texture,
+            texture_intermediate_.grad_vtx_uv);
+
+        torch::Tensor grad_texture = tensor_converter_.Convert(
+            cmd_list, texture_intermediate_.grad_texture, {1, tex_height, tex_width, num_channels}, torch::kFloat32);
+        torch::Tensor grad_vtx_uv =
+            tensor_converter_.Convert(cmd_list, texture_intermediate_.grad_vtx_uv, {1, gbuffer_height, gbuffer_width, 2}, torch::kFloat32);
+
+        gpu_system_.Execute(std::move(cmd_list));
+
+        return {std::move(grad_texture), std::move(grad_vtx_uv)};
+    }
 } // namespace AIHoloImager

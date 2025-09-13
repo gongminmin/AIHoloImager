@@ -23,6 +23,8 @@
 #include "CompiledShader/RasterizeFwdGs.h"
 #include "CompiledShader/RasterizeFwdPs.h"
 #include "CompiledShader/RasterizeFwdVs.h"
+#include "CompiledShader/TextureBwdCs.h"
+#include "CompiledShader/TextureFwdCs.h"
 
 namespace AIHoloImager
 {
@@ -98,6 +100,15 @@ namespace AIHoloImager
         indirect_args_ = GpuBuffer(gpu_system_, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
             L"GpuDiffRender.AntiAliasBwd.indirect_args");
         indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, GpuFormat::R32_Uint);
+
+        {
+            const ShaderInfo shader = {TextureFwdCs_shader, 1, 3, 1, 1};
+            texture_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            const ShaderInfo shader = {TextureBwdCs_shader, 1, 3, 2};
+            texture_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
     }
 
     GpuDiffRender::~GpuDiffRender() = default;
@@ -462,5 +473,99 @@ namespace AIHoloImager
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.ComputeIndirect(anti_alias_bwd_pipeline_, indirect_args_, shader_binding);
         }
+    }
+
+    void GpuDiffRender::TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id,
+        const GpuBuffer& vtx_uv, const GpuDynamicSampler& sampler, GpuTexture2D& image)
+    {
+        const uint32_t gbuffer_width = prim_id.Width(0);
+        const uint32_t gbuffer_height = prim_id.Height(0);
+
+        if ((image.Width(0) != gbuffer_width) || (image.Height(0) != gbuffer_height) || (image.Format() != texture.Format()))
+        {
+            image = GpuTexture2D(gpu_system_, gbuffer_width, gbuffer_height, 1, texture.Format(),
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+        }
+        image.Name(L"GpuDiffRender.TextureFwd.image");
+
+        constexpr uint32_t BlockDim = 16;
+
+        GpuConstantBufferOfType<TextureFwdConstantBuffer> texture_fwd_cb(gpu_system_, L"texture_fwd_cb");
+        texture_fwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
+        texture_fwd_cb.UploadStaging();
+
+        const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
+        const GpuShaderResourceView texture_srv(gpu_system_, texture);
+        const GpuShaderResourceView uv_srv(gpu_system_, vtx_uv, GpuFormat::RG32_Float);
+
+        GpuUnorderedAccessView image_uav(gpu_system_, image);
+
+        const float clear_clr[] = {0, 0, 0, 0};
+        cmd_list.Clear(image_uav, clear_clr);
+
+        const GpuConstantBuffer* cbs[] = {&texture_fwd_cb};
+        const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv};
+        GpuUnorderedAccessView* uavs[] = {&image_uav};
+        const GpuDynamicSampler* samplers[] = {&sampler};
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
+        cmd_list.Compute(texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+    }
+
+    void GpuDiffRender::TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id,
+        const GpuBuffer& vtx_uv, const GpuBuffer& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture,
+        GpuBuffer& grad_vtx_uv)
+    {
+        const uint32_t gbuffer_width = prim_id.Width(0);
+        const uint32_t gbuffer_height = prim_id.Height(0);
+        const uint32_t tex_width = texture.Width(0);
+        const uint32_t tex_height = texture.Height(0);
+
+        const uint32_t grad_texture_size = tex_width * tex_height * FormatChannels(texture.Format()) * sizeof(float);
+        if (grad_texture.Size() != grad_texture_size)
+        {
+            grad_texture =
+                GpuBuffer(gpu_system_, grad_texture_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+        }
+        grad_texture.Name(L"GpuDiffRender.TextureBwd.grad_texture");
+
+        const uint32_t grad_uv_size = gbuffer_width * gbuffer_height * sizeof(glm::uvec2);
+        if (grad_vtx_uv.Size() != grad_uv_size)
+        {
+            grad_vtx_uv =
+                GpuBuffer(gpu_system_, grad_uv_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+        }
+        grad_vtx_uv.Name(L"GpuDiffRender.TextureBwd.grad_vtx_uv");
+
+        constexpr uint32_t BlockDim = 16;
+
+        GpuConstantBufferOfType<TextureBwdConstantBuffer> texture_bwd_cb(gpu_system_, L"texture_bwd_cb");
+        texture_bwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
+        texture_bwd_cb->tex_size = glm::uvec2(tex_width, tex_height);
+        texture_bwd_cb->num_channels = FormatChannels(texture.Format());
+        texture_bwd_cb->min_mag_filter_linear = sampler.SamplerFilters().min == GpuSampler::Filter::Linear;
+        texture_bwd_cb->address_mode = static_cast<uint32_t>(sampler.SamplerAddressModes().u);
+        texture_bwd_cb.UploadStaging();
+
+        const GpuShaderResourceView texture_srv(gpu_system_, texture);
+        const GpuShaderResourceView uv_srv(gpu_system_, vtx_uv, GpuFormat::RG32_Float);
+        const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image, GpuFormat::R32_Float);
+
+        GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Uint); // Float as uint due to atomic operations
+        GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_vtx_uv, GpuFormat::RG32_Float);
+
+        {
+            const uint32_t clear_clr[] = {0, 0, 0, 0};
+            cmd_list.Clear(grad_texture_uav, clear_clr);
+        }
+        {
+            const float clear_clr[] = {0, 0, 0, 0};
+            cmd_list.Clear(grad_uv_uav, clear_clr);
+        }
+
+        const GpuConstantBuffer* cbs[] = {&texture_bwd_cb};
+        const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv};
+        GpuUnorderedAccessView* uavs[] = {&grad_texture_uav, &grad_uv_uav};
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+        cmd_list.Compute(texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
     }
 } // namespace AIHoloImager

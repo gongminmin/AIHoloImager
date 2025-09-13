@@ -29,7 +29,9 @@ PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
             py::arg("indices"))
         .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices, py::arg("indices"))
         .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias, py::arg("shading"), py::arg("prim_id"), py::arg("positions"), py::arg("indices"),
-            py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none());
+            py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none())
+        .def("Texture", &GpuDiffRenderTorch::Texture, py::arg("texture"), py::arg("prim_id"), py::arg("uv"), py::arg("filter"),
+            py::arg("address_mode"));
 
     pybind11::class_<GpuDiffRenderTorch::Viewport>(mod, "Viewport")
         .def(pybind11::init<>())
