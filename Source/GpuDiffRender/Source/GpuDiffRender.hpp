@@ -40,6 +40,8 @@ namespace AIHoloImager
             const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
             GpuBuffer& grad_positions);
 
+        void GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels);
+
         void TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& vtx_uv,
             const GpuDynamicSampler& sampler, GpuTexture2D& image);
         void TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& vtx_uv,
@@ -131,6 +133,13 @@ namespace AIHoloImager
             uint32_t padding[1];
         };
         GpuComputePipeline anti_alias_bwd_pipeline_;
+
+        struct TextureCopyConstantBuffer
+        {
+            glm::uvec2 tex_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline texture_copy_pipeline_;
 
         struct TextureFwdConstantBuffer
         {

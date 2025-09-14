@@ -15,6 +15,7 @@ set(aihi_gpu_diff_render_files
     Source/Shader/RasterizeFwdPs.hlsl
     Source/Shader/RasterizeFwdVs.hlsl
     Source/Shader/TextureBwdCs.hlsl
+    Source/Shader/TextureCopyCs.hlsl
     Source/Shader/TextureFwdCs.hlsl
     Source/pch.hpp
     Source/GpuDiffRender.cpp
@@ -40,6 +41,7 @@ AddShaderFile(Source/Shader/AntiAliasFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasBwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasConstructOppoVertCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/TextureCopyCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureBwdCs.hlsl "cs" "main")
 

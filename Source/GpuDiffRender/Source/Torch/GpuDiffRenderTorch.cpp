@@ -336,7 +336,8 @@ namespace AIHoloImager
             }
         };
 
-        return TextureAutogradFunc::apply(this, texture, std::move(prim_id), std::move(vtx_uv), std::move(filter), std::move(address_mode));
+        return TextureAutogradFunc::apply(
+            this, std::move(texture), std::move(prim_id), std::move(vtx_uv), std::move(filter), std::move(address_mode));
     }
 
     torch::Tensor GpuDiffRenderTorch::TextureFwd(
@@ -344,23 +345,72 @@ namespace AIHoloImager
     {
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
+        const torch::ScalarType scalar_type = texture.dtype().toScalarType();
         const uint32_t num_channels = static_cast<uint32_t>(texture.sizes().back());
-        GpuFormat fmt;
-        switch (num_channels)
+        GpuFormat fmt = GpuFormat::Unknown;
+        switch (scalar_type)
         {
-        case 1:
-            fmt = GpuFormat::R32_Float;
+        case torch::kUInt8:
+            switch (num_channels)
+            {
+            case 1:
+                fmt = GpuFormat::R8_UNorm;
+                break;
+            case 2:
+                fmt = GpuFormat::RG8_UNorm;
+                break;
+            case 4:
+                fmt = GpuFormat::RGBA8_UNorm;
+                break;
+
+            default:
+                break;
+            }
             break;
-        case 2:
-            fmt = GpuFormat::RG32_Float;
+
+        case torch::kInt32:
+            switch (num_channels)
+            {
+            case 1:
+                fmt = GpuFormat::R32_Uint;
+                break;
+            case 2:
+                fmt = GpuFormat::RG32_Uint;
+                break;
+            case 4:
+                fmt = GpuFormat::RGBA32_Uint;
+                break;
+
+            default:
+                break;
+            }
             break;
-        case 4:
-            fmt = GpuFormat::RGBA32_Float;
+
+        case torch::kFloat32:
+            switch (num_channels)
+            {
+            case 1:
+                fmt = GpuFormat::R32_Float;
+                break;
+            case 2:
+                fmt = GpuFormat::RG32_Float;
+                break;
+            case 4:
+                fmt = GpuFormat::RGBA32_Float;
+                break;
+
+            default:
+                break;
+            }
             break;
 
         default:
-            Unreachable(std::format("Unsupported texture channels: {}", num_channels));
-            fmt = GpuFormat::Unknown;
+            break;
+        }
+
+        if (fmt == GpuFormat::Unknown)
+        {
+            Unreachable(std::format("Unsupported texture format {} channels: {}", static_cast<uint32_t>(scalar_type), num_channels));
         }
 
         tensor_converter_.Convert(cmd_list, std::move(texture), texture_intermediate_.texture, fmt, GpuResourceFlag::None,
@@ -369,6 +419,8 @@ namespace AIHoloImager
             L"GpuDiffRenderTorch.TextureFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(vtx_uv), texture_intermediate_.vtx_uv, GpuHeap::Default, GpuResourceFlag::None,
             L"GpuDiffRenderTorch.TextureFwd.vtx_uv");
+
+        gpu_dr_.GenerateMipmaps(cmd_list, texture_intermediate_.texture, 1);
 
         if (filter == "auto")
         {

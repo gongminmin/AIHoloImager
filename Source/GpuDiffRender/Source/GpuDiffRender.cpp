@@ -6,6 +6,7 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#include "Base/Util.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
@@ -24,6 +25,7 @@
 #include "CompiledShader/RasterizeFwdPs.h"
 #include "CompiledShader/RasterizeFwdVs.h"
 #include "CompiledShader/TextureBwdCs.h"
+#include "CompiledShader/TextureCopyCs.h"
 #include "CompiledShader/TextureFwdCs.h"
 
 namespace AIHoloImager
@@ -101,6 +103,10 @@ namespace AIHoloImager
             L"GpuDiffRender.AntiAliasBwd.indirect_args");
         indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, GpuFormat::R32_Uint);
 
+        {
+            const ShaderInfo shader = {TextureCopyCs_shader, 1, 1, 1};
+            texture_copy_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
         {
             const ShaderInfo shader = {TextureFwdCs_shader, 1, 3, 1, 1};
             texture_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
@@ -472,6 +478,60 @@ namespace AIHoloImager
             GpuUnorderedAccessView* uavs[] = {&grad_shading_uav, &grad_positions_uav};
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.ComputeIndirect(anti_alias_bwd_pipeline_, indirect_args_, shader_binding);
+        }
+    }
+
+    void GpuDiffRender::GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels)
+    {
+        const uint32_t width = texture.Width(0);
+        const uint32_t height = texture.Height(0);
+
+        if (mip_levels == 0)
+        {
+            mip_levels = LogNextPowerOf2(std::max(texture.Width(0), texture.Height(0)));
+        }
+
+        GpuTexture2D* texture_mip;
+        GpuTexture2D texture_temp;
+        if ((texture.Format() != GpuFormat::RGBA32_Float) || (texture.MipLevels() != mip_levels))
+        {
+            texture_temp = GpuTexture2D(gpu_system_, width, height, mip_levels, GpuFormat::RGBA32_Float,
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"GpuDiffRender.GenerateMipmap.texture_mip");
+            texture_mip = &texture_temp;
+
+            if (texture.Format() != GpuFormat::RGBA32_Float)
+            {
+                constexpr uint32_t BlockDim = 16;
+
+                GpuConstantBufferOfType<TextureCopyConstantBuffer> texture_copy_cb(gpu_system_, L"texture_copy_cb");
+                texture_copy_cb->tex_size = glm::uvec2(width, height);
+                texture_copy_cb.UploadStaging();
+
+                const GpuShaderResourceView texture_srv(gpu_system_, texture, 0);
+
+                GpuUnorderedAccessView texture_mip_uav(gpu_system_, *texture_mip, 0);
+
+                const GpuConstantBuffer* cbs[] = {&texture_copy_cb};
+                const GpuShaderResourceView* srvs[] = {&texture_srv};
+                GpuUnorderedAccessView* uavs[] = {&texture_mip_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(texture_copy_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+            }
+            else
+            {
+                cmd_list.Copy(texture_temp, 0, 0, 0, 0, texture, 0, GpuBox{0, 0, 0, width, height, 1});
+            }
+        }
+        else
+        {
+            texture_mip = &texture;
+        }
+
+        cmd_list.GenerateMipmaps(*texture_mip, GpuSampler::Filter::Linear);
+
+        if (&texture != texture_mip)
+        {
+            texture = std::move(*texture_mip);
         }
     }
 
