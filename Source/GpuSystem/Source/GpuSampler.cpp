@@ -155,6 +155,7 @@ namespace AIHoloImager
     {
     }
     GpuStaticSampler::GpuStaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
+        : GpuSampler(filters, addr_modes)
     {
         FillSamplerDesc(sampler_, filters, addr_modes);
     }
@@ -179,7 +180,7 @@ namespace AIHoloImager
     {
     }
     GpuDynamicSampler::GpuDynamicSampler(GpuSystem& gpu_system, const Filters& filters, const AddressModes& addr_modes)
-        : gpu_system_(&gpu_system)
+        : GpuSampler(filters, addr_modes), gpu_system_(&gpu_system)
     {
         desc_block_ = gpu_system.AllocSamplerDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
