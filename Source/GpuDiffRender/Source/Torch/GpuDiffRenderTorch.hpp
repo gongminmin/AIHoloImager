@@ -59,7 +59,7 @@ namespace AIHoloImager
             const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
 
         torch::Tensor Texture(
-            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor vtx_uv, std::string_view filter, std::string_view address_mode);
+            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
 
     private:
         std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
@@ -74,7 +74,7 @@ namespace AIHoloImager
         std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
 
         torch::Tensor TextureFwd(
-            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor vtx_uv, std::string_view filter, std::string_view address_mode);
+            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
         std::tuple<torch::Tensor, torch::Tensor> TextureBwd(torch::Tensor grad_image);
 
     private:
@@ -132,13 +132,13 @@ namespace AIHoloImager
         {
             GpuTexture2D texture;
             GpuTexture2D prim_id;
-            GpuBuffer vtx_uv;
+            GpuBuffer uv;
             GpuDynamicSampler sampler;
             GpuTexture2D image;
 
             GpuBuffer grad_image;
             GpuBuffer grad_texture;
-            GpuBuffer grad_vtx_uv;
+            GpuBuffer grad_uv;
         };
         TextureIntermediate texture_intermediate_;
     };

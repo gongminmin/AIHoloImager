@@ -19,7 +19,7 @@ Buffer<float2> uv_buff : register(t1);
 Buffer<float> grad_image : register(t2);
 
 RWBuffer<uint32_t> grad_texture : register(u0);
-RWBuffer<float2> grad_vtx_uv : register(u1);
+RWBuffer<float2> grad_uv : register(u1);
 
 float Wrap(float f, uint32_t size)
 {
@@ -117,7 +117,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
             weight.x * weight.y
         );
 
-        float2 grad_uv = 0;
+        float2 dl_duv = 0;
         for (uint32_t i = 0; i < num_channels; ++i)
         {
             const float dl_da = grad_image[pixel_offset + i];
@@ -140,10 +140,10 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
                 const float4 channel = float4(quad_texels[0][i], quad_texels[1][i], quad_texels[2][i], quad_texels[3][i]);
                 const float2 da_dwxy = weight.yx * (channel.x - channel.y - channel.z + channel.w) - channel.x + channel.yz;
                 const float2 dwxy_duv = tex_size;
-                grad_uv += dl_da * da_dwxy * dwxy_duv;
+                dl_duv += dl_da * da_dwxy * dwxy_duv;
             }
         }
-        grad_vtx_uv[index] = grad_uv;
+        grad_uv[index] = dl_duv;
     }
     else
     {
