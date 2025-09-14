@@ -126,7 +126,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
                 const float4 grad_quad_weights = dl_da * quad_weights;
                 for (uint32_t j = 0; j < 4; ++j)
                 {
-                    AtomicAdd(grad_texture, quad_offsets[j] + i, quad_weights[j]);
+                    AtomicAdd(grad_texture, quad_offsets[j] + i, grad_quad_weights[j]);
                 }
 
                 // dL/d{u,v} = dL/dA * dA/d{u,v} = dL/dA * dA/d{wx,wy} * d{wx,wy}/d{u,v}
