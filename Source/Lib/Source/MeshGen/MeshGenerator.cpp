@@ -522,9 +522,17 @@ namespace AIHoloImager
             {
                 std::cout << "Optimizing texture...\n";
 
+    #ifdef AIHI_KEEP_INTERMEDIATES
+                SaveTexture(mesh.AlbedoTexture(), output_dir / "BeforeOpt.png");
+    #endif
+
                 PerfRegion opt_texture_perf(profiler, "Optimize texture");
 
                 optimizer_.OptimizeTexture(mesh, model_mtx, sfm_input, mask_tex);
+
+    #ifdef AIHI_KEEP_INTERMEDIATES
+                SaveTexture(mesh.AlbedoTexture(), output_dir / "AfterOpt.png");
+    #endif
             }
 #endif
 
