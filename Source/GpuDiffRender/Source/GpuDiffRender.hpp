@@ -32,6 +32,13 @@ namespace AIHoloImager
             const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, const GpuBuffer& grad_shading,
             GpuBuffer& grad_vtx_attribs, GpuTexture2D& grad_barycentric);
 
+        void GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels);
+
+        void TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
+            const GpuDynamicSampler& sampler, GpuTexture2D& image);
+        void TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
+            const GpuBuffer& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_uv);
+
         void AntiAliasConstructOppositeVertices(GpuCommandList& cmd_list, const GpuBuffer& indices, GpuBuffer& opposite_vertices);
 
         void AntiAliasFwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
@@ -39,13 +46,6 @@ namespace AIHoloImager
         void AntiAliasBwd(GpuCommandList& cmd_list, const GpuBuffer& shading, const GpuTexture2D& prim_id, const GpuBuffer& positions,
             const GpuBuffer& indices, const GpuViewport& viewport, const GpuBuffer& grad_anti_aliased, GpuBuffer& grad_shading,
             GpuBuffer& grad_positions);
-
-        void GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels);
-
-        void TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
-            const GpuDynamicSampler& sampler, GpuTexture2D& image);
-        void TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
-            const GpuBuffer& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_uv);
 
     private:
         GpuSystem& gpu_system_;
@@ -78,6 +78,31 @@ namespace AIHoloImager
             uint32_t padding[1];
         };
         GpuComputePipeline interpolate_bwd_pipeline_;
+
+        struct TextureCopyConstantBuffer
+        {
+            glm::uvec2 tex_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline texture_copy_pipeline_;
+
+        struct TextureFwdConstantBuffer
+        {
+            glm::uvec2 gbuffer_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline texture_fwd_pipeline_;
+
+        struct TextureBwdConstantBuffer
+        {
+            glm::uvec2 gbuffer_size;
+            glm::uvec2 tex_size;
+            uint32_t num_channels;
+            uint32_t min_mag_filter_linear;
+            uint32_t address_mode;
+            uint32_t padding[1];
+        };
+        GpuComputePipeline texture_bwd_pipeline_;
 
         GpuComputePipeline anti_alias_indirect_pipeline_;
 
@@ -133,30 +158,5 @@ namespace AIHoloImager
             uint32_t padding[1];
         };
         GpuComputePipeline anti_alias_bwd_pipeline_;
-
-        struct TextureCopyConstantBuffer
-        {
-            glm::uvec2 tex_size;
-            uint32_t padding[2];
-        };
-        GpuComputePipeline texture_copy_pipeline_;
-
-        struct TextureFwdConstantBuffer
-        {
-            glm::uvec2 gbuffer_size;
-            uint32_t padding[2];
-        };
-        GpuComputePipeline texture_fwd_pipeline_;
-
-        struct TextureBwdConstantBuffer
-        {
-            glm::uvec2 gbuffer_size;
-            glm::uvec2 tex_size;
-            uint32_t num_channels;
-            uint32_t min_mag_filter_linear;
-            uint32_t address_mode;
-            uint32_t padding[1];
-        };
-        GpuComputePipeline texture_bwd_pipeline_;
     };
 } // namespace AIHoloImager

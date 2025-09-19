@@ -185,132 +185,6 @@ namespace AIHoloImager
         return {std::move(grad_vtx_attribs), std::move(grad_barycentric)};
     }
 
-    GpuDiffRenderTorch::AntiAliasOppositeVertices GpuDiffRenderTorch::AntiAliasConstructOppositeVertices(torch::Tensor indices)
-    {
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-        GpuBuffer indices_buff;
-        tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
-
-        AntiAliasOppositeVertices ret;
-        gpu_dr_.AntiAliasConstructOppositeVertices(cmd_list, indices_buff, ret.opposite_vertices);
-
-        gpu_system_.Execute(std::move(cmd_list));
-
-        return ret;
-    }
-
-    torch::Tensor GpuDiffRenderTorch::AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
-        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
-    {
-        struct AntiAliasAutogradFunc : public Function<AntiAliasAutogradFunc>
-        {
-            static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor shading, torch::Tensor prim_id,
-                torch::Tensor positions, torch::Tensor indices, const Viewport* viewport,
-                const AntiAliasOppositeVertices* opposite_vertices)
-            {
-                auto anti_aliased = dr->AntiAliasFwd(
-                    std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
-                ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
-                return anti_aliased;
-            }
-
-            static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
-            {
-                auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
-
-                torch::Tensor grad_anti_aliased = std::move(grad_outputs[0]);
-                auto [grad_shading, grad_positions] = dr->AntiAliasBwd(std::move(grad_anti_aliased));
-                return {torch::Tensor(), std::move(grad_shading), torch::Tensor(), std::move(grad_positions), torch::Tensor(),
-                    torch::Tensor(), torch::Tensor()};
-            }
-        };
-
-        return AntiAliasAutogradFunc::apply(
-            this, std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
-    }
-
-    torch::Tensor GpuDiffRenderTorch::AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
-        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
-    {
-        AntiAliasOppositeVertices new_opposite_vertices;
-        if (opposite_vertices == nullptr)
-        {
-            new_opposite_vertices = this->AntiAliasConstructOppositeVertices(indices);
-            opposite_vertices = &new_opposite_vertices;
-        }
-
-        const uint32_t width = static_cast<uint32_t>(shading.size(2));
-        const uint32_t height = static_cast<uint32_t>(shading.size(1));
-        const uint32_t num_attribs = static_cast<uint32_t>(shading.size(3));
-
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-        tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.shading");
-        tensor_converter_.Convert(cmd_list, std::move(prim_id), aa_intermediate_.prim_id, GpuFormat::R32_Uint, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.prim_id");
-        tensor_converter_.Convert(cmd_list, std::move(positions), aa_intermediate_.positions, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.positions");
-        tensor_converter_.Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.indices");
-
-        if (viewport != nullptr)
-        {
-            aa_intermediate_.viewport.left = viewport->left;
-            aa_intermediate_.viewport.top = viewport->top;
-            aa_intermediate_.viewport.width = viewport->width;
-            aa_intermediate_.viewport.height = viewport->height;
-        }
-        else
-        {
-            aa_intermediate_.viewport.left = 0;
-            aa_intermediate_.viewport.top = 0;
-            aa_intermediate_.viewport.width = static_cast<float>(width);
-            aa_intermediate_.viewport.height = static_cast<float>(height);
-        }
-        aa_intermediate_.viewport.min_depth = 0;
-        aa_intermediate_.viewport.max_depth = 1;
-
-        gpu_dr_.AntiAliasFwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
-            aa_intermediate_.indices, aa_intermediate_.viewport, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);
-
-        torch::Tensor anti_aliased =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.anti_aliased, {1, height, width, num_attribs}, torch::kFloat32);
-
-        gpu_system_.Execute(std::move(cmd_list));
-
-        return anti_aliased;
-    }
-
-    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::AntiAliasBwd(torch::Tensor grad_anti_aliased)
-    {
-        const uint32_t num_vertices = aa_intermediate_.positions.Size() / sizeof(glm::vec4);
-        const uint32_t mini_batch = 1;
-        const uint32_t width = aa_intermediate_.prim_id.Width(0);
-        const uint32_t height = aa_intermediate_.prim_id.Height(0);
-        const uint32_t num_attribs = aa_intermediate_.shading.Size() / (width * height * sizeof(float));
-
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-        tensor_converter_.Convert(cmd_list, std::move(grad_anti_aliased), aa_intermediate_.grad_anti_aliased, GpuHeap::Default,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
-
-        gpu_dr_.AntiAliasBwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
-            aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,
-            aa_intermediate_.grad_positions);
-
-        torch::Tensor grad_shading =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
-        torch::Tensor grad_positions =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
-
-        gpu_system_.Execute(std::move(cmd_list));
-
-        return {std::move(grad_shading), std::move(grad_positions)};
-    }
-
     torch::Tensor GpuDiffRenderTorch::Texture(
         torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode)
     {
@@ -497,5 +371,131 @@ namespace AIHoloImager
         gpu_system_.Execute(std::move(cmd_list));
 
         return {std::move(grad_texture), std::move(grad_uv)};
+    }
+
+    GpuDiffRenderTorch::AntiAliasOppositeVertices GpuDiffRenderTorch::AntiAliasConstructOppositeVertices(torch::Tensor indices)
+    {
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+        GpuBuffer indices_buff;
+        tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
+
+        AntiAliasOppositeVertices ret;
+        gpu_dr_.AntiAliasConstructOppositeVertices(cmd_list, indices_buff, ret.opposite_vertices);
+
+        gpu_system_.Execute(std::move(cmd_list));
+
+        return ret;
+    }
+
+    torch::Tensor GpuDiffRenderTorch::AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
+        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
+    {
+        struct AntiAliasAutogradFunc : public Function<AntiAliasAutogradFunc>
+        {
+            static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor shading, torch::Tensor prim_id,
+                torch::Tensor positions, torch::Tensor indices, const Viewport* viewport,
+                const AntiAliasOppositeVertices* opposite_vertices)
+            {
+                auto anti_aliased = dr->AntiAliasFwd(
+                    std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
+                ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                return anti_aliased;
+            }
+
+            static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+            {
+                auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+
+                torch::Tensor grad_anti_aliased = std::move(grad_outputs[0]);
+                auto [grad_shading, grad_positions] = dr->AntiAliasBwd(std::move(grad_anti_aliased));
+                return {torch::Tensor(), std::move(grad_shading), torch::Tensor(), std::move(grad_positions), torch::Tensor(),
+                    torch::Tensor(), torch::Tensor()};
+            }
+        };
+
+        return AntiAliasAutogradFunc::apply(
+            this, std::move(shading), std::move(prim_id), std::move(positions), std::move(indices), viewport, opposite_vertices);
+    }
+
+    torch::Tensor GpuDiffRenderTorch::AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions,
+        torch::Tensor indices, const Viewport* viewport, const AntiAliasOppositeVertices* opposite_vertices)
+    {
+        AntiAliasOppositeVertices new_opposite_vertices;
+        if (opposite_vertices == nullptr)
+        {
+            new_opposite_vertices = this->AntiAliasConstructOppositeVertices(indices);
+            opposite_vertices = &new_opposite_vertices;
+        }
+
+        const uint32_t width = static_cast<uint32_t>(shading.size(2));
+        const uint32_t height = static_cast<uint32_t>(shading.size(1));
+        const uint32_t num_attribs = static_cast<uint32_t>(shading.size(3));
+
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+        tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.AntiAliasFwd.shading");
+        tensor_converter_.Convert(cmd_list, std::move(prim_id), aa_intermediate_.prim_id, GpuFormat::R32_Uint, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.AntiAliasFwd.prim_id");
+        tensor_converter_.Convert(cmd_list, std::move(positions), aa_intermediate_.positions, GpuHeap::Default, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.AntiAliasFwd.positions");
+        tensor_converter_.Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.AntiAliasFwd.indices");
+
+        if (viewport != nullptr)
+        {
+            aa_intermediate_.viewport.left = viewport->left;
+            aa_intermediate_.viewport.top = viewport->top;
+            aa_intermediate_.viewport.width = viewport->width;
+            aa_intermediate_.viewport.height = viewport->height;
+        }
+        else
+        {
+            aa_intermediate_.viewport.left = 0;
+            aa_intermediate_.viewport.top = 0;
+            aa_intermediate_.viewport.width = static_cast<float>(width);
+            aa_intermediate_.viewport.height = static_cast<float>(height);
+        }
+        aa_intermediate_.viewport.min_depth = 0;
+        aa_intermediate_.viewport.max_depth = 1;
+
+        gpu_dr_.AntiAliasFwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
+            aa_intermediate_.indices, aa_intermediate_.viewport, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);
+
+        torch::Tensor anti_aliased =
+            tensor_converter_.Convert(cmd_list, aa_intermediate_.anti_aliased, {1, height, width, num_attribs}, torch::kFloat32);
+
+        gpu_system_.Execute(std::move(cmd_list));
+
+        return anti_aliased;
+    }
+
+    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::AntiAliasBwd(torch::Tensor grad_anti_aliased)
+    {
+        const uint32_t num_vertices = aa_intermediate_.positions.Size() / sizeof(glm::vec4);
+        const uint32_t mini_batch = 1;
+        const uint32_t width = aa_intermediate_.prim_id.Width(0);
+        const uint32_t height = aa_intermediate_.prim_id.Height(0);
+        const uint32_t num_attribs = aa_intermediate_.shading.Size() / (width * height * sizeof(float));
+
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+        tensor_converter_.Convert(cmd_list, std::move(grad_anti_aliased), aa_intermediate_.grad_anti_aliased, GpuHeap::Default,
+            GpuResourceFlag::None, L"GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
+
+        gpu_dr_.AntiAliasBwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
+            aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,
+            aa_intermediate_.grad_positions);
+
+        torch::Tensor grad_shading =
+            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
+        torch::Tensor grad_positions =
+            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
+
+        gpu_system_.Execute(std::move(cmd_list));
+
+        return {std::move(grad_shading), std::move(grad_positions)};
     }
 } // namespace AIHoloImager

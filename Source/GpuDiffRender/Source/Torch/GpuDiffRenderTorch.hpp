@@ -48,6 +48,9 @@ namespace AIHoloImager
 
         torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
 
+        torch::Tensor Texture(
+            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
+
         struct AntiAliasOppositeVertices
         {
             GpuBuffer opposite_vertices;
@@ -58,9 +61,6 @@ namespace AIHoloImager
         torch::Tensor AntiAlias(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
             const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
 
-        torch::Tensor Texture(
-            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
-
     private:
         std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
             torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport = nullptr);
@@ -69,13 +69,13 @@ namespace AIHoloImager
         torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
         std::tuple<torch::Tensor, torch::Tensor> InterpolateBwd(torch::Tensor grad_shading);
 
-        torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
-            const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
-        std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
-
         torch::Tensor TextureFwd(
             torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
         std::tuple<torch::Tensor, torch::Tensor> TextureBwd(torch::Tensor grad_image);
+
+        torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
+            const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
+        std::tuple<torch::Tensor, torch::Tensor> AntiAliasBwd(torch::Tensor grad_anti_aliased);
 
     private:
         GpuSystem& gpu_system_;
@@ -113,6 +113,20 @@ namespace AIHoloImager
         };
         InterpolateIntermediate interpolate_intermediate_;
 
+        struct TextureIntermediate
+        {
+            GpuTexture2D texture;
+            GpuTexture2D prim_id;
+            GpuBuffer uv;
+            GpuDynamicSampler sampler;
+            GpuTexture2D image;
+
+            GpuBuffer grad_image;
+            GpuBuffer grad_texture;
+            GpuBuffer grad_uv;
+        };
+        TextureIntermediate texture_intermediate_;
+
         struct AntiAliasIntermediate
         {
             GpuBuffer shading;
@@ -127,19 +141,5 @@ namespace AIHoloImager
             GpuBuffer grad_positions;
         };
         AntiAliasIntermediate aa_intermediate_;
-
-        struct TextureIntermediate
-        {
-            GpuTexture2D texture;
-            GpuTexture2D prim_id;
-            GpuBuffer uv;
-            GpuDynamicSampler sampler;
-            GpuTexture2D image;
-
-            GpuBuffer grad_image;
-            GpuBuffer grad_texture;
-            GpuBuffer grad_uv;
-        };
-        TextureIntermediate texture_intermediate_;
     };
 } // namespace AIHoloImager

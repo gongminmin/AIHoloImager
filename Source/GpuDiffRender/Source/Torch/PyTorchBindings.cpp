@@ -27,11 +27,11 @@ PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
             py::arg("viewport") = py::none())
         .def("Interpolate", &GpuDiffRenderTorch::Interpolate, py::arg("vtx_attribs"), py::arg("barycentric"), py::arg("prim_id"),
             py::arg("indices"))
+        .def("Texture", &GpuDiffRenderTorch::Texture, py::arg("texture"), py::arg("prim_id"), py::arg("uv"), py::arg("filter"),
+            py::arg("address_mode"))
         .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices, py::arg("indices"))
         .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias, py::arg("shading"), py::arg("prim_id"), py::arg("positions"), py::arg("indices"),
-            py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none())
-        .def("Texture", &GpuDiffRenderTorch::Texture, py::arg("texture"), py::arg("prim_id"), py::arg("uv"), py::arg("filter"),
-            py::arg("address_mode"));
+            py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none());
 
     pybind11::class_<GpuDiffRenderTorch::Viewport>(mod, "Viewport")
         .def(pybind11::init<>())
