@@ -121,7 +121,7 @@ namespace AIHoloImager
             GpuDynamicSampler sampler;
             GpuTexture2D image;
 
-            GpuBuffer grad_image;
+            GpuTexture2D grad_image;
             GpuBuffer grad_texture;
             GpuBuffer grad_uv;
         };

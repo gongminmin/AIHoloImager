@@ -352,12 +352,13 @@ namespace AIHoloImager
         const uint32_t gbuffer_height = texture_intermediate_.prim_id.Height(0);
         const uint32_t tex_width = texture_intermediate_.texture.Width(0);
         const uint32_t tex_height = texture_intermediate_.texture.Height(0);
-        const uint32_t num_channels = FormatChannels(texture_intermediate_.texture.Format());
+        const GpuFormat format = texture_intermediate_.texture.Format();
+        const uint32_t num_channels = FormatChannels(format);
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-        tensor_converter_.Convert(cmd_list, std::move(grad_image), texture_intermediate_.grad_image, GpuHeap::Default,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.TextureBwd.grad_image");
+        tensor_converter_.Convert(cmd_list, std::move(grad_image), texture_intermediate_.grad_image, format, GpuResourceFlag::None,
+            L"GpuDiffRenderTorch.TextureBwd.grad_image");
 
         gpu_dr_.TextureBwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.uv,
             texture_intermediate_.grad_image, texture_intermediate_.sampler, texture_intermediate_.grad_texture,

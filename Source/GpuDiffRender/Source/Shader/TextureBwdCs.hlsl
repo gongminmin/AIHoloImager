@@ -16,7 +16,7 @@ cbuffer param_cb : register(b0)
 
 Texture2D texture : register(t0);
 Buffer<float2> uv_buff : register(t1);
-Buffer<float> grad_image : register(t2);
+Texture2D grad_image : register(t2);
 
 RWBuffer<uint32_t> grad_texture : register(u0);
 RWBuffer<float2> grad_uv : register(u1);
@@ -76,7 +76,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     bool zero_grad = true;
     for (uint32_t i = 0; i < num_channels; ++i)
     {
-        if (grad_image[pixel_offset + i] != 0)
+        if (grad_image[dtid.xy][i] != 0)
         {
             zero_grad = false;
             break;
@@ -120,7 +120,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         float2 dl_duv = 0;
         for (uint32_t i = 0; i < num_channels; ++i)
         {
-            const float dl_da = grad_image[pixel_offset + i];
+            const float dl_da = grad_image[dtid.xy][i];
             if (dl_da != 0)
             {
                 const float4 grad_quad_weights = dl_da * quad_weights;
@@ -153,7 +153,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         const uint32_t texel_offset = (coord.y * tex_size.x + coord.x) * num_channels;
         for (uint32_t i = 0; i < num_channels; ++i)
         {
-            const float dl_da = grad_image[pixel_offset + i];
+            const float dl_da = grad_image[dtid.xy][i];
             if (dl_da != 0)
             {
                 AtomicAdd(grad_texture, texel_offset + i, dl_da);

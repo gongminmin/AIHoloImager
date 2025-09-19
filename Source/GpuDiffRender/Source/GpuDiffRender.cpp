@@ -388,14 +388,15 @@ namespace AIHoloImager
     }
 
     void GpuDiffRender::TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
-        const GpuBuffer& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_uv)
+        const GpuTexture2D& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_uv)
     {
         const uint32_t gbuffer_width = prim_id.Width(0);
         const uint32_t gbuffer_height = prim_id.Height(0);
         const uint32_t tex_width = texture.Width(0);
         const uint32_t tex_height = texture.Height(0);
+        const uint32_t num_channels = FormatChannels(texture.Format());
 
-        const uint32_t grad_texture_size = tex_width * tex_height * FormatChannels(texture.Format()) * sizeof(float);
+        const uint32_t grad_texture_size = tex_width * tex_height * num_channels * sizeof(float);
         if (grad_texture.Size() != grad_texture_size)
         {
             grad_texture =
@@ -403,7 +404,7 @@ namespace AIHoloImager
         }
         grad_texture.Name(L"GpuDiffRender.TextureBwd.grad_texture");
 
-        const uint32_t grad_uv_size = gbuffer_width * gbuffer_height * sizeof(glm::uvec2);
+        const uint32_t grad_uv_size = gbuffer_width * gbuffer_height * sizeof(glm::vec2);
         if (grad_uv.Size() != grad_uv_size)
         {
             grad_uv = GpuBuffer(gpu_system_, grad_uv_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
@@ -415,14 +416,14 @@ namespace AIHoloImager
         GpuConstantBufferOfType<TextureBwdConstantBuffer> texture_bwd_cb(gpu_system_, L"texture_bwd_cb");
         texture_bwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
         texture_bwd_cb->tex_size = glm::uvec2(tex_width, tex_height);
-        texture_bwd_cb->num_channels = FormatChannels(texture.Format());
+        texture_bwd_cb->num_channels = num_channels;
         texture_bwd_cb->min_mag_filter_linear = sampler.SamplerFilters().min == GpuSampler::Filter::Linear;
         texture_bwd_cb->address_mode = static_cast<uint32_t>(sampler.SamplerAddressModes().u);
         texture_bwd_cb.UploadStaging();
 
         const GpuShaderResourceView texture_srv(gpu_system_, texture);
         const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
-        const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image, GpuFormat::R32_Float);
+        const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image);
 
         GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Uint); // Float as uint due to atomic operations
         GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_uv, GpuFormat::RG32_Float);
