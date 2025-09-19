@@ -50,11 +50,11 @@ if(MSVC)
         endforeach()
         foreach(flag_var
             CMAKE_EXE_LINKER_FLAGS_DEBUG CMAKE_SHARED_LINKER_FLAGS_DEBUG)
-            set(${flag_var} "/DEBUG:FASTLINK")
+            set(${flag_var} "/DEBUG:FULL")
         endforeach()
         foreach(flag_var
             CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO)
-            set(${flag_var} "/DEBUG:FASTLINK /INCREMENTAL:NO /OPT:REF /OPT:ICF")
+            set(${flag_var} "/DEBUG:FULL /INCREMENTAL:NO /OPT:REF /OPT:ICF")
         endforeach()
         foreach(flag_var
             CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELEASE CMAKE_SHARED_LINKER_FLAGS_RELEASE)
