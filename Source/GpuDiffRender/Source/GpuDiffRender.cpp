@@ -13,37 +13,35 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
 
+#include "CompiledShader/AccumGradMipsCs.h"
 #include "CompiledShader/AntiAliasConstructOppoVertCs.h"
 #include "CompiledShader/AntiAliasConstructOppoVertHashCs.h"
 #include "CompiledShader/AntialiasBwdCs.h"
 #include "CompiledShader/AntialiasFwdCs.h"
 #include "CompiledShader/AntialiasIndirectCs.h"
 #include "CompiledShader/InterpolateBwdCs.h"
+#include "CompiledShader/InterpolateBwdDerivateAttribsCs.h"
 #include "CompiledShader/InterpolateFwdCs.h"
+#include "CompiledShader/InterpolateFwdDerivateAttribsCs.h"
 #include "CompiledShader/RasterizeBwdCs.h"
+#include "CompiledShader/RasterizeFwdDerivateBcGs.h"
+#include "CompiledShader/RasterizeFwdDerivateBcPs.h"
 #include "CompiledShader/RasterizeFwdGs.h"
 #include "CompiledShader/RasterizeFwdPs.h"
 #include "CompiledShader/RasterizeFwdVs.h"
 #include "CompiledShader/TextureBwdCs.h"
+#include "CompiledShader/TextureBwdMipCs.h"
 #include "CompiledShader/TextureCopyCs.h"
 #include "CompiledShader/TextureFwdCs.h"
+#include "CompiledShader/TextureFwdMipCs.h"
 
 namespace AIHoloImager
 {
     GpuDiffRender::GpuDiffRender(GpuSystem& gpu_system) : gpu_system_(gpu_system)
     {
         {
-            const ShaderInfo shaders[] = {
-                {RasterizeFwdVs_shader, 0, 0, 0},
-                {RasterizeFwdPs_shader, 0, 0, 0},
-                {RasterizeFwdGs_shader, 0, 0, 0},
-            };
-
-            const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint};
-
             GpuRenderPipeline::States states;
             states.cull_mode = GpuRenderPipeline::CullMode::ClockWise;
-            states.rtv_formats = rtv_formats;
             states.dsv_format = GpuFormat::D32_Float;
             states.depth_enable = true;
 
@@ -51,12 +49,40 @@ namespace AIHoloImager
                 {"POSITION", 0, GpuFormat::RGBA32_Float},
             }));
 
-            rasterize_fwd_pipeline_ =
-                GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
+            {
+                const ShaderInfo shaders[] = {
+                    {RasterizeFwdVs_shader, 0, 0, 0},
+                    {RasterizeFwdPs_shader, 0, 0, 0},
+                    {RasterizeFwdGs_shader, 0, 0, 0},
+                };
+
+                const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint};
+                states.rtv_formats = rtv_formats;
+
+                rasterize_fwd_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
+            }
+            {
+                const ShaderInfo shaders[] = {
+                    {RasterizeFwdVs_shader, 0, 0, 0},
+                    {RasterizeFwdDerivateBcPs_shader, 1, 2, 0},
+                    {RasterizeFwdDerivateBcGs_shader, 0, 0, 0},
+                };
+
+                const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint, GpuFormat::RGBA32_Float};
+                states.rtv_formats = rtv_formats;
+
+                rasterize_fwd_derivative_bc_pipeline_ =
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
+            }
         }
         {
             const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 5, 1};
             rasterize_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 6, 1};
+            rasterize_bwd_derivative_bc_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
@@ -64,8 +90,16 @@ namespace AIHoloImager
             interpolate_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
+            const ShaderInfo shader = {InterpolateFwdDerivateAttribsCs_shader, 1, 5, 2};
+            interpolate_fwd_derivative_attribs_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
             const ShaderInfo shader = {InterpolateBwdCs_shader, 1, 5, 2};
             interpolate_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            const ShaderInfo shader = {InterpolateBwdDerivateAttribsCs_shader, 1, 7, 3};
+            interpolate_bwd_derivative_attribs_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
@@ -77,8 +111,20 @@ namespace AIHoloImager
             texture_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
+            const ShaderInfo shader = {TextureFwdMipCs_shader, 1, 4, 1, 1};
+            texture_fwd_mip_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
             const ShaderInfo shader = {TextureBwdCs_shader, 1, 3, 2};
             texture_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            const ShaderInfo shader = {TextureBwdMipCs_shader, 1, 4, 3};
+            texture_bwd_mip_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
+        }
+        {
+            const ShaderInfo shader = {AccumGradMipsCs_shader, 1, 1, 1};
+            accum_grad_mips_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
@@ -120,7 +166,8 @@ namespace AIHoloImager
     GpuDiffRender::~GpuDiffRender() = default;
 
     void GpuDiffRender::RasterizeFwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices, uint32_t width,
-        uint32_t height, const GpuViewport& viewport, GpuTexture2D& barycentric, GpuTexture2D& prim_id)
+        uint32_t height, const GpuViewport& viewport, bool needs_derivative_barycentric, GpuTexture2D& barycentric,
+        GpuTexture2D& derivative_barycentric, GpuTexture2D& prim_id)
     {
         if ((barycentric.Width(0) != width) || (barycentric.Height(0) != height) || (barycentric.Format() != GpuFormat::RG32_Float))
         {
@@ -136,8 +183,28 @@ namespace AIHoloImager
         }
         prim_id.Name(L"GpuDiffRender.RasterizeFwd.prim_id");
 
+        if (needs_derivative_barycentric)
+        {
+            if ((derivative_barycentric.Width(0) != width) || (derivative_barycentric.Height(0) != height) ||
+                (derivative_barycentric.Format() != GpuFormat::RGBA32_Float))
+            {
+                derivative_barycentric = GpuTexture2D(
+                    gpu_system_, width, height, 1, GpuFormat::RGBA32_Float, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+            }
+            derivative_barycentric.Name(L"GpuDiffRender.RasterizeFwd.derivative_barycentric");
+        }
+        else
+        {
+            derivative_barycentric = GpuTexture2D();
+        }
+
         GpuRenderTargetView barycentric_rtv(gpu_system_, barycentric);
         GpuRenderTargetView prim_id_rtv(gpu_system_, prim_id);
+        GpuRenderTargetView derivative_barycentric_rtv;
+        if (needs_derivative_barycentric)
+        {
+            derivative_barycentric_rtv = GpuRenderTargetView(gpu_system_, derivative_barycentric);
+        }
 
         if ((depth_tex_.Width(0) != width) || (depth_tex_.Height(0) != height))
         {
@@ -150,28 +217,59 @@ namespace AIHoloImager
         const float clear_clr[] = {0, 0, 0, 0};
         cmd_list.Clear(prim_id_rtv, clear_clr);
         cmd_list.ClearDepth(depth_dsv_, 1.0f);
+        if (needs_derivative_barycentric)
+        {
+            cmd_list.Clear(derivative_barycentric_rtv, clear_clr);
+        }
 
         const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&positions, 0, sizeof(glm::vec4)}};
         const GpuCommandList::IndexBufferBinding ib_binding = {&indices, 0, GpuFormat::R32_Uint};
 
-        const GpuCommandList::ShaderBinding shader_bindings[] = {
-            {{}, {}, {}},
-            {{}, {}, {}},
-            {{}, {}, {}},
-        };
+        if (needs_derivative_barycentric)
+        {
+            GpuConstantBufferOfType<RasterizeFwdPsDerivateBcConstantBuffer> rasterize_fwd_ps_derivative_bc_cb(
+                gpu_system_, L"rasterize_fwd_ps_derivative_bc_cb");
+            rasterize_fwd_ps_derivative_bc_cb->viewport = glm::vec4(viewport.left, viewport.top, viewport.width, viewport.height);
+            rasterize_fwd_ps_derivative_bc_cb.UploadStaging();
 
-        const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
+            const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
-        cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
-            &depth_dsv_, std::span(&viewport, 1), {});
+            const GpuConstantBuffer* cbs[] = {&rasterize_fwd_ps_derivative_bc_cb};
+            const GpuShaderResourceView* srvs[] = {&positions_srv, &indices_srv};
+            const GpuCommandList::ShaderBinding shader_bindings[] = {
+                {{}, {}, {}},
+                {cbs, srvs, {}},
+                {{}, {}, {}},
+            };
+
+            const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv, &derivative_barycentric_rtv};
+
+            cmd_list.Render(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t),
+                shader_bindings, rtvs, &depth_dsv_, std::span(&viewport, 1), {});
+        }
+        else
+        {
+            const GpuCommandList::ShaderBinding shader_bindings[] = {
+                {{}, {}, {}},
+                {{}, {}, {}},
+                {{}, {}, {}},
+            };
+
+            const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
+
+            cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
+                &depth_dsv_, std::span(&viewport, 1), {});
+        }
     }
 
     void GpuDiffRender::RasterizeBwd(GpuCommandList& cmd_list, const GpuBuffer& positions, const GpuBuffer& indices,
         const GpuViewport& viewport, const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuTexture2D& grad_barycentric,
-        GpuBuffer& grad_positions)
+        const GpuTexture2D& grad_derivative_barycentric, GpuBuffer& grad_positions)
     {
         const uint32_t width = barycentric.Width(0);
         const uint32_t height = barycentric.Height(0);
+        const bool needs_derivative_barycentric = static_cast<bool>(grad_derivative_barycentric);
 
         if (grad_positions.Size() != positions.Size())
         {
@@ -192,6 +290,11 @@ namespace AIHoloImager
         const GpuShaderResourceView grad_barycentric_srv(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
         const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
         const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+        GpuShaderResourceView grad_derivative_barycentric_srv;
+        if (needs_derivative_barycentric)
+        {
+            grad_derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, grad_derivative_barycentric, GpuFormat::RGBA32_Float);
+        }
 
         GpuUnorderedAccessView grad_positions_uav(
             gpu_system_, grad_positions, GpuFormat::R32_Uint); // Float as uint due to atomic operations
@@ -200,17 +303,29 @@ namespace AIHoloImager
         cmd_list.Clear(grad_positions_uav, clear_clr);
 
         const GpuConstantBuffer* cbs[] = {&rasterize_bwd_cb};
-        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv};
         GpuUnorderedAccessView* uavs[] = {&grad_positions_uav};
-        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-        cmd_list.Compute(rasterize_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        if (needs_derivative_barycentric)
+        {
+            const GpuShaderResourceView* srvs[] = {
+                &barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv, &grad_derivative_barycentric_srv};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(rasterize_bwd_derivative_bc_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
+        else
+        {
+            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(rasterize_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, GpuBuffer& shading)
+        const GpuTexture2D& barycentric, const GpuTexture2D& derivative_barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices,
+        GpuBuffer& shading, GpuBuffer& derivative_shading)
     {
         const uint32_t width = barycentric.Width(0);
         const uint32_t height = barycentric.Height(0);
+        const bool needs_dbc = static_cast<bool>(derivative_barycentric);
 
         const uint32_t shading_size = width * height * num_attribs_per_vtx * sizeof(float);
         if (shading.Size() != shading_size)
@@ -218,6 +333,21 @@ namespace AIHoloImager
             shading = GpuBuffer(gpu_system_, shading_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
         }
         shading.Name(L"GpuDiffRender.InterpolateFwd.shading");
+
+        if (needs_dbc)
+        {
+            const uint32_t derivative_shading_size = shading_size * 2;
+            if (derivative_shading.Size() != derivative_shading_size)
+            {
+                derivative_shading = GpuBuffer(
+                    gpu_system_, derivative_shading_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+            }
+            derivative_shading.Name(L"GpuDiffRender.InterpolateFwd.derivative_shading");
+        }
+        else
+        {
+            derivative_shading = GpuBuffer();
+        }
 
         constexpr uint32_t BlockDim = 16;
 
@@ -230,25 +360,52 @@ namespace AIHoloImager
         const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
         const GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
         const GpuShaderResourceView index_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+        GpuShaderResourceView derivative_barycentric_srv;
+        if (needs_dbc)
+        {
+            derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, derivative_barycentric, GpuFormat::RGBA32_Float);
+        }
 
         GpuUnorderedAccessView shading_uav(gpu_system_, shading, GpuFormat::R32_Float);
+        GpuUnorderedAccessView derivative_shading_uav;
+        if (needs_dbc)
+        {
+            derivative_shading_uav = GpuUnorderedAccessView(gpu_system_, derivative_shading, GpuFormat::RG32_Float);
+        }
 
         const float clear_clr[] = {0, 0, 0, 0};
         cmd_list.Clear(shading_uav, clear_clr);
+        if (needs_dbc)
+        {
+            cmd_list.Clear(derivative_shading_uav, clear_clr);
+        }
 
         const GpuConstantBuffer* cbs[] = {&interpolate_fwd_cb};
-        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv};
-        GpuUnorderedAccessView* uavs[] = {&shading_uav};
-        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-        cmd_list.Compute(interpolate_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        if (needs_dbc)
+        {
+            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv, &derivative_barycentric_srv};
+            GpuUnorderedAccessView* uavs[] = {&shading_uav, &derivative_shading_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(
+                interpolate_fwd_derivative_attribs_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
+        else
+        {
+            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv};
+            GpuUnorderedAccessView* uavs[] = {&shading_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(interpolate_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::InterpolateBwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
-        const GpuTexture2D& barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices, const GpuBuffer& grad_shading,
-        GpuBuffer& grad_vtx_attribs, GpuTexture2D& grad_barycentric)
+        const GpuTexture2D& barycentric, const GpuTexture2D& derivative_barycentric, const GpuTexture2D& prim_id, const GpuBuffer& indices,
+        const GpuBuffer& grad_shading, const GpuBuffer& grad_derivative_shading, GpuBuffer& grad_vtx_attribs,
+        GpuTexture2D& grad_barycentric, GpuTexture2D& grad_derivative_barycentric)
     {
         const uint32_t width = barycentric.Width(0);
         const uint32_t height = barycentric.Height(0);
+        const bool needs_dbc = static_cast<bool>(derivative_barycentric);
 
         if (grad_vtx_attribs.Size() != vtx_attribs.Size())
         {
@@ -265,6 +422,21 @@ namespace AIHoloImager
         }
         grad_barycentric.Name(L"GpuDiffRender.InterpolateBwd.grad_barycentric");
 
+        if (needs_dbc)
+        {
+            if ((grad_derivative_barycentric.Width(0) != width) || (grad_derivative_barycentric.Height(0) != height) ||
+                (grad_derivative_barycentric.Format() != GpuFormat::RGBA32_Float))
+            {
+                grad_derivative_barycentric = GpuTexture2D(
+                    gpu_system_, width, height, 1, GpuFormat::RGBA32_Float, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+            }
+            grad_barycentric.Name(L"GpuDiffRender.InterpolateBwd.grad_derivative_barycentric");
+        }
+        else
+        {
+            grad_derivative_barycentric = GpuTexture2D();
+        }
+
         constexpr uint32_t BlockDim = 16;
 
         GpuConstantBufferOfType<InterpolateBwdConstantBuffer> interpolate_bwd_cb(gpu_system_, L"interpolate_bwd_cb");
@@ -277,9 +449,21 @@ namespace AIHoloImager
         const GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
         const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
         const GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, GpuFormat::R32_Float);
+        GpuShaderResourceView derivative_barycentric_srv;
+        GpuShaderResourceView grad_derivative_shading_srv;
+        if (needs_dbc)
+        {
+            derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, derivative_barycentric, GpuFormat::RGBA32_Float);
+            grad_derivative_shading_srv = GpuShaderResourceView(gpu_system_, grad_derivative_shading, GpuFormat::RG32_Float);
+        }
 
         GpuUnorderedAccessView grad_vtx_attribs_uav(gpu_system_, grad_vtx_attribs, GpuFormat::R32_Uint);
         GpuUnorderedAccessView grad_barycentric_uav(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
+        GpuUnorderedAccessView grad_derivative_barycentric_uav;
+        if (needs_dbc)
+        {
+            grad_derivative_barycentric_uav = GpuUnorderedAccessView(gpu_system_, grad_derivative_barycentric, GpuFormat::RGBA32_Float);
+        }
 
         {
             const uint32_t clear_clr[] = {0, 0, 0, 0};
@@ -288,13 +472,29 @@ namespace AIHoloImager
         {
             const float clear_clr[] = {0, 0, 0, 0};
             cmd_list.Clear(grad_barycentric_uav, clear_clr);
+            if (needs_dbc)
+            {
+                cmd_list.Clear(grad_derivative_barycentric_uav, clear_clr);
+            }
         }
 
         const GpuConstantBuffer* cbs[] = {&interpolate_bwd_cb};
-        const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv};
-        GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav};
-        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-        cmd_list.Compute(interpolate_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        if (needs_dbc)
+        {
+            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv,
+                &derivative_barycentric_srv, &grad_derivative_shading_srv};
+            GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav, &grad_derivative_barycentric_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(
+                interpolate_bwd_derivative_attribs_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
+        else
+        {
+            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv};
+            GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(interpolate_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels)
@@ -352,10 +552,12 @@ namespace AIHoloImager
     }
 
     void GpuDiffRender::TextureFwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
-        const GpuDynamicSampler& sampler, GpuTexture2D& image)
+        const GpuBuffer& derivative_uv, const GpuDynamicSampler& sampler, GpuTexture2D& image)
     {
         const uint32_t gbuffer_width = prim_id.Width(0);
         const uint32_t gbuffer_height = prim_id.Height(0);
+        const uint32_t mip_levels = texture.MipLevels();
+        const bool mip_mode = static_cast<bool>(derivative_uv) && (mip_levels > 1);
 
         if ((image.Width(0) != gbuffer_width) || (image.Height(0) != gbuffer_height) || (image.Format() != texture.Format()))
         {
@@ -368,11 +570,18 @@ namespace AIHoloImager
 
         GpuConstantBufferOfType<TextureFwdConstantBuffer> texture_fwd_cb(gpu_system_, L"texture_fwd_cb");
         texture_fwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
+        texture_fwd_cb->tex_size = glm::uvec2(texture.Width(0), texture.Height(0));
+        texture_fwd_cb->mip_levels = mip_levels;
         texture_fwd_cb.UploadStaging();
 
         const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
         const GpuShaderResourceView texture_srv(gpu_system_, texture);
         const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
+        GpuShaderResourceView derivative_uv_srv;
+        if (mip_mode)
+        {
+            derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, GpuFormat::RGBA32_Float);
+        }
 
         GpuUnorderedAccessView image_uav(gpu_system_, image);
 
@@ -380,23 +589,52 @@ namespace AIHoloImager
         cmd_list.Clear(image_uav, clear_clr);
 
         const GpuConstantBuffer* cbs[] = {&texture_fwd_cb};
-        const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv};
-        GpuUnorderedAccessView* uavs[] = {&image_uav};
-        const GpuDynamicSampler* samplers[] = {&sampler};
-        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
-        cmd_list.Compute(texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+        if (mip_mode)
+        {
+            const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv, &derivative_uv_srv};
+            GpuUnorderedAccessView* uavs[] = {&image_uav};
+            const GpuDynamicSampler* samplers[] = {&sampler};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
+            cmd_list.Compute(texture_fwd_mip_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+        }
+        else
+        {
+            const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv};
+            GpuUnorderedAccessView* uavs[] = {&image_uav};
+            const GpuDynamicSampler* samplers[] = {&sampler};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
+            cmd_list.Compute(texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
-        const GpuTexture2D& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture, GpuBuffer& grad_uv)
+        const GpuBuffer& derivative_uv, const GpuTexture2D& grad_image, const GpuDynamicSampler& sampler, GpuBuffer& grad_texture,
+        GpuBuffer& grad_uv, GpuBuffer& grad_derivative_uv)
     {
         const uint32_t gbuffer_width = prim_id.Width(0);
         const uint32_t gbuffer_height = prim_id.Height(0);
         const uint32_t tex_width = texture.Width(0);
         const uint32_t tex_height = texture.Height(0);
+        const uint32_t mip_levels = texture.MipLevels();
         const uint32_t num_channels = FormatChannels(texture.Format());
+        const bool mip_mode = static_cast<bool>(derivative_uv) && (mip_levels > 1);
 
-        const uint32_t grad_texture_size = tex_width * tex_height * num_channels * sizeof(float);
+        auto mip_level_offsets = std::make_unique<uint32_t[]>(mip_levels + 1);
+        mip_level_offsets[0] = 0;
+        for (uint32_t i = 1; i <= mip_levels; ++i)
+        {
+            const uint32_t last_level_size = texture.Width(i - 1) * texture.Height(i - 1) * num_channels;
+            mip_level_offsets[i] = mip_level_offsets[i - 1] + last_level_size;
+        }
+
+        GpuBuffer grad_texture_mips;
+        if (mip_mode)
+        {
+            grad_texture_mips =
+                GpuBuffer(gpu_system_, mip_level_offsets[mip_levels] * sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
+        }
+
+        const uint32_t grad_texture_size = mip_level_offsets[1] * sizeof(float);
         if (grad_texture.Size() != grad_texture_size)
         {
             grad_texture =
@@ -411,37 +649,107 @@ namespace AIHoloImager
         }
         grad_uv.Name(L"GpuDiffRender.TextureBwd.grad_uv");
 
-        constexpr uint32_t BlockDim = 16;
-
-        GpuConstantBufferOfType<TextureBwdConstantBuffer> texture_bwd_cb(gpu_system_, L"texture_bwd_cb");
-        texture_bwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
-        texture_bwd_cb->tex_size = glm::uvec2(tex_width, tex_height);
-        texture_bwd_cb->num_channels = num_channels;
-        texture_bwd_cb->min_mag_filter_linear = sampler.SamplerFilters().min == GpuSampler::Filter::Linear;
-        texture_bwd_cb->address_mode = static_cast<uint32_t>(sampler.SamplerAddressModes().u);
-        texture_bwd_cb.UploadStaging();
-
-        const GpuShaderResourceView texture_srv(gpu_system_, texture);
-        const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
-        const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image);
-
-        GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Uint); // Float as uint due to atomic operations
-        GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_uv, GpuFormat::RG32_Float);
-
+        if (mip_mode)
         {
-            const uint32_t clear_clr[] = {0, 0, 0, 0};
-            cmd_list.Clear(grad_texture_uav, clear_clr);
+            const uint32_t grad_derivative_uv_size = tex_width * tex_height * sizeof(glm::vec4);
+            if (grad_derivative_uv.Size() != grad_derivative_uv_size)
+            {
+                grad_derivative_uv = GpuBuffer(
+                    gpu_system_, grad_derivative_uv_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+            }
+            grad_derivative_uv.Name(L"GpuDiffRender.TextureBwd.grad_derivative_uv");
         }
+        else
         {
-            const float clear_clr[] = {0, 0, 0, 0};
-            cmd_list.Clear(grad_uv_uav, clear_clr);
+            grad_derivative_uv = GpuBuffer();
         }
 
-        const GpuConstantBuffer* cbs[] = {&texture_bwd_cb};
-        const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv};
-        GpuUnorderedAccessView* uavs[] = {&grad_texture_uav, &grad_uv_uav};
-        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-        cmd_list.Compute(texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+        {
+            constexpr uint32_t BlockDim = 16;
+
+            GpuConstantBufferOfType<TextureBwdConstantBuffer> texture_bwd_cb(gpu_system_, L"texture_bwd_cb");
+            texture_bwd_cb->gbuffer_size = glm::uvec2(gbuffer_width, gbuffer_height);
+            texture_bwd_cb->tex_size = glm::uvec2(tex_width, tex_height);
+            texture_bwd_cb->num_channels = num_channels;
+            texture_bwd_cb->min_mag_filter_linear = sampler.SamplerFilters().min == GpuSampler::Filter::Linear;
+            texture_bwd_cb->mip_filter_linear = sampler.SamplerFilters().mip == GpuSampler::Filter::Linear;
+            texture_bwd_cb->mip_levels = mip_levels;
+            texture_bwd_cb->address_mode = static_cast<uint32_t>(sampler.SamplerAddressModes().u);
+            std::memcpy(texture_bwd_cb->mip_level_offsets, mip_level_offsets.get(),
+                std::min<uint32_t>(mip_levels * sizeof(uint32_t), sizeof(texture_bwd_cb->mip_level_offsets)));
+            texture_bwd_cb.UploadStaging();
+
+            const GpuShaderResourceView texture_srv(gpu_system_, texture);
+            const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
+            const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image);
+            GpuShaderResourceView derivative_uv_srv;
+            if (mip_mode)
+            {
+                derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, GpuFormat::RGBA32_Float);
+            }
+
+            GpuUnorderedAccessView grad_texture_mips_uav(gpu_system_, mip_mode ? grad_texture_mips : grad_texture,
+                GpuFormat::R32_Uint); // Float as uint due to atomic operations
+            GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_uv, GpuFormat::RG32_Float);
+            GpuUnorderedAccessView grad_derivative_uv_uav;
+            if (mip_mode)
+            {
+                grad_derivative_uv_uav = GpuUnorderedAccessView(gpu_system_, grad_derivative_uv, GpuFormat::RGBA32_Float);
+            }
+
+            {
+                const uint32_t clear_clr[] = {0, 0, 0, 0};
+                cmd_list.Clear(grad_texture_mips_uav, clear_clr);
+            }
+            {
+                const float clear_clr[] = {0, 0, 0, 0};
+                cmd_list.Clear(grad_uv_uav, clear_clr);
+                if (mip_mode)
+                {
+                    cmd_list.Clear(grad_derivative_uv_uav, clear_clr);
+                }
+            }
+
+            const GpuConstantBuffer* cbs[] = {&texture_bwd_cb};
+            if (mip_mode)
+            {
+                const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv, &derivative_uv_srv};
+                GpuUnorderedAccessView* uavs[] = {&grad_texture_mips_uav, &grad_uv_uav, &grad_derivative_uv_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(
+                    texture_bwd_mip_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+            }
+            else
+            {
+                const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv};
+                GpuUnorderedAccessView* uavs[] = {&grad_texture_mips_uav, &grad_uv_uav};
+                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                cmd_list.Compute(texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+            }
+        }
+
+        if (mip_mode)
+        {
+            constexpr uint32_t BlockDim = 16;
+
+            GpuConstantBufferOfType<AccumGradMipsConstantBuffer> accum_grad_mips_cb(gpu_system_, L"accum_grad_mips_cb");
+            accum_grad_mips_cb->tex_size = glm::uvec2(tex_width, tex_height);
+            accum_grad_mips_cb->num_channels = num_channels;
+            accum_grad_mips_cb->mip_levels = mip_levels;
+            std::memcpy(accum_grad_mips_cb->mip_level_offsets, mip_level_offsets.get(),
+                std::min<uint32_t>(mip_levels * sizeof(uint32_t), sizeof(accum_grad_mips_cb->mip_level_offsets)));
+            accum_grad_mips_cb.UploadStaging();
+
+            const GpuShaderResourceView grad_texture_mips_srv(gpu_system_, grad_texture_mips, GpuFormat::R32_Float);
+
+            GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Float);
+
+            const GpuConstantBuffer* cbs[] = {&accum_grad_mips_cb};
+            const GpuShaderResourceView* srvs[] = {&grad_texture_mips_srv};
+            GpuUnorderedAccessView* uavs[] = {&grad_texture_uav};
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(accum_grad_mips_pipeline_, DivUp(tex_width, BlockDim), DivUp(tex_height, BlockDim), 1, shader_binding);
+        }
     }
 
     void GpuDiffRender::AntiAliasConstructOppositeVertices(GpuCommandList& cmd_list, const GpuBuffer& indices, GpuBuffer& opposite_vertices)

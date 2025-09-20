@@ -56,6 +56,7 @@ def LogNextPowerOf2(x):
 class DiffOptimizer:
     def __init__(self, gpu_system):
         self.downsampling = True
+        self.enable_mip = True
 
         self.device = ComputeDevice()
         self.gpu_dr = GpuDiffRenderTorch(gpu_system, self.device)
@@ -167,15 +168,22 @@ class DiffOptimizer:
     def Render(self, mvp_mtx, viewport, vtx_positions, indices, opposite_vertices, resolution, roi, **kwargs):
         pos_clip = torch.matmul(vtx_positions, mvp_mtx)
 
-        barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport)
         if "vtx_colors" in kwargs:
             vtx_colors = kwargs["vtx_colors"]
-            image = self.gpu_dr.Interpolate(vtx_colors, barycentric, prim_id, indices)
+            barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport)
+            image = self.gpu_dr.Interpolate(vtx_colors, barycentric, prim_id, indices)[0]
         else:
             vtx_uv = kwargs["vtx_uv"]
             texture = kwargs["texture"]
-            uv = self.gpu_dr.Interpolate(vtx_uv, barycentric, prim_id, indices)
-            image = self.gpu_dr.Texture(texture.unsqueeze(0), prim_id, uv, filter = "linear", address_mode = "clamp")
+            if self.enable_mip:
+                barycentric, prim_id, derivative_barycentric = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport, True)
+                uv, derivative_uv = self.gpu_dr.Interpolate(vtx_uv, barycentric, prim_id, indices, derivative_barycentric = derivative_barycentric)
+                image = self.gpu_dr.Texture(texture.unsqueeze(0), prim_id, uv, derivative_uv = derivative_uv, filter = "linear-mipmap-linear", address_mode = "clamp")
+            else:
+                barycentric, prim_id = self.gpu_dr.Rasterize(pos_clip, indices, resolution, viewport)
+                uv = self.gpu_dr.Interpolate(vtx_uv, barycentric, prim_id, indices)[0]
+                image = self.gpu_dr.Texture(texture.unsqueeze(0), prim_id, uv, filter = "linear", address_mode = "clamp")
+
         image = self.gpu_dr.AntiAlias(image, prim_id, pos_clip, indices, viewport, opposite_vertices)
 
         image = image.squeeze(0)
@@ -377,11 +385,11 @@ class DiffOptimizer:
                    texture, mask_tex, mip_levels,
                    vtx_positions, vtx_uv, indices,
                    crop_images, mvp_mtxs, viewports, rois,
-                   resolutions, num_iter = 500):
+                   resolutions, num_iter = 150):
         num_images = len(crop_images)
         criterion = torch.nn.MSELoss()
 
-        interval = 100
+        interval = 50
         lr_base = 1e-2
 
         texture_opt = torch.nn.Parameter(texture)

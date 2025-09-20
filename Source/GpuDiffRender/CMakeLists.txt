@@ -2,6 +2,7 @@
 #
 
 set(aihi_gpu_diff_render_files
+    Source/Shader/AccumGradMipsCs.hlsl
     Source/Shader/AntiAliasBwdCs.hlsl
     Source/Shader/AntiAliasConstructOppoVertCs.hlsl
     Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl
@@ -9,14 +10,21 @@ set(aihi_gpu_diff_render_files
     Source/Shader/AntiAliasIndirectCs.hlsl
     Source/Shader/Common.hlslh
     Source/Shader/InterpolateBwdCs.hlsl
+    Source/Shader/InterpolateBwdDerivateAttribsCs.hlsl
     Source/Shader/InterpolateFwdCs.hlsl
+    Source/Shader/InterpolateFwdDerivateAttribsCs.hlsl
     Source/Shader/RasterizeBwdCs.hlsl
+    Source/Shader/RasterizeBwdDerivateBcCs.hlsl
     Source/Shader/RasterizeFwdGs.hlsl
+    Source/Shader/RasterizeFwdDerivateBcGs.hlsl
     Source/Shader/RasterizeFwdPs.hlsl
+    Source/Shader/RasterizeFwdDerivateBcPs.hlsl
     Source/Shader/RasterizeFwdVs.hlsl
     Source/Shader/TextureBwdCs.hlsl
+    Source/Shader/TextureBwdMipCs.hlsl
     Source/Shader/TextureCopyCs.hlsl
     Source/Shader/TextureFwdCs.hlsl
+    Source/Shader/TextureFwdMipCs.hlsl
     Source/pch.hpp
     Source/GpuDiffRender.cpp
     Source/GpuDiffRender.hpp
@@ -32,10 +40,15 @@ add_library(AIHoloImagerGpuDiffRender SHARED
 
 AddShaderFile(Source/Shader/RasterizeFwdVs.hlsl "vs" "main")
 AddShaderFile(Source/Shader/RasterizeFwdGs.hlsl "gs" "main")
+AddShaderFile(Source/Shader/RasterizeFwdDerivateBcGs.hlsl "gs" "main")
 AddShaderFile(Source/Shader/RasterizeFwdPs.hlsl "ps" "main")
+AddShaderFile(Source/Shader/RasterizeFwdDerivateBcPs.hlsl "ps" "main")
 AddShaderFile(Source/Shader/RasterizeBwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/RasterizeBwdDerivateBcCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/InterpolateFwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/InterpolateFwdDerivateAttribsCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/InterpolateBwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/InterpolateBwdDerivateAttribsCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasIndirectCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasBwdCs.hlsl "cs" "main")
@@ -43,7 +56,10 @@ AddShaderFile(Source/Shader/AntiAliasConstructOppoVertCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AntiAliasConstructOppoVertHashCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureCopyCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureFwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/TextureFwdMipCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureBwdCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/TextureBwdMipCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/AccumGradMipsCs.hlsl "cs" "main")
 
 set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
 

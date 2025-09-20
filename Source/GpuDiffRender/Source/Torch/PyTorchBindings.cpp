@@ -24,11 +24,11 @@ PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
     pybind11::class_<GpuDiffRenderTorch>(mod, "GpuDiffRenderTorch")
         .def(pybind11::init<size_t, torch::Device>())
         .def("Rasterize", &GpuDiffRenderTorch::Rasterize, py::arg("positions"), py::arg("indices"), py::arg("resolution"),
-            py::arg("viewport") = py::none())
+            py::arg("viewport") = py::none(), py::arg("needs_derivative_barycentric") = false)
         .def("Interpolate", &GpuDiffRenderTorch::Interpolate, py::arg("vtx_attribs"), py::arg("barycentric"), py::arg("prim_id"),
-            py::arg("indices"))
+            py::arg("indices"), py::arg("derivative_barycentric") = py::none())
         .def("Texture", &GpuDiffRenderTorch::Texture, py::arg("texture"), py::arg("prim_id"), py::arg("uv"), py::arg("filter"),
-            py::arg("address_mode"))
+            py::arg("address_mode"), py::arg("derivative_uv") = py::none())
         .def("AntiAliasConstructOppositeVertices", &GpuDiffRenderTorch::AntiAliasConstructOppositeVertices, py::arg("indices"))
         .def("AntiAlias", &GpuDiffRenderTorch::AntiAlias, py::arg("shading"), py::arg("prim_id"), py::arg("positions"), py::arg("indices"),
             py::arg("viewport") = py::none(), py::arg("opposite_vertices") = py::none());

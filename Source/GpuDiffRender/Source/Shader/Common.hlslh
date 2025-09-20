@@ -97,3 +97,29 @@ uint32_t HashFunc(uint32_t2 val)
     h ^= h >> 16;
     return h;
 }
+
+float2 DuvDxyw(float2 bc, float da0_di, float da1_di, float da2_di, float inv_area)
+{
+    return (float2(da0_di, da1_di) - bc * (da0_di + da1_di + da2_di)) * inv_area;
+}
+
+uint32_t MipLevelOffset(uint32_t4 mip_level_offsets[4], uint32_t level)
+{
+    const uint32_t index = level / 4;
+    const uint32_t comp = level - index * 4;
+    return mip_level_offsets[index][comp];
+}
+
+uint32_t2 MipLevelSize(uint32_t2 tex_size, uint32_t level)
+{
+    return max(tex_size >> level, 1);
+}
+
+float CalcMipLevel(float4 duv_dxy, uint32_t2 tex_size, uint32_t mip_levels)
+{
+    const float2 duv_dx = duv_dxy.xz * tex_size;
+    const float2 duv_dy = duv_dxy.yw * tex_size;
+    const float d = max(dot(duv_dx, duv_dx), dot(duv_dy, duv_dy));
+    const float level = log2(sqrt(d));
+    return clamp(level, 0, mip_levels - 1);
+}

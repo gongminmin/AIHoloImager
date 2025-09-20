@@ -4,6 +4,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <tuple>
 
 #ifdef _MSC_VER
@@ -43,13 +44,14 @@ namespace AIHoloImager
             float height;
         };
 
-        torch::autograd::tensor_list Rasterize(
-            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport = nullptr);
+        torch::autograd::tensor_list Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution,
+            const Viewport* viewport = nullptr, bool needs_derivative_barycentric = false);
 
-        torch::Tensor Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
+        torch::autograd::tensor_list Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id,
+            torch::Tensor indices, std::optional<torch::Tensor> derivative_barycentric = std::nullopt);
 
-        torch::Tensor Texture(
-            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
+        torch::Tensor Texture(torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter,
+            std::string_view address_mode, std::optional<torch::Tensor> derivative_uv = std::nullopt);
 
         struct AntiAliasOppositeVertices
         {
@@ -62,16 +64,18 @@ namespace AIHoloImager
             const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
 
     private:
-        std::tuple<torch::Tensor, torch::Tensor> RasterizeFwd(
-            torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport = nullptr);
-        torch::Tensor RasterizeBwd(torch::Tensor grad_barycentric);
+        std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> RasterizeFwd(torch::Tensor positions, torch::Tensor indices,
+            const std::array<uint32_t, 2>& resolution, const Viewport* viewport, bool needs_derivative_barycentric);
+        torch::Tensor RasterizeBwd(torch::Tensor grad_barycentric, torch::Tensor* grad_derivative_barycentric);
 
-        torch::Tensor InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices);
-        std::tuple<torch::Tensor, torch::Tensor> InterpolateBwd(torch::Tensor grad_shading);
+        std::tuple<torch::Tensor, torch::Tensor> InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id,
+            torch::Tensor indices, const torch::Tensor* derivative_barycentric);
+        std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> InterpolateBwd(
+            torch::Tensor grad_shading, torch::Tensor* grad_derivative_shading);
 
-        torch::Tensor TextureFwd(
-            torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode);
-        std::tuple<torch::Tensor, torch::Tensor> TextureBwd(torch::Tensor grad_image);
+        torch::Tensor TextureFwd(torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter,
+            std::string_view address_mode, torch::Tensor* grad_derivative_uv);
+        std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> TextureBwd(torch::Tensor grad_image);
 
         torch::Tensor AntiAliasFwd(torch::Tensor shading, torch::Tensor prim_id, torch::Tensor positions, torch::Tensor indices,
             const Viewport* viewport = nullptr, const AntiAliasOppositeVertices* opposite_vertices = nullptr);
@@ -90,10 +94,12 @@ namespace AIHoloImager
             GpuBuffer positions;
             GpuBuffer indices;
             GpuTexture2D barycentric;
+            GpuTexture2D derivative_barycentric;
             GpuTexture2D prim_id;
             GpuViewport viewport;
 
             GpuTexture2D grad_barycentric;
+            GpuTexture2D grad_derivative_barycentric;
             GpuBuffer grad_positions;
         };
         RasterizeIntermediate rast_intermediate_;
@@ -103,13 +109,17 @@ namespace AIHoloImager
             GpuBuffer vtx_attribs;
             uint32_t num_attribs;
             GpuTexture2D barycentric;
+            GpuTexture2D derivative_barycentric;
             GpuTexture2D prim_id;
             GpuBuffer indices;
 
             GpuBuffer shading;
+            GpuBuffer derivative_shading;
             GpuBuffer grad_shading;
+            GpuBuffer grad_derivative_shading;
             GpuBuffer grad_vtx_attribs;
             GpuTexture2D grad_barycentric;
+            GpuTexture2D grad_derivative_barycentric;
         };
         InterpolateIntermediate interpolate_intermediate_;
 
@@ -118,12 +128,14 @@ namespace AIHoloImager
             GpuTexture2D texture;
             GpuTexture2D prim_id;
             GpuBuffer uv;
+            GpuBuffer derivative_uv;
             GpuDynamicSampler sampler;
             GpuTexture2D image;
 
             GpuTexture2D grad_image;
             GpuBuffer grad_texture;
             GpuBuffer grad_uv;
+            GpuBuffer grad_derivative_uv;
         };
         TextureIntermediate texture_intermediate_;
 

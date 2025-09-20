@@ -1,11 +1,6 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
-cbuffer param_cb : register(b0)
-{
-    float2 vp_scale;
-};
-
 struct GsInput
 {
     float4 pos : POSITION;
@@ -15,6 +10,9 @@ struct PsInput
 {
     float2 bc : TEXCOORD0;
     nointerpolation uint prim_id : PRIMITIVE_ID;
+#if ENABLE_DERIVATIVE_BC
+    float4 position : TEXCOORD1;
+#endif
     float4 pos : SV_Position;
 };
 
@@ -31,6 +29,9 @@ void main(triangle GsInput input[3],
     {
         output.pos = input[i].pos;
         output.bc = Barycentric[i];
+#if ENABLE_DERIVATIVE_BC
+        output.position = input[i].pos;
+#endif
         out_stream.Append(output);
     }
     out_stream.RestartStrip();

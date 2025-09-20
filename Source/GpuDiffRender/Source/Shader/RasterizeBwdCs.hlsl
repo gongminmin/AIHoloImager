@@ -16,13 +16,11 @@ Texture2D<uint32_t> prim_id_tex : register(t1);
 Texture2D<float2> grad_barycentric_tex : register(t2);
 Buffer<float4> positions_buff : register(t3);
 Buffer<uint32_t> indices_buff : register(t4);
+#if ENABLE_DERIVATIVE_BC
+Texture2D<float4> grad_derivative_barycentric_tex : register(t5);
+#endif
 
 RWBuffer<uint32_t> grad_positions_buff : register(u0);
-
-float2 DuvDxyw(float2 bc, float da0_di, float da1_di, float da2_di, float inv_area)
-{
-    return (float2(da0_di, da1_di) - bc * (da0_di + da1_di + da2_di)) * inv_area;
-}
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
@@ -144,4 +142,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     AtomicAdd(grad_positions_buff, vi[2] * 4 + 0, dot(dl_duv, duv_dx));
     AtomicAdd(grad_positions_buff, vi[2] * 4 + 1, dot(dl_duv, duv_dy));
     AtomicAdd(grad_positions_buff, vi[2] * 4 + 3, dot(dl_duv, duv_dw));
+
+#if ENABLE_DERIVATIVE_BC
+    // TODO: Figure out how grad_derivative_barycentric affects grad_positions
+#endif
 }

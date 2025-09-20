@@ -17,17 +17,25 @@ namespace AIHoloImager
 
     GpuDiffRenderTorch::~GpuDiffRenderTorch() = default;
 
-    tensor_list GpuDiffRenderTorch::Rasterize(
-        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
+    tensor_list GpuDiffRenderTorch::Rasterize(torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution,
+        const Viewport* viewport, bool needs_derivative_barycentric)
     {
         struct RasterizeAutogradFunc : public Function<RasterizeAutogradFunc>
         {
             static tensor_list forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor positions, torch::Tensor indices,
-                const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
+                const std::array<uint32_t, 2>& resolution, const Viewport* viewport, bool needs_derivative_barycentric)
             {
-                auto [barycentric, prim_id] = dr->RasterizeFwd(std::move(positions), std::move(indices), resolution, viewport);
+                auto [barycentric, prim_id, derivative_barycentric] =
+                    dr->RasterizeFwd(std::move(positions), std::move(indices), resolution, viewport, needs_derivative_barycentric);
                 ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
-                return {std::move(barycentric), std::move(prim_id)};
+                if (needs_derivative_barycentric)
+                {
+                    return {std::move(barycentric), std::move(prim_id), std::move(derivative_barycentric)};
+                }
+                else
+                {
+                    return {std::move(barycentric), std::move(prim_id)};
+                }
             }
 
             static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
@@ -35,16 +43,23 @@ namespace AIHoloImager
                 auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
 
                 torch::Tensor grad_barycentric = std::move(grad_outputs[0]);
-                auto grad_positions = dr->RasterizeBwd(std::move(grad_barycentric));
-                return {torch::Tensor(), std::move(grad_positions), torch::Tensor(), torch::Tensor(), torch::Tensor()};
+                torch::Tensor grad_derivative_barycentric;
+                if (grad_outputs.size() > 2)
+                {
+                    grad_derivative_barycentric = std::move(grad_outputs[2]);
+                }
+                auto grad_positions =
+                    dr->RasterizeBwd(std::move(grad_barycentric), grad_outputs.size() > 2 ? &grad_derivative_barycentric : nullptr);
+                return {torch::Tensor(), std::move(grad_positions), torch::Tensor(), torch::Tensor(), torch::Tensor(), torch::Tensor()};
             }
         };
 
-        return RasterizeAutogradFunc::apply(this, std::move(positions), std::move(indices), resolution, viewport);
+        return RasterizeAutogradFunc::apply(
+            this, std::move(positions), std::move(indices), resolution, viewport, needs_derivative_barycentric);
     }
 
-    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::RasterizeFwd(
-        torch::Tensor positions, torch::Tensor indices, const std::array<uint32_t, 2>& resolution, const Viewport* viewport)
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> GpuDiffRenderTorch::RasterizeFwd(torch::Tensor positions, torch::Tensor indices,
+        const std::array<uint32_t, 2>& resolution, const Viewport* viewport, bool needs_derivative_barycentric)
     {
         const uint32_t width = resolution[0];
         const uint32_t height = resolution[1];
@@ -74,28 +89,40 @@ namespace AIHoloImager
         rast_intermediate_.viewport.max_depth = 1;
 
         gpu_dr_.RasterizeFwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, width, height, rast_intermediate_.viewport,
-            rast_intermediate_.barycentric, rast_intermediate_.prim_id);
+            needs_derivative_barycentric, rast_intermediate_.barycentric, rast_intermediate_.derivative_barycentric,
+            rast_intermediate_.prim_id);
 
         torch::Tensor barycentric = tensor_converter_.Convert(cmd_list, rast_intermediate_.barycentric);
         torch::Tensor prim_id = tensor_converter_.Convert(cmd_list, rast_intermediate_.prim_id);
+        torch::Tensor derivative_barycentric;
+        if (needs_derivative_barycentric)
+        {
+            derivative_barycentric = tensor_converter_.Convert(cmd_list, rast_intermediate_.derivative_barycentric);
+        }
 
         gpu_system_.Execute(std::move(cmd_list));
 
-        return {std::move(barycentric), std::move(prim_id)};
+        return {std::move(barycentric), std::move(prim_id), std::move(derivative_barycentric)};
     }
 
-    torch::Tensor GpuDiffRenderTorch::RasterizeBwd(torch::Tensor grad_barycentric)
+    torch::Tensor GpuDiffRenderTorch::RasterizeBwd(torch::Tensor grad_barycentric, torch::Tensor* grad_derivative_barycentric)
     {
         const uint32_t num_vertices = rast_intermediate_.positions.Size() / sizeof(glm::vec4);
+        const bool needs_derivative_barycentric = grad_derivative_barycentric != nullptr;
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_barycentric), rast_intermediate_.grad_barycentric, GpuFormat::RG32_Float,
             GpuResourceFlag::None, L"GpuDiffRenderTorch.RasterizeBwd.grad_barycentric");
+        if (needs_derivative_barycentric)
+        {
+            tensor_converter_.Convert(cmd_list, *grad_derivative_barycentric, rast_intermediate_.grad_derivative_barycentric,
+                GpuFormat::RGBA32_Float, GpuResourceFlag::None, L"GpuDiffRenderTorch.RasterizeBwd.grad_derivative_barycentric");
+        }
 
         gpu_dr_.RasterizeBwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, rast_intermediate_.viewport,
             rast_intermediate_.barycentric, rast_intermediate_.prim_id, rast_intermediate_.grad_barycentric,
-            rast_intermediate_.grad_positions);
+            rast_intermediate_.grad_derivative_barycentric, rast_intermediate_.grad_positions);
 
         const torch::Tensor grad_positions =
             tensor_converter_.Convert(cmd_list, rast_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
@@ -105,39 +132,75 @@ namespace AIHoloImager
         return grad_positions;
     }
 
-    torch::Tensor GpuDiffRenderTorch::Interpolate(
-        torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices)
+    tensor_list GpuDiffRenderTorch::Interpolate(torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id,
+        torch::Tensor indices, std::optional<torch::Tensor> derivative_barycentric)
     {
-        struct InterpolateAutogradFunc : public Function<InterpolateAutogradFunc>
+        if (derivative_barycentric.has_value())
         {
-            static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor vtx_attribs, torch::Tensor barycentric,
-                torch::Tensor prim_id, torch::Tensor indices)
+            struct InterpolateAutogradFunc : public Function<InterpolateAutogradFunc>
             {
-                auto shading = dr->InterpolateFwd(std::move(vtx_attribs), std::move(barycentric), std::move(prim_id), std::move(indices));
-                ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
-                return shading;
-            }
+                static tensor_list forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor vtx_attribs,
+                    torch::Tensor barycentric, torch::Tensor derivative_barycentric, torch::Tensor prim_id, torch::Tensor indices)
+                {
+                    auto [shading, derivative_shading] = dr->InterpolateFwd(
+                        std::move(vtx_attribs), std::move(barycentric), std::move(prim_id), std::move(indices), &derivative_barycentric);
+                    ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                    return {std::move(shading), std::move(derivative_shading)};
+                }
 
-            static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                {
+                    auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+
+                    torch::Tensor grad_shading = std::move(grad_outputs[0]);
+                    torch::Tensor grad_derivative_shading = std::move(grad_outputs[1]);
+                    auto [grad_vtx_attribs, grad_barycentric, grad_derivative_barycentric] =
+                        dr->InterpolateBwd(std::move(grad_shading), &grad_derivative_shading);
+                    return {torch::Tensor(), std::move(grad_vtx_attribs), std::move(grad_barycentric),
+                        std::move(grad_derivative_barycentric), torch::Tensor(), torch::Tensor()};
+                }
+            };
+
+            return InterpolateAutogradFunc::apply(
+                this, std::move(vtx_attribs), std::move(barycentric), *derivative_barycentric, std::move(prim_id), std::move(indices));
+        }
+        else
+        {
+            struct InterpolateAutogradFunc : public Function<InterpolateAutogradFunc>
             {
-                auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+                static tensor_list forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor vtx_attribs,
+                    torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices)
+                {
+                    auto [shading, derivative_shading] =
+                        dr->InterpolateFwd(std::move(vtx_attribs), std::move(barycentric), std::move(prim_id), std::move(indices), nullptr);
+                    ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                    return {std::move(shading)};
+                }
 
-                torch::Tensor grad_shading = std::move(grad_outputs[0]);
-                auto [grad_vtx_attribs, grad_barycentric] = dr->InterpolateBwd(std::move(grad_shading));
-                return {torch::Tensor(), std::move(grad_vtx_attribs), std::move(grad_barycentric), torch::Tensor(), torch::Tensor()};
-            }
-        };
+                static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                {
+                    auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
 
-        return InterpolateAutogradFunc::apply(this, std::move(vtx_attribs), std::move(barycentric), std::move(prim_id), std::move(indices));
+                    torch::Tensor grad_shading = std::move(grad_outputs[0]);
+                    auto [grad_vtx_attribs, grad_barycentric, grad_derivative_barycentric] =
+                        dr->InterpolateBwd(std::move(grad_shading), nullptr);
+                    return {torch::Tensor(), std::move(grad_vtx_attribs), std::move(grad_barycentric), torch::Tensor(), torch::Tensor()};
+                }
+            };
+
+            return InterpolateAutogradFunc::apply(
+                this, std::move(vtx_attribs), std::move(barycentric), std::move(prim_id), std::move(indices));
+        }
     }
 
-    torch::Tensor GpuDiffRenderTorch::InterpolateFwd(
-        torch::Tensor vtx_attribs, torch::Tensor barycentric, torch::Tensor prim_id, torch::Tensor indices)
+    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::InterpolateFwd(torch::Tensor vtx_attribs, torch::Tensor barycentric,
+        torch::Tensor prim_id, torch::Tensor indices, const torch::Tensor* derivative_barycentric)
     {
         const uint32_t mini_batch = static_cast<uint32_t>(barycentric.size(0));
         const uint32_t width = static_cast<uint32_t>(barycentric.size(2));
         const uint32_t height = static_cast<uint32_t>(barycentric.size(1));
         const uint32_t num_attribs = static_cast<uint32_t>(vtx_attribs.size(1));
+        const bool needs_dbc = derivative_barycentric != nullptr;
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -150,72 +213,136 @@ namespace AIHoloImager
             GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(indices), interpolate_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
             L"GpuDiffRenderTorch.InterpolateFwd.indices");
+        if (needs_dbc)
+        {
+            tensor_converter_.Convert(cmd_list, *derivative_barycentric, interpolate_intermediate_.derivative_barycentric,
+                GpuFormat::RGBA32_Float, GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.derivative_barycentric");
+        }
+        else
+        {
+            interpolate_intermediate_.derivative_barycentric = GpuTexture2D();
+        }
 
         gpu_dr_.InterpolateFwd(cmd_list, interpolate_intermediate_.vtx_attribs, num_attribs, interpolate_intermediate_.barycentric,
-            interpolate_intermediate_.prim_id, interpolate_intermediate_.indices, interpolate_intermediate_.shading);
+            interpolate_intermediate_.derivative_barycentric, interpolate_intermediate_.prim_id, interpolate_intermediate_.indices,
+            interpolate_intermediate_.shading, interpolate_intermediate_.derivative_shading);
 
         const torch::Tensor shading = tensor_converter_.Convert(
             cmd_list, interpolate_intermediate_.shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
+        torch::Tensor derivative_shading;
+        if (needs_dbc)
+        {
+            derivative_shading = tensor_converter_.Convert(
+                cmd_list, interpolate_intermediate_.derivative_shading, {mini_batch, height, width, num_attribs * 2}, torch::kFloat32);
+        }
 
         gpu_system_.Execute(std::move(cmd_list));
 
-        return shading;
+        return {std::move(shading), std::move(derivative_shading)};
     }
 
-    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::InterpolateBwd(torch::Tensor grad_shading)
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> GpuDiffRenderTorch::InterpolateBwd(
+        torch::Tensor grad_shading, torch::Tensor* grad_derivative_shading)
     {
         const uint32_t num_attribs = interpolate_intermediate_.num_attribs;
         const uint32_t num_vertices = interpolate_intermediate_.vtx_attribs.Size() / (num_attribs * sizeof(float));
+        const bool needs_dbc = static_cast<bool>(interpolate_intermediate_.derivative_barycentric);
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_shading), interpolate_intermediate_.grad_shading, GpuHeap::Default,
             GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateBwd.grad_shading");
+        if (needs_dbc)
+        {
+            tensor_converter_.Convert(cmd_list, *grad_derivative_shading, interpolate_intermediate_.grad_derivative_shading,
+                GpuHeap::Default, GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateBwd.grad_derivative_shading");
+        }
+        else
+        {
+            interpolate_intermediate_.grad_derivative_shading = GpuBuffer();
+        }
 
         gpu_dr_.InterpolateBwd(cmd_list, interpolate_intermediate_.vtx_attribs, num_attribs, interpolate_intermediate_.barycentric,
-            interpolate_intermediate_.prim_id, interpolate_intermediate_.indices, interpolate_intermediate_.grad_shading,
-            interpolate_intermediate_.grad_vtx_attribs, interpolate_intermediate_.grad_barycentric);
+            interpolate_intermediate_.derivative_barycentric, interpolate_intermediate_.prim_id, interpolate_intermediate_.indices,
+            interpolate_intermediate_.grad_shading, interpolate_intermediate_.grad_derivative_shading,
+            interpolate_intermediate_.grad_vtx_attribs, interpolate_intermediate_.grad_barycentric,
+            interpolate_intermediate_.grad_derivative_barycentric);
 
         torch::Tensor grad_vtx_attribs =
             tensor_converter_.Convert(cmd_list, interpolate_intermediate_.grad_vtx_attribs, {num_vertices, num_attribs}, torch::kFloat32);
         torch::Tensor grad_barycentric = tensor_converter_.Convert(cmd_list, interpolate_intermediate_.grad_barycentric);
+        torch::Tensor grad_derivative_barycentric;
+        if (needs_dbc)
+        {
+            grad_derivative_barycentric = tensor_converter_.Convert(cmd_list, interpolate_intermediate_.grad_derivative_barycentric);
+        }
 
         gpu_system_.Execute(std::move(cmd_list));
 
-        return {std::move(grad_vtx_attribs), std::move(grad_barycentric)};
+        return {std::move(grad_vtx_attribs), std::move(grad_barycentric), std::move(grad_derivative_barycentric)};
     }
 
-    torch::Tensor GpuDiffRenderTorch::Texture(
-        torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode)
+    torch::Tensor GpuDiffRenderTorch::Texture(torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter,
+        std::string_view address_mode, std::optional<torch::Tensor> derivative_uv)
     {
-        struct TextureAutogradFunc : public Function<TextureAutogradFunc>
+        if (derivative_uv.has_value())
         {
-            static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor texture, torch::Tensor prim_id,
-                torch::Tensor uv, std::string_view filter, std::string_view address_mode)
+            struct TextureAutogradFunc : public Function<TextureAutogradFunc>
             {
-                auto textured =
-                    dr->TextureFwd(std::move(texture), std::move(prim_id), std::move(uv), std::move(filter), std::move(address_mode));
-                ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
-                return textured;
-            }
+                static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor texture, torch::Tensor prim_id,
+                    torch::Tensor uv, torch::Tensor derivative_uv, std::string_view filter, std::string_view address_mode)
+                {
+                    auto textured = dr->TextureFwd(
+                        texture, std::move(prim_id), std::move(uv), std::move(filter), std::move(address_mode), &derivative_uv);
+                    ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                    return textured;
+                }
 
-            static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                {
+                    auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+
+                    torch::Tensor grad_textured = std::move(grad_outputs[0]);
+                    auto [grad_texture, grad_uv, grad_derivative_uv] = dr->TextureBwd(std::move(grad_textured));
+                    return {torch::Tensor(), std::move(grad_texture), torch::Tensor(), std::move(grad_uv), std::move(grad_derivative_uv),
+                        torch::Tensor(), torch::Tensor(), torch::Tensor()};
+                }
+            };
+
+            return TextureAutogradFunc::apply(
+                this, std::move(texture), std::move(prim_id), std::move(uv), *derivative_uv, std::move(filter), std::move(address_mode));
+        }
+        else
+        {
+            struct TextureAutogradFunc : public Function<TextureAutogradFunc>
             {
-                auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
+                static torch::Tensor forward(AutogradContext* ctx, GpuDiffRenderTorch* dr, torch::Tensor texture, torch::Tensor prim_id,
+                    torch::Tensor uv, std::string_view filter, std::string_view address_mode)
+                {
+                    auto textured = dr->TextureFwd(
+                        std::move(texture), std::move(prim_id), std::move(uv), std::move(filter), std::move(address_mode), nullptr);
+                    ctx->saved_data["dr"] = reinterpret_cast<int64_t>(dr);
+                    return textured;
+                }
 
-                torch::Tensor grad_textured = std::move(grad_outputs[0]);
-                auto [grad_texture, grad_uv] = dr->TextureBwd(std::move(grad_textured));
-                return {torch::Tensor(), std::move(grad_texture), torch::Tensor(), std::move(grad_uv), torch::Tensor(), torch::Tensor(),
-                    torch::Tensor()};
-            }
-        };
+                static tensor_list backward(AutogradContext* ctx, tensor_list grad_outputs)
+                {
+                    auto* dr = reinterpret_cast<GpuDiffRenderTorch*>(ctx->saved_data["dr"].to<int64_t>());
 
-        return TextureAutogradFunc::apply(
-            this, std::move(texture), std::move(prim_id), std::move(uv), std::move(filter), std::move(address_mode));
+                    torch::Tensor grad_textured = std::move(grad_outputs[0]);
+                    auto [grad_texture, grad_uv, grad_derivative_uv] = dr->TextureBwd(std::move(grad_textured));
+                    return {torch::Tensor(), std::move(grad_texture), torch::Tensor(), std::move(grad_uv), torch::Tensor(), torch::Tensor(),
+                        torch::Tensor()};
+                }
+            };
+
+            return TextureAutogradFunc::apply(
+                this, std::move(texture), std::move(prim_id), std::move(uv), std::move(filter), std::move(address_mode));
+        }
     }
 
-    torch::Tensor GpuDiffRenderTorch::TextureFwd(
-        torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter, std::string_view address_mode)
+    torch::Tensor GpuDiffRenderTorch::TextureFwd(torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter,
+        std::string_view address_mode, torch::Tensor* derivative_uv)
     {
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -293,26 +420,71 @@ namespace AIHoloImager
             L"GpuDiffRenderTorch.TextureFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(uv), texture_intermediate_.uv, GpuHeap::Default, GpuResourceFlag::None,
             L"GpuDiffRenderTorch.TextureFwd.uv");
-
-        gpu_dr_.GenerateMipmaps(cmd_list, texture_intermediate_.texture, 1);
+        if (derivative_uv != nullptr)
+        {
+            tensor_converter_.Convert(cmd_list, *derivative_uv, texture_intermediate_.derivative_uv, GpuHeap::Default,
+                GpuResourceFlag::None, L"GpuDiffRenderTorch.TextureFwd.derivative_uv");
+        }
+        else
+        {
+            texture_intermediate_.derivative_uv = GpuBuffer();
+        }
 
         if (filter == "auto")
         {
-            filter = "linear";
+            filter = "linear-mipmap-linear";
         }
 
         GpuSampler::Filter min_mag_filter;
+        GpuSampler::Filter mip_filter;
+        bool needs_mip;
         if (filter == "point")
         {
             min_mag_filter = GpuSampler::Filter::Point;
+            mip_filter = GpuSampler::Filter::Point;
+            needs_mip = false;
         }
         else if (filter == "linear")
         {
             min_mag_filter = GpuSampler::Filter::Linear;
+            mip_filter = GpuSampler::Filter::Point;
+            needs_mip = false;
+        }
+        else if (filter == "point-mipmap-point")
+        {
+            min_mag_filter = GpuSampler::Filter::Point;
+            mip_filter = GpuSampler::Filter::Point;
+            needs_mip = true;
+        }
+        else if (filter == "point-mipmap-linear")
+        {
+            min_mag_filter = GpuSampler::Filter::Point;
+            mip_filter = GpuSampler::Filter::Linear;
+            needs_mip = true;
+        }
+        else if (filter == "linear-mipmap-point")
+        {
+            min_mag_filter = GpuSampler::Filter::Linear;
+            mip_filter = GpuSampler::Filter::Point;
+            needs_mip = true;
+        }
+        else if (filter == "linear-mipmap-linear")
+        {
+            min_mag_filter = GpuSampler::Filter::Linear;
+            mip_filter = GpuSampler::Filter::Linear;
+            needs_mip = true;
         }
         else
         {
             Unreachable(std::format("Unsupported sampler filter: {}", filter));
+            min_mag_filter = GpuSampler::Filter::Point;
+            mip_filter = GpuSampler::Filter::Point;
+            needs_mip = false;
+        }
+
+        if (derivative_uv == nullptr)
+        {
+            needs_mip = false;
         }
 
         GpuSampler::AddressMode uvw_address_mode;
@@ -333,11 +505,14 @@ namespace AIHoloImager
             Unreachable(std::format("Unsupported sampler address mode: {}", address_mode));
         }
 
-        texture_intermediate_.sampler =
-            GpuDynamicSampler(gpu_system_, GpuSampler::Filters(min_mag_filter, min_mag_filter), GpuSampler::AddressModes(uvw_address_mode));
+        const uint32_t mip_levels = needs_mip ? 0 : 1;
+        gpu_dr_.GenerateMipmaps(cmd_list, texture_intermediate_.texture, mip_levels);
+
+        texture_intermediate_.sampler = GpuDynamicSampler(
+            gpu_system_, GpuSampler::Filters(min_mag_filter, min_mag_filter, mip_filter), GpuSampler::AddressModes(uvw_address_mode));
 
         gpu_dr_.TextureFwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.uv,
-            texture_intermediate_.sampler, texture_intermediate_.image);
+            texture_intermediate_.derivative_uv, texture_intermediate_.sampler, texture_intermediate_.image);
 
         torch::Tensor image = tensor_converter_.Convert(cmd_list, texture_intermediate_.image);
 
@@ -346,7 +521,7 @@ namespace AIHoloImager
         return image;
     }
 
-    std::tuple<torch::Tensor, torch::Tensor> GpuDiffRenderTorch::TextureBwd(torch::Tensor grad_image)
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> GpuDiffRenderTorch::TextureBwd(torch::Tensor grad_image)
     {
         const uint32_t gbuffer_width = texture_intermediate_.prim_id.Width(0);
         const uint32_t gbuffer_height = texture_intermediate_.prim_id.Height(0);
@@ -361,17 +536,23 @@ namespace AIHoloImager
             L"GpuDiffRenderTorch.TextureBwd.grad_image");
 
         gpu_dr_.TextureBwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.uv,
-            texture_intermediate_.grad_image, texture_intermediate_.sampler, texture_intermediate_.grad_texture,
-            texture_intermediate_.grad_uv);
+            texture_intermediate_.derivative_uv, texture_intermediate_.grad_image, texture_intermediate_.sampler,
+            texture_intermediate_.grad_texture, texture_intermediate_.grad_uv, texture_intermediate_.grad_derivative_uv);
 
         torch::Tensor grad_texture = tensor_converter_.Convert(
             cmd_list, texture_intermediate_.grad_texture, {1, tex_height, tex_width, num_channels}, torch::kFloat32);
         torch::Tensor grad_uv =
             tensor_converter_.Convert(cmd_list, texture_intermediate_.grad_uv, {1, gbuffer_height, gbuffer_width, 2}, torch::kFloat32);
+        torch::Tensor grad_derivative_uv;
+        if (static_cast<bool>(texture_intermediate_.grad_derivative_uv))
+        {
+            grad_derivative_uv = tensor_converter_.Convert(
+                cmd_list, texture_intermediate_.grad_derivative_uv, {1, gbuffer_height, gbuffer_width, 4}, torch::kFloat32);
+        }
 
         gpu_system_.Execute(std::move(cmd_list));
 
-        return {std::move(grad_texture), std::move(grad_uv)};
+        return {std::move(grad_texture), std::move(grad_uv), std::move(grad_derivative_uv)};
     }
 
     GpuDiffRenderTorch::AntiAliasOppositeVertices GpuDiffRenderTorch::AntiAliasConstructOppositeVertices(torch::Tensor indices)
