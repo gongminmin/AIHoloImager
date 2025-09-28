@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "Base/ErrorHandling.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 namespace
@@ -68,7 +69,7 @@ namespace AIHoloImager
 
     void GpuMemoryBlock::Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
     {
-        native_buffer_ = page.Buffer().NativeBuffer();
+        native_buffer_ = page.Buffer().NativeBuffer<D3D12Traits>();
         offset_ = offset;
         size_ = size;
         cpu_addr_ = page.CpuAddress<std::byte>() + offset;

@@ -33,6 +33,7 @@
 #endif
 
 #include "Base/ErrorHandling.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "MiniCudaRt.hpp"
 
@@ -391,7 +392,7 @@ namespace AIHoloImager
         {
             ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
 
-            const auto res_desc = resource.NativeResource()->GetDesc();
+            const auto res_desc = resource.NativeResource<D3D12Traits>()->GetDesc();
             const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &res_desc);
 
             MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};

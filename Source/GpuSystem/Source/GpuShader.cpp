@@ -8,6 +8,8 @@
 
 #include "Base/ErrorHandling.hpp"
 
+#include "D3D12/D3D12Conversion.hpp"
+
 namespace
 {
     D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,

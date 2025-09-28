@@ -5,8 +5,6 @@
 
 #include <string_view>
 
-#include <directx/d3d12.h>
-
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuResource.hpp"
 
@@ -21,6 +19,8 @@ namespace AIHoloImager
         uint64_t end;
     };
 
+    using GpuVirtualAddressType = uint64_t;
+
     class GpuBuffer : public GpuResource
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBuffer)
@@ -28,17 +28,20 @@ namespace AIHoloImager
     public:
         GpuBuffer() noexcept;
         GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
+        GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
         virtual ~GpuBuffer();
 
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
-        GpuBuffer Share() const;
+        void* NativeBuffer() const noexcept;
+        template <typename Traits>
+        typename Traits::BufferType NativeBuffer() const noexcept
+        {
+            return reinterpret_cast<typename Traits::BufferType>(this->NativeBuffer());
+        }
 
-        ID3D12Resource* NativeBuffer() const noexcept;
-
-        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
+        GpuVirtualAddressType GpuVirtualAddress() const noexcept;
         uint32_t Size() const noexcept;
 
         void* Map(const GpuRange& read_range);
@@ -75,7 +78,7 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
 
     protected:
-        D3D12_HEAP_TYPE heap_type_{};
-        mutable D3D12_RESOURCE_STATES curr_state_{};
+        GpuHeap heap_{};
+        mutable GpuResourceState curr_state_{};
     };
 } // namespace AIHoloImager

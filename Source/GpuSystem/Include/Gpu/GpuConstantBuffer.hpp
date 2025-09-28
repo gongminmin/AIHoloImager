@@ -7,8 +7,6 @@
 #include <string_view>
 #include <type_traits>
 
-#include <directx/d3d12.h>
-
 #include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuSystem.hpp"
 
@@ -23,8 +21,13 @@ namespace AIHoloImager
 
         const GpuMemoryBlock& MemBlock() const noexcept;
 
-        ID3D12Resource* NativeResource() const noexcept;
-        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
+        void* NativeResource() const noexcept;
+        template <typename Traits>
+        typename Traits::BufferType NativeResource() const noexcept
+        {
+            return reinterpret_cast<typename Traits::BufferType>(this->NativeResource());
+        }
+        GpuVirtualAddressType GpuVirtualAddress() const noexcept;
 
     protected:
         GpuConstantBuffer() noexcept;

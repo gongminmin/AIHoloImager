@@ -7,6 +7,8 @@
 
 #include "Gpu/GpuFormat.hpp"
 
+#include "D3D12/D3D12Conversion.hpp"
+
 namespace AIHoloImager
 {
     GpuVertexAttribs::GpuVertexAttribs(std::span<const GpuVertexAttrib> attribs) : input_elems_(attribs.size()), semantics_(attribs.size())

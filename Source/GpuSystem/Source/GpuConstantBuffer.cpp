@@ -45,12 +45,12 @@ namespace AIHoloImager
         return mem_block_;
     }
 
-    ID3D12Resource* GpuConstantBuffer::NativeResource() const noexcept
+    void* GpuConstantBuffer::NativeResource() const noexcept
     {
         return mem_block_.NativeBuffer();
     }
 
-    D3D12_GPU_VIRTUAL_ADDRESS GpuConstantBuffer::GpuVirtualAddress() const noexcept
+    GpuVirtualAddressType GpuConstantBuffer::GpuVirtualAddress() const noexcept
     {
         return mem_block_.GpuAddress();
     }

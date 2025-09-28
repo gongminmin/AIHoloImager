@@ -4,9 +4,11 @@
 #include "Gpu/GpuBuffer.hpp"
 
 #include "Base/ErrorHandling.hpp"
-#include "Base/Uuid.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
+
+#include "D3D12/D3D12Conversion.hpp"
 
 namespace AIHoloImager
 {
@@ -19,33 +21,21 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer() noexcept = default;
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
-        : GpuResource(gpu_system), heap_type_(ToD3D12HeapType(heap)),
-          curr_state_(heap == GpuHeap::ReadBack ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON)
+        : GpuResource(gpu_system), heap_(heap),
+          curr_state_(heap == GpuHeap::ReadBack ? GpuResourceState::CopyDst : GpuResourceState::Common)
     {
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice();
-
-        const D3D12_HEAP_PROPERTIES heap_prop = {heap_type_, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
-
-        desc_ = {D3D12_RESOURCE_DIMENSION_BUFFER, 0, static_cast<uint64_t>(size), 1, 1, 1, DXGI_FORMAT_UNKNOWN, {1, 0},
-            D3D12_TEXTURE_LAYOUT_ROW_MAJOR, ToD3D12ResourceFlags(flags)};
-        TIFHR(d3d12_device->CreateCommittedResource(
-            &heap_prop, ToD3D12HeapFlags(flags), &desc_, curr_state_, nullptr, UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));
-        this->Name(std::move(name));
-
-        this->CreateSharedHandle(gpu_system, flags);
+        this->CreateResource(GpuResourceType::Buffer, size, 1, 1, 1, 1, GpuFormat::Unknown, heap_, flags, curr_state_, std::move(name));
     }
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, ID3D12Resource* native_resource, GpuResourceState curr_state, std::wstring_view name)
-        : GpuResource(gpu_system, native_resource), curr_state_(ToD3D12ResourceState(curr_state))
+    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
+        : GpuResource(gpu_system, native_resource, std::move(name)), curr_state_(curr_state)
     {
-        if (resource_)
+        auto* resource = this->NativeBuffer<D3D12Traits>();
+        if (resource != nullptr)
         {
             D3D12_HEAP_PROPERTIES heap_prop;
-            resource_->GetHeapProperties(&heap_prop, nullptr);
-            heap_type_ = heap_prop.Type;
-
-            desc_ = resource_->GetDesc();
-            this->Name(std::move(name));
+            resource->GetHeapProperties(&heap_prop, nullptr);
+            heap_ = FromD3D12HeapType(heap_prop.Type);
         }
     }
 
@@ -54,36 +44,26 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
 
-    GpuBuffer GpuBuffer::Share() const
-    {
-        GpuBuffer buffer;
-        buffer.resource_ = resource_.Share();
-        buffer.desc_ = desc_;
-        buffer.heap_type_ = heap_type_;
-        buffer.curr_state_ = curr_state_;
-        return buffer;
-    }
-
-    ID3D12Resource* GpuBuffer::NativeBuffer() const noexcept
+    void* GpuBuffer::NativeBuffer() const noexcept
     {
         return this->NativeResource();
     }
 
-    D3D12_GPU_VIRTUAL_ADDRESS GpuBuffer::GpuVirtualAddress() const noexcept
+    GpuVirtualAddressType GpuBuffer::GpuVirtualAddress() const noexcept
     {
-        return resource_->GetGPUVirtualAddress();
+        return this->NativeBuffer<D3D12Traits>()->GetGPUVirtualAddress();
     }
 
     uint32_t GpuBuffer::Size() const noexcept
     {
-        return static_cast<uint32_t>(desc_.Width);
+        return this->Width();
     }
 
     void* GpuBuffer::Map(const GpuRange& read_range)
     {
         void* addr;
         const D3D12_RANGE d3d12_read_range = ToD3D12Range(read_range);
-        TIFHR(resource_->Map(0, &d3d12_read_range, &addr));
+        TIFHR(this->NativeBuffer<D3D12Traits>()->Map(0, &d3d12_read_range, &addr));
         return addr;
     }
 
@@ -96,7 +76,7 @@ namespace AIHoloImager
     {
         void* addr;
         const D3D12_RANGE d3d12_read_range{0, 0};
-        TIFHR(resource_->Map(0, (heap_type_ == D3D12_HEAP_TYPE_READBACK) ? nullptr : &d3d12_read_range, &addr));
+        TIFHR(this->NativeBuffer<D3D12Traits>()->Map(0, (heap_ == GpuHeap::ReadBack) ? nullptr : &d3d12_read_range, &addr));
         return addr;
     }
 
@@ -108,7 +88,7 @@ namespace AIHoloImager
     void GpuBuffer::Unmap(const GpuRange& write_range)
     {
         const D3D12_RANGE d3d12_write_range = ToD3D12Range(write_range);
-        resource_->Unmap(0, (heap_type_ == D3D12_HEAP_TYPE_UPLOAD) ? nullptr : &d3d12_write_range);
+        this->NativeBuffer<D3D12Traits>()->Unmap(0, (heap_ == GpuHeap::Upload) ? nullptr : &d3d12_write_range);
     }
 
     void GpuBuffer::Unmap()
@@ -124,21 +104,22 @@ namespace AIHoloImager
     void GpuBuffer::Reset()
     {
         GpuResource::Reset();
-        heap_type_ = {};
+        heap_ = {};
         curr_state_ = {};
     }
 
     void GpuBuffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
+        auto* native_resource = this->NativeResource<D3D12Traits>();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
 
         D3D12_RESOURCE_BARRIER barrier;
-        if (curr_state_ != d3d12_target_state)
+        if (curr_state_ != target_state)
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = resource_.Object().Get();
-            barrier.Transition.StateBefore = curr_state_;
+            barrier.Transition.pResource = native_resource;
+            barrier.Transition.StateBefore = ToD3D12ResourceState(curr_state_);
             barrier.Transition.StateAfter = d3d12_target_state;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             cmd_list.Transition(std::span(&barrier, 1));
@@ -147,10 +128,10 @@ namespace AIHoloImager
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = resource_.Object().Get();
+            barrier.UAV.pResource = native_resource;
             cmd_list.Transition(std::span(&barrier, 1));
         }
 
-        curr_state_ = d3d12_target_state;
+        curr_state_ = target_state;
     }
 } // namespace AIHoloImager

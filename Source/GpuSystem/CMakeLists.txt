@@ -2,6 +2,7 @@
 #
 
 set(aihi_gpu_system_files
+    Include/Gpu/D3D12/D3D12Traits.hpp
     Include/Gpu/GpuBuffer.hpp
     Include/Gpu/GpuCommandList.hpp
     Include/Gpu/GpuConstantBuffer.hpp
@@ -18,6 +19,8 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuUtil.hpp
     Include/Gpu/GpuVertexAttrib.hpp
+    Source/D3D12/D3D12Conversion.cpp
+    Source/D3D12/D3D12Conversion.hpp
     Source/Shader/GenMipmapCs.hlsl
     Source/GpuBuffer.cpp
     Source/GpuCommandList.cpp

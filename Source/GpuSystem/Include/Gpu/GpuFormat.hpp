@@ -5,8 +5,6 @@
 
 #include <cstdint>
 
-#include <directx/dxgiformat.h>
-
 namespace AIHoloImager
 {
     enum class GpuBaseFormat
@@ -67,6 +65,4 @@ namespace AIHoloImager
     uint32_t FormatChannels(GpuFormat fmt);
     uint32_t FormatChannelSize(GpuFormat fmt);
     uint32_t NumPlanes(GpuFormat fmt) noexcept;
-
-    DXGI_FORMAT ToDxgiFormat(GpuFormat fmt);
 } // namespace AIHoloImager
