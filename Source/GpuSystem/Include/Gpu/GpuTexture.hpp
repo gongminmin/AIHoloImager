@@ -44,8 +44,8 @@ namespace AIHoloImager
 
         void Reset();
 
-        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
-        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
+        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,

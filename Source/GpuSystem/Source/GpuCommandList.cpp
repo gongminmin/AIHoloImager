@@ -127,27 +127,16 @@ namespace AIHoloImager
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         rtv.Transition(*this);
-        d3d12_cmd_list->ClearRenderTargetView(rtv.CpuHandle(), color, 0, nullptr);
+        d3d12_cmd_list->ClearRenderTargetView(ToD3D12CpuDescriptorHandle(rtv.CpuHandle()), color, 0, nullptr);
     }
 
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const float color[4])
     {
         ID3D12Resource* resource = nullptr;
-        if (auto* tex_2d = uav.Texture2D())
+        GpuResource* uav_resource = uav.Resource();
+        if (uav_resource)
         {
-            resource = tex_2d->NativeTexture<D3D12Traits>();
-        }
-        else if (auto* tex_2d_array = uav.Texture2DArray())
-        {
-            resource = tex_2d_array->NativeTexture<D3D12Traits>();
-        }
-        else if (auto* tex_3d = uav.Texture3D())
-        {
-            resource = tex_3d->NativeTexture<D3D12Traits>();
-        }
-        else if (auto* buff = uav.Buffer())
-        {
-            resource = buff->NativeBuffer<D3D12Traits>();
+            resource = uav_resource->NativeResource<D3D12Traits>();
         }
 
         if (!resource)
@@ -165,7 +154,8 @@ namespace AIHoloImager
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewFloat(uav_desc_block.GpuHandle(), uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewFloat(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
+            ToD3D12CpuDescriptorHandle(uav.CpuHandle()), resource, color, 0, nullptr);
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
@@ -173,23 +163,11 @@ namespace AIHoloImager
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const uint32_t color[4])
     {
         ID3D12Resource* resource = nullptr;
-        if (auto* tex_2d = uav.Texture2D())
+        GpuResource* uav_resource = uav.Resource();
+        if (uav_resource)
         {
-            resource = tex_2d->NativeTexture<D3D12Traits>();
+            resource = uav_resource->NativeResource<D3D12Traits>();
         }
-        else if (auto* tex_2d_array = uav.Texture2D())
-        {
-            resource = tex_2d_array->NativeTexture<D3D12Traits>();
-        }
-        else if (auto* tex_3d = uav.Texture3D())
-        {
-            resource = tex_3d->NativeTexture<D3D12Traits>();
-        }
-        else if (auto* buff = uav.Buffer())
-        {
-            resource = buff->NativeBuffer<D3D12Traits>();
-        }
-
 
         if (!resource)
         {
@@ -206,7 +184,8 @@ namespace AIHoloImager
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewUint(uav_desc_block.GpuHandle(), uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewUint(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
+            ToD3D12CpuDescriptorHandle(uav.CpuHandle()), resource, color, 0, nullptr);
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
@@ -216,7 +195,7 @@ namespace AIHoloImager
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         dsv.Transition(*this);
-        d3d12_cmd_list->ClearDepthStencilView(dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
+        d3d12_cmd_list->ClearDepthStencilView(ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
     }
 
     void GpuCommandList::ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil)
@@ -224,7 +203,8 @@ namespace AIHoloImager
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         dsv.Transition(*this);
-        d3d12_cmd_list->ClearDepthStencilView(dsv.CpuHandle(), D3D12_CLEAR_FLAG_STENCIL, 0, stencil, 0, nullptr);
+        d3d12_cmd_list->ClearDepthStencilView(
+            ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_STENCIL, 0, stencil, 0, nullptr);
     }
 
     void GpuCommandList::ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil)
@@ -233,7 +213,7 @@ namespace AIHoloImager
 
         dsv.Transition(*this);
         d3d12_cmd_list->ClearDepthStencilView(
-            dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+            ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
     }
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
@@ -337,7 +317,7 @@ namespace AIHoloImager
             if (!binding.srvs.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
                 for (const auto* srv : binding.srvs)
                 {
                     if (srv != nullptr)
@@ -357,7 +337,7 @@ namespace AIHoloImager
             if (!binding.uavs.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
                 for (const auto* uav : binding.uavs)
                 {
                     if (uav != nullptr)
@@ -377,7 +357,7 @@ namespace AIHoloImager
             if (!binding.samplers.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size));
+                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size)));
                 for (const auto* sampler : binding.samplers)
                 {
                     if (sampler != nullptr)
@@ -407,7 +387,7 @@ namespace AIHoloImager
             {
                 if (rtvs[i] != nullptr)
                 {
-                    rt_views[i] = rtvs[i]->CpuHandle();
+                    rt_views[i] = ToD3D12CpuDescriptorHandle(rtvs[i]->CpuHandle());
                 }
                 else
                 {
@@ -418,7 +398,7 @@ namespace AIHoloImager
         D3D12_CPU_DESCRIPTOR_HANDLE ds_view;
         if (dsv != nullptr)
         {
-            ds_view = dsv->CpuHandle();
+            ds_view = ToD3D12CpuDescriptorHandle(dsv->CpuHandle());
         }
         d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(rtvs.size()), rt_views.get(), false, dsv != nullptr ? &ds_view : nullptr);
 
@@ -510,7 +490,7 @@ namespace AIHoloImager
         if (!shader_binding.srvs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
             for (const auto* srv : shader_binding.srvs)
             {
                 if (srv != nullptr)
@@ -530,7 +510,7 @@ namespace AIHoloImager
         if (!shader_binding.uavs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
             for (const auto* uav : shader_binding.uavs)
             {
                 if (uav != nullptr)
@@ -550,7 +530,7 @@ namespace AIHoloImager
         if (!shader_binding.samplers.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size));
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size)));
             for (const auto* sampler : shader_binding.samplers)
             {
                 if (sampler != nullptr)
@@ -966,7 +946,7 @@ namespace AIHoloImager
         if (!shader_binding.srvs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
             for (const auto* srv : shader_binding.srvs)
             {
                 if (srv != nullptr)
@@ -986,7 +966,7 @@ namespace AIHoloImager
         if (!shader_binding.uavs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size));
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
             for (const auto* uav : shader_binding.uavs)
             {
                 if (uav != nullptr)

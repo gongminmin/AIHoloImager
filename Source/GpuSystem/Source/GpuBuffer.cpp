@@ -108,6 +108,12 @@ namespace AIHoloImager
         curr_state_ = {};
     }
 
+    void GpuBuffer::Transition(GpuCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
+    {
+        assert(sub_resource == 0);
+        this->Transition(cmd_list, target_state);
+    }
+
     void GpuBuffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
         auto* native_resource = this->NativeResource<D3D12Traits>();

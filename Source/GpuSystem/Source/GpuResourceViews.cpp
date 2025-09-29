@@ -31,7 +31,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_2d_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -54,7 +54,8 @@ namespace AIHoloImager
             srv_desc.Texture2D.MipLevels = 1;
         }
         srv_desc.Texture2D.ResourceMinLODClamp = 0;
-        gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture<D3D12Traits>(), &srv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateShaderResourceView(
+            texture.NativeTexture<D3D12Traits>(), &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array)
@@ -74,7 +75,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
+        : gpu_system_(&gpu_system), resource_(&texture_array)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -98,7 +99,8 @@ namespace AIHoloImager
             srv_desc.Texture2DArray.MipLevels = 1;
         }
         srv_desc.Texture2DArray.ResourceMinLODClamp = 0;
-        gpu_system.NativeDevice()->CreateShaderResourceView(texture_array.NativeTexture<D3D12Traits>(), &srv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateShaderResourceView(
+            texture_array.NativeTexture<D3D12Traits>(), &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture)
@@ -118,7 +120,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_3d_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -140,7 +142,8 @@ namespace AIHoloImager
             srv_desc.Texture3D.MipLevels = 1;
         }
         srv_desc.Texture3D.ResourceMinLODClamp = 0;
-        gpu_system.NativeDevice()->CreateShaderResourceView(texture.NativeTexture<D3D12Traits>(), &srv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateShaderResourceView(
+            texture.NativeTexture<D3D12Traits>(), &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format)
@@ -150,7 +153,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : gpu_system_(&gpu_system), buffer_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -163,7 +166,8 @@ namespace AIHoloImager
         srv_desc.Buffer.NumElements = num_elements;
         srv_desc.Buffer.StructureByteStride = 0;
         srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        gpu_system.NativeDevice()->CreateShaderResourceView(buffer.NativeBuffer<D3D12Traits>(), &srv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateShaderResourceView(
+            buffer.NativeBuffer<D3D12Traits>(), &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size)
@@ -173,7 +177,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : gpu_system_(&gpu_system), buffer_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -186,7 +190,8 @@ namespace AIHoloImager
         srv_desc.Buffer.NumElements = num_elements;
         srv_desc.Buffer.StructureByteStride = element_size;
         srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        gpu_system.NativeDevice()->CreateShaderResourceView(buffer.NativeBuffer<D3D12Traits>(), &srv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateShaderResourceView(
+            buffer.NativeBuffer<D3D12Traits>(), &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuShaderResourceView::~GpuShaderResourceView()
@@ -208,27 +213,18 @@ namespace AIHoloImager
 
     void GpuShaderResourceView::Transition(GpuCommandList& cmd_list) const
     {
-        if (texture_2d_ != nullptr)
-        {
-            texture_2d_->Transition(cmd_list, GpuResourceState::Common);
-        }
-        else if (texture_2d_array_ != nullptr)
-        {
-            texture_2d_array_->Transition(cmd_list, GpuResourceState::Common);
-        }
-        else if (texture_3d_ != nullptr)
-        {
-            texture_3d_->Transition(cmd_list, GpuResourceState::Common);
-        }
-        else if (buffer_ != nullptr)
-        {
-            buffer_->Transition(cmd_list, GpuResourceState::Common);
-        }
+        resource_->Transition(cmd_list, GpuResourceState::Common);
     }
 
-    void GpuShaderResourceView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
+    void GpuShaderResourceView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
     {
-        gpu_system_->NativeDevice()->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        gpu_system_->NativeDevice()->CopyDescriptorsSimple(
+            1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
+
+    GpuDescriptorCpuHandle GpuShaderResourceView::CpuHandle() const noexcept
+    {
+        return cpu_handle_;
     }
 
 
@@ -239,7 +235,7 @@ namespace AIHoloImager
     {
     }
     GpuRenderTargetView::GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocRtvDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -247,7 +243,8 @@ namespace AIHoloImager
         D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
         rtv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        gpu_system.NativeDevice()->CreateRenderTargetView(texture.NativeTexture<D3D12Traits>(), &rtv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateRenderTargetView(
+            texture.NativeTexture<D3D12Traits>(), &rtv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuRenderTargetView::~GpuRenderTargetView()
@@ -260,7 +257,7 @@ namespace AIHoloImager
 
     GpuRenderTargetView::operator bool() const noexcept
     {
-        return (cpu_handle_.ptr != 0);
+        return (cpu_handle_.handle != 0);
     }
 
     void GpuRenderTargetView::Reset()
@@ -274,10 +271,16 @@ namespace AIHoloImager
 
     void GpuRenderTargetView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, GpuResourceState::ColorWrite);
+        resource_->Transition(cmd_list, GpuResourceState::ColorWrite);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GpuRenderTargetView::CpuHandle() const noexcept
+    void GpuRenderTargetView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
+    {
+        gpu_system_->NativeDevice()->CopyDescriptorsSimple(
+            1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    }
+
+    GpuDescriptorCpuHandle GpuRenderTargetView::CpuHandle() const noexcept
     {
         return cpu_handle_;
     }
@@ -290,7 +293,7 @@ namespace AIHoloImager
     {
     }
     GpuDepthStencilView::GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocDsvDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -298,7 +301,8 @@ namespace AIHoloImager
         D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{};
         dsv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
         dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-        gpu_system.NativeDevice()->CreateDepthStencilView(texture.NativeTexture<D3D12Traits>(), &dsv_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateDepthStencilView(
+            texture.NativeTexture<D3D12Traits>(), &dsv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuDepthStencilView::~GpuDepthStencilView()
@@ -311,7 +315,7 @@ namespace AIHoloImager
 
     GpuDepthStencilView::operator bool() const noexcept
     {
-        return (cpu_handle_.ptr != 0);
+        return (cpu_handle_.handle != 0);
     }
 
     void GpuDepthStencilView::Reset()
@@ -325,10 +329,16 @@ namespace AIHoloImager
 
     void GpuDepthStencilView::Transition(GpuCommandList& cmd_list) const
     {
-        texture_->Transition(cmd_list, GpuResourceState::DepthWrite);
+        resource_->Transition(cmd_list, GpuResourceState::DepthWrite);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GpuDepthStencilView::CpuHandle() const noexcept
+    void GpuDepthStencilView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
+    {
+        gpu_system_->NativeDevice()->CopyDescriptorsSimple(
+            1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    }
+
+    GpuDescriptorCpuHandle GpuDepthStencilView::CpuHandle() const noexcept
     {
         return cpu_handle_;
     }
@@ -352,7 +362,7 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_2d_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -362,7 +372,8 @@ namespace AIHoloImager
         uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uint32_t array_slice;
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture2D.MipSlice, array_slice, uav_desc.Texture2D.PlaneSlice);
-        gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(
+            texture.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array)
@@ -382,7 +393,7 @@ namespace AIHoloImager
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_2d_array_(&texture_array)
+        : gpu_system_(&gpu_system), resource_(&texture_array)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -393,7 +404,8 @@ namespace AIHoloImager
         uav_desc.Texture2DArray.ArraySize = 1;
         DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), uav_desc.Texture2DArray.MipSlice,
             uav_desc.Texture2DArray.FirstArraySlice, uav_desc.Texture2DArray.PlaneSlice);
-        gpu_system.NativeDevice()->CreateUnorderedAccessView(texture_array.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(
+            texture_array.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture)
@@ -412,7 +424,7 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), texture_3d_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -425,7 +437,8 @@ namespace AIHoloImager
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture3D.MipSlice, array_slice, plane_slice);
         uav_desc.Texture3D.FirstWSlice = 0;
         uav_desc.Texture3D.WSize = texture.Depth(uav_desc.Texture3D.MipSlice);
-        gpu_system.NativeDevice()->CreateUnorderedAccessView(texture.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(
+            texture.NativeTexture<D3D12Traits>(), nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format)
@@ -435,7 +448,7 @@ namespace AIHoloImager
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : gpu_system_(&gpu_system), buffer_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -446,7 +459,8 @@ namespace AIHoloImager
         uav_desc.Buffer.FirstElement = first_element;
         uav_desc.Buffer.NumElements = num_elements;
         uav_desc.Buffer.StructureByteStride = 0;
-        gpu_system.NativeDevice()->CreateUnorderedAccessView(buffer.NativeBuffer<D3D12Traits>(), nullptr, &uav_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(
+            buffer.NativeBuffer<D3D12Traits>(), nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)
@@ -456,7 +470,7 @@ namespace AIHoloImager
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : gpu_system_(&gpu_system), buffer_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer)
     {
         desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -467,7 +481,8 @@ namespace AIHoloImager
         uav_desc.Buffer.FirstElement = first_element;
         uav_desc.Buffer.NumElements = num_elements;
         uav_desc.Buffer.StructureByteStride = element_size;
-        gpu_system.NativeDevice()->CreateUnorderedAccessView(buffer.NativeBuffer<D3D12Traits>(), nullptr, &uav_desc, cpu_handle_);
+        gpu_system.NativeDevice()->CreateUnorderedAccessView(
+            buffer.NativeBuffer<D3D12Traits>(), nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     GpuUnorderedAccessView::~GpuUnorderedAccessView()
@@ -489,31 +504,27 @@ namespace AIHoloImager
 
     void GpuUnorderedAccessView::Transition(GpuCommandList& cmd_list) const
     {
-        if (texture_2d_ != nullptr)
-        {
-            texture_2d_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
-        }
-        else if (texture_2d_array_ != nullptr)
-        {
-            texture_2d_array_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
-        }
-        else if (texture_3d_ != nullptr)
-        {
-            texture_3d_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
-        }
-        else if (buffer_ != nullptr)
-        {
-            buffer_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
-        }
+        resource_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
     }
 
-    void GpuUnorderedAccessView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
+    void GpuUnorderedAccessView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
     {
-        gpu_system_->NativeDevice()->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        gpu_system_->NativeDevice()->CopyDescriptorsSimple(
+            1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GpuUnorderedAccessView::CpuHandle() const noexcept
+    GpuDescriptorCpuHandle GpuUnorderedAccessView::CpuHandle() const noexcept
     {
         return cpu_handle_;
+    }
+
+    GpuResource* GpuUnorderedAccessView::Resource() noexcept
+    {
+        return resource_;
+    }
+
+    const GpuResource* GpuUnorderedAccessView::Resource() const noexcept
+    {
+        return resource_;
     }
 } // namespace AIHoloImager

@@ -303,4 +303,24 @@ namespace AIHoloImager
             Unreachable("Invalid resource dimension");
         }
     }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE ToD3D12CpuDescriptorHandle(GpuDescriptorCpuHandle handle) noexcept
+    {
+        return D3D12_CPU_DESCRIPTOR_HANDLE{handle.handle};
+    }
+
+    GpuDescriptorCpuHandle FromD3D12CpuDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) noexcept
+    {
+        return GpuDescriptorCpuHandle{handle.ptr};
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE ToD3D12GpuDescriptorHandle(GpuDescriptorGpuHandle handle) noexcept
+    {
+        return D3D12_GPU_DESCRIPTOR_HANDLE{handle.handle};
+    }
+
+    GpuDescriptorGpuHandle FromD3D12GpuDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) noexcept
+    {
+        return GpuDescriptorGpuHandle{handle.ptr};
+    }
 } // namespace AIHoloImager

@@ -5,11 +5,10 @@
 
 #include <cstdint>
 
-#include <directx/d3d12.h>
-
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuFormat.hpp"
+#include "Gpu/GpuResource.hpp"
 
 namespace AIHoloImager
 {
@@ -55,16 +54,14 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
+        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        const GpuTexture2D* texture_2d_ = nullptr;
-        const GpuTexture2DArray* texture_2d_array_ = nullptr;
-        const GpuTexture3D* texture_3d_ = nullptr;
-        const GpuBuffer* buffer_ = nullptr;
+        const GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
     };
 
     class GpuRenderTargetView final
@@ -86,13 +83,14 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
+        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        GpuTexture2D* texture_ = nullptr;
+        GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
     };
 
     class GpuDepthStencilView final
@@ -114,13 +112,14 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
+        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        GpuTexture2D* texture_ = nullptr;
+        GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
     };
 
     class GpuUnorderedAccessView final
@@ -157,34 +156,16 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
+        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
-
-        GpuTexture2D* Texture2D() const noexcept
-        {
-            return texture_2d_;
-        }
-        GpuTexture2DArray* Texture2DArray() const noexcept
-        {
-            return texture_2d_array_;
-        }
-        GpuTexture3D* Texture3D() const noexcept
-        {
-            return texture_3d_;
-        }
-        GpuBuffer* Buffer() const noexcept
-        {
-            return buffer_;
-        }
+        GpuResource* Resource() noexcept;
+        const GpuResource* Resource() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        GpuTexture2D* texture_2d_ = nullptr;
-        GpuTexture2DArray* texture_2d_array_ = nullptr;
-        GpuTexture3D* texture_3d_ = nullptr;
-        GpuBuffer* buffer_ = nullptr;
+        GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
     };
 } // namespace AIHoloImager

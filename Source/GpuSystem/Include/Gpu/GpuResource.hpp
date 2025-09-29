@@ -11,6 +11,8 @@
 
 namespace AIHoloImager
 {
+    class GpuCommandList;
+
     enum class GpuHeap
     {
         Default,
@@ -90,6 +92,9 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedHandle());
         }
+
+        virtual void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
 
     protected:
         void CreateResource(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size, uint32_t mip_levels,

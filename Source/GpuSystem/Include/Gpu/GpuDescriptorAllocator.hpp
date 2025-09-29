@@ -32,20 +32,20 @@ namespace AIHoloImager
             return heap_;
         }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandleStart() const noexcept
+        GpuDescriptorCpuHandle CpuHandleStart() const noexcept
         {
             return cpu_handle_;
         }
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GpuHandleStart() const noexcept
+        GpuDescriptorGpuHandle GpuHandleStart() const noexcept
         {
             return gpu_handle_;
         }
 
     private:
         GpuDescriptorHeap heap_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_;
-        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle_;
+        GpuDescriptorCpuHandle cpu_handle_;
+        GpuDescriptorGpuHandle gpu_handle_;
     };
 
     class GpuDescriptorBlock final
@@ -81,12 +81,12 @@ namespace AIHoloImager
             return size_;
         }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept
+        GpuDescriptorCpuHandle CpuHandle() const noexcept
         {
             return cpu_handle_;
         }
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GpuHandle() const noexcept
+        GpuDescriptorGpuHandle GpuHandle() const noexcept
         {
             return gpu_handle_;
         }
@@ -95,8 +95,8 @@ namespace AIHoloImager
         ID3D12DescriptorHeap* native_heap_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
+        GpuDescriptorGpuHandle gpu_handle_{};
     };
 
     class GpuDescriptorAllocator final

@@ -75,7 +75,8 @@ namespace AIHoloImager
 
         virtual void Reset();
 
-        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const;
+        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
     protected:
         GpuHeap heap_{};

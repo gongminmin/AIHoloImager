@@ -15,10 +15,20 @@ namespace AIHoloImager
 {
     class GpuSystem;
 
-    D3D12_CPU_DESCRIPTOR_HANDLE OffsetHandle(const D3D12_CPU_DESCRIPTOR_HANDLE& handle, int32_t offset, uint32_t desc_size);
-    D3D12_GPU_DESCRIPTOR_HANDLE OffsetHandle(const D3D12_GPU_DESCRIPTOR_HANDLE& handle, int32_t offset, uint32_t desc_size);
-    std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> OffsetHandle(
-        const D3D12_CPU_DESCRIPTOR_HANDLE& cpu_handle, const D3D12_GPU_DESCRIPTOR_HANDLE& gpu_handle, int32_t offset, uint32_t desc_size);
+    struct GpuDescriptorCpuHandle
+    {
+        size_t handle;
+    };
+
+    struct GpuDescriptorGpuHandle
+    {
+        uint64_t handle;
+    };
+
+    GpuDescriptorCpuHandle OffsetHandle(const GpuDescriptorCpuHandle& handle, int32_t offset, uint32_t desc_size);
+    GpuDescriptorGpuHandle OffsetHandle(const GpuDescriptorGpuHandle& handle, int32_t offset, uint32_t desc_size);
+    std::tuple<GpuDescriptorCpuHandle, GpuDescriptorGpuHandle> OffsetHandle(
+        const GpuDescriptorCpuHandle& cpu_handle, const GpuDescriptorGpuHandle& gpu_handle, int32_t offset, uint32_t desc_size);
 
     class GpuDescriptorHeap final
     {
@@ -39,8 +49,8 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandleStart() const noexcept;
-        D3D12_GPU_DESCRIPTOR_HANDLE GpuHandleStart() const noexcept;
+        GpuDescriptorCpuHandle CpuHandleStart() const noexcept;
+        GpuDescriptorGpuHandle GpuHandleStart() const noexcept;
 
         uint32_t Size() const noexcept;
 

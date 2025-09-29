@@ -104,7 +104,7 @@ namespace AIHoloImager
         GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
         GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
 
-        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
 
         const D3D12_SAMPLER_DESC& NativeSampler() const noexcept;
 
@@ -112,7 +112,7 @@ namespace AIHoloImager
         GpuSystem* gpu_system_ = nullptr;
 
         GpuDescriptorBlock desc_block_;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        GpuDescriptorCpuHandle cpu_handle_{};
 
         D3D12_SAMPLER_DESC sampler_{};
     };

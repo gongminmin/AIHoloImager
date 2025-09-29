@@ -7,23 +7,25 @@
 #include "Base/Uuid.hpp"
 #include "Gpu/GpuSystem.hpp"
 
+#include "D3D12/D3D12Conversion.hpp"
+
 namespace AIHoloImager
 {
-    D3D12_CPU_DESCRIPTOR_HANDLE OffsetHandle(const D3D12_CPU_DESCRIPTOR_HANDLE& handle, int32_t offset, uint32_t desc_size)
+    GpuDescriptorCpuHandle OffsetHandle(const GpuDescriptorCpuHandle& handle, int32_t offset, uint32_t desc_size)
     {
-        return {handle.ptr + offset * desc_size};
+        return {handle.handle + offset * desc_size};
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE OffsetHandle(const D3D12_GPU_DESCRIPTOR_HANDLE& handle, int32_t offset, uint32_t desc_size)
+    GpuDescriptorGpuHandle OffsetHandle(const GpuDescriptorGpuHandle& handle, int32_t offset, uint32_t desc_size)
     {
-        return {handle.ptr + offset * desc_size};
+        return {handle.handle + offset * desc_size};
     }
 
-    std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> OffsetHandle(
-        const D3D12_CPU_DESCRIPTOR_HANDLE& cpu_handle, const D3D12_GPU_DESCRIPTOR_HANDLE& gpu_handle, int32_t offset, uint32_t desc_size)
+    std::tuple<GpuDescriptorCpuHandle, GpuDescriptorGpuHandle> OffsetHandle(
+        const GpuDescriptorCpuHandle& cpu_handle, const GpuDescriptorGpuHandle& gpu_handle, int32_t offset, uint32_t desc_size)
     {
         const int32_t offset_in_bytes = offset * desc_size;
-        return {{cpu_handle.ptr + offset_in_bytes}, {gpu_handle.ptr + offset_in_bytes}};
+        return {{cpu_handle.handle + offset_in_bytes}, {gpu_handle.handle + offset_in_bytes}};
     }
 
 
@@ -59,14 +61,14 @@ namespace AIHoloImager
         return heap_.Get();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GpuDescriptorHeap::CpuHandleStart() const noexcept
+    GpuDescriptorCpuHandle GpuDescriptorHeap::CpuHandleStart() const noexcept
     {
-        return heap_->GetCPUDescriptorHandleForHeapStart();
+        return FromD3D12CpuDescriptorHandle(heap_->GetCPUDescriptorHandleForHeapStart());
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GpuDescriptorHeap::GpuHandleStart() const noexcept
+    GpuDescriptorGpuHandle GpuDescriptorHeap::GpuHandleStart() const noexcept
     {
-        return heap_->GetGPUDescriptorHandleForHeapStart();
+        return FromD3D12GpuDescriptorHandle(heap_->GetGPUDescriptorHandleForHeapStart());
     }
 
     uint32_t GpuDescriptorHeap::Size() const noexcept
