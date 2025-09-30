@@ -8,6 +8,7 @@
 
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
@@ -35,4 +36,6 @@ namespace AIHoloImager
 
     D3D12_DESCRIPTOR_HEAP_TYPE ToD3D12DescriptorHeapType(GpuDescriptorHeapType type) noexcept;
     GpuDescriptorHeapType FromD3D12DescriptorHeapType(D3D12_DESCRIPTOR_HEAP_TYPE type) noexcept;
+
+    D3D_PRIMITIVE_TOPOLOGY ToD3D12PrimitiveTopology(GpuRenderPipeline::PrimitiveTopology topology) noexcept;
 } // namespace AIHoloImager

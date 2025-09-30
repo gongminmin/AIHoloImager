@@ -357,4 +357,19 @@ namespace AIHoloImager
             Unreachable("Invalid D3D12 descriptor heap type");
         }
     }
+
+    D3D_PRIMITIVE_TOPOLOGY ToD3D12PrimitiveTopology(GpuRenderPipeline::PrimitiveTopology topology) noexcept
+    {
+        switch (topology)
+        {
+        case GpuRenderPipeline::PrimitiveTopology::PointList:
+            return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        case GpuRenderPipeline::PrimitiveTopology::TriangleList:
+            return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        case GpuRenderPipeline::PrimitiveTopology::TriangleStrip:
+            return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        default:
+            Unreachable("Invalid primitive topology");
+        }
+    }
 } // namespace AIHoloImager

@@ -271,10 +271,7 @@ namespace AIHoloImager
             dsv->Transition(*this);
         }
 
-        d3d12_cmd_list->IASetPrimitiveTopology(pipeline.NativePrimitiveTopology());
-
-        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
-        d3d12_cmd_list->SetGraphicsRootSignature(pipeline.NativeRootSignature());
+        pipeline.Bind(*this);
 
         uint32_t num_srv_uav_descs = 0;
         uint32_t num_sampler_descs = 0;
@@ -453,8 +450,7 @@ namespace AIHoloImager
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
-        d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
+        pipeline.Bind(*this);
 
         const uint32_t num_srv_uav_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
         const uint32_t num_sampler_descs = static_cast<uint32_t>(shader_binding.samplers.size());
@@ -926,8 +922,7 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        d3d12_cmd_list->SetPipelineState(pipeline.NativePipelineState());
-        d3d12_cmd_list->SetComputeRootSignature(pipeline.NativeRootSignature());
+        pipeline.Bind(*this);
 
         const uint32_t num_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
         GpuDescriptorBlock srv_uav_desc_block;

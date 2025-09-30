@@ -4,16 +4,13 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <span>
 
-#include <directx/d3d12.h>
-
-#include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuSystem.hpp"
-#include "Gpu/GpuUtil.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
 
 namespace AIHoloImager
@@ -75,14 +72,11 @@ namespace AIHoloImager
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
         GpuRenderPipeline& operator=(GpuRenderPipeline&& other) noexcept;
 
-        ID3D12RootSignature* NativeRootSignature() const noexcept;
-        ID3D12PipelineState* NativePipelineState() const noexcept;
-        D3D_PRIMITIVE_TOPOLOGY NativePrimitiveTopology() const noexcept;
+        void Bind(GpuCommandList& cmd_list) const;
 
     private:
-        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
-        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
-        D3D_PRIMITIVE_TOPOLOGY topology_;
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 
     class GpuComputePipeline
@@ -97,11 +91,10 @@ namespace AIHoloImager
         GpuComputePipeline(GpuComputePipeline&& other) noexcept;
         GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
 
-        ID3D12RootSignature* NativeRootSignature() const noexcept;
-        ID3D12PipelineState* NativePipelineState() const noexcept;
+        void Bind(GpuCommandList& cmd_list) const;
 
     private:
-        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
-        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager
