@@ -34,14 +34,15 @@ namespace AIHoloImager
 {
     GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
         : upload_mem_allocator_(*this, true), read_back_mem_allocator_(*this, false),
-          rtv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-          dsv_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-          cbv_srv_uav_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-          shader_visible_cbv_srv_uav_desc_allocator_(
-              *this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
-          sampler_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
-          shader_visible_sampler_desc_allocator_(*this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+          rtv_desc_allocator_(*this, GpuDescriptorHeapType::Rtv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          dsv_desc_allocator_(*this, GpuDescriptorHeapType::Dsv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          cbv_srv_uav_desc_allocator_(*this, GpuDescriptorHeapType::CbvSrvUav, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          shader_visible_cbv_srv_uav_desc_allocator_(*this, GpuDescriptorHeapType::CbvSrvUav, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
+          sampler_desc_allocator_(*this, GpuDescriptorHeapType::Sampler, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+          shader_visible_sampler_desc_allocator_(*this, GpuDescriptorHeapType::Sampler, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
+        enable_debug = true;
+
         bool debug_dxgi = false;
         ComPtr<IDXGIFactory4> dxgi_factory;
         if (enable_debug)

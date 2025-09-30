@@ -3,12 +3,10 @@
 
 #pragma once
 
+#include <memory>
 #include <string_view>
 #include <tuple>
 
-#include <directx/d3d12.h>
-
-#include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -25,6 +23,17 @@ namespace AIHoloImager
         uint64_t handle;
     };
 
+    enum class GpuDescriptorHeapType
+    {
+        CbvSrvUav,
+        Rtv,
+        Dsv,
+        Sampler,
+
+        Num,
+    };
+    constexpr uint32_t NumGpuDescriptorHeapTypes = static_cast<uint32_t>(GpuDescriptorHeapType::Num);
+
     GpuDescriptorCpuHandle OffsetHandle(const GpuDescriptorCpuHandle& handle, int32_t offset, uint32_t desc_size);
     GpuDescriptorGpuHandle OffsetHandle(const GpuDescriptorGpuHandle& handle, int32_t offset, uint32_t desc_size);
     std::tuple<GpuDescriptorCpuHandle, GpuDescriptorGpuHandle> OffsetHandle(
@@ -36,8 +45,8 @@ namespace AIHoloImager
 
     public:
         GpuDescriptorHeap() noexcept;
-        GpuDescriptorHeap(GpuSystem& gpu_system, uint32_t size, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags,
-            std::wstring_view name = L"");
+        GpuDescriptorHeap(
+            GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name = L"");
         ~GpuDescriptorHeap() noexcept;
 
         GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept;
@@ -45,7 +54,12 @@ namespace AIHoloImager
 
         void Name(std::wstring_view name);
 
-        ID3D12DescriptorHeap* NativeDescriptorHeap() const noexcept;
+        void* NativeDescriptorHeap() const noexcept;
+        template <typename Traits>
+        typename Traits::DescriptorHeapType NativeDescriptorHeap() const noexcept
+        {
+            return static_cast<typename Traits::DescriptorHeapType>(this->NativeDescriptorHeap());
+        }
 
         explicit operator bool() const noexcept;
 
@@ -57,7 +71,7 @@ namespace AIHoloImager
         void Reset() noexcept;
 
     private:
-        ComPtr<ID3D12DescriptorHeap> heap_;
-        D3D12_DESCRIPTOR_HEAP_DESC desc_{};
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager

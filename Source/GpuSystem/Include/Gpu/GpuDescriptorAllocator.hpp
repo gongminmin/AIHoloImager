@@ -6,8 +6,6 @@
 #include <mutex>
 #include <vector>
 
-#include <directx/d3d12.h>
-
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuDescriptorHeap.hpp"
 
@@ -20,8 +18,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuDescriptorPage)
 
     public:
-        explicit GpuDescriptorPage(
-            GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, uint32_t size);
+        explicit GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size);
         ~GpuDescriptorPage() noexcept;
 
         GpuDescriptorPage(GpuDescriptorPage&& other) noexcept;
@@ -61,9 +58,14 @@ namespace AIHoloImager
         void Reset() noexcept;
         void Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept;
 
-        ID3D12DescriptorHeap* NativeDescriptorHeap() const noexcept
+        void* NativeDescriptorHeap() const noexcept
         {
             return native_heap_;
+        }
+        template <typename Traits>
+        typename Traits::DescriptorHeapType NativeDescriptorHeap() const noexcept
+        {
+            return reinterpret_cast<typename Traits::DescriptorHeapType>(this->NativeDescriptorHeap());
         }
 
         explicit operator bool() const noexcept
@@ -92,7 +94,7 @@ namespace AIHoloImager
         }
 
     private:
-        ID3D12DescriptorHeap* native_heap_ = nullptr;
+        void* native_heap_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         GpuDescriptorCpuHandle cpu_handle_{};
@@ -104,7 +106,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuDescriptorAllocator)
 
     public:
-        GpuDescriptorAllocator(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags) noexcept;
+        GpuDescriptorAllocator(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible) noexcept;
 
         GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept;
         GpuDescriptorAllocator& operator=(GpuDescriptorAllocator&& other) noexcept;
@@ -124,8 +126,8 @@ namespace AIHoloImager
 
     private:
         GpuSystem* gpu_system_;
-        const D3D12_DESCRIPTOR_HEAP_TYPE type_;
-        const D3D12_DESCRIPTOR_HEAP_FLAGS flags_;
+        const GpuDescriptorHeapType type_;
+        const bool shader_visible_;
 
         std::mutex allocation_mutex_;
 

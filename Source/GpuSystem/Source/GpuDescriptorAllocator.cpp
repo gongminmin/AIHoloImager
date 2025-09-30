@@ -6,7 +6,10 @@
 #include <cassert>
 
 #include "Base/ErrorHandling.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuSystem.hpp"
+
+#include "D3D12/D3D12Conversion.hpp"
 
 using namespace AIHoloImager;
 
@@ -14,25 +17,30 @@ namespace
 {
     uint32_t descriptor_size[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
 
-    constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 1 * 1024, 8 * 1024, 4 * 1024};
+    constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 8 * 1024, 4 * 1024, 1 * 1024};
 
-    void UpdateDescriptorSize(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type)
+    uint32_t& DescriptorSize(GpuDescriptorHeapType type)
     {
-        if (descriptor_size[type] == 0)
+        return descriptor_size[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type)];
+    }
+
+    void UpdateDescriptorSize(GpuSystem& gpu_system, GpuDescriptorHeapType type)
+    {
+        auto& size = DescriptorSize(type);
+        if (size == 0)
         {
-            descriptor_size[type] = gpu_system.NativeDevice()->GetDescriptorHandleIncrementSize(type);
+            size = gpu_system.NativeDevice()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
         }
     }
 } // namespace
 
 namespace AIHoloImager
 {
-    GpuDescriptorPage::GpuDescriptorPage(
-        GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags, uint32_t size)
+    GpuDescriptorPage::GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size)
     {
-        heap_ = GpuDescriptorHeap(gpu_system, size, type, flags, L"GpuDescriptorPage");
+        heap_ = GpuDescriptorHeap(gpu_system, size, type, shader_visible, L"GpuDescriptorPage");
         cpu_handle_ = heap_.CpuHandleStart();
-        if (flags == D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
+        if (shader_visible)
         {
             gpu_handle_ = heap_.GpuHandleStart();
         }
@@ -82,19 +90,19 @@ namespace AIHoloImager
         offset_ = offset;
         size_ = size;
 
-        const uint32_t desc_size = descriptor_size[this->NativeDescriptorHeap()->GetDesc().Type];
+        const uint32_t desc_size = DescriptorSize(FromD3D12DescriptorHeapType(this->NativeDescriptorHeap<D3D12Traits>()->GetDesc().Type));
         std::tie(cpu_handle_, gpu_handle_) = OffsetHandle(page.CpuHandleStart(), page.GpuHandleStart(), offset, desc_size);
     }
 
 
-    GpuDescriptorAllocator::GpuDescriptorAllocator(
-        GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags) noexcept
-        : gpu_system_(&gpu_system), type_(type), flags_(flags)
+    GpuDescriptorAllocator::GpuDescriptorAllocator(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible) noexcept
+        : gpu_system_(&gpu_system), type_(type), shader_visible_(shader_visible)
     {
     }
 
     GpuDescriptorAllocator::GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept
-        : gpu_system_(std::exchange(other.gpu_system_, {})), type_(other.type_), flags_(other.flags_), pages_(std::move(other.pages_))
+        : gpu_system_(std::exchange(other.gpu_system_, {})), type_(other.type_), shader_visible_(other.shader_visible_),
+          pages_(std::move(other.pages_))
     {
     }
 
@@ -103,7 +111,7 @@ namespace AIHoloImager
         if (this != &other)
         {
             assert(type_ == other.type_);
-            assert(flags_ == other.flags_);
+            assert(shader_visible_ == other.shader_visible_);
 
             gpu_system_ = std::exchange(other.gpu_system_, {});
             pages_ = std::move(other.pages_);
@@ -114,7 +122,7 @@ namespace AIHoloImager
     uint32_t GpuDescriptorAllocator::DescriptorSize() const
     {
         UpdateDescriptorSize(*gpu_system_, type_);
-        return descriptor_size[type_];
+        return ::DescriptorSize(type_);
     }
 
     GpuDescriptorBlock GpuDescriptorAllocator::Allocate(uint32_t size)
@@ -148,10 +156,10 @@ namespace AIHoloImager
             }
         }
 
-        uint16_t const default_page_size = DescriptorPageSize[type_];
+        const uint16_t default_page_size = DescriptorPageSize[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type_)];
         assert(size <= default_page_size);
 
-        GpuDescriptorPage new_page(*gpu_system_, type_, flags_, default_page_size);
+        GpuDescriptorPage new_page(*gpu_system_, type_, shader_visible_, default_page_size);
         desc_block.Reset(new_page, 0, size);
         pages_.emplace_back(PageInfo{std::move(new_page), {{static_cast<uint16_t>(size), default_page_size}}, {}});
     }
@@ -170,7 +178,7 @@ namespace AIHoloImager
     {
         assert(desc_block);
 
-        uint16_t const default_page_size = DescriptorPageSize[type_];
+        const uint16_t default_page_size = DescriptorPageSize[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type_)];
 
         if (desc_block.Size() <= default_page_size)
         {

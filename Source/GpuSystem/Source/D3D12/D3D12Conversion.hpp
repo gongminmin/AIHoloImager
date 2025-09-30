@@ -32,4 +32,7 @@ namespace AIHoloImager
 
     D3D12_GPU_DESCRIPTOR_HANDLE ToD3D12GpuDescriptorHandle(GpuDescriptorGpuHandle handle) noexcept;
     GpuDescriptorGpuHandle FromD3D12GpuDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) noexcept;
+
+    D3D12_DESCRIPTOR_HEAP_TYPE ToD3D12DescriptorHeapType(GpuDescriptorHeapType type) noexcept;
+    GpuDescriptorHeapType FromD3D12DescriptorHeapType(D3D12_DESCRIPTOR_HEAP_TYPE type) noexcept;
 } // namespace AIHoloImager

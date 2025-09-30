@@ -151,7 +151,7 @@ namespace AIHoloImager
         GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
         uav.CopyTo(uav_desc_block.CpuHandle());
 
-        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap<D3D12Traits>()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
         d3d12_cmd_list->ClearUnorderedAccessViewFloat(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
@@ -181,7 +181,7 @@ namespace AIHoloImager
         GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
         uav.CopyTo(uav_desc_block.CpuHandle());
 
-        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap()};
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.NativeDescriptorHeap<D3D12Traits>()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
         d3d12_cmd_list->ClearUnorderedAccessViewUint(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
@@ -291,14 +291,14 @@ namespace AIHoloImager
         if (num_srv_uav_descs > 0)
         {
             srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
-            heaps[num_heaps] = srv_uav_desc_block.NativeDescriptorHeap();
+            heaps[num_heaps] = srv_uav_desc_block.NativeDescriptorHeap<D3D12Traits>();
             ++num_heaps;
         }
         GpuDescriptorBlock sampler_desc_block;
         if (num_sampler_descs > 0)
         {
             sampler_desc_block = gpu_system_->AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
-            heaps[num_heaps] = sampler_desc_block.NativeDescriptorHeap();
+            heaps[num_heaps] = sampler_desc_block.NativeDescriptorHeap<D3D12Traits>();
             ++num_heaps;
         }
         if (num_heaps > 0)
@@ -466,14 +466,14 @@ namespace AIHoloImager
         if (num_srv_uav_descs > 0)
         {
             srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
-            heaps[num_heaps] = srv_uav_desc_block.NativeDescriptorHeap();
+            heaps[num_heaps] = srv_uav_desc_block.NativeDescriptorHeap<D3D12Traits>();
             ++num_heaps;
         }
         GpuDescriptorBlock sampler_desc_block;
         if (num_sampler_descs > 0)
         {
             sampler_desc_block = gpu_system_->AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
-            heaps[num_heaps] = sampler_desc_block.NativeDescriptorHeap();
+            heaps[num_heaps] = sampler_desc_block.NativeDescriptorHeap<D3D12Traits>();
             ++num_heaps;
         }
         if (num_heaps > 0)
@@ -935,7 +935,7 @@ namespace AIHoloImager
         {
             srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_descs);
 
-            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap()};
+            ID3D12DescriptorHeap* heaps[] = {srv_uav_desc_block.NativeDescriptorHeap<D3D12Traits>()};
             d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
         }
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
