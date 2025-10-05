@@ -3,93 +3,59 @@
 
 #include "Gpu/GpuVertexAttrib.hpp"
 
-#include <map>
-
-#include "Gpu/GpuFormat.hpp"
-
-#include "D3D12/D3D12Conversion.hpp"
+#include "Gpu/GpuSystem.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuVertexAttribInternal.hpp"
 
 namespace AIHoloImager
 {
-    GpuVertexAttribs::GpuVertexAttribs(std::span<const GpuVertexAttrib> attribs) : input_elems_(attribs.size()), semantics_(attribs.size())
+    class GpuVertexAttribs::Impl : public GpuVertexAttribsInternal
     {
-        std::map<uint32_t, uint32_t> slot_size;
-        for (size_t i = 0; i < attribs.size(); ++i)
-        {
-            semantics_[i] = attribs[i].semantic;
+    };
 
-            input_elems_[i].SemanticIndex = attribs[i].semantic_index;
-            input_elems_[i].Format = ToDxgiFormat(attribs[i].format);
-            input_elems_[i].InputSlot = attribs[i].slot;
-            input_elems_[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-            input_elems_[i].InstanceDataStepRate = 0;
-
-            if (attribs[i].offset == GpuVertexAttrib::AppendOffset)
-            {
-                auto iter = slot_size.find(attribs[i].slot);
-                if (iter == slot_size.end())
-                {
-                    iter = slot_size.emplace(attribs[i].slot, 0).first;
-                }
-
-                input_elems_[i].AlignedByteOffset = iter->second;
-                iter->second += FormatSize(attribs[i].format);
-            }
-            else
-            {
-                input_elems_[i].AlignedByteOffset = attribs[i].offset;
-            }
-        }
-
-        this->UpdateSemantics();
+    GpuVertexAttribs::GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs)
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateGpuVertexAttribs(std::move(attribs)).release()))
+    {
+        static_assert(sizeof(Impl) == sizeof(GpuVertexAttribsInternal));
     }
 
-    GpuVertexAttribs::GpuVertexAttribs(const GpuVertexAttribs& other) noexcept
-        : input_elems_(other.input_elems_), semantics_(other.semantics_)
+    GpuVertexAttribs::GpuVertexAttribs(const GpuVertexAttribs& other) : impl_(static_cast<Impl*>(other.impl_->Clone().release()))
     {
-        this->UpdateSemantics();
     }
 
-    GpuVertexAttribs& GpuVertexAttribs::operator=(const GpuVertexAttribs& other) noexcept
+    GpuVertexAttribs::~GpuVertexAttribs() noexcept = default;
+
+    GpuVertexAttribs& GpuVertexAttribs::operator=(const GpuVertexAttribs& other)
     {
         if (this != &other)
         {
-            input_elems_ = other.input_elems_;
-            semantics_ = other.semantics_;
-
-            this->UpdateSemantics();
+            if (impl_)
+            {
+                static_cast<GpuVertexAttribsInternal&>(*impl_) = static_cast<GpuVertexAttribsInternal&>(*other.impl_);
+            }
+            else
+            {
+                impl_.reset(static_cast<Impl*>(other.impl_->Clone().release()));
+            }
         }
         return *this;
     }
 
-    GpuVertexAttribs::GpuVertexAttribs(GpuVertexAttribs&& other) noexcept
-        : input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_))
+    GpuVertexAttribs::GpuVertexAttribs(GpuVertexAttribs&& other) noexcept : impl_(std::move(other.impl_))
     {
-        this->UpdateSemantics();
     }
 
     GpuVertexAttribs& GpuVertexAttribs::operator=(GpuVertexAttribs&& other) noexcept
     {
         if (this != &other)
         {
-            input_elems_ = std::move(other.input_elems_);
-            semantics_ = std::move(other.semantics_);
-
-            this->UpdateSemantics();
+            impl_ = std::move(other.impl_);
         }
         return *this;
     }
 
-    void GpuVertexAttribs::UpdateSemantics()
+    const GpuVertexAttribsInternal& GpuVertexAttribs::Internal() const noexcept
     {
-        for (size_t i = 0; i < input_elems_.size(); ++i)
-        {
-            input_elems_[i].SemanticName = semantics_[i].c_str();
-        }
-    }
-
-    std::span<const D3D12_INPUT_ELEMENT_DESC> GpuVertexAttribs::InputElementDescs() const
-    {
-        return std::span<const D3D12_INPUT_ELEMENT_DESC>(input_elems_);
+        return *impl_;
     }
 } // namespace AIHoloImager

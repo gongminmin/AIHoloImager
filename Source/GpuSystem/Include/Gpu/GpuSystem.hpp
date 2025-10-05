@@ -18,6 +18,8 @@
 
 namespace AIHoloImager
 {
+    class GpuSystemInternalFactory;
+
     struct GpuCommandAllocatorInfo
     {
         ComPtr<ID3D12CommandAllocator> cmd_allocator;
@@ -101,6 +103,9 @@ namespace AIHoloImager
 
         GpuMipmapper& Mipmapper() noexcept;
 
+    public:
+        const GpuSystemInternalFactory& InternalFactory() const noexcept;
+
     private:
         struct CmdQueue
         {
@@ -116,6 +121,8 @@ namespace AIHoloImager
         void ClearStallResources();
 
     private:
+        std::unique_ptr<GpuSystemInternalFactory> internal_factory_;
+
         ComPtr<ID3D12Device> device_;
 
         CmdQueue cmd_queues_[static_cast<uint32_t>(CmdQueueType::Num)];

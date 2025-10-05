@@ -45,9 +45,9 @@ namespace AIHoloImager
             states.dsv_format = GpuFormat::D32_Float;
             states.depth_enable = true;
 
-            const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
-                {"POSITION", 0, GpuFormat::RGBA32_Float},
-            }));
+            const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
+                                                                   {"POSITION", 0, GpuFormat::RGBA32_Float},
+                                                               }));
 
             {
                 const ShaderInfo shaders[] = {

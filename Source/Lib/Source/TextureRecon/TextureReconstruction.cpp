@@ -27,11 +27,11 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), gpu_system_(aihi.GpuSystemInstance())
         {
-            const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
-                {"POSITION", 0, GpuFormat::RGB32_Float},
-                {"NORMAL", 0, GpuFormat::RGB32_Float},
-                {"TEXCOORD", 0, GpuFormat::RG32_Float},
-            }));
+            const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
+                                                                   {"POSITION", 0, GpuFormat::RGB32_Float},
+                                                                   {"NORMAL", 0, GpuFormat::RGB32_Float},
+                                                                   {"TEXCOORD", 0, GpuFormat::RG32_Float},
+                                                               }));
 
             {
                 const ShaderInfo shaders[] = {

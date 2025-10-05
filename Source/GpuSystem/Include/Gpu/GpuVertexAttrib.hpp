@@ -4,11 +4,9 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <string>
-#include <vector>
-
-#include <directx/d3d12.h>
 
 #include "Gpu/GpuFormat.hpp"
 
@@ -25,24 +23,25 @@ namespace AIHoloImager
         uint32_t offset = AppendOffset;
     };
 
+    class GpuSystem;
+    class GpuVertexAttribsInternal;
+
     class GpuVertexAttribs
     {
     public:
-        explicit GpuVertexAttribs(std::span<const GpuVertexAttrib> attribs);
+        explicit GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs);
+        ~GpuVertexAttribs() noexcept;
 
-        GpuVertexAttribs(const GpuVertexAttribs& other) noexcept;
-        GpuVertexAttribs& operator=(const GpuVertexAttribs& other) noexcept;
+        GpuVertexAttribs(const GpuVertexAttribs& other);
+        GpuVertexAttribs& operator=(const GpuVertexAttribs& other);
 
         GpuVertexAttribs(GpuVertexAttribs&& other) noexcept;
         GpuVertexAttribs& operator=(GpuVertexAttribs&& other) noexcept;
 
-        std::span<const D3D12_INPUT_ELEMENT_DESC> InputElementDescs() const;
+        const GpuVertexAttribsInternal& Internal() const noexcept;
 
     private:
-        void UpdateSemantics();
-
-    private:
-        std::vector<D3D12_INPUT_ELEMENT_DESC> input_elems_;
-        std::vector<std::string> semantics_;
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager

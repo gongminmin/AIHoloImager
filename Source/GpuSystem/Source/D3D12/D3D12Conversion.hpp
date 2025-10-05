@@ -9,7 +9,6 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/GpuShader.hpp"
-#include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
 {

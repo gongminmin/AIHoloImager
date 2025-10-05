@@ -14,6 +14,9 @@
 #include "Base/Uuid.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
+#include "Internal/D3D12/D3D12SystemFactory.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
+
 DEFINE_UUID_OF(IDXGIAdapter1);
 DEFINE_UUID_OF(IDXGIFactory4);
 DEFINE_UUID_OF(IDXGIFactory6);
@@ -33,8 +36,8 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 namespace AIHoloImager
 {
     GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : upload_mem_allocator_(*this, true), read_back_mem_allocator_(*this, false),
-          rtv_desc_allocator_(*this, GpuDescriptorHeapType::Rtv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
+        : internal_factory_(std::make_unique<D3D12SystemFactory>()), upload_mem_allocator_(*this, true),
+          read_back_mem_allocator_(*this, false), rtv_desc_allocator_(*this, GpuDescriptorHeapType::Rtv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, GpuDescriptorHeapType::Dsv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           cbv_srv_uav_desc_allocator_(*this, GpuDescriptorHeapType::CbvSrvUav, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           shader_visible_cbv_srv_uav_desc_allocator_(*this, GpuDescriptorHeapType::CbvSrvUav, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE),
@@ -584,5 +587,10 @@ namespace AIHoloImager
     GpuMipmapper& GpuSystem::Mipmapper() noexcept
     {
         return mipmapper_;
+    }
+
+    const GpuSystemInternalFactory& GpuSystem::InternalFactory() const noexcept
+    {
+        return *internal_factory_;
     }
 } // namespace AIHoloImager

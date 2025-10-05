@@ -14,6 +14,7 @@
 #include "Gpu/GpuUtil.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "Internal/D3D12/D3D12VertexAttrib.hpp"
 
 namespace
 {
@@ -140,7 +141,7 @@ namespace AIHoloImager
                 }
             }
 
-            const auto input_elems = vertex_attribs.InputElementDescs();
+            const auto input_elems = static_cast<const D3D12VertexAttribs&>(vertex_attribs.Internal()).InputElementDescs();
             D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
             if (!input_elems.empty())
             {

@@ -112,9 +112,9 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
                 states.dsv_format = ds_tex_.Format();
 
-                const GpuVertexAttribs vertex_attribs(std::span<const GpuVertexAttrib>({
-                    {"POSITION", 0, GpuFormat::RGB32_Float},
-                }));
+                const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
+                                                                       {"POSITION", 0, GpuFormat::RGB32_Float},
+                                                                   }));
 
                 render_pipeline_ =
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
