@@ -13,6 +13,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "Internal/D3D12/D3D12Sampler.hpp"
 
 DEFINE_UUID_OF(ID3D12GraphicsCommandList);
 DEFINE_UUID_OF(ID3D12VideoEncodeCommandList);
@@ -360,7 +361,7 @@ namespace AIHoloImager
                     if (sampler != nullptr)
                     {
                         auto sampler_cpu_handle = OffsetHandle(sampler_desc_block.CpuHandle(), heap_base, sampler_desc_size);
-                        sampler->CopyTo(sampler_cpu_handle);
+                        static_cast<const D3D12DynamicSampler&>(sampler->Internal()).CopyTo(sampler_cpu_handle);
                     }
 
                     ++heap_base;
@@ -532,7 +533,7 @@ namespace AIHoloImager
                 if (sampler != nullptr)
                 {
                     auto sampler_cpu_handle = OffsetHandle(sampler_desc_block.CpuHandle(), heap_base, sampler_desc_size);
-                    sampler->CopyTo(sampler_cpu_handle);
+                    static_cast<const D3D12DynamicSampler&>(sampler->Internal()).CopyTo(sampler_cpu_handle);
                 }
 
                 ++heap_base;

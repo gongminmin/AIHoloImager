@@ -66,10 +66,10 @@ namespace AIHoloImager
             }
             {
                 const GpuStaticSampler samplers[] = {
-                    GpuStaticSampler(
-                        {GpuStaticSampler::Filter::Point, GpuStaticSampler::Filter::Point}, GpuStaticSampler::AddressMode::Clamp),
-                    GpuStaticSampler(
-                        {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp),
+                    GpuStaticSampler(gpu_system_, {GpuStaticSampler::Filter::Point, GpuStaticSampler::Filter::Point},
+                        GpuStaticSampler::AddressMode::Clamp),
+                    GpuStaticSampler(gpu_system_, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear},
+                        GpuStaticSampler::AddressMode::Clamp),
                 };
 
                 const ShaderInfo shader = {ProjectTextureCs_shader, 1, 4, 1};

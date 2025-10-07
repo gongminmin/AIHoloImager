@@ -14,6 +14,7 @@
 #include "Gpu/GpuUtil.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "Internal/D3D12/D3D12Sampler.hpp"
 #include "Internal/D3D12/D3D12VertexAttrib.hpp"
 
 namespace
@@ -151,7 +152,7 @@ namespace AIHoloImager
             auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
             for (uint32_t i = 0; i < static_samplers.size(); ++i)
             {
-                d3d12_static_samplers[i] = static_samplers[i].NativeStaticSampler(i);
+                d3d12_static_samplers[i] = static_cast<const D3D12StaticSampler&>(static_samplers[i].Internal()).SamplerDesc(i);
             }
 
             const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
@@ -361,7 +362,7 @@ namespace AIHoloImager
             auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
             for (uint32_t i = 0; i < static_samplers.size(); ++i)
             {
-                d3d12_static_samplers[i] = static_samplers[i].NativeStaticSampler(i);
+                d3d12_static_samplers[i] = static_cast<const D3D12StaticSampler&>(static_samplers[i].Internal()).SamplerDesc(i);
             }
 
             const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(),

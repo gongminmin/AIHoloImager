@@ -21,10 +21,14 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuVertexAttrib.hpp
     Source/D3D12/D3D12Conversion.cpp
     Source/D3D12/D3D12Conversion.hpp
+    Source/Internal/D3D12/D3D12Sampler.cpp
+    Source/Internal/D3D12/D3D12Sampler.hpp
     Source/Internal/D3D12/D3D12SystemFactory.cpp
     Source/Internal/D3D12/D3D12SystemFactory.hpp
     Source/Internal/D3D12/D3D12VertexAttrib.cpp
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
+    Source/Internal/GpuSamplerInternal.cpp
+    Source/Internal/GpuSamplerInternal.hpp
     Source/Internal/GpuSystemInternalFactory.cpp
     Source/Internal/GpuSystemInternalFactory.hpp
     Source/Internal/GpuVertexAttribInternal.cpp

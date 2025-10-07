@@ -7,7 +7,6 @@
 
 #include <directx/d3d12.h>
 
-#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuFormat.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"

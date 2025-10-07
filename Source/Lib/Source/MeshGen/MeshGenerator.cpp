@@ -206,8 +206,8 @@ namespace AIHoloImager
                 states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
                 states.rtv_formats = rtv_formats;
 
-                const GpuStaticSampler bilinear_sampler(
-                    {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Border);
+                const GpuStaticSampler bilinear_sampler(gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear},
+                    GpuStaticSampler::AddressMode::Border);
 
                 rotate_pipeline_ = GpuRenderPipeline(gpu_system, GpuRenderPipeline::PrimitiveTopology::TriangleStrip, shaders,
                     GpuVertexAttribs(gpu_system, {}), std::span(&bilinear_sampler, 1), states);
@@ -226,7 +226,7 @@ namespace AIHoloImager
             }
 
             const GpuStaticSampler trilinear_sampler(
-                {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+                gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
             {
                 const ShaderInfo shader = {MergeTextureCs_shader, 1, 2, 1};
                 merge_texture_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});

@@ -36,7 +36,7 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 namespace AIHoloImager
 {
     GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : internal_factory_(std::make_unique<D3D12SystemFactory>()), upload_mem_allocator_(*this, true),
+        : internal_factory_(std::make_unique<D3D12SystemFactory>(*this)), upload_mem_allocator_(*this, true),
           read_back_mem_allocator_(*this, false), rtv_desc_allocator_(*this, GpuDescriptorHeapType::Rtv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, GpuDescriptorHeapType::Dsv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           cbv_srv_uav_desc_allocator_(*this, GpuDescriptorHeapType::CbvSrvUav, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
@@ -44,8 +44,6 @@ namespace AIHoloImager
           sampler_desc_allocator_(*this, GpuDescriptorHeapType::Sampler, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           shader_visible_sampler_desc_allocator_(*this, GpuDescriptorHeapType::Sampler, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
     {
-        enable_debug = true;
-
         bool debug_dxgi = false;
         ComPtr<IDXGIFactory4> dxgi_factory;
         if (enable_debug)
