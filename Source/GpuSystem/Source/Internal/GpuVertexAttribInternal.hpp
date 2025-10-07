@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <memory>
+
 namespace AIHoloImager
 {
     class GpuVertexAttribsInternal

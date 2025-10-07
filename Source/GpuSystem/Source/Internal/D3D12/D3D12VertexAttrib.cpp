@@ -80,7 +80,7 @@ namespace AIHoloImager
     {
         this->UpdateSemantics();
     }
-    D3D12VertexAttribs::D3D12VertexAttribs(GpuVertexAttribsInternal&& other)
+    D3D12VertexAttribs::D3D12VertexAttribs(GpuVertexAttribsInternal&& other) noexcept
         : D3D12VertexAttribs(std::forward<D3D12VertexAttribs>(static_cast<D3D12VertexAttribs&&>(other)))
     {
     }

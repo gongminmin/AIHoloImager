@@ -6,6 +6,8 @@
 #include <span>
 #include <vector>
 
+#include <directx/d3d12.h>
+
 #include "Gpu/GpuVertexAttrib.hpp"
 
 #include "../GpuVertexAttribInternal.hpp"
@@ -25,7 +27,7 @@ namespace AIHoloImager
         D3D12VertexAttribs& operator=(const GpuVertexAttribsInternal& other) override;
 
         D3D12VertexAttribs(D3D12VertexAttribs&& other) noexcept;
-        explicit D3D12VertexAttribs(GpuVertexAttribsInternal&& other);
+        explicit D3D12VertexAttribs(GpuVertexAttribsInternal&& other) noexcept;
 
         D3D12VertexAttribs& operator=(D3D12VertexAttribs&& other) noexcept;
         D3D12VertexAttribs& operator=(GpuVertexAttribsInternal&& other) noexcept override;

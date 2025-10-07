@@ -3,7 +3,7 @@
 
 #include "D3D12SystemFactory.hpp"
 
-#include "Internal/D3D12/D3D12VertexAttrib.hpp"
+#include "D3D12VertexAttrib.hpp"
 
 namespace AIHoloImager
 {
