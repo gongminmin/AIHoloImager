@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include <memory>
 #include <string_view>
-#include <vector>
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuFormat.hpp"
@@ -26,12 +26,24 @@ namespace AIHoloImager
         GpuTexture(GpuTexture&& other) noexcept;
         GpuTexture& operator=(GpuTexture&& other) noexcept;
 
+        void Name(std::wstring_view name) override;
+
+        void* NativeResource() const noexcept override;
+        template <typename Traits>
+        typename Traits::ResourceType NativeResource() const noexcept
+        {
+            return reinterpret_cast<typename Traits::ResourceType>(this->NativeResource());
+        }
         void* NativeTexture() const noexcept;
         template <typename Traits>
         typename Traits::TextureType NativeTexture() const noexcept
         {
             return reinterpret_cast<typename Traits::TextureType>(this->NativeTexture());
         }
+
+        explicit operator bool() const noexcept override;
+
+        void* SharedHandle() const noexcept override;
 
         uint32_t Width(uint32_t mip) const noexcept;
         uint32_t Height(uint32_t mip) const noexcept;
@@ -52,10 +64,9 @@ namespace AIHoloImager
             uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
         GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
 
-    protected:
-        mutable std::vector<GpuResourceState> curr_states_;
-        GpuFormat format_{};
-        GpuResourceFlag flags_{};
+    private:
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 
     class GpuTexture2D final : public GpuTexture

@@ -3,14 +3,10 @@
 
 #include "D3D12Resource.hpp"
 
-#include "Gpu/D3D12/D3D12Traits.hpp"
-
 #include "D3D12/D3D12Conversion.hpp"
 
 namespace AIHoloImager
 {
-    D3D12Resource::D3D12Resource() = default;
-
     D3D12Resource::D3D12Resource(GpuSystem& gpu_system) : resource_(gpu_system, nullptr)
     {
     }
@@ -49,16 +45,8 @@ namespace AIHoloImager
     D3D12Resource::~D3D12Resource() = default;
 
     D3D12Resource::D3D12Resource(D3D12Resource&& other) noexcept = default;
-    D3D12Resource::D3D12Resource(GpuResourceInternal&& other) noexcept
-        : D3D12Resource(std::forward<D3D12Resource>(static_cast<D3D12Resource&&>(other)))
-    {
-    }
 
     D3D12Resource& D3D12Resource::operator=(D3D12Resource&& other) noexcept = default;
-    GpuResourceInternal& D3D12Resource::operator=(GpuResourceInternal&& other) noexcept
-    {
-        return this->operator=(std::move(static_cast<D3D12Resource&&>(other)));
-    }
 
     void D3D12Resource::Name(std::wstring_view name)
     {

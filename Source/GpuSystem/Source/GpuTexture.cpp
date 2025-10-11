@@ -3,17 +3,12 @@
 
 #include "Gpu/GpuTexture.hpp"
 
-#include <span>
-
-#include <directx/d3d12.h>
-
-#include "Base/Util.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuTextureInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -33,45 +28,24 @@ namespace AIHoloImager
     }
 
 
+    class GpuTexture::Impl : public GpuTextureInternal
+    {
+    };
+
     GpuTexture::GpuTexture() = default;
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
-        : GpuResource(gpu_system), format_(format), flags_(flags)
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory()
+                                       .CreateTexture(type, width, height, depth, array_size, mip_levels, format, flags, std::move(name))
+                                       .release()))
     {
-        if (mip_levels == 0)
-        {
-            mip_levels = LogNextPowerOf2(std::max({width, height, depth}));
-        }
-
-        curr_states_.resize(array_size * mip_levels * NumPlanes(format), GpuResourceState::Common);
-
-        uint32_t depth_or_array_size;
-        if (type == GpuResourceType::Texture3D)
-        {
-            assert(array_size == 1);
-            depth_or_array_size = depth;
-        }
-        else
-        {
-            assert(type != GpuResourceType::Buffer);
-            assert(depth == 1);
-            depth_or_array_size = array_size;
-        }
-
-        this->CreateResource(
-            type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags_, curr_states_[0], std::move(name));
+        static_assert(sizeof(Impl) == sizeof(GpuTextureInternal));
     }
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
-        : GpuResource(gpu_system, native_resource, std::move(name))
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateTexture(native_resource, curr_state, std::move(name)).release()))
     {
-        if (this->NativeResource() != nullptr)
-        {
-            curr_states_.assign(this->MipLevels() * this->Planes(), curr_state);
-            format_ = GpuResource::Format();
-            flags_ = GpuResource::Flags();
-        }
     }
 
     GpuTexture::~GpuTexture() = default;
@@ -79,135 +53,88 @@ namespace AIHoloImager
     GpuTexture::GpuTexture(GpuTexture&& other) noexcept = default;
     GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept = default;
 
+    void GpuTexture::Name(std::wstring_view name)
+    {
+        assert(impl_);
+        return impl_->Name(std::move(name));
+    }
+
+    void* GpuTexture::NativeResource() const noexcept
+    {
+        return impl_ ? impl_->NativeResource() : nullptr;
+    }
+
     void* GpuTexture::NativeTexture() const noexcept
     {
-        return this->NativeResource();
+        return impl_ ? impl_->NativeTexture() : nullptr;
+    }
+
+    GpuTexture::operator bool() const noexcept
+    {
+        return this->NativeTexture() != nullptr;
+    }
+
+    void* GpuTexture::SharedHandle() const noexcept
+    {
+        return impl_ ? impl_->SharedHandle() : nullptr;
     }
 
     uint32_t GpuTexture::Width(uint32_t mip) const noexcept
     {
-        return std::max(GpuResource::Width() >> mip, 1U);
+        return impl_ ? impl_->Width(mip) : 0;
     }
 
     uint32_t GpuTexture::Height(uint32_t mip) const noexcept
     {
-        return std::max(GpuResource::Height() >> mip, 1U);
+        return impl_ ? impl_->Height(mip) : 0;
     }
 
     uint32_t GpuTexture::Depth(uint32_t mip) const noexcept
     {
-        return std::max(GpuResource::Depth() >> mip, 1U);
+        return impl_ ? impl_->Depth(mip) : 0;
     }
 
     uint32_t GpuTexture::ArraySize() const noexcept
     {
-        return GpuResource::ArraySize();
+        return impl_ ? impl_->ArraySize() : 0;
     }
 
     uint32_t GpuTexture::MipLevels() const noexcept
     {
-        return GpuResource::MipLevels();
+        return impl_ ? impl_->MipLevels() : 0;
     }
 
     uint32_t GpuTexture::Planes() const noexcept
     {
-        return NumPlanes(format_);
+        return impl_ ? impl_->Planes() : 0;
     }
 
     GpuFormat GpuTexture::Format() const noexcept
     {
-        return format_;
+        return impl_ ? impl_->Format() : GpuFormat::Unknown;
     }
 
     GpuResourceFlag GpuTexture::Flags() const noexcept
     {
-        return flags_;
+        return impl_ ? impl_->Flags() : GpuResourceFlag::None;
     }
 
     void GpuTexture::Reset()
     {
-        GpuResource::Reset();
-        curr_states_.clear();
+        assert(impl_);
+        impl_->Reset();
     }
 
     void GpuTexture::Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
-        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
-        if (curr_states_[sub_resource] != target_state)
-        {
-            D3D12_RESOURCE_BARRIER barrier;
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = this->NativeResource<D3D12Traits>();
-            barrier.Transition.StateBefore = ToD3D12ResourceState(curr_states_[sub_resource]);
-            barrier.Transition.StateAfter = d3d12_target_state;
-            barrier.Transition.Subresource = sub_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
-
-            curr_states_[sub_resource] = target_state;
-        }
+        assert(impl_);
+        impl_->Transition(cmd_list, sub_resource, target_state);
     }
 
     void GpuTexture::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
-        auto* native_resource = this->NativeResource<D3D12Traits>();
-        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
-        if ((curr_states_[0] == target_state) &&
-            ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
-        {
-            D3D12_RESOURCE_BARRIER barrier;
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = native_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
-        }
-        else
-        {
-            bool same_state = true;
-            for (size_t i = 1; i < curr_states_.size(); ++i)
-            {
-                if (curr_states_[i] != curr_states_[0])
-                {
-                    same_state = false;
-                    break;
-                }
-            }
-
-            if (same_state)
-            {
-                if (curr_states_[0] != target_state)
-                {
-                    D3D12_RESOURCE_BARRIER barrier;
-                    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                    barrier.Transition.pResource = native_resource;
-                    barrier.Transition.StateBefore = ToD3D12ResourceState(curr_states_[0]);
-                    barrier.Transition.StateAfter = d3d12_target_state;
-                    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                    cmd_list.Transition(std::span(&barrier, 1));
-                }
-            }
-            else
-            {
-                std::vector<D3D12_RESOURCE_BARRIER> barriers;
-                for (size_t i = 0; i < curr_states_.size(); ++i)
-                {
-                    if (curr_states_[i] != target_state)
-                    {
-                        auto& barrier = barriers.emplace_back();
-                        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                        barrier.Transition.pResource = native_resource;
-                        barrier.Transition.StateBefore = ToD3D12ResourceState(curr_states_[i]);
-                        barrier.Transition.StateAfter = d3d12_target_state;
-                        barrier.Transition.Subresource = static_cast<uint32_t>(i);
-                    }
-                }
-                cmd_list.Transition(std::span(barriers.begin(), barriers.end()));
-            }
-        }
-
-        curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
+        assert(impl_);
+        impl_->Transition(cmd_list, target_state);
     }
 
 

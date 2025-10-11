@@ -3,8 +3,9 @@
 
 #include "D3D12SystemFactory.hpp"
 
-#include "D3D12Resource.hpp"
+#include "D3D12Buffer.hpp"
 #include "D3D12Sampler.hpp"
+#include "D3D12Texture.hpp"
 #include "D3D12VertexAttrib.hpp"
 
 namespace AIHoloImager
@@ -15,28 +16,42 @@ namespace AIHoloImager
 
     D3D12SystemFactory::~D3D12SystemFactory() = default;
 
-    std::unique_ptr<GpuResourceInternal> D3D12SystemFactory::CreateGpuResource() const
+    std::unique_ptr<GpuBufferInternal> D3D12SystemFactory::CreateBuffer(
+        uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const
     {
-        return std::make_unique<D3D12Resource>(gpu_system_);
+        return std::make_unique<D3D12Buffer>(gpu_system_, size, heap, flags, std::move(name));
     }
-    std::unique_ptr<GpuResourceInternal> D3D12SystemFactory::CreateGpuResource(void* native_resource, std::wstring_view name) const
+    std::unique_ptr<GpuBufferInternal> D3D12SystemFactory::CreateBuffer(
+        void* native_resource, GpuResourceState curr_state, std::wstring_view name) const
     {
-        return std::make_unique<D3D12Resource>(gpu_system_, native_resource, name);
+        return std::make_unique<D3D12Buffer>(gpu_system_, native_resource, curr_state, std::move(name));
     }
 
-    std::unique_ptr<GpuStaticSamplerInternal> D3D12SystemFactory::CreateGpuStaticSampler(
+    std::unique_ptr<GpuTextureInternal> D3D12SystemFactory::CreateTexture(GpuResourceType type, uint32_t width, uint32_t height,
+        uint32_t depth, uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name) const
+    {
+        return std::make_unique<D3D12Texture>(
+            gpu_system_, type, width, height, depth, array_size, mip_levels, format, flags, std::move(name));
+    }
+    std::unique_ptr<GpuTextureInternal> D3D12SystemFactory::CreateTexture(
+        void* native_resource, GpuResourceState curr_state, std::wstring_view name) const
+    {
+        return std::make_unique<D3D12Texture>(gpu_system_, native_resource, curr_state, std::move(name));
+    }
+
+    std::unique_ptr<GpuStaticSamplerInternal> D3D12SystemFactory::CreateStaticSampler(
         const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const
     {
         return std::make_unique<D3D12StaticSampler>(filters, addr_modes);
     }
 
-    std::unique_ptr<GpuDynamicSamplerInternal> D3D12SystemFactory::CreateGpuDynamicSampler(
+    std::unique_ptr<GpuDynamicSamplerInternal> D3D12SystemFactory::CreateDynamicSampler(
         const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const
     {
         return std::make_unique<D3D12DynamicSampler>(gpu_system_, filters, addr_modes);
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> D3D12SystemFactory::CreateGpuVertexAttribs(std::span<const GpuVertexAttrib> attribs) const
+    std::unique_ptr<GpuVertexAttribsInternal> D3D12SystemFactory::CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const
     {
         return std::make_unique<D3D12VertexAttribs>(std::move(attribs));
     }

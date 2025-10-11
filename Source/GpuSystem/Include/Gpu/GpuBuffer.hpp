@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string_view>
 
 #include "Base/Noncopyable.hpp"
@@ -34,12 +35,24 @@ namespace AIHoloImager
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
+        void Name(std::wstring_view name) override;
+
+        void* NativeResource() const noexcept override;
+        template <typename Traits>
+        typename Traits::ResourceType NativeResource() const noexcept
+        {
+            return reinterpret_cast<typename Traits::ResourceType>(this->NativeResource());
+        }
         void* NativeBuffer() const noexcept;
         template <typename Traits>
         typename Traits::BufferType NativeBuffer() const noexcept
         {
             return reinterpret_cast<typename Traits::BufferType>(this->NativeBuffer());
         }
+
+        explicit operator bool() const noexcept override;
+
+        void* SharedHandle() const noexcept override;
 
         GpuVirtualAddressType GpuVirtualAddress() const noexcept;
         uint32_t Size() const noexcept;
@@ -73,13 +86,13 @@ namespace AIHoloImager
             return reinterpret_cast<T*>(this->Map());
         }
 
-        virtual void Reset();
+        void Reset() override;
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
-    protected:
-        GpuHeap heap_{};
-        mutable GpuResourceState curr_state_{};
+    private:
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager

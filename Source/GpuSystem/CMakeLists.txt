@@ -21,20 +21,26 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuVertexAttrib.hpp
     Source/D3D12/D3D12Conversion.cpp
     Source/D3D12/D3D12Conversion.hpp
+    Source/Internal/D3D12/D3D12Buffer.cpp
+    Source/Internal/D3D12/D3D12Buffer.hpp
     Source/Internal/D3D12/D3D12Resource.cpp
     Source/Internal/D3D12/D3D12Resource.hpp
     Source/Internal/D3D12/D3D12Sampler.cpp
     Source/Internal/D3D12/D3D12Sampler.hpp
     Source/Internal/D3D12/D3D12SystemFactory.cpp
     Source/Internal/D3D12/D3D12SystemFactory.hpp
+    Source/Internal/D3D12/D3D12Texture.cpp
+    Source/Internal/D3D12/D3D12Texture.hpp
     Source/Internal/D3D12/D3D12VertexAttrib.cpp
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
-    Source/Internal/GpuResourceInternal.cpp
-    Source/Internal/GpuResourceInternal.hpp
+    Source/Internal/GpuBufferInternal.cpp
+    Source/Internal/GpuBufferInternal.hpp
     Source/Internal/GpuSamplerInternal.cpp
     Source/Internal/GpuSamplerInternal.hpp
     Source/Internal/GpuSystemInternalFactory.cpp
     Source/Internal/GpuSystemInternalFactory.hpp
+    Source/Internal/GpuTextureInternal.cpp
+    Source/Internal/GpuTextureInternal.hpp
     Source/Internal/GpuVertexAttribInternal.cpp
     Source/Internal/GpuVertexAttribInternal.hpp
     Source/Shader/GenMipmapCs.hlsl

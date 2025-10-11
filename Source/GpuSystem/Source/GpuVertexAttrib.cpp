@@ -14,7 +14,7 @@ namespace AIHoloImager
     };
 
     GpuVertexAttribs::GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateGpuVertexAttribs(std::move(attribs)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateVertexAttribs(std::move(attribs)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuVertexAttribsInternal));
     }

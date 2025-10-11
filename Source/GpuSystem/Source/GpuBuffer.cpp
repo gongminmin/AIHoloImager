@@ -3,40 +3,31 @@
 
 #include "Gpu/GpuBuffer.hpp"
 
-#include "Base/ErrorHandling.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
+#include <cassert>
+
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "Internal/GpuBufferInternal.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
 
 namespace AIHoloImager
 {
-    D3D12_RANGE ToD3D12Range(const GpuRange& range)
+    class GpuBuffer::Impl : public GpuBufferInternal
     {
-        return D3D12_RANGE{range.begin, range.end};
-    }
-
+    };
 
     GpuBuffer::GpuBuffer() noexcept = default;
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
-        : GpuResource(gpu_system), heap_(heap),
-          curr_state_(heap == GpuHeap::ReadBack ? GpuResourceState::CopyDst : GpuResourceState::Common)
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateBuffer(size, heap, flags, std::move(name)).release()))
     {
-        this->CreateResource(GpuResourceType::Buffer, size, 1, 1, 1, 1, GpuFormat::Unknown, heap_, flags, curr_state_, std::move(name));
+        static_assert(sizeof(Impl) == sizeof(GpuBufferInternal));
     }
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
-        : GpuResource(gpu_system, native_resource, std::move(name)), curr_state_(curr_state)
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateBuffer(native_resource, curr_state, std::move(name)).release()))
     {
-        auto* resource = this->NativeBuffer<D3D12Traits>();
-        if (resource != nullptr)
-        {
-            D3D12_HEAP_PROPERTIES heap_prop;
-            resource->GetHeapProperties(&heap_prop, nullptr);
-            heap_ = FromD3D12HeapType(heap_prop.Type);
-        }
     }
 
     GpuBuffer::~GpuBuffer() = default;
@@ -44,27 +35,46 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
 
+    void GpuBuffer::Name(std::wstring_view name)
+    {
+        assert(impl_);
+        return impl_->Name(std::move(name));
+    }
+
+    void* GpuBuffer::NativeResource() const noexcept
+    {
+        return impl_ ? impl_->NativeResource() : nullptr;
+    }
+
     void* GpuBuffer::NativeBuffer() const noexcept
     {
-        return this->NativeResource();
+        return impl_ ? impl_->NativeBuffer() : nullptr;
+    }
+
+    GpuBuffer::operator bool() const noexcept
+    {
+        return this->NativeBuffer() != nullptr;
+    }
+
+    void* GpuBuffer::SharedHandle() const noexcept
+    {
+        return impl_ ? impl_->SharedHandle() : nullptr;
     }
 
     GpuVirtualAddressType GpuBuffer::GpuVirtualAddress() const noexcept
     {
-        return this->NativeBuffer<D3D12Traits>()->GetGPUVirtualAddress();
+        return impl_ ? impl_->GpuVirtualAddress() : 0;
     }
 
     uint32_t GpuBuffer::Size() const noexcept
     {
-        return this->Width();
+        return impl_ ? impl_->Size() : 0;
     }
 
     void* GpuBuffer::Map(const GpuRange& read_range)
     {
-        void* addr;
-        const D3D12_RANGE d3d12_read_range = ToD3D12Range(read_range);
-        TIFHR(this->NativeBuffer<D3D12Traits>()->Map(0, &d3d12_read_range, &addr));
-        return addr;
+        assert(impl_);
+        return impl_->Map(read_range);
     }
 
     const void* GpuBuffer::Map(const GpuRange& read_range) const
@@ -74,10 +84,8 @@ namespace AIHoloImager
 
     void* GpuBuffer::Map()
     {
-        void* addr;
-        const D3D12_RANGE d3d12_read_range{0, 0};
-        TIFHR(this->NativeBuffer<D3D12Traits>()->Map(0, (heap_ == GpuHeap::ReadBack) ? nullptr : &d3d12_read_range, &addr));
-        return addr;
+        assert(impl_);
+        return impl_->Map();
     }
 
     const void* GpuBuffer::Map() const
@@ -87,8 +95,8 @@ namespace AIHoloImager
 
     void GpuBuffer::Unmap(const GpuRange& write_range)
     {
-        const D3D12_RANGE d3d12_write_range = ToD3D12Range(write_range);
-        this->NativeBuffer<D3D12Traits>()->Unmap(0, (heap_ == GpuHeap::Upload) ? nullptr : &d3d12_write_range);
+        assert(impl_);
+        impl_->Unmap(write_range);
     }
 
     void GpuBuffer::Unmap()
@@ -103,9 +111,8 @@ namespace AIHoloImager
 
     void GpuBuffer::Reset()
     {
-        GpuResource::Reset();
-        heap_ = {};
-        curr_state_ = {};
+        assert(impl_);
+        impl_->Reset();
     }
 
     void GpuBuffer::Transition(GpuCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
@@ -116,28 +123,7 @@ namespace AIHoloImager
 
     void GpuBuffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
-        auto* native_resource = this->NativeResource<D3D12Traits>();
-        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
-
-        D3D12_RESOURCE_BARRIER barrier;
-        if (curr_state_ != target_state)
-        {
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = native_resource;
-            barrier.Transition.StateBefore = ToD3D12ResourceState(curr_state_);
-            barrier.Transition.StateAfter = d3d12_target_state;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmd_list.Transition(std::span(&barrier, 1));
-        }
-        else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
-        {
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = native_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
-        }
-
-        curr_state_ = target_state;
+        assert(impl_);
+        impl_->Transition(cmd_list, target_state);
     }
 } // namespace AIHoloImager

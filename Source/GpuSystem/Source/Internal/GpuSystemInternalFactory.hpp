@@ -9,8 +9,9 @@
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
 
-#include "GpuResourceInternal.hpp"
+#include "GpuBufferInternal.hpp"
 #include "GpuSamplerInternal.hpp"
+#include "GpuTextureInternal.hpp"
 #include "GpuVertexAttribInternal.hpp"
 
 namespace AIHoloImager
@@ -20,14 +21,21 @@ namespace AIHoloImager
     public:
         virtual ~GpuSystemInternalFactory();
 
-        virtual std::unique_ptr<GpuResourceInternal> CreateGpuResource() const = 0;
-        virtual std::unique_ptr<GpuResourceInternal> CreateGpuResource(void* native_resource, std::wstring_view name) const = 0;
+        virtual std::unique_ptr<GpuBufferInternal> CreateBuffer(
+            uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const = 0;
+        virtual std::unique_ptr<GpuBufferInternal> CreateBuffer(
+            void* native_resource, GpuResourceState curr_state, std::wstring_view name) const = 0;
 
-        virtual std::unique_ptr<GpuStaticSamplerInternal> CreateGpuStaticSampler(
+        virtual std::unique_ptr<GpuTextureInternal> CreateTexture(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
+            uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name) const = 0;
+        virtual std::unique_ptr<GpuTextureInternal> CreateTexture(
+            void* native_resource, GpuResourceState curr_state, std::wstring_view name) const = 0;
+
+        virtual std::unique_ptr<GpuStaticSamplerInternal> CreateStaticSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const = 0;
-        virtual std::unique_ptr<GpuDynamicSamplerInternal> CreateGpuDynamicSampler(
+        virtual std::unique_ptr<GpuDynamicSamplerInternal> CreateDynamicSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const = 0;
 
-        virtual std::unique_ptr<GpuVertexAttribsInternal> CreateGpuVertexAttribs(std::span<const GpuVertexAttrib> attribs) const = 0;
+        virtual std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const = 0;
     };
 } // namespace AIHoloImager
