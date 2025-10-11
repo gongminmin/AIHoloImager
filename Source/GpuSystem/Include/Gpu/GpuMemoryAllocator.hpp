@@ -50,7 +50,7 @@ namespace AIHoloImager
             return reinterpret_cast<const T*>(this->CpuAddress());
         }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GpuAddress() const noexcept
+        GpuVirtualAddressType GpuAddress() const noexcept
         {
             return gpu_addr_;
         }
@@ -59,7 +59,7 @@ namespace AIHoloImager
         const bool is_upload_;
         GpuBuffer buffer_;
         void* cpu_addr_;
-        D3D12_GPU_VIRTUAL_ADDRESS gpu_addr_;
+        GpuVirtualAddressType gpu_addr_;
     };
 
     class GpuMemoryBlock final
@@ -75,9 +75,14 @@ namespace AIHoloImager
         void Reset() noexcept;
         void Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
 
-        ID3D12Resource* NativeBuffer() const noexcept
+        void* NativeBuffer() const noexcept
         {
             return native_buffer_;
+        }
+        template <typename Traits>
+        typename Traits::BufferType NativeBuffer() const noexcept
+        {
+            return reinterpret_cast<typename Traits::BufferType>(this->NativeBuffer());
         }
 
         explicit operator bool() const noexcept
@@ -106,27 +111,22 @@ namespace AIHoloImager
             return std::span<const T>(reinterpret_cast<const T*>(cpu_addr_), size_ / sizeof(const T));
         }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GpuAddress() const noexcept
+        GpuVirtualAddressType GpuAddress() const noexcept
         {
             return gpu_addr_;
         }
 
     private:
-        ID3D12Resource* native_buffer_ = nullptr;
+        void* native_buffer_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         void* cpu_addr_ = nullptr;
-        D3D12_GPU_VIRTUAL_ADDRESS gpu_addr_ = 0;
+        GpuVirtualAddressType gpu_addr_ = 0;
     };
 
     class GpuMemoryAllocator final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryAllocator)
-
-    public:
-        static constexpr uint32_t ConstantDataAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-        static constexpr uint32_t StructuredDataAlignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-        static constexpr uint32_t TextureDataAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 
     public:
         GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept;

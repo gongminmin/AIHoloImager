@@ -64,6 +64,10 @@ namespace AIHoloImager
         uint32_t CbvSrvUavDescSize() const noexcept;
         uint32_t SamplerDescSize() const noexcept;
 
+        uint32_t ConstantDataAlignment() const noexcept;
+        uint32_t StructuredDataAlignment() const noexcept;
+        uint32_t TextureDataAlignment() const noexcept;
+
         GpuDescriptorBlock AllocRtvDescBlock(uint32_t size);
         void DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block);
         void ReallocRtvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);

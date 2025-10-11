@@ -256,6 +256,19 @@ namespace AIHoloImager
         return sampler_desc_allocator_.DescriptorSize();
     }
 
+    uint32_t GpuSystem::ConstantDataAlignment() const noexcept
+    {
+        return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+    }
+    uint32_t GpuSystem::StructuredDataAlignment() const noexcept
+    {
+        return D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+    }
+    uint32_t GpuSystem::TextureDataAlignment() const noexcept
+    {
+        return D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+    }
+
     GpuDescriptorBlock GpuSystem::AllocRtvDescBlock(uint32_t size)
     {
         return rtv_desc_allocator_.Allocate(size);

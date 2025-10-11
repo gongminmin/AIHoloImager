@@ -640,14 +640,14 @@ namespace AIHoloImager
         {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-            auto upload_mem_block = gpu_system_->AllocUploadMemBlock(dest.Size(), GpuMemoryAllocator::StructuredDataAlignment);
+            auto upload_mem_block = gpu_system_->AllocUploadMemBlock(dest.Size(), gpu_system_->StructuredDataAlignment());
 
             void* buff_data = upload_mem_block.CpuSpan<std::byte>().data();
             copy_func(buff_data);
 
             dest.Transition(*this, GpuResourceState::CopyDst);
             d3d12_cmd_list->CopyBufferRegion(
-                dest.NativeBuffer<D3D12Traits>(), 0, upload_mem_block.NativeBuffer(), upload_mem_block.Offset(), dest.Size());
+                dest.NativeBuffer<D3D12Traits>(), 0, upload_mem_block.NativeBuffer<D3D12Traits>(), upload_mem_block.Offset(), dest.Size());
 
             gpu_system_->DeallocUploadMemBlock(std::move(upload_mem_block));
         }
@@ -683,15 +683,14 @@ namespace AIHoloImager
         d3d12_device->GetCopyableFootprints(&desc, sub_resource, 1, 0, &layout, nullptr, nullptr, &required_size);
         assert(layout.Footprint.RowPitch >= width * FormatSize(dest.Format()));
 
-        auto upload_mem_block =
-            gpu_system_->AllocUploadMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
+        auto upload_mem_block = gpu_system_->AllocUploadMemBlock(static_cast<uint32_t>(required_size), gpu_system_->TextureDataAlignment());
 
         void* tex_data = upload_mem_block.CpuSpan<std::byte>().data();
         copy_func(tex_data, layout.Footprint.RowPitch, layout.Footprint.RowPitch * layout.Footprint.Height);
 
         layout.Offset += upload_mem_block.Offset();
         D3D12_TEXTURE_COPY_LOCATION src_loc;
-        src_loc.pResource = upload_mem_block.NativeBuffer();
+        src_loc.pResource = upload_mem_block.NativeBuffer<D3D12Traits>();
         src_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         src_loc.PlacedFootprint = layout;
 
@@ -761,12 +760,12 @@ namespace AIHoloImager
         {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-            auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), GpuMemoryAllocator::StructuredDataAlignment);
+            auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
 
             src.Transition(*this, GpuResourceState::CopySrc);
 
-            d3d12_cmd_list->CopyBufferRegion(
-                read_back_mem_block.NativeBuffer(), read_back_mem_block.Offset(), src.NativeBuffer<D3D12Traits>(), 0, src.Size());
+            d3d12_cmd_list->CopyBufferRegion(read_back_mem_block.NativeBuffer<D3D12Traits>(), read_back_mem_block.Offset(),
+                src.NativeBuffer<D3D12Traits>(), 0, src.Size());
             const uint64_t fence_val = gpu_system_->ExecuteAndReset(*this);
 
             return std::async(
@@ -811,7 +810,7 @@ namespace AIHoloImager
         assert(layout.Footprint.RowPitch >= width * FormatSize(src.Format()));
 
         auto read_back_mem_block =
-            gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(required_size), GpuMemoryAllocator::TextureDataAlignment);
+            gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(required_size), gpu_system_->TextureDataAlignment());
 
         D3D12_TEXTURE_COPY_LOCATION src_loc;
         src_loc.pResource = src.NativeResource<D3D12Traits>();
@@ -820,7 +819,7 @@ namespace AIHoloImager
 
         layout.Offset = read_back_mem_block.Offset();
         D3D12_TEXTURE_COPY_LOCATION dst_loc;
-        dst_loc.pResource = read_back_mem_block.NativeBuffer();
+        dst_loc.pResource = read_back_mem_block.NativeBuffer<D3D12Traits>();
         dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         dst_loc.PlacedFootprint = layout;
 
