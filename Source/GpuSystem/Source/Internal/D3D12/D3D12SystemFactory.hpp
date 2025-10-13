@@ -6,6 +6,8 @@
 #include <memory>
 #include <span>
 
+#include <directx/d3d12.h>
+
 #include "../GpuSystemInternalFactory.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
 
@@ -35,6 +37,11 @@ namespace AIHoloImager
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;
 
         std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const override;
+
+        std::unique_ptr<GpuDescriptorHeapInternal> CreateDescriptorHeap(
+            uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name) const override;
+
+        uint32_t DescriptorSize(GpuDescriptorHeapType type) const override;
 
     private:
         GpuSystem& gpu_system_;

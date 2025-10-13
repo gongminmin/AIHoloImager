@@ -95,6 +95,7 @@ namespace AIHoloImager
 
     private:
         void* native_heap_ = nullptr;
+        GpuDescriptorHeapType heap_type_{};
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         GpuDescriptorCpuHandle cpu_handle_{};

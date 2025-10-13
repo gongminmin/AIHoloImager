@@ -6,16 +6,15 @@
 #include <cassert>
 
 #include "Base/ErrorHandling.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
 
 using namespace AIHoloImager;
 
 namespace
 {
-    uint32_t descriptor_size[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
+    uint32_t descriptor_size[NumGpuDescriptorHeapTypes]{};
 
     constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 8 * 1024, 4 * 1024, 1 * 1024};
 
@@ -29,7 +28,7 @@ namespace
         auto& size = DescriptorSize(type);
         if (size == 0)
         {
-            size = gpu_system.NativeDevice()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
+            size = gpu_system.InternalFactory().DescriptorSize(type);
         }
     }
 } // namespace
@@ -57,9 +56,9 @@ namespace AIHoloImager
 
     GpuDescriptorBlock::GpuDescriptorBlock() noexcept = default;
     GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept
-        : native_heap_(std::exchange(other.native_heap_, {})), offset_(std::exchange(other.offset_, {})),
-          size_(std::exchange(other.size_, {})), cpu_handle_(std::exchange(other.cpu_handle_, {})),
-          gpu_handle_(std::exchange(other.gpu_handle_, {}))
+        : native_heap_(std::exchange(other.native_heap_, {})), heap_type_(std::exchange(other.heap_type_, {})),
+          offset_(std::exchange(other.offset_, {})), size_(std::exchange(other.size_, {})),
+          cpu_handle_(std::exchange(other.cpu_handle_, {})), gpu_handle_(std::exchange(other.gpu_handle_, {}))
     {
     }
     GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept
@@ -67,6 +66,7 @@ namespace AIHoloImager
         if (this != &other)
         {
             native_heap_ = std::exchange(other.native_heap_, {});
+            heap_type_ = std::exchange(other.heap_type_, {});
             offset_ = std::exchange(other.offset_, {});
             size_ = std::exchange(other.size_, {});
             cpu_handle_ = std::exchange(other.cpu_handle_, {});
@@ -78,6 +78,7 @@ namespace AIHoloImager
     void GpuDescriptorBlock::Reset() noexcept
     {
         native_heap_ = nullptr;
+        heap_type_ = {};
         offset_ = 0;
         size_ = 0;
         cpu_handle_ = {};
@@ -87,10 +88,11 @@ namespace AIHoloImager
     void GpuDescriptorBlock::Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept
     {
         native_heap_ = page.Heap().NativeDescriptorHeap();
+        heap_type_ = page.Heap().Type();
         offset_ = offset;
         size_ = size;
 
-        const uint32_t desc_size = DescriptorSize(FromD3D12DescriptorHeapType(this->NativeDescriptorHeap<D3D12Traits>()->GetDesc().Type));
+        const uint32_t desc_size = DescriptorSize(heap_type_);
         std::tie(cpu_handle_, gpu_handle_) = OffsetHandle(page.CpuHandleStart(), page.GpuHandleStart(), offset, desc_size);
     }
 

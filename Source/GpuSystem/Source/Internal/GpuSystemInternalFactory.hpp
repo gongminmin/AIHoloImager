@@ -10,6 +10,7 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 
 #include "GpuBufferInternal.hpp"
+#include "GpuDescriptorHeapInternal.hpp"
 #include "GpuSamplerInternal.hpp"
 #include "GpuTextureInternal.hpp"
 #include "GpuVertexAttribInternal.hpp"
@@ -37,5 +38,10 @@ namespace AIHoloImager
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const = 0;
 
         virtual std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const = 0;
+
+        virtual std::unique_ptr<GpuDescriptorHeapInternal> CreateDescriptorHeap(
+            uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name) const = 0;
+
+        virtual uint32_t DescriptorSize(GpuDescriptorHeapType type) const = 0;
     };
 } // namespace AIHoloImager

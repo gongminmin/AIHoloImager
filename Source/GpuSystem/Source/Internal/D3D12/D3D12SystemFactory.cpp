@@ -3,7 +3,10 @@
 
 #include "D3D12SystemFactory.hpp"
 
+#include "D3D12/D3D12Conversion.hpp"
+
 #include "D3D12Buffer.hpp"
+#include "D3D12DescriptorHeap.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12VertexAttrib.hpp"
@@ -54,5 +57,16 @@ namespace AIHoloImager
     std::unique_ptr<GpuVertexAttribsInternal> D3D12SystemFactory::CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const
     {
         return std::make_unique<D3D12VertexAttribs>(std::move(attribs));
+    }
+
+    std::unique_ptr<GpuDescriptorHeapInternal> D3D12SystemFactory::CreateDescriptorHeap(
+        uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name) const
+    {
+        return std::make_unique<D3D12DescriptorHeap>(gpu_system_, size, type, shader_visible, std::move(name));
+    }
+
+    uint32_t D3D12SystemFactory::DescriptorSize(GpuDescriptorHeapType type) const
+    {
+        return gpu_system_.NativeDevice()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
     }
 } // namespace AIHoloImager

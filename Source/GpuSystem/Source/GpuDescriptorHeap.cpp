@@ -3,14 +3,10 @@
 
 #include "Gpu/GpuDescriptorHeap.hpp"
 
-#include <directx/d3d12.h>
-
-#include "Base/ComPtr.hpp"
-#include "Base/ErrorHandling.hpp"
-#include "Base/Uuid.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "Internal/GpuDescriptorHeapInternal.hpp"
+#include "Internal/GpuSystemInternalFactory.hpp"
 
 namespace AIHoloImager
 {
@@ -32,78 +28,21 @@ namespace AIHoloImager
     }
 
 
-    class GpuDescriptorHeap::Impl
+    class GpuDescriptorHeap::Impl : public GpuDescriptorHeapInternal
     {
-    public:
-        Impl() noexcept = default;
-        Impl(GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
-        {
-            desc_.Type = ToD3D12DescriptorHeapType(type);
-            desc_.NumDescriptors = size;
-            desc_.Flags = shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-            desc_.NodeMask = 0;
-            TIFHR(gpu_system.NativeDevice()->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
-            this->Name(std::move(name));
-        }
-
-        ~Impl() noexcept = default;
-
-        Impl(Impl&& other) noexcept = default;
-        Impl& operator=(Impl&& other) noexcept = default;
-
-        void Name(std::wstring_view name)
-        {
-            heap_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
-        }
-
-        explicit operator bool() const noexcept
-        {
-            return heap_ ? true : false;
-        }
-
-        void* NativeDescriptorHeap() const noexcept
-        {
-            return heap_.Get();
-        }
-
-        GpuDescriptorCpuHandle CpuHandleStart() const noexcept
-        {
-            return FromD3D12CpuDescriptorHandle(heap_->GetCPUDescriptorHandleForHeapStart());
-        }
-
-        GpuDescriptorGpuHandle GpuHandleStart() const noexcept
-        {
-            return FromD3D12GpuDescriptorHandle(heap_->GetGPUDescriptorHandleForHeapStart());
-        }
-
-        uint32_t Size() const noexcept
-        {
-            return static_cast<uint32_t>(desc_.NumDescriptors);
-        }
-
-        void Reset() noexcept
-        {
-            heap_ = nullptr;
-            desc_ = {};
-        }
-
-    private:
-        ComPtr<ID3D12DescriptorHeap> heap_;
-        D3D12_DESCRIPTOR_HEAP_DESC desc_{};
     };
 
-
-    GpuDescriptorHeap::GpuDescriptorHeap() noexcept : impl_(std::make_unique<Impl>())
-    {
-    }
-
+    GpuDescriptorHeap::GpuDescriptorHeap() noexcept = default;
     GpuDescriptorHeap::GpuDescriptorHeap(
         GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
-        : impl_(std::make_unique<Impl>(gpu_system, size, type, shader_visible, std::move(name)))
+        : impl_(
+              static_cast<Impl*>(gpu_system.InternalFactory().CreateDescriptorHeap(size, type, shader_visible, std::move(name)).release()))
     {
+        static_assert(sizeof(Impl) == sizeof(GpuDescriptorHeapInternal));
     }
 
     GpuDescriptorHeap::~GpuDescriptorHeap() noexcept = default;
+
     GpuDescriptorHeap::GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept = default;
     GpuDescriptorHeap& GpuDescriptorHeap::operator=(GpuDescriptorHeap&& other) noexcept = default;
 
@@ -115,13 +54,18 @@ namespace AIHoloImager
 
     GpuDescriptorHeap::operator bool() const noexcept
     {
-        return impl_ && impl_->operator bool();
+        return this->NativeDescriptorHeap() != nullptr;
     }
 
     void* GpuDescriptorHeap::NativeDescriptorHeap() const noexcept
     {
+        return impl_ ? impl_->NativeDescriptorHeap() : nullptr;
+    }
+
+    GpuDescriptorHeapType GpuDescriptorHeap::Type() const noexcept
+    {
         assert(impl_);
-        return impl_->NativeDescriptorHeap();
+        return impl_->Type();
     }
 
     GpuDescriptorCpuHandle GpuDescriptorHeap::CpuHandleStart() const noexcept
@@ -138,8 +82,7 @@ namespace AIHoloImager
 
     uint32_t GpuDescriptorHeap::Size() const noexcept
     {
-        assert(impl_);
-        return impl_->Size();
+        return impl_ ? impl_->Size() : 0;
     }
 
     void GpuDescriptorHeap::Reset() noexcept

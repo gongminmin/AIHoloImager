@@ -63,6 +63,8 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept;
 
+        GpuDescriptorHeapType Type() const noexcept;
+
         GpuDescriptorCpuHandle CpuHandleStart() const noexcept;
         GpuDescriptorGpuHandle GpuHandleStart() const noexcept;
 
