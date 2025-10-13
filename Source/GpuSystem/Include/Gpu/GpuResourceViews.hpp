@@ -4,9 +4,10 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuDescriptorAllocator.hpp"
+#include "Gpu/GpuDescriptorHeap.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 
@@ -58,10 +59,8 @@ namespace AIHoloImager
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-        const GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 
     class GpuRenderTargetView final
@@ -87,10 +86,8 @@ namespace AIHoloImager
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-        GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 
     class GpuDepthStencilView final
@@ -116,10 +113,8 @@ namespace AIHoloImager
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-        GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 
     class GpuUnorderedAccessView final
@@ -163,9 +158,7 @@ namespace AIHoloImager
         const GpuResource* Resource() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-        GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager

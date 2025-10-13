@@ -7,6 +7,7 @@
 
 #include "D3D12Buffer.hpp"
 #include "D3D12DescriptorHeap.hpp"
+#include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12VertexAttrib.hpp"
@@ -68,5 +69,75 @@ namespace AIHoloImager
     uint32_t D3D12SystemFactory::DescriptorSize(GpuDescriptorHeapType type) const
     {
         return gpu_system_.NativeDevice()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
+    }
+
+    std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(
+        const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12ShaderResourceView>(gpu_system_, texture, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(
+        const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12ShaderResourceView>(gpu_system_, texture_array, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(
+        const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12ShaderResourceView>(gpu_system_, texture, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(
+        const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
+    {
+        return std::make_unique<D3D12ShaderResourceView>(gpu_system_, buffer, first_element, num_elements, format);
+    }
+
+    std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(
+        const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
+    {
+        return std::make_unique<D3D12ShaderResourceView>(gpu_system_, buffer, first_element, num_elements, element_size);
+    }
+
+    std::unique_ptr<GpuRenderTargetViewInternal> D3D12SystemFactory::CreateRenderTargetView(GpuTexture2D& texture, GpuFormat format) const
+    {
+        return std::make_unique<D3D12RenderTargetView>(gpu_system_, texture, format);
+    }
+
+    std::unique_ptr<GpuDepthStencilViewInternal> D3D12SystemFactory::CreateDepthStencilView(GpuTexture2D& texture, GpuFormat format) const
+    {
+        return std::make_unique<D3D12DepthStencilView>(gpu_system_, texture, format);
+    }
+
+    std::unique_ptr<GpuUnorderedAccessViewInternal> D3D12SystemFactory::CreateUnorderedAccessView(
+        GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, texture, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuUnorderedAccessViewInternal> D3D12SystemFactory::CreateUnorderedAccessView(
+        GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, texture_array, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuUnorderedAccessViewInternal> D3D12SystemFactory::CreateUnorderedAccessView(
+        GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
+    {
+        return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, texture, sub_resource, format);
+    }
+
+    std::unique_ptr<GpuUnorderedAccessViewInternal> D3D12SystemFactory::CreateUnorderedAccessView(
+        GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
+    {
+        return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, buffer, first_element, num_elements, format);
+    }
+
+    std::unique_ptr<GpuUnorderedAccessViewInternal> D3D12SystemFactory::CreateUnorderedAccessView(
+        GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
+    {
+        return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, buffer, first_element, num_elements, element_size);
     }
 } // namespace AIHoloImager

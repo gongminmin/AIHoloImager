@@ -27,6 +27,8 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12DescriptorHeap.hpp
     Source/Internal/D3D12/D3D12Resource.cpp
     Source/Internal/D3D12/D3D12Resource.hpp
+    Source/Internal/D3D12/D3D12ResourceViews.cpp
+    Source/Internal/D3D12/D3D12ResourceViews.hpp
     Source/Internal/D3D12/D3D12Sampler.cpp
     Source/Internal/D3D12/D3D12Sampler.hpp
     Source/Internal/D3D12/D3D12SystemFactory.cpp
@@ -39,6 +41,8 @@ set(aihi_gpu_system_files
     Source/Internal/GpuBufferInternal.hpp
     Source/Internal/GpuDescriptorHeapInternal.cpp
     Source/Internal/GpuDescriptorHeapInternal.hpp
+    Source/Internal/GpuResourceViewsInternal.cpp
+    Source/Internal/GpuResourceViewsInternal.hpp
     Source/Internal/GpuSamplerInternal.cpp
     Source/Internal/GpuSamplerInternal.hpp
     Source/Internal/GpuSystemInternalFactory.cpp

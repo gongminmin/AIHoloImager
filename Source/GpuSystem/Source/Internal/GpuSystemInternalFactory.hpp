@@ -11,6 +11,7 @@
 
 #include "GpuBufferInternal.hpp"
 #include "GpuDescriptorHeapInternal.hpp"
+#include "GpuResourceViewsInternal.hpp"
 #include "GpuSamplerInternal.hpp"
 #include "GpuTextureInternal.hpp"
 #include "GpuVertexAttribInternal.hpp"
@@ -43,5 +44,31 @@ namespace AIHoloImager
             uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name) const = 0;
 
         virtual uint32_t DescriptorSize(GpuDescriptorHeapType type) const = 0;
+
+        virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
+            const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
+            const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
+            const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
+            const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
+            const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const = 0;
+
+        virtual std::unique_ptr<GpuRenderTargetViewInternal> CreateRenderTargetView(GpuTexture2D& texture, GpuFormat format) const = 0;
+
+        virtual std::unique_ptr<GpuDepthStencilViewInternal> CreateDepthStencilView(GpuTexture2D& texture, GpuFormat format) const = 0;
+
+        virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
+            GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
+            GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
+            GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
+            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const = 0;
+        virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
+            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const = 0;
     };
 } // namespace AIHoloImager
