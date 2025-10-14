@@ -59,15 +59,21 @@ namespace AIHoloImager
         std::unique_ptr<GpuDepthStencilViewInternal> CreateDepthStencilView(GpuTexture2D& texture, GpuFormat format) const override;
 
         std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
-            GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const;
+            GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
         std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
-            GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const;
+            GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const override;
         std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
-            GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const;
+            GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const override;
         std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
-            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const;
+            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const override;
         std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
-            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const;
+            GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const override;
+
+        std::unique_ptr<GpuRenderPipelineInternal> CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
+            std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+            const GpuRenderPipeline::States& states) const override;
+        std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
+            const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const override;
 
     private:
         GpuSystem& gpu_system_;

@@ -9,6 +9,7 @@
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
+#include "D3D12Shader.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12VertexAttrib.hpp"
 
@@ -139,5 +140,19 @@ namespace AIHoloImager
         GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
     {
         return std::make_unique<D3D12UnorderedAccessView>(gpu_system_, buffer, first_element, num_elements, element_size);
+    }
+
+    std::unique_ptr<GpuRenderPipelineInternal> D3D12SystemFactory::CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
+        std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+        const GpuRenderPipeline::States& states) const
+    {
+        return std::make_unique<D3D12RenderPipeline>(
+            gpu_system_, topology, std::move(shaders), vertex_attribs, std::move(static_samplers), states);
+    }
+
+    std::unique_ptr<GpuComputePipelineInternal> D3D12SystemFactory::CreateComputePipeline(
+        const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const
+    {
+        return std::make_unique<D3D12ComputePipeline>(gpu_system_, shader, std::move(static_samplers));
     }
 } // namespace AIHoloImager

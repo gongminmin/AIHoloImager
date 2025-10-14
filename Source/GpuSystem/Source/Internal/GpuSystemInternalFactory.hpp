@@ -13,6 +13,7 @@
 #include "GpuDescriptorHeapInternal.hpp"
 #include "GpuResourceViewsInternal.hpp"
 #include "GpuSamplerInternal.hpp"
+#include "GpuShaderInternal.hpp"
 #include "GpuTextureInternal.hpp"
 #include "GpuVertexAttribInternal.hpp"
 
@@ -70,5 +71,11 @@ namespace AIHoloImager
             GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const = 0;
         virtual std::unique_ptr<GpuUnorderedAccessViewInternal> CreateUnorderedAccessView(
             GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const = 0;
+
+        virtual std::unique_ptr<GpuRenderPipelineInternal> CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
+            std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+            const GpuRenderPipeline::States& states) const = 0;
+        virtual std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
+            const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const = 0;
     };
 } // namespace AIHoloImager
