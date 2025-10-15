@@ -13,6 +13,7 @@ namespace AIHoloImager
         using DeviceType = ID3D12Device*;
         using CommandQueueType = ID3D12CommandQueue*;
 
+        using CommandListType = ID3D12CommandList*;
         using GraphicsCommandListType = ID3D12GraphicsCommandList*;
         using ComputeCommandListType = ID3D12GraphicsCommandList*;
         using VideoEncodeCommandListType = ID3D12VideoEncodeCommandList*;

@@ -8,6 +8,7 @@
 #include "Gpu/GpuTexture.hpp"
 
 #include "../GpuResourceViewsInternal.hpp"
+#include "D3D12CommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -33,6 +34,7 @@ namespace AIHoloImager
         void Reset() override;
 
         void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(D3D12CommandList& cmd_list) const;
 
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
         GpuDescriptorCpuHandle CpuHandle() const noexcept override;
@@ -60,6 +62,7 @@ namespace AIHoloImager
         void Reset() override;
 
         void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(D3D12CommandList& cmd_list) const;
 
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
         GpuDescriptorCpuHandle CpuHandle() const noexcept override;
@@ -87,6 +90,7 @@ namespace AIHoloImager
         void Reset() override;
 
         void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(D3D12CommandList& cmd_list) const;
 
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
         GpuDescriptorCpuHandle CpuHandle() const noexcept override;
@@ -120,6 +124,7 @@ namespace AIHoloImager
         void Reset() override;
 
         void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(D3D12CommandList& cmd_list) const;
 
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
         GpuDescriptorCpuHandle CpuHandle() const noexcept override;

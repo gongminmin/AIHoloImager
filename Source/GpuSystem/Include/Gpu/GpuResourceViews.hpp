@@ -20,6 +20,8 @@ namespace AIHoloImager
     class GpuTexture2DArray;
     class GpuTexture3D;
 
+    class GpuShaderResourceViewInternal;
+
     class GpuShaderResourceView final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuShaderResourceView)
@@ -58,10 +60,14 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
+        const GpuShaderResourceViewInternal& Internal() const noexcept;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    class GpuRenderTargetViewInternal;
 
     class GpuRenderTargetView final
     {
@@ -85,10 +91,14 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
+        const GpuRenderTargetViewInternal& Internal() const noexcept;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    class GpuDepthStencilViewInternal;
 
     class GpuDepthStencilView final
     {
@@ -112,10 +122,14 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
+        const GpuDepthStencilViewInternal& Internal() const noexcept;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    class GpuUnorderedAccessViewInternal;
 
     class GpuUnorderedAccessView final
     {
@@ -156,6 +170,8 @@ namespace AIHoloImager
 
         GpuResource* Resource() noexcept;
         const GpuResource* Resource() const noexcept;
+
+        const GpuUnorderedAccessViewInternal& Internal() const noexcept;
 
     private:
         class Impl;

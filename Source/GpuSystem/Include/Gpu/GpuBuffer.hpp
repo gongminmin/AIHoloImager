@@ -91,6 +91,8 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
+        const GpuResourceInternal& Internal() const noexcept override;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

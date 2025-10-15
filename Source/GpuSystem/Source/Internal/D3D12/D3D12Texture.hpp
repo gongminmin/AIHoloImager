@@ -46,6 +46,8 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
+        void Transition(GpuCommandListInternal& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const override;
 
     private:
         mutable std::vector<GpuResourceState> curr_states_;

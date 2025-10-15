@@ -19,6 +19,7 @@
 namespace AIHoloImager
 {
     class GpuSystemInternalFactory;
+    class D3D12CommandList;
 
     struct GpuCommandAllocatorInfo
     {
@@ -58,6 +59,7 @@ namespace AIHoloImager
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
         uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
+        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
 
         uint32_t RtvDescSize() const noexcept;
         uint32_t DsvDescSize() const noexcept;
@@ -122,6 +124,7 @@ namespace AIHoloImager
         CmdQueue& GetOrCreateCommandQueue(CmdQueueType type);
         GpuCommandAllocatorInfo& CurrentCommandAllocator(CmdQueueType type);
         uint64_t ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value);
+        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
         void ClearStallResources();
 
     private:

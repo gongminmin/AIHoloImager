@@ -4,6 +4,7 @@
 #pragma once
 
 #include <future>
+#include <memory>
 #include <span>
 
 #include "Base/Noncopyable.hpp"
@@ -44,6 +45,8 @@ namespace AIHoloImager
         uint32_t back;
     };
 
+    class GpuCommandListInternal;
+
     class GpuCommandList
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandList)
@@ -83,14 +86,12 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept;
 
-        ID3D12CommandList* NativeCommandListBase() const noexcept
+        void* NativeCommandListBase() const noexcept;
+        template <typename Traits>
+        typename Traits::CommandListType NativeCommandListBase() const noexcept
         {
-            return cmd_list_.Get();
+            return reinterpret_cast<typename Traits::CommandListType>(this->NativeCommandListBase());
         }
-        template <typename T>
-        T* NativeCommandList() const;
-
-        void Transition(std::span<const D3D12_RESOURCE_BARRIER> barriers) const noexcept;
 
         void Clear(GpuRenderTargetView& rtv, const float color[4]);
         void Clear(GpuUnorderedAccessView& uav, const float color[4]);
@@ -127,20 +128,12 @@ namespace AIHoloImager
 
         void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
 
-        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept
-        {
-            return cmd_alloc_info_;
-        }
+        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept;
+
+        GpuCommandListInternal& Internal() noexcept;
 
     private:
-        GpuDescriptorBlock BindPipeline(const GpuComputePipeline& pipeline, const ShaderBinding& shader_binding);
-
-    private:
-        GpuSystem* gpu_system_ = nullptr;
-        GpuCommandAllocatorInfo* cmd_alloc_info_ = nullptr;
-
-        GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
-        ComPtr<ID3D12CommandList> cmd_list_;
-        bool closed_ = false;
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 } // namespace AIHoloImager

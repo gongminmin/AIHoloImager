@@ -24,6 +24,8 @@ namespace AIHoloImager
         uint32_t num_samplers = 0;
     };
 
+    class GpuRenderPipelineInternal;
+
     class GpuRenderPipeline
     {
         DISALLOW_COPY_AND_ASSIGN(GpuRenderPipeline)
@@ -74,10 +76,14 @@ namespace AIHoloImager
 
         void Bind(GpuCommandList& cmd_list) const;
 
+        const GpuRenderPipelineInternal& Internal() const noexcept;
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
     };
+
+    class GpuComputePipelineInternal;
 
     class GpuComputePipeline
     {
@@ -92,6 +98,8 @@ namespace AIHoloImager
         GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
 
         void Bind(GpuCommandList& cmd_list) const;
+
+        const GpuComputePipelineInternal& Internal() const noexcept;
 
     private:
         class Impl;

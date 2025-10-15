@@ -126,4 +126,10 @@ namespace AIHoloImager
         assert(impl_);
         impl_->Transition(cmd_list, target_state);
     }
+
+    const GpuResourceInternal& GpuBuffer::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
+    }
 } // namespace AIHoloImager

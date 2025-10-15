@@ -137,6 +137,12 @@ namespace AIHoloImager
         impl_->Transition(cmd_list, target_state);
     }
 
+    const GpuResourceInternal& GpuTexture::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
+    }
+
 
     GpuTexture2D::GpuTexture2D() = default;
 

@@ -12,8 +12,10 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/SmartPtrHelper.hpp"
 #include "Base/Uuid.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
+#include "Internal/D3D12/D3D12CommandList.hpp"
 #include "Internal/D3D12/D3D12SystemFactory.hpp"
 #include "Internal/GpuSystemInternalFactory.hpp"
 
@@ -230,6 +232,11 @@ namespace AIHoloImager
     }
 
     uint64_t GpuSystem::ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value)
+    {
+        return this->ExecuteAndReset(static_cast<D3D12CommandList&>(cmd_list.Internal()), wait_fence_value);
+    }
+
+    uint64_t GpuSystem::ExecuteAndReset(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
         cmd_list.Reset(this->CurrentCommandAllocator(cmd_list.Type()));
@@ -566,6 +573,11 @@ namespace AIHoloImager
 
     uint64_t GpuSystem::ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value)
     {
+        return this->ExecuteOnly(static_cast<D3D12CommandList&>(cmd_list.Internal()), wait_fence_value);
+    }
+
+    uint64_t GpuSystem::ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
+    {
         auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
         cmd_list.Close();
 
@@ -576,7 +588,7 @@ namespace AIHoloImager
             cmd_queue->Wait(fence_.Get(), wait_fence_value);
         }
 
-        ID3D12CommandList* cmd_lists[] = {cmd_list.NativeCommandListBase()};
+        ID3D12CommandList* cmd_lists[] = {cmd_list.NativeCommandListBase<D3D12Traits>()};
         cmd_queue->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
 
         const uint64_t curr_fence_value = fence_val_;

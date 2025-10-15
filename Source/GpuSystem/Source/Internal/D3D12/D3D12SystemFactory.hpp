@@ -75,6 +75,9 @@ namespace AIHoloImager
         std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const override;
 
+        std::unique_ptr<GpuCommandListInternal> CreateCommandList(
+            GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const override;
+
     private:
         GpuSystem& gpu_system_;
     };

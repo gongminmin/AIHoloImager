@@ -7,6 +7,7 @@
 
 #include "Gpu/D3D12/D3D12Traits.hpp"
 
+#include "../GpuResourceInternal.hpp"
 #include "D3D12/D3D12Conversion.hpp"
 
 namespace AIHoloImager
@@ -167,6 +168,11 @@ namespace AIHoloImager
         resource_->Transition(cmd_list, GpuResourceState::Common);
     }
 
+    void D3D12ShaderResourceView::Transition(D3D12CommandList& cmd_list) const
+    {
+        resource_->Internal().Transition(cmd_list, GpuResourceState::Common);
+    }
+
     void D3D12ShaderResourceView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
     {
         gpu_system_->NativeDevice()->CopyDescriptorsSimple(
@@ -227,6 +233,11 @@ namespace AIHoloImager
         resource_->Transition(cmd_list, GpuResourceState::ColorWrite);
     }
 
+    void D3D12RenderTargetView::Transition(D3D12CommandList& cmd_list) const
+    {
+        resource_->Internal().Transition(cmd_list, GpuResourceState::ColorWrite);
+    }
+
     void D3D12RenderTargetView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
     {
         gpu_system_->NativeDevice()->CopyDescriptorsSimple(
@@ -285,6 +296,11 @@ namespace AIHoloImager
     void D3D12DepthStencilView::Transition(GpuCommandList& cmd_list) const
     {
         resource_->Transition(cmd_list, GpuResourceState::DepthWrite);
+    }
+
+    void D3D12DepthStencilView::Transition(D3D12CommandList& cmd_list) const
+    {
+        resource_->Internal().Transition(cmd_list, GpuResourceState::DepthWrite);
     }
 
     void D3D12DepthStencilView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
@@ -413,6 +429,11 @@ namespace AIHoloImager
     void D3D12UnorderedAccessView::Transition(GpuCommandList& cmd_list) const
     {
         resource_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
+    }
+
+    void D3D12UnorderedAccessView::Transition(D3D12CommandList& cmd_list) const
+    {
+        resource_->Internal().Transition(cmd_list, GpuResourceState::UnorderedAccess);
     }
 
     void D3D12UnorderedAccessView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept

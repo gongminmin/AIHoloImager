@@ -52,6 +52,7 @@ namespace AIHoloImager
     };
 
     class GpuSystem;
+    class GpuResourceInternal;
 
     class GpuResource
     {
@@ -80,5 +81,7 @@ namespace AIHoloImager
 
         virtual void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
+
+        virtual const GpuResourceInternal& Internal() const noexcept = 0;
     };
 } // namespace AIHoloImager

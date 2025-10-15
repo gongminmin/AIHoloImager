@@ -135,6 +135,12 @@ namespace AIHoloImager
         return impl_->CpuHandle();
     }
 
+    const GpuShaderResourceViewInternal& GpuShaderResourceView::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
+    }
+
 
     class GpuRenderTargetView::Impl : public GpuRenderTargetViewInternal
     {
@@ -186,6 +192,12 @@ namespace AIHoloImager
         return impl_->CpuHandle();
     }
 
+    const GpuRenderTargetViewInternal& GpuRenderTargetView::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
+    }
+
 
     class GpuDepthStencilView::Impl : public GpuDepthStencilViewInternal
     {
@@ -235,6 +247,12 @@ namespace AIHoloImager
     {
         assert(impl_);
         return impl_->CpuHandle();
+    }
+
+    const GpuDepthStencilViewInternal& GpuDepthStencilView::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
     }
 
 
@@ -367,5 +385,11 @@ namespace AIHoloImager
     const GpuResource* GpuUnorderedAccessView::Resource() const noexcept
     {
         return const_cast<GpuUnorderedAccessView*>(this)->Resource();
+    }
+
+    const GpuUnorderedAccessViewInternal& GpuUnorderedAccessView::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
     }
 } // namespace AIHoloImager

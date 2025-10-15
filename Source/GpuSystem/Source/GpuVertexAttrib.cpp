@@ -4,6 +4,7 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 
 #include "Gpu/GpuSystem.hpp"
+
 #include "Internal/GpuSystemInternalFactory.hpp"
 #include "Internal/GpuVertexAttribInternal.hpp"
 

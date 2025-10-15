@@ -8,6 +8,7 @@
 #include "Base/Util.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "D3D12CommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -139,6 +140,16 @@ namespace AIHoloImager
 
     void D3D12Texture::Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
+        this->Transition(cmd_list.Internal(), sub_resource, target_state);
+    }
+
+    void D3D12Texture::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
+    {
+        this->Transition(cmd_list.Internal(), target_state);
+    }
+
+    void D3D12Texture::Transition(GpuCommandListInternal& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    {
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
         if (curr_states_[sub_resource] != target_state)
         {
@@ -149,13 +160,13 @@ namespace AIHoloImager
             barrier.Transition.StateBefore = ToD3D12ResourceState(curr_states_[sub_resource]);
             barrier.Transition.StateAfter = d3d12_target_state;
             barrier.Transition.Subresource = sub_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
+            static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(&barrier, 1));
 
             curr_states_[sub_resource] = target_state;
         }
     }
 
-    void D3D12Texture::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
+    void D3D12Texture::Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const
     {
         auto* native_resource = static_cast<ID3D12Resource*>(this->NativeResource());
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
@@ -166,7 +177,7 @@ namespace AIHoloImager
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.UAV.pResource = native_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
+            static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(&barrier, 1));
         }
         else
         {
@@ -191,7 +202,7 @@ namespace AIHoloImager
                     barrier.Transition.StateBefore = ToD3D12ResourceState(curr_states_[0]);
                     barrier.Transition.StateAfter = d3d12_target_state;
                     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                    cmd_list.Transition(std::span(&barrier, 1));
+                    static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(&barrier, 1));
                 }
             }
             else
@@ -210,7 +221,7 @@ namespace AIHoloImager
                         barrier.Transition.Subresource = static_cast<uint32_t>(i);
                     }
                 }
-                cmd_list.Transition(std::span(barriers.begin(), barriers.end()));
+                static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(barriers.begin(), barriers.end()));
             }
         }
 

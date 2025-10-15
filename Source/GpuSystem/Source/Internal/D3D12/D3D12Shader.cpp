@@ -268,6 +268,11 @@ namespace AIHoloImager
 
     void D3D12RenderPipeline::Bind(GpuCommandList& cmd_list) const
     {
+        this->Bind(static_cast<D3D12CommandList&>(cmd_list.Internal()));
+    }
+
+    void D3D12RenderPipeline::Bind(D3D12CommandList& cmd_list) const
+    {
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 
         d3d12_cmd_list->IASetPrimitiveTopology(ToD3D12PrimitiveTopology(topology_));
@@ -379,6 +384,11 @@ namespace AIHoloImager
     }
 
     void D3D12ComputePipeline::Bind(GpuCommandList& cmd_list) const
+    {
+        this->Bind(static_cast<D3D12CommandList&>(cmd_list.Internal()));
+    }
+
+    void D3D12ComputePipeline::Bind(D3D12CommandList& cmd_list) const
     {
         auto* d3d12_cmd_list = cmd_list.NativeCommandList<ID3D12GraphicsCommandList>();
 

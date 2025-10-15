@@ -14,6 +14,7 @@
 #include "Gpu/GpuUtil.hpp"
 
 #include "../GpuShaderInternal.hpp"
+#include "D3D12CommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -31,6 +32,7 @@ namespace AIHoloImager
         GpuRenderPipelineInternal& operator=(GpuRenderPipelineInternal&& other) noexcept override;
 
         void Bind(GpuCommandList& cmd_list) const override;
+        void Bind(D3D12CommandList& cmd_list) const;
 
     private:
         GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
@@ -51,7 +53,8 @@ namespace AIHoloImager
         D3D12ComputePipeline& operator=(D3D12ComputePipeline&& other) noexcept;
         GpuComputePipelineInternal& operator=(GpuComputePipelineInternal&& other) noexcept override;
 
-        void Bind(GpuCommandList& cmd_list) const;
+        void Bind(GpuCommandList& cmd_list) const override;
+        void Bind(D3D12CommandList& cmd_list) const;
 
     private:
         GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;

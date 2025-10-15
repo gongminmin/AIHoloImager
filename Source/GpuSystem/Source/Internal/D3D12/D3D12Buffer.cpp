@@ -6,6 +6,7 @@
 #include <directx/d3d12.h>
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "D3D12CommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -123,6 +124,18 @@ namespace AIHoloImager
 
     void D3D12Buffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const
     {
+        this->Transition(cmd_list.Internal(), target_state);
+    }
+
+    void D3D12Buffer::Transition(
+        GpuCommandListInternal& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
+    {
+        assert(sub_resource == 0);
+        this->Transition(cmd_list, target_state);
+    }
+
+    void D3D12Buffer::Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const
+    {
         auto* native_resource = static_cast<ID3D12Resource*>(this->NativeBuffer());
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
 
@@ -135,14 +148,14 @@ namespace AIHoloImager
             barrier.Transition.StateBefore = ToD3D12ResourceState(curr_state_);
             barrier.Transition.StateAfter = d3d12_target_state;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmd_list.Transition(std::span(&barrier, 1));
+            static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(&barrier, 1));
         }
         else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.UAV.pResource = native_resource;
-            cmd_list.Transition(std::span(&barrier, 1));
+            static_cast<D3D12CommandList&>(cmd_list).Transition(std::span(&barrier, 1));
         }
 
         curr_state_ = target_state;

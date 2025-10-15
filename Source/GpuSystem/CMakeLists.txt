@@ -23,6 +23,8 @@ set(aihi_gpu_system_files
     Source/D3D12/D3D12Conversion.hpp
     Source/Internal/D3D12/D3D12Buffer.cpp
     Source/Internal/D3D12/D3D12Buffer.hpp
+    Source/Internal/D3D12/D3D12CommandList.cpp
+    Source/Internal/D3D12/D3D12CommandList.hpp
     Source/Internal/D3D12/D3D12DescriptorHeap.cpp
     Source/Internal/D3D12/D3D12DescriptorHeap.hpp
     Source/Internal/D3D12/D3D12Resource.cpp
@@ -41,6 +43,8 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
     Source/Internal/GpuBufferInternal.cpp
     Source/Internal/GpuBufferInternal.hpp
+    Source/Internal/GpuCommandListInternal.cpp
+    Source/Internal/GpuCommandListInternal.hpp
     Source/Internal/GpuDescriptorHeapInternal.cpp
     Source/Internal/GpuDescriptorHeapInternal.hpp
     Source/Internal/GpuResourceInternal.cpp

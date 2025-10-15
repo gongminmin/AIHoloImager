@@ -10,6 +10,7 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 
 #include "GpuBufferInternal.hpp"
+#include "GpuCommandListInternal.hpp"
 #include "GpuDescriptorHeapInternal.hpp"
 #include "GpuResourceViewsInternal.hpp"
 #include "GpuSamplerInternal.hpp"
@@ -77,5 +78,8 @@ namespace AIHoloImager
             const GpuRenderPipeline::States& states) const = 0;
         virtual std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const = 0;
+
+        virtual std::unique_ptr<GpuCommandListInternal> CreateCommandList(
+            GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const = 0;
     };
 } // namespace AIHoloImager
