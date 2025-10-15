@@ -43,6 +43,8 @@ set(aihi_gpu_system_files
     Source/Internal/GpuBufferInternal.hpp
     Source/Internal/GpuDescriptorHeapInternal.cpp
     Source/Internal/GpuDescriptorHeapInternal.hpp
+    Source/Internal/GpuResourceInternal.cpp
+    Source/Internal/GpuResourceInternal.hpp
     Source/Internal/GpuResourceViewsInternal.cpp
     Source/Internal/GpuResourceViewsInternal.hpp
     Source/Internal/GpuSamplerInternal.cpp

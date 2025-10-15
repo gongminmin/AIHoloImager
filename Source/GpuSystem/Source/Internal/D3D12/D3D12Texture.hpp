@@ -20,8 +20,10 @@ namespace AIHoloImager
         ~D3D12Texture() noexcept;
 
         D3D12Texture(D3D12Texture&& other) noexcept;
+        D3D12Texture(GpuResourceInternal&& other) noexcept;
         D3D12Texture(GpuTextureInternal&& other) noexcept;
         D3D12Texture& operator=(D3D12Texture&& other) noexcept;
+        GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept override;
         GpuTextureInternal& operator=(GpuTextureInternal&& other) noexcept override;
 
         void Name(std::wstring_view name) override;

@@ -53,11 +53,19 @@ namespace AIHoloImager
     D3D12Texture::~D3D12Texture() = default;
 
     D3D12Texture::D3D12Texture(D3D12Texture&& other) noexcept = default;
+    D3D12Texture::D3D12Texture(GpuResourceInternal&& other) noexcept
+        : D3D12Texture(std::forward<D3D12Texture>(static_cast<D3D12Texture&&>(other)))
+    {
+    }
     D3D12Texture::D3D12Texture(GpuTextureInternal&& other) noexcept
         : D3D12Texture(std::forward<D3D12Texture>(static_cast<D3D12Texture&&>(other)))
     {
     }
     D3D12Texture& D3D12Texture::operator=(D3D12Texture&& other) noexcept = default;
+    GpuResourceInternal& D3D12Texture::operator=(GpuResourceInternal&& other) noexcept
+    {
+        return this->operator=(std::move(static_cast<D3D12Texture&&>(other)));
+    }
     GpuTextureInternal& D3D12Texture::operator=(GpuTextureInternal&& other) noexcept
     {
         return this->operator=(std::move(static_cast<D3D12Texture&&>(other)));

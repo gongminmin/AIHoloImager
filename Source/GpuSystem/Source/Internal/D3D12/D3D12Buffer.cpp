@@ -34,10 +34,18 @@ namespace AIHoloImager
     D3D12Buffer::~D3D12Buffer() = default;
 
     D3D12Buffer::D3D12Buffer(D3D12Buffer&& other) noexcept = default;
+    D3D12Buffer::D3D12Buffer(GpuResourceInternal&& other) noexcept
+        : D3D12Buffer(std::forward<D3D12Buffer>(static_cast<D3D12Buffer&&>(other)))
+    {
+    }
     D3D12Buffer::D3D12Buffer(GpuBufferInternal&& other) noexcept : D3D12Buffer(std::forward<D3D12Buffer>(static_cast<D3D12Buffer&&>(other)))
     {
     }
     D3D12Buffer& D3D12Buffer::operator=(D3D12Buffer&& other) noexcept = default;
+    GpuResourceInternal& D3D12Buffer::operator=(GpuResourceInternal&& other) noexcept
+    {
+        return this->operator=(std::move(static_cast<D3D12Buffer&&>(other)));
+    }
     GpuBufferInternal& D3D12Buffer::operator=(GpuBufferInternal&& other) noexcept
     {
         return this->operator=(std::move(static_cast<D3D12Buffer&&>(other)));
@@ -105,6 +113,12 @@ namespace AIHoloImager
         D3D12Resource::Reset();
         heap_ = {};
         curr_state_ = {};
+    }
+
+    void D3D12Buffer::Transition(GpuCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
+    {
+        assert(sub_resource == 0);
+        this->Transition(cmd_list, target_state);
     }
 
     void D3D12Buffer::Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const

@@ -5,11 +5,12 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuBuffer.hpp"
-#include "Gpu/GpuCommandList.hpp"
+
+#include "GpuResourceInternal.hpp"
 
 namespace AIHoloImager
 {
-    class GpuBufferInternal
+    class GpuBufferInternal : public GpuResourceInternal
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBufferInternal)
 
@@ -20,12 +21,7 @@ namespace AIHoloImager
         GpuBufferInternal(GpuBufferInternal&& other) noexcept;
         virtual GpuBufferInternal& operator=(GpuBufferInternal&& other) noexcept = 0;
 
-        virtual void Name(std::wstring_view name) = 0;
-
-        virtual void* NativeResource() const noexcept = 0;
         virtual void* NativeBuffer() const noexcept = 0;
-
-        virtual void* SharedHandle() const noexcept = 0;
 
         virtual GpuVirtualAddressType GpuVirtualAddress() const noexcept = 0;
         virtual uint32_t Size() const noexcept = 0;
@@ -34,9 +30,5 @@ namespace AIHoloImager
         virtual void* Map() = 0;
         virtual void Unmap(const GpuRange& write_range) = 0;
         virtual void Unmap() = 0;
-
-        virtual void Reset() = 0;
-
-        virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
     };
 } // namespace AIHoloImager

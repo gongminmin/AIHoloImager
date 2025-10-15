@@ -19,8 +19,10 @@ namespace AIHoloImager
         ~D3D12Buffer() override;
 
         D3D12Buffer(D3D12Buffer&& other) noexcept;
+        D3D12Buffer(GpuResourceInternal&& other) noexcept;
         D3D12Buffer(GpuBufferInternal&& other) noexcept;
         D3D12Buffer& operator=(D3D12Buffer&& other) noexcept;
+        GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept override;
         GpuBufferInternal& operator=(GpuBufferInternal&& other) noexcept override;
 
         void Name(std::wstring_view name) override;
@@ -40,6 +42,7 @@ namespace AIHoloImager
 
         void Reset() override;
 
+        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
