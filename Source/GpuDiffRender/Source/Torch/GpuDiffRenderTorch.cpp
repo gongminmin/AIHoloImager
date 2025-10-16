@@ -5,6 +5,8 @@
 
 #include <glm/vec4.hpp>
 
+#include "Base/ErrorHandling.hpp"
+
 using namespace torch::autograd;
 
 namespace AIHoloImager

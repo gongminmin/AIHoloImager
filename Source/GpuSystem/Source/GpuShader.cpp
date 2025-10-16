@@ -3,6 +3,8 @@
 
 #include "Gpu/GpuShader.hpp"
 
+#include <cassert>
+
 #include "Gpu/GpuCommandList.hpp"
 
 #include "Internal/GpuShaderInternal.hpp"

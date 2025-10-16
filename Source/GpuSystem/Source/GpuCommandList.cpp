@@ -3,6 +3,8 @@
 
 #include "Gpu/GpuCommandList.hpp"
 
+#include <cassert>
+
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSystem.hpp"
 

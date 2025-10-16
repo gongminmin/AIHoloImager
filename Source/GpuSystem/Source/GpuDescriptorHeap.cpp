@@ -3,6 +3,8 @@
 
 #include "Gpu/GpuDescriptorHeap.hpp"
 
+#include <cassert>
+
 #include "Gpu/GpuSystem.hpp"
 
 #include "Internal/GpuDescriptorHeapInternal.hpp"
