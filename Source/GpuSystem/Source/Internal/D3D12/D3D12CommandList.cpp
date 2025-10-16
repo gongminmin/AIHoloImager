@@ -14,6 +14,7 @@
 
 #include "D3D12/D3D12Conversion.hpp"
 #include "D3D12Buffer.hpp"
+#include "D3D12CommandAllocatorInfo.hpp"
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Shader.hpp"
@@ -27,7 +28,7 @@ namespace AIHoloImager
         : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
         ID3D12Device* d3d12_device = gpu_system.NativeDevice();
-        auto* cmd_allocator = cmd_alloc_info.cmd_allocator.Get();
+        auto* cmd_allocator = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).CmdAllocator().Get();
         switch (type)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -847,7 +848,7 @@ namespace AIHoloImager
     void D3D12CommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
     {
         cmd_alloc_info_ = &cmd_alloc_info;
-        auto* d3d12_cmd_alloc = cmd_alloc_info.cmd_allocator.Get();
+        auto* d3d12_cmd_alloc = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).CmdAllocator().Get();
         switch (type_)
         {
         case GpuSystem::CmdQueueType::Render:

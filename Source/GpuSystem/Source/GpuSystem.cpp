@@ -15,6 +15,7 @@
 #include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
+#include "Internal/D3D12/D3D12CommandAllocatorInfo.hpp"
 #include "Internal/D3D12/D3D12CommandList.hpp"
 #include "Internal/D3D12/D3D12SystemFactory.hpp"
 #include "Internal/GpuSystemInternalFactory.hpp"
@@ -540,9 +541,10 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
-            if (alloc->fence_val <= completed_fence)
+            auto& d3d12_alloc = static_cast<D3D12CommandAllocatorInfo&>(alloc->Internal());
+            if (d3d12_alloc.FenceValue() <= completed_fence)
             {
-                alloc->cmd_allocator->Reset();
+                d3d12_alloc.CmdAllocator()->Reset();
                 return *alloc;
             }
         }
@@ -566,8 +568,9 @@ namespace AIHoloImager
             Unreachable();
         }
 
-        auto& alloc = *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>());
-        TIFHR(device_->CreateCommandAllocator(d3d12_type, UuidOf<ID3D12CommandAllocator>(), alloc.cmd_allocator.PutVoid()));
+        auto& alloc = *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*this));
+        TIFHR(device_->CreateCommandAllocator(d3d12_type, UuidOf<ID3D12CommandAllocator>(),
+            static_cast<D3D12CommandAllocatorInfo&>(alloc.Internal()).CmdAllocator().PutVoid()));
         return alloc;
     }
 
@@ -595,7 +598,7 @@ namespace AIHoloImager
         TIFHR(cmd_queue->Signal(fence_.Get(), curr_fence_value));
         fence_val_ = curr_fence_value + 1;
 
-        cmd_alloc_info.fence_val = fence_val_;
+        static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).FenceValue(fence_val_);
 
         this->ClearStallResources();
 

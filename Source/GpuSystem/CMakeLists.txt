@@ -4,6 +4,7 @@
 set(aihi_gpu_system_files
     Include/Gpu/D3D12/D3D12Traits.hpp
     Include/Gpu/GpuBuffer.hpp
+    Include/Gpu/GpuCommandAllocatorInfo.hpp
     Include/Gpu/GpuCommandList.hpp
     Include/Gpu/GpuConstantBuffer.hpp
     Include/Gpu/GpuDescriptorAllocator.hpp
@@ -23,6 +24,8 @@ set(aihi_gpu_system_files
     Source/D3D12/D3D12Conversion.hpp
     Source/Internal/D3D12/D3D12Buffer.cpp
     Source/Internal/D3D12/D3D12Buffer.hpp
+    Source/Internal/D3D12/D3D12CommandAllocatorInfo.cpp
+    Source/Internal/D3D12/D3D12CommandAllocatorInfo.hpp
     Source/Internal/D3D12/D3D12CommandList.cpp
     Source/Internal/D3D12/D3D12CommandList.hpp
     Source/Internal/D3D12/D3D12DescriptorHeap.cpp
@@ -43,6 +46,8 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
     Source/Internal/GpuBufferInternal.cpp
     Source/Internal/GpuBufferInternal.hpp
+    Source/Internal/GpuCommandAllocatorInfoInternal.cpp
+    Source/Internal/GpuCommandAllocatorInfoInternal.hpp
     Source/Internal/GpuCommandListInternal.cpp
     Source/Internal/GpuCommandListInternal.hpp
     Source/Internal/GpuDescriptorHeapInternal.cpp
@@ -63,6 +68,7 @@ set(aihi_gpu_system_files
     Source/Internal/GpuVertexAttribInternal.hpp
     Source/Shader/GenMipmapCs.hlsl
     Source/GpuBuffer.cpp
+    Source/GpuCommandAllocatorInfo.cpp
     Source/GpuCommandList.cpp
     Source/GpuConstantBuffer.cpp
     Source/GpuDescriptorAllocator.cpp

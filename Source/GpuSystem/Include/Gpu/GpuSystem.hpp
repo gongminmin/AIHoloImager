@@ -12,6 +12,7 @@
 #include "Base/ComPtr.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Base/SmartPtrHelper.hpp"
+#include "Gpu/GpuCommandAllocatorInfo.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuMipmapper.hpp"
@@ -20,12 +21,6 @@ namespace AIHoloImager
 {
     class GpuSystemInternalFactory;
     class D3D12CommandList;
-
-    struct GpuCommandAllocatorInfo
-    {
-        ComPtr<ID3D12CommandAllocator> cmd_allocator;
-        uint64_t fence_val = 0;
-    };
 
     class GpuSystem final
     {

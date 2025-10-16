@@ -6,6 +6,7 @@
 #include "D3D12/D3D12Conversion.hpp"
 
 #include "D3D12Buffer.hpp"
+#include "D3D12CommandAllocatorInfo.hpp"
 #include "D3D12CommandList.hpp"
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12ResourceViews.hpp"
@@ -155,6 +156,11 @@ namespace AIHoloImager
         const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const
     {
         return std::make_unique<D3D12ComputePipeline>(gpu_system_, shader, std::move(static_samplers));
+    }
+
+    std::unique_ptr<GpuCommandAllocatorInfoInternal> D3D12SystemFactory::CreateCommandAllocatorInfo() const
+    {
+        return std::make_unique<D3D12CommandAllocatorInfo>();
     }
 
     std::unique_ptr<GpuCommandListInternal> D3D12SystemFactory::CreateCommandList(

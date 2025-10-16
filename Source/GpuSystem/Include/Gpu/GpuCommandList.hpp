@@ -8,6 +8,7 @@
 #include <span>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuCommandAllocatorInfo.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
