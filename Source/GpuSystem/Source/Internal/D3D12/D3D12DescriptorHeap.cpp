@@ -5,6 +5,7 @@
 
 #include "Base/ErrorHandling.hpp"
 #include "Base/Uuid.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
 
@@ -18,7 +19,7 @@ namespace AIHoloImager
         desc_.NumDescriptors = size;
         desc_.Flags = shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         desc_.NodeMask = 0;
-        TIFHR(gpu_system.NativeDevice()->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
+        TIFHR(gpu_system.NativeDevice<D3D12Traits>()->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
         this->Name(std::move(name));
     }
 

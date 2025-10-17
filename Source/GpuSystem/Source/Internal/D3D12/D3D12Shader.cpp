@@ -7,6 +7,7 @@
 
 #include "Base/ErrorHandling.hpp"
 #include "Base/MiniWindows.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
 #include "D3D12Sampler.hpp"
@@ -160,7 +161,7 @@ namespace AIHoloImager
             TIFHR(hr);
         }
 
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice();
+        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
 
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
@@ -356,7 +357,7 @@ namespace AIHoloImager
             TIFHR(hr);
         }
 
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice();
+        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
 
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));

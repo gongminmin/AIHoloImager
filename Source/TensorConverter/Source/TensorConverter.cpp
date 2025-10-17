@@ -61,7 +61,7 @@ namespace AIHoloImager
                 MiniCudaRt::DeviceProp device_prop{};
                 TIFCE(cuda_rt_.GetDeviceProperties(&device_prop, device_index));
 
-                const LUID gpu_luid = gpu_system_.NativeDevice()->GetAdapterLuid();
+                const LUID gpu_luid = gpu_system_.NativeDevice<D3D12Traits>()->GetAdapterLuid();
 
                 cuda_copy_enabled_ = (std::memcmp(&gpu_luid, device_prop.luid, sizeof(gpu_luid)) == 0);
             }
@@ -390,7 +390,7 @@ namespace AIHoloImager
     private:
         MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
-            ID3D12Device* d3d12_device = gpu_system_.NativeDevice();
+            ID3D12Device* d3d12_device = gpu_system_.NativeDevice<D3D12Traits>();
 
             const auto res_desc = resource.NativeResource<D3D12Traits>()->GetDesc();
             const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &res_desc);

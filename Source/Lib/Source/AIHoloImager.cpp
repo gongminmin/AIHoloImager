@@ -36,10 +36,10 @@ namespace AIHoloImager
             return std::filesystem::path(exe_path).parent_path();
         }
 
-        static bool ConfirmDevice(ID3D12Device* device)
+        static bool ConfirmDevice(void* device)
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
-            device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+            reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
             if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
             {
                 return false;

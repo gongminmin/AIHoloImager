@@ -4,6 +4,7 @@
 #include "D3D12Sampler.hpp"
 
 #include "Base/ErrorHandling.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
@@ -152,7 +153,7 @@ namespace AIHoloImager
         cpu_handle_ = desc_block_.CpuHandle();
 
         FillSamplerDesc(sampler_, filters, addr_modes);
-        gpu_system_->NativeDevice()->CreateSampler(&sampler_, ToD3D12CpuDescriptorHandle(cpu_handle_));
+        gpu_system_->NativeDevice<D3D12Traits>()->CreateSampler(&sampler_, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
     D3D12DynamicSampler::~D3D12DynamicSampler() noexcept = default;
@@ -171,7 +172,7 @@ namespace AIHoloImager
 
     void D3D12DynamicSampler::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
     {
-        gpu_system_->NativeDevice()->CopyDescriptorsSimple(
+        gpu_system_->NativeDevice<D3D12Traits>()->CopyDescriptorsSimple(
             1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
     }
 

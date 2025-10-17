@@ -38,7 +38,7 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 
 namespace AIHoloImager
 {
-    GpuSystem::GpuSystem(std::function<bool(ID3D12Device* device)> confirm_device, bool enable_sharing, bool enable_debug)
+    GpuSystem::GpuSystem(std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug)
         : internal_factory_(std::make_unique<D3D12SystemFactory>(*this)), upload_mem_allocator_(*this, true),
           read_back_mem_allocator_(*this, false), rtv_desc_allocator_(*this, GpuDescriptorHeapType::Rtv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
           dsv_desc_allocator_(*this, GpuDescriptorHeapType::Dsv, D3D12_DESCRIPTOR_HEAP_FLAG_NONE),
@@ -192,12 +192,12 @@ namespace AIHoloImager
     GpuSystem::GpuSystem(GpuSystem&& other) noexcept = default;
     GpuSystem& GpuSystem::operator=(GpuSystem&& other) noexcept = default;
 
-    ID3D12Device* GpuSystem::NativeDevice() const noexcept
+    void* GpuSystem::NativeDevice() const noexcept
     {
         return device_.Get();
     }
 
-    ID3D12CommandQueue* GpuSystem::NativeCommandQueue(CmdQueueType type) const noexcept
+    void* GpuSystem::NativeCommandQueue(CmdQueueType type) const noexcept
     {
         return cmd_queues_[static_cast<uint32_t>(type)].cmd_queue.Get();
     }

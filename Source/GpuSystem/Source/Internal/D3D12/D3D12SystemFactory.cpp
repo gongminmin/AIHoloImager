@@ -4,6 +4,7 @@
 #include "D3D12SystemFactory.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 
 #include "D3D12Buffer.hpp"
 #include "D3D12CommandAllocatorInfo.hpp"
@@ -71,7 +72,7 @@ namespace AIHoloImager
 
     uint32_t D3D12SystemFactory::DescriptorSize(GpuDescriptorHeapType type) const
     {
-        return gpu_system_.NativeDevice()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
+        return gpu_system_.NativeDevice<D3D12Traits>()->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> D3D12SystemFactory::CreateShaderResourceView(

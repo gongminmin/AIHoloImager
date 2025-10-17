@@ -27,7 +27,7 @@ namespace AIHoloImager
     D3D12CommandList::D3D12CommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
         : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice();
+        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
         auto* cmd_allocator = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).CmdAllocator().Get();
         switch (type)
         {
@@ -681,7 +681,7 @@ namespace AIHoloImager
         const uint32_t height = dest.Height(mip);
         const uint32_t depth = dest.Depth(mip);
 
-        auto* d3d12_device = gpu_system_->NativeDevice();
+        auto* d3d12_device = gpu_system_->NativeDevice<D3D12Traits>();
 
         const auto desc = dest.NativeResource<D3D12Traits>()->GetDesc();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
@@ -775,7 +775,7 @@ namespace AIHoloImager
         const uint32_t height = src.Height(mip);
         const uint32_t depth = src.Depth(mip);
 
-        auto* d3d12_device = gpu_system_->NativeDevice();
+        auto* d3d12_device = gpu_system_->NativeDevice<D3D12Traits>();
 
         const auto desc = src.NativeResource<D3D12Traits>()->GetDesc();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;

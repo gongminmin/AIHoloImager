@@ -39,17 +39,31 @@ namespace AIHoloImager
         };
 
     public:
-        GpuSystem(
-            std::function<bool(ID3D12Device* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false);
+        GpuSystem(std::function<bool(void* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false);
         ~GpuSystem();
 
         GpuSystem(GpuSystem&& other) noexcept;
         GpuSystem& operator=(GpuSystem&& other) noexcept;
 
-        ID3D12Device* NativeDevice() const noexcept;
-        ID3D12CommandQueue* NativeCommandQueue(CmdQueueType type) const noexcept;
+        void* NativeDevice() const noexcept;
+        template <typename Traits>
+        typename Traits::DeviceType NativeDevice() const noexcept
+        {
+            return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
+        }
+        void* NativeCommandQueue(CmdQueueType type) const noexcept;
+        template <typename Traits>
+        typename Traits::CommandQueueType NativeCommandQueue() const noexcept
+        {
+            return reinterpret_cast<typename Traits::CommandQueueType>(this->NativeCommandQueue());
+        }
 
-        HANDLE SharedFenceHandle() const noexcept;
+        void* SharedFenceHandle() const noexcept;
+        template <typename Traits>
+        typename Traits::SharedHandleType SharedFenceHandle() const noexcept
+        {
+            return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedFenceHandle());
+        }
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
