@@ -7,5 +7,3 @@
 #include <memory>
 
 #include "Base/MiniWindows.hpp"
-
-#include <directx/d3d12.h>

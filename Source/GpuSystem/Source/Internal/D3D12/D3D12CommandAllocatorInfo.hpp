@@ -3,9 +3,11 @@
 
 #pragma once
 
-#include "Base/ComPtr.hpp"
+#include "Base/MiniWindows.hpp"
 
 #include <directx/d3d12.h>
+
+#include "Base/ComPtr.hpp"
 
 #include "../GpuCommandAllocatorInfoInternal.hpp"
 

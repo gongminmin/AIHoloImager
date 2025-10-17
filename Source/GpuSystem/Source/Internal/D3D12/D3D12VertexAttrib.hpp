@@ -6,6 +6,8 @@
 #include <span>
 #include <vector>
 
+#include "Base/MiniWindows.hpp"
+
 #include <directx/d3d12.h>
 
 #include "Gpu/GpuVertexAttrib.hpp"

@@ -3,6 +3,8 @@
 
 #include "D3D12ResourceViews.hpp"
 
+#include "Base/MiniWindows.hpp"
+
 #include <directx/d3d12.h>
 
 #include "Gpu/D3D12/D3D12Traits.hpp"

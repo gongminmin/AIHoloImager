@@ -10,4 +10,3 @@
 #include "Base/MiniWindows.hpp"
 
 #include <assimp/types.h>
-#include <directx/d3d12.h>

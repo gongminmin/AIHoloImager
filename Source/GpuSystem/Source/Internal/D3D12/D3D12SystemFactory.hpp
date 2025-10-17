@@ -6,8 +6,6 @@
 #include <memory>
 #include <span>
 
-#include <directx/d3d12.h>
-
 #include "../GpuSystemInternalFactory.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
 

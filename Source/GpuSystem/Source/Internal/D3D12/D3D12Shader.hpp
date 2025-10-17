@@ -5,6 +5,8 @@
 
 #include <span>
 
+#include "Base/MiniWindows.hpp"
+
 #include <directx/d3d12.h>
 
 #include "Base/ComPtr.hpp"

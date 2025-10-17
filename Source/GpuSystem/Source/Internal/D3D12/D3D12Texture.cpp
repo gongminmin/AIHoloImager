@@ -3,6 +3,8 @@
 
 #include "D3D12Texture.hpp"
 
+#include "Base/MiniWindows.hpp"
+
 #include <directx/d3d12.h>
 
 #include "Base/Util.hpp"

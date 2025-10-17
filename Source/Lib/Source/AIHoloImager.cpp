@@ -6,10 +6,12 @@
 #include <chrono>
 #include <format>
 #include <iostream>
-#include <mutex>
+
+#include "Base/MiniWindows.hpp"
+
+#include <directx/d3d12.h>
 
 #include "AIHoloImagerInternal.hpp"
-#include "Base/MiniWindows.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"

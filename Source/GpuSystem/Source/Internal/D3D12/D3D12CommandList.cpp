@@ -3,6 +3,8 @@
 
 #include "D3D12CommandList.hpp"
 
+#include "Base/MiniWindows.hpp"
+
 #include <directx/d3d12.h>
 #include <directx/d3d12video.h>
 
