@@ -7,7 +7,6 @@
 #include <span>
 
 #include "../GpuSystemInternalFactory.hpp"
-#include "Gpu/GpuVertexAttrib.hpp"
 
 namespace AIHoloImager
 {
@@ -18,6 +17,9 @@ namespace AIHoloImager
     public:
         explicit D3D12SystemFactory(GpuSystem& gpu_system) noexcept;
         ~D3D12SystemFactory() override;
+
+        std::unique_ptr<GpuSystemInternal> CreateSystem(std::function<bool(void* device)> confirm_device = nullptr,
+            bool enable_sharing = false, bool enable_debug = false) const override;
 
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
             uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const override;

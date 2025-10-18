@@ -7,45 +7,45 @@
 
 namespace AIHoloImager
 {
-    class GpuSystem;
+    class D3D12System;
 
     template <typename T>
-    class GpuRecyclableObject
+    class D3D12RecyclableObject
     {
-        DISALLOW_COPY_AND_ASSIGN(GpuRecyclableObject)
+        DISALLOW_COPY_AND_ASSIGN(D3D12RecyclableObject)
 
     public:
-        GpuRecyclableObject() = default;
-        GpuRecyclableObject(GpuSystem& gpu_system, T object) : gpu_system_(&gpu_system), object_(std::move(object))
+        D3D12RecyclableObject() = default;
+        D3D12RecyclableObject(D3D12System& d3d12_system, T object) : d3d12_system_(&d3d12_system), object_(std::move(object))
         {
         }
 
-        ~GpuRecyclableObject()
+        ~D3D12RecyclableObject()
         {
             this->Recycle();
         }
 
-        GpuRecyclableObject(GpuRecyclableObject&& other) noexcept = default;
-        GpuRecyclableObject& operator=(GpuRecyclableObject&& other) noexcept
+        D3D12RecyclableObject(D3D12RecyclableObject&& other) noexcept = default;
+        D3D12RecyclableObject& operator=(D3D12RecyclableObject&& other) noexcept
         {
             if (this != &other)
             {
                 this->Recycle();
 
-                gpu_system_ = std::exchange(other.gpu_system_, {});
+                d3d12_system_ = std::exchange(other.d3d12_system_, {});
                 object_ = std::move(other.object_);
             }
 
             return *this;
         }
 
-        GpuSystem* GpuSys() noexcept
+        D3D12System* D3D12Sys() noexcept
         {
-            return gpu_system_;
+            return d3d12_system_;
         }
-        const GpuSystem* GpuSys() const noexcept
+        const D3D12System* D3D12Sys() const noexcept
         {
-            return gpu_system_;
+            return d3d12_system_;
         }
 
         T& Object() noexcept
@@ -74,7 +74,7 @@ namespace AIHoloImager
         void Reset()
         {
             this->Recycle();
-            gpu_system_ = nullptr;
+            d3d12_system_ = nullptr;
             object_ = nullptr;
         }
 
@@ -83,12 +83,12 @@ namespace AIHoloImager
         {
             if (object_ && object_.Unique())
             {
-                gpu_system_->Recycle(std::move(object_));
+                d3d12_system_->Recycle(std::move(object_));
             }
         }
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
+        D3D12System* d3d12_system_ = nullptr;
         T object_;
     };
 } // namespace AIHoloImager

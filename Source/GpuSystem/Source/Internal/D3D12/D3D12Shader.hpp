@@ -13,10 +13,10 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
-#include "Gpu/GpuUtil.hpp"
 
 #include "../GpuShaderInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12Util.hpp"
 
 namespace AIHoloImager
 {
@@ -37,8 +37,8 @@ namespace AIHoloImager
         void Bind(D3D12CommandList& cmd_list) const;
 
     private:
-        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
-        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
+        D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
+        D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
         GpuRenderPipeline::PrimitiveTopology topology_{};
     };
 
@@ -59,7 +59,7 @@ namespace AIHoloImager
         void Bind(D3D12CommandList& cmd_list) const;
 
     private:
-        GpuRecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
-        GpuRecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
+        D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
+        D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
     };
 } // namespace AIHoloImager

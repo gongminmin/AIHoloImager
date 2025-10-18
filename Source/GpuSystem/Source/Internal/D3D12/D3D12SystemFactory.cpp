@@ -13,6 +13,7 @@
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Shader.hpp"
+#include "D3D12System.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12VertexAttrib.hpp"
 
@@ -23,6 +24,12 @@ namespace AIHoloImager
     }
 
     D3D12SystemFactory::~D3D12SystemFactory() = default;
+
+    std::unique_ptr<GpuSystemInternal> D3D12SystemFactory::CreateSystem(
+        std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug) const
+    {
+        return std::make_unique<D3D12System>(gpu_system_, std::move(confirm_device), enable_sharing, enable_debug);
+    }
 
     std::unique_ptr<GpuBufferInternal> D3D12SystemFactory::CreateBuffer(
         uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const

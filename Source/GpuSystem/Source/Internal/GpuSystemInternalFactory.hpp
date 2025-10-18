@@ -16,6 +16,7 @@
 #include "GpuResourceViewsInternal.hpp"
 #include "GpuSamplerInternal.hpp"
 #include "GpuShaderInternal.hpp"
+#include "GpuSystemInternal.hpp"
 #include "GpuTextureInternal.hpp"
 #include "GpuVertexAttribInternal.hpp"
 
@@ -25,6 +26,9 @@ namespace AIHoloImager
     {
     public:
         virtual ~GpuSystemInternalFactory();
+
+        virtual std::unique_ptr<GpuSystemInternal> CreateSystem(
+            std::function<bool(void* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false) const = 0;
 
         virtual std::unique_ptr<GpuBufferInternal> CreateBuffer(
             uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const = 0;

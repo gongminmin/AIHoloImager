@@ -20,6 +20,8 @@
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Shader.hpp"
+#include "D3D12System.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 DEFINE_UUID_OF(ID3D12GraphicsCommandList);
 DEFINE_UUID_OF(ID3D12VideoEncodeCommandList);
@@ -578,8 +580,8 @@ namespace AIHoloImager
         GpuDescriptorBlock srv_uav_desc_block = this->BindPipeline(pipeline, shader_binding);
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-        d3d12_cmd_list->ExecuteIndirect(
-            gpu_system_->NativeDispatchIndirectSignature(), 1, indirect_args.NativeBuffer<D3D12Traits>(), 0, nullptr, 0);
+        d3d12_cmd_list->ExecuteIndirect(static_cast<D3D12System&>(gpu_system_->Internal()).NativeDispatchIndirectSignature(), 1,
+            indirect_args.NativeBuffer<D3D12Traits>(), 0, nullptr, 0);
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
@@ -748,7 +750,7 @@ namespace AIHoloImager
 
             d3d12_cmd_list->CopyBufferRegion(read_back_mem_block.NativeBuffer<D3D12Traits>(), read_back_mem_block.Offset(),
                 src.NativeBuffer<D3D12Traits>(), 0, src.Size());
-            const uint64_t fence_val = gpu_system_->ExecuteAndReset(*this);
+            const uint64_t fence_val = gpu_system_->Internal().ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
 
             return std::async(
                 std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
@@ -813,7 +815,7 @@ namespace AIHoloImager
         src.Internal().Transition(*this, GpuResourceState::CopySrc);
 
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
-        const uint64_t fence_val = gpu_system_->ExecuteAndReset(*this);
+        const uint64_t fence_val = gpu_system_->Internal().ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
 
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch = layout.Footprint.RowPitch,

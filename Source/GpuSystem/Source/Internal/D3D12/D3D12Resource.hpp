@@ -11,7 +11,8 @@
 #include "Base/SmartPtrHelper.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
-#include "Gpu/GpuUtil.hpp"
+
+#include "D3D12Util.hpp"
 
 namespace AIHoloImager
 {
@@ -20,7 +21,7 @@ namespace AIHoloImager
     public:
         explicit D3D12Resource(GpuSystem& gpu_system);
         D3D12Resource(GpuSystem& gpu_system, void* native_resource, std::wstring_view name);
-        ~D3D12Resource();
+        virtual ~D3D12Resource();
 
         D3D12Resource(D3D12Resource&& other) noexcept;
         D3D12Resource& operator=(D3D12Resource&& other) noexcept;
@@ -49,7 +50,7 @@ namespace AIHoloImager
         GpuResourceFlag Flags() const noexcept;
 
     private:
-        GpuRecyclableObject<ComPtr<ID3D12Resource>> resource_;
+        D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;
         GpuResourceType type_ = GpuResourceType::Buffer;
         D3D12_RESOURCE_DESC desc_{};
         Win32UniqueHandle shared_handle_;

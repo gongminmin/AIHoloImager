@@ -3,17 +3,19 @@
 
 #include "D3D12Resource.hpp"
 
+#include "D3D12/D3D12Conversion.hpp"
 #include "Gpu/D3D12/D3D12Traits.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "D3D12System.hpp"
 
 namespace AIHoloImager
 {
-    D3D12Resource::D3D12Resource(GpuSystem& gpu_system) : resource_(gpu_system, nullptr)
+    D3D12Resource::D3D12Resource(GpuSystem& gpu_system) : resource_(static_cast<D3D12System&>(gpu_system.Internal()), nullptr)
     {
     }
     D3D12Resource::D3D12Resource(GpuSystem& gpu_system, void* native_resource, std::wstring_view name)
-        : resource_(gpu_system, ComPtr<ID3D12Resource>(reinterpret_cast<ID3D12Resource*>(native_resource), false))
+        : resource_(static_cast<D3D12System&>(gpu_system.Internal()),
+              ComPtr<ID3D12Resource>(reinterpret_cast<ID3D12Resource*>(native_resource), false))
     {
         if (resource_)
         {
@@ -114,8 +116,8 @@ namespace AIHoloImager
         desc_ = {ToD3D12ResourceDimension(type), 0, static_cast<uint64_t>(width), height, depth_or_array_size,
             static_cast<uint16_t>(mip_levels), ToDxgiFormat(format), {1, 0}, layout, ToD3D12ResourceFlags(flags)};
 
-        auto& gpu_system = *resource_.GpuSys();
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
+        auto& d3d12_system = *resource_.D3D12Sys();
+        ID3D12Device* d3d12_device = d3d12_system.NativeDevice<D3D12Traits>();
 
         const D3D12_HEAP_PROPERTIES heap_prop = {ToD3D12HeapType(heap), D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
 

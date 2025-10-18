@@ -18,7 +18,6 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuShader.hpp
     Include/Gpu/GpuSystem.hpp
     Include/Gpu/GpuTexture.hpp
-    Include/Gpu/GpuUtil.hpp
     Include/Gpu/GpuVertexAttrib.hpp
     Source/D3D12/D3D12Conversion.cpp
     Source/D3D12/D3D12Conversion.hpp
@@ -38,10 +37,13 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12Sampler.hpp
     Source/Internal/D3D12/D3D12Shader.cpp
     Source/Internal/D3D12/D3D12Shader.hpp
+    Source/Internal/D3D12/D3D12System.cpp
+    Source/Internal/D3D12/D3D12System.hpp
     Source/Internal/D3D12/D3D12SystemFactory.cpp
     Source/Internal/D3D12/D3D12SystemFactory.hpp
     Source/Internal/D3D12/D3D12Texture.cpp
     Source/Internal/D3D12/D3D12Texture.hpp
+    Source/Internal/D3D12/D3D12Util.hpp
     Source/Internal/D3D12/D3D12VertexAttrib.cpp
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
     Source/Internal/GpuBufferInternal.cpp
@@ -60,6 +62,8 @@ set(aihi_gpu_system_files
     Source/Internal/GpuSamplerInternal.hpp
     Source/Internal/GpuShaderInternal.cpp
     Source/Internal/GpuShaderInternal.hpp
+    Source/Internal/GpuSystemInternal.cpp
+    Source/Internal/GpuSystemInternal.hpp
     Source/Internal/GpuSystemInternalFactory.cpp
     Source/Internal/GpuSystemInternalFactory.hpp
     Source/Internal/GpuTextureInternal.cpp
