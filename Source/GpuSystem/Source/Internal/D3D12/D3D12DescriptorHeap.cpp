@@ -27,14 +27,14 @@ namespace AIHoloImager
 
     D3D12DescriptorHeap::D3D12DescriptorHeap(D3D12DescriptorHeap&& other) noexcept = default;
     D3D12DescriptorHeap::D3D12DescriptorHeap(GpuDescriptorHeapInternal&& other) noexcept
-        : D3D12DescriptorHeap(std::forward<D3D12DescriptorHeap>(static_cast<D3D12DescriptorHeap&&>(other)))
+        : D3D12DescriptorHeap(static_cast<D3D12DescriptorHeap&&>(other))
     {
     }
 
     D3D12DescriptorHeap& D3D12DescriptorHeap::operator=(D3D12DescriptorHeap&& other) noexcept = default;
     GpuDescriptorHeapInternal& D3D12DescriptorHeap::operator=(GpuDescriptorHeapInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12DescriptorHeap&&>(other)));
+        return this->operator=(static_cast<D3D12DescriptorHeap&&>(other));
     }
 
     void D3D12DescriptorHeap::Name(std::wstring_view name)

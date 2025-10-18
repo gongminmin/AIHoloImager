@@ -127,14 +127,14 @@ namespace AIHoloImager
 
     D3D12StaticSampler::D3D12StaticSampler(D3D12StaticSampler&& other) noexcept = default;
     D3D12StaticSampler::D3D12StaticSampler(GpuStaticSamplerInternal&& other) noexcept
-        : D3D12StaticSampler(std::forward<D3D12StaticSampler>(static_cast<D3D12StaticSampler&&>(other)))
+        : D3D12StaticSampler(static_cast<D3D12StaticSampler&&>(other))
     {
     }
 
     D3D12StaticSampler& D3D12StaticSampler::operator=(D3D12StaticSampler&& other) noexcept = default;
     GpuStaticSamplerInternal& D3D12StaticSampler::operator=(GpuStaticSamplerInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12StaticSampler&&>(other)));
+        return this->operator=(static_cast<D3D12StaticSampler&&>(other));
     }
 
     D3D12_STATIC_SAMPLER_DESC D3D12StaticSampler::SamplerDesc(uint32_t register_index) const noexcept
@@ -160,14 +160,14 @@ namespace AIHoloImager
 
     D3D12DynamicSampler::D3D12DynamicSampler(D3D12DynamicSampler&& other) noexcept = default;
     D3D12DynamicSampler::D3D12DynamicSampler(GpuDynamicSamplerInternal&& other) noexcept
-        : D3D12DynamicSampler(std::forward<D3D12DynamicSampler>(static_cast<D3D12DynamicSampler&&>(other)))
+        : D3D12DynamicSampler(static_cast<D3D12DynamicSampler&&>(other))
     {
     }
 
     D3D12DynamicSampler& D3D12DynamicSampler::operator=(D3D12DynamicSampler&& other) noexcept = default;
     GpuDynamicSamplerInternal& D3D12DynamicSampler::operator=(GpuDynamicSamplerInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12DynamicSampler&&>(other)));
+        return this->operator=(static_cast<D3D12DynamicSampler&&>(other));
     }
 
     void D3D12DynamicSampler::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept

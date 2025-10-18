@@ -19,8 +19,8 @@ namespace AIHoloImager
         ~D3D12Buffer() override;
 
         D3D12Buffer(D3D12Buffer&& other) noexcept;
-        D3D12Buffer(GpuResourceInternal&& other) noexcept;
-        D3D12Buffer(GpuBufferInternal&& other) noexcept;
+        explicit D3D12Buffer(GpuResourceInternal&& other) noexcept;
+        explicit D3D12Buffer(GpuBufferInternal&& other) noexcept;
         D3D12Buffer& operator=(D3D12Buffer&& other) noexcept;
         GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept override;
         GpuBufferInternal& operator=(GpuBufferInternal&& other) noexcept override;

@@ -5,15 +5,16 @@
 
 #include <memory>
 
+#include "Gpu/GpuSystem.hpp"
+
 namespace AIHoloImager
 {
-    class GpuSystem;
     class GpuCommandAllocatorInfoInternal;
 
     class GpuCommandAllocatorInfo
     {
     public:
-        explicit GpuCommandAllocatorInfo(GpuSystem& gpu_system);
+        GpuCommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
         ~GpuCommandAllocatorInfo() noexcept;
 
         GpuCommandAllocatorInfoInternal& Internal() noexcept;

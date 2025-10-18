@@ -42,7 +42,7 @@ namespace AIHoloImager
             type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags_, curr_states_[0], std::move(name));
     }
 
-    D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
+    D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
         : D3D12Resource(gpu_system, native_resource, std::move(name))
     {
         if (this->NativeResource() != nullptr)
@@ -56,22 +56,20 @@ namespace AIHoloImager
     D3D12Texture::~D3D12Texture() = default;
 
     D3D12Texture::D3D12Texture(D3D12Texture&& other) noexcept = default;
-    D3D12Texture::D3D12Texture(GpuResourceInternal&& other) noexcept
-        : D3D12Texture(std::forward<D3D12Texture>(static_cast<D3D12Texture&&>(other)))
+    D3D12Texture::D3D12Texture(GpuResourceInternal&& other) noexcept : D3D12Texture(static_cast<D3D12Texture&&>(other))
     {
     }
-    D3D12Texture::D3D12Texture(GpuTextureInternal&& other) noexcept
-        : D3D12Texture(std::forward<D3D12Texture>(static_cast<D3D12Texture&&>(other)))
+    D3D12Texture::D3D12Texture(GpuTextureInternal&& other) noexcept : D3D12Texture(static_cast<D3D12Texture&&>(other))
     {
     }
     D3D12Texture& D3D12Texture::operator=(D3D12Texture&& other) noexcept = default;
     GpuResourceInternal& D3D12Texture::operator=(GpuResourceInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12Texture&&>(other)));
+        return this->operator=(static_cast<D3D12Texture&&>(other));
     }
     GpuTextureInternal& D3D12Texture::operator=(GpuTextureInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12Texture&&>(other)));
+        return this->operator=(static_cast<D3D12Texture&&>(other));
     }
 
     void D3D12Texture::Name(std::wstring_view name)

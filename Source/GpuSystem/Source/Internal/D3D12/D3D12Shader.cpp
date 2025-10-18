@@ -259,14 +259,14 @@ namespace AIHoloImager
 
     D3D12RenderPipeline::D3D12RenderPipeline(D3D12RenderPipeline&& other) noexcept = default;
     D3D12RenderPipeline::D3D12RenderPipeline(GpuRenderPipelineInternal&& other) noexcept
-        : D3D12RenderPipeline(std::forward<D3D12RenderPipeline>(static_cast<D3D12RenderPipeline&&>(other)))
+        : D3D12RenderPipeline(static_cast<D3D12RenderPipeline&&>(other))
     {
     }
 
     D3D12RenderPipeline& D3D12RenderPipeline::operator=(D3D12RenderPipeline&& other) noexcept = default;
     GpuRenderPipelineInternal& D3D12RenderPipeline::operator=(GpuRenderPipelineInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12RenderPipeline&&>(other)));
+        return this->operator=(static_cast<D3D12RenderPipeline&&>(other));
     }
 
     void D3D12RenderPipeline::Bind(GpuCommandList& cmd_list) const
@@ -377,14 +377,14 @@ namespace AIHoloImager
 
     D3D12ComputePipeline::D3D12ComputePipeline(D3D12ComputePipeline&& other) noexcept = default;
     D3D12ComputePipeline::D3D12ComputePipeline(GpuComputePipelineInternal&& other) noexcept
-        : D3D12ComputePipeline(std::forward<D3D12ComputePipeline>(static_cast<D3D12ComputePipeline&&>(other)))
+        : D3D12ComputePipeline(static_cast<D3D12ComputePipeline&&>(other))
     {
     }
 
     D3D12ComputePipeline& D3D12ComputePipeline::operator=(D3D12ComputePipeline&& other) noexcept = default;
     GpuComputePipelineInternal& D3D12ComputePipeline::operator=(GpuComputePipelineInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12ComputePipeline&&>(other)));
+        return this->operator=(static_cast<D3D12ComputePipeline&&>(other));
     }
 
     void D3D12ComputePipeline::Bind(GpuCommandList& cmd_list) const

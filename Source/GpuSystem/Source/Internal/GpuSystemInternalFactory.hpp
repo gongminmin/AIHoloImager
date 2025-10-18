@@ -6,6 +6,7 @@
 #include <memory>
 #include <span>
 
+#include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
 
@@ -24,7 +25,10 @@ namespace AIHoloImager
 {
     class GpuSystemInternalFactory
     {
+        DISALLOW_COPY_AND_ASSIGN(GpuSystemInternalFactory)
+
     public:
+        GpuSystemInternalFactory() noexcept;
         virtual ~GpuSystemInternalFactory();
 
         virtual std::unique_ptr<GpuSystemInternal> CreateSystem(
@@ -84,7 +88,7 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const = 0;
 
-        virtual std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo() const = 0;
+        virtual std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const = 0;
 
         virtual std::unique_ptr<GpuCommandListInternal> CreateCommandList(
             GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const = 0;

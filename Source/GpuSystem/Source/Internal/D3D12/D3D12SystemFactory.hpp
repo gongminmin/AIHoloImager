@@ -16,7 +16,7 @@ namespace AIHoloImager
     {
     public:
         explicit D3D12SystemFactory(GpuSystem& gpu_system) noexcept;
-        ~D3D12SystemFactory() override;
+        ~D3D12SystemFactory() noexcept override;
 
         std::unique_ptr<GpuSystemInternal> CreateSystem(std::function<bool(void* device)> confirm_device = nullptr,
             bool enable_sharing = false, bool enable_debug = false) const override;
@@ -75,7 +75,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const override;
 
-        std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo() const override;
+        std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const override;
 
         std::unique_ptr<GpuCommandListInternal> CreateCommandList(
             GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const override;

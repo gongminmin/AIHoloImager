@@ -5,5 +5,6 @@
 
 namespace AIHoloImager
 {
+    GpuSystemInternalFactory::GpuSystemInternalFactory() noexcept = default;
     GpuSystemInternalFactory::~GpuSystemInternalFactory() = default;
 } // namespace AIHoloImager

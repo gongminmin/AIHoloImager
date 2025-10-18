@@ -48,7 +48,7 @@ namespace AIHoloImager
 
     public:
         D3D12ComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers);
-        ~D3D12ComputePipeline();
+        ~D3D12ComputePipeline() override;
 
         D3D12ComputePipeline(D3D12ComputePipeline&& other) noexcept;
         explicit D3D12ComputePipeline(GpuComputePipelineInternal&& other) noexcept;

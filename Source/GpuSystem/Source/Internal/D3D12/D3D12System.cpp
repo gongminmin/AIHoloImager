@@ -171,13 +171,13 @@ namespace AIHoloImager
     }
 
     D3D12System::D3D12System(D3D12System&& other) noexcept = default;
-    D3D12System::D3D12System(GpuSystemInternal&& other) noexcept : D3D12System(std::forward<D3D12System>(static_cast<D3D12System&&>(other)))
+    D3D12System::D3D12System(GpuSystemInternal&& other) noexcept : D3D12System(static_cast<D3D12System&&>(other))
     {
     }
     D3D12System& D3D12System::operator=(D3D12System&& other) noexcept = default;
     GpuSystemInternal& D3D12System::operator=(GpuSystemInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12System&&>(other)));
+        return this->operator=(static_cast<D3D12System&&>(other));
     }
 
     void* D3D12System::NativeDevice() const noexcept
@@ -377,34 +377,12 @@ namespace AIHoloImager
             auto& d3d12_alloc = static_cast<D3D12CommandAllocatorInfo&>(alloc->Internal());
             if (d3d12_alloc.FenceValue() <= completed_fence)
             {
-                d3d12_alloc.CmdAllocator()->Reset();
+                d3d12_alloc.NativeCmdAllocator()->Reset();
                 return *alloc;
             }
         }
 
-        D3D12_COMMAND_LIST_TYPE d3d12_type;
-        switch (type)
-        {
-        case GpuSystem::CmdQueueType::Render:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            break;
-
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            break;
-
-        case GpuSystem::CmdQueueType::VideoEncode:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
-            break;
-
-        default:
-            Unreachable();
-        }
-
-        auto& alloc = *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*gpu_system_));
-        TIFHR(device_->CreateCommandAllocator(d3d12_type, UuidOf<ID3D12CommandAllocator>(),
-            static_cast<D3D12CommandAllocatorInfo&>(alloc.Internal()).CmdAllocator().PutVoid()));
-        return alloc;
+        return *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*gpu_system_, type));
     }
 
     uint64_t D3D12System::ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value)

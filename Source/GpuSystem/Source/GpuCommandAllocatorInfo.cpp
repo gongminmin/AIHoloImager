@@ -13,8 +13,8 @@ namespace AIHoloImager
     {
     };
 
-    GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuSystem& gpu_system)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateCommandAllocatorInfo().release()))
+    GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type)
+        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateCommandAllocatorInfo(type).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuCommandAllocatorInfoInternal));
     }

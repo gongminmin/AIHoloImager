@@ -10,6 +10,9 @@ namespace AIHoloImager
     class GpuVertexAttribsInternal
     {
     public:
+        GpuVertexAttribsInternal() noexcept;
+        GpuVertexAttribsInternal(const GpuVertexAttribsInternal& other);
+        GpuVertexAttribsInternal(GpuVertexAttribsInternal&& other) noexcept;
         virtual ~GpuVertexAttribsInternal();
 
         virtual GpuVertexAttribsInternal& operator=(const GpuVertexAttribsInternal& other) = 0;

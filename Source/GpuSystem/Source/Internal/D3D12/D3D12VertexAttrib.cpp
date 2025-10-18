@@ -71,7 +71,7 @@ namespace AIHoloImager
         }
         return *this;
     }
-    D3D12VertexAttribs& D3D12VertexAttribs::operator=(const GpuVertexAttribsInternal& other)
+    GpuVertexAttribsInternal& D3D12VertexAttribs::operator=(const GpuVertexAttribsInternal& other)
     {
         return this->operator=(static_cast<const D3D12VertexAttribs&>(other));
     }
@@ -82,7 +82,7 @@ namespace AIHoloImager
         this->UpdateSemantics();
     }
     D3D12VertexAttribs::D3D12VertexAttribs(GpuVertexAttribsInternal&& other) noexcept
-        : D3D12VertexAttribs(std::forward<D3D12VertexAttribs>(static_cast<D3D12VertexAttribs&&>(other)))
+        : D3D12VertexAttribs(static_cast<D3D12VertexAttribs&&>(other))
     {
     }
 
@@ -97,9 +97,9 @@ namespace AIHoloImager
         }
         return *this;
     }
-    D3D12VertexAttribs& D3D12VertexAttribs::operator=(GpuVertexAttribsInternal&& other) noexcept
+    GpuVertexAttribsInternal& D3D12VertexAttribs::operator=(GpuVertexAttribsInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12VertexAttribs&&>(other)));
+        return this->operator=(static_cast<D3D12VertexAttribs&&>(other));
     }
 
     std::unique_ptr<GpuVertexAttribsInternal> D3D12VertexAttribs::Clone() const

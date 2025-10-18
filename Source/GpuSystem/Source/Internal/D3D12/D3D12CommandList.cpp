@@ -32,7 +32,7 @@ namespace AIHoloImager
         : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
         ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
-        auto* cmd_allocator = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).CmdAllocator().Get();
+        auto* cmd_allocator = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).NativeCmdAllocator();
         switch (type)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -64,15 +64,14 @@ namespace AIHoloImager
     }
 
     D3D12CommandList::D3D12CommandList(D3D12CommandList&& other) noexcept = default;
-    D3D12CommandList::D3D12CommandList(GpuCommandListInternal&& other) noexcept
-        : D3D12CommandList(std::forward<D3D12CommandList>(static_cast<D3D12CommandList&&>(other)))
+    D3D12CommandList::D3D12CommandList(GpuCommandListInternal&& other) noexcept : D3D12CommandList(static_cast<D3D12CommandList&&>(other))
     {
     }
 
     D3D12CommandList& D3D12CommandList::operator=(D3D12CommandList&& other) noexcept = default;
     GpuCommandListInternal& D3D12CommandList::operator=(GpuCommandListInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<GpuCommandListInternal&&>(other)));
+        return this->operator=(static_cast<GpuCommandListInternal&&>(other));
     }
 
     GpuSystem::CmdQueueType D3D12CommandList::Type() const noexcept
@@ -852,7 +851,7 @@ namespace AIHoloImager
     void D3D12CommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
     {
         cmd_alloc_info_ = &cmd_alloc_info;
-        auto* d3d12_cmd_alloc = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).CmdAllocator().Get();
+        auto* d3d12_cmd_alloc = static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).NativeCmdAllocator();
         switch (type_)
         {
         case GpuSystem::CmdQueueType::Render:

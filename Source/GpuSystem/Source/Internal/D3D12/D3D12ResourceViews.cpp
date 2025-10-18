@@ -146,14 +146,14 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(D3D12ShaderResourceView&& other) noexcept = default;
     D3D12ShaderResourceView::D3D12ShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept
-        : D3D12ShaderResourceView(std::forward<D3D12ShaderResourceView>(static_cast<D3D12ShaderResourceView&&>(other)))
+        : D3D12ShaderResourceView(static_cast<D3D12ShaderResourceView&&>(other))
     {
     }
 
     D3D12ShaderResourceView& D3D12ShaderResourceView::operator=(D3D12ShaderResourceView&& other) noexcept = default;
     GpuShaderResourceViewInternal& D3D12ShaderResourceView::operator=(GpuShaderResourceViewInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12ShaderResourceView&&>(other)));
+        return this->operator=(static_cast<D3D12ShaderResourceView&&>(other));
     }
 
     void D3D12ShaderResourceView::Reset()
@@ -207,13 +207,13 @@ namespace AIHoloImager
 
     D3D12RenderTargetView::D3D12RenderTargetView(D3D12RenderTargetView&& other) noexcept = default;
     D3D12RenderTargetView::D3D12RenderTargetView(GpuRenderTargetViewInternal&& other) noexcept
-        : D3D12RenderTargetView(std::forward<D3D12RenderTargetView>(static_cast<D3D12RenderTargetView&&>(other)))
+        : D3D12RenderTargetView(static_cast<D3D12RenderTargetView&&>(other))
     {
     }
     D3D12RenderTargetView& D3D12RenderTargetView::operator=(D3D12RenderTargetView&& other) noexcept = default;
     GpuRenderTargetViewInternal& D3D12RenderTargetView::operator=(GpuRenderTargetViewInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12RenderTargetView&&>(other)));
+        return this->operator=(static_cast<D3D12RenderTargetView&&>(other));
     }
 
     D3D12RenderTargetView::operator bool() const noexcept
@@ -272,13 +272,13 @@ namespace AIHoloImager
 
     D3D12DepthStencilView::D3D12DepthStencilView(D3D12DepthStencilView&& other) noexcept = default;
     D3D12DepthStencilView::D3D12DepthStencilView(GpuDepthStencilViewInternal&& other) noexcept
-        : D3D12DepthStencilView(std::forward<D3D12DepthStencilView>(static_cast<D3D12DepthStencilView&&>(other)))
+        : D3D12DepthStencilView(static_cast<D3D12DepthStencilView&&>(other))
     {
     }
     D3D12DepthStencilView& D3D12DepthStencilView::operator=(D3D12DepthStencilView&& other) noexcept = default;
     GpuDepthStencilViewInternal& D3D12DepthStencilView::operator=(GpuDepthStencilViewInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12DepthStencilView&&>(other)));
+        return this->operator=(static_cast<D3D12DepthStencilView&&>(other));
     }
 
     D3D12DepthStencilView::operator bool() const noexcept
@@ -410,13 +410,13 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(D3D12UnorderedAccessView&& other) noexcept = default;
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept
-        : D3D12UnorderedAccessView(std::forward<D3D12UnorderedAccessView>(static_cast<D3D12UnorderedAccessView&&>(other)))
+        : D3D12UnorderedAccessView(static_cast<D3D12UnorderedAccessView&&>(other))
     {
     }
     D3D12UnorderedAccessView& D3D12UnorderedAccessView::operator=(D3D12UnorderedAccessView&& other) noexcept = default;
     GpuUnorderedAccessViewInternal& D3D12UnorderedAccessView::operator=(GpuUnorderedAccessViewInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12UnorderedAccessView&&>(other)));
+        return this->operator=(static_cast<D3D12UnorderedAccessView&&>(other));
     }
 
     void D3D12UnorderedAccessView::Reset()

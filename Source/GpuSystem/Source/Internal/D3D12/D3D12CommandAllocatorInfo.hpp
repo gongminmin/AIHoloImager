@@ -8,6 +8,7 @@
 #include <directx/d3d12.h>
 
 #include "Base/ComPtr.hpp"
+#include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandAllocatorInfoInternal.hpp"
 
@@ -16,7 +17,7 @@ namespace AIHoloImager
     class D3D12CommandAllocatorInfo : public GpuCommandAllocatorInfoInternal
     {
     public:
-        D3D12CommandAllocatorInfo() noexcept;
+        D3D12CommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
         ~D3D12CommandAllocatorInfo() noexcept override;
 
         D3D12CommandAllocatorInfo(D3D12CommandAllocatorInfo&& other) noexcept;
@@ -24,7 +25,7 @@ namespace AIHoloImager
         D3D12CommandAllocatorInfo& operator=(D3D12CommandAllocatorInfo&& other) noexcept;
         GpuCommandAllocatorInfoInternal& operator=(GpuCommandAllocatorInfoInternal&& other) noexcept override;
 
-        ComPtr<ID3D12CommandAllocator>& CmdAllocator() noexcept;
+        ID3D12CommandAllocator* NativeCmdAllocator() const noexcept;
 
         uint64_t FenceValue() const noexcept;
         void FenceValue(uint64_t value) noexcept;

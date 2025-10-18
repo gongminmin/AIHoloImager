@@ -16,7 +16,6 @@ namespace AIHoloImager
         virtual ~GpuStaticSamplerInternal();
 
         GpuStaticSamplerInternal(GpuStaticSamplerInternal&& other) noexcept;
-
         virtual GpuStaticSamplerInternal& operator=(GpuStaticSamplerInternal&& other) noexcept = 0;
     };
 
@@ -29,7 +28,6 @@ namespace AIHoloImager
         virtual ~GpuDynamicSamplerInternal();
 
         GpuDynamicSamplerInternal(GpuDynamicSamplerInternal&& other) noexcept;
-
         virtual GpuDynamicSamplerInternal& operator=(GpuDynamicSamplerInternal&& other) noexcept = 0;
     };
 } // namespace AIHoloImager

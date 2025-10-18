@@ -37,21 +37,20 @@ namespace AIHoloImager
     D3D12Buffer::~D3D12Buffer() = default;
 
     D3D12Buffer::D3D12Buffer(D3D12Buffer&& other) noexcept = default;
-    D3D12Buffer::D3D12Buffer(GpuResourceInternal&& other) noexcept
-        : D3D12Buffer(std::forward<D3D12Buffer>(static_cast<D3D12Buffer&&>(other)))
+    D3D12Buffer::D3D12Buffer(GpuResourceInternal&& other) noexcept : D3D12Buffer(static_cast<D3D12Buffer&&>(other))
     {
     }
-    D3D12Buffer::D3D12Buffer(GpuBufferInternal&& other) noexcept : D3D12Buffer(std::forward<D3D12Buffer>(static_cast<D3D12Buffer&&>(other)))
+    D3D12Buffer::D3D12Buffer(GpuBufferInternal&& other) noexcept : D3D12Buffer(static_cast<D3D12Buffer&&>(other))
     {
     }
     D3D12Buffer& D3D12Buffer::operator=(D3D12Buffer&& other) noexcept = default;
     GpuResourceInternal& D3D12Buffer::operator=(GpuResourceInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12Buffer&&>(other)));
+        return this->operator=(static_cast<D3D12Buffer&&>(other));
     }
     GpuBufferInternal& D3D12Buffer::operator=(GpuBufferInternal&& other) noexcept
     {
-        return this->operator=(std::move(static_cast<D3D12Buffer&&>(other)));
+        return this->operator=(static_cast<D3D12Buffer&&>(other));
     }
 
     void D3D12Buffer::Name(std::wstring_view name)

@@ -27,7 +27,7 @@ namespace AIHoloImager
         explicit D3D12DescriptorHeap(GpuDescriptorHeapInternal&& other) noexcept;
 
         D3D12DescriptorHeap& operator=(D3D12DescriptorHeap&& other) noexcept;
-        GpuDescriptorHeapInternal& operator=(GpuDescriptorHeapInternal&& other) noexcept;
+        GpuDescriptorHeapInternal& operator=(GpuDescriptorHeapInternal&& other) noexcept override;
 
         void Name(std::wstring_view name) override;
 

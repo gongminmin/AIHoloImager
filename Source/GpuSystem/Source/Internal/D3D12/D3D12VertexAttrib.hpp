@@ -26,13 +26,13 @@ namespace AIHoloImager
         explicit D3D12VertexAttribs(const GpuVertexAttribsInternal& other);
 
         D3D12VertexAttribs& operator=(const D3D12VertexAttribs& other);
-        D3D12VertexAttribs& operator=(const GpuVertexAttribsInternal& other) override;
+        GpuVertexAttribsInternal& operator=(const GpuVertexAttribsInternal& other) override;
 
         D3D12VertexAttribs(D3D12VertexAttribs&& other) noexcept;
         explicit D3D12VertexAttribs(GpuVertexAttribsInternal&& other) noexcept;
 
         D3D12VertexAttribs& operator=(D3D12VertexAttribs&& other) noexcept;
-        D3D12VertexAttribs& operator=(GpuVertexAttribsInternal&& other) noexcept override;
+        GpuVertexAttribsInternal& operator=(GpuVertexAttribsInternal&& other) noexcept override;
 
         std::unique_ptr<GpuVertexAttribsInternal> Clone() const override;
 
