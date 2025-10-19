@@ -3,7 +3,7 @@ stages:
   jobs:
   - job: CodeFormatting
     pool:
-      vmImage: Ubuntu-22.04
+      vmImage: Ubuntu-24.04
 
     steps:
     - script: |
@@ -25,7 +25,7 @@ stages:
           configuration: Release
 
     pool:
-      vmImage: windows-2022
+      vmImage: windows-2025
 
     steps:
       - checkout: self
