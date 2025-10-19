@@ -9,7 +9,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "Internal/GpuBufferInternal.hpp"
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -20,13 +20,13 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer() noexcept = default;
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateBuffer(size, heap, flags, std::move(name)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateBuffer(size, heap, flags, std::move(name)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuBufferInternal));
     }
 
     GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateBuffer(native_resource, curr_state, std::move(name)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateBuffer(native_resource, curr_state, std::move(name)).release()))
     {
     }
 

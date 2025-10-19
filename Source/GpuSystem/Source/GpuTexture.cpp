@@ -9,7 +9,7 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 #include "Internal/GpuTextureInternal.hpp"
 
 namespace AIHoloImager
@@ -38,7 +38,7 @@ namespace AIHoloImager
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory()
+        : impl_(static_cast<Impl*>(gpu_system.Internal()
                                        .CreateTexture(type, width, height, depth, array_size, mip_levels, format, flags, std::move(name))
                                        .release()))
     {
@@ -46,7 +46,7 @@ namespace AIHoloImager
     }
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateTexture(native_resource, curr_state, std::move(name)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateTexture(native_resource, curr_state, std::move(name)).release()))
     {
     }
 

@@ -6,7 +6,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "Internal/GpuSamplerInternal.hpp"
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -57,7 +57,7 @@ namespace AIHoloImager
     GpuStaticSampler::GpuStaticSampler(
         GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
         : GpuSampler(filters, addr_modes),
-          impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateStaticSampler(filters, addr_modes).release()))
+          impl_(static_cast<Impl*>(gpu_system.Internal().CreateStaticSampler(filters, addr_modes).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuStaticSamplerInternal));
     }
@@ -85,7 +85,7 @@ namespace AIHoloImager
     }
     GpuDynamicSampler::GpuDynamicSampler(GpuSystem& gpu_system, const Filters& filters, const AddressModes& addr_modes)
         : GpuSampler(filters, addr_modes),
-          impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateDynamicSampler(filters, addr_modes).release()))
+          impl_(static_cast<Impl*>(gpu_system.Internal().CreateDynamicSampler(filters, addr_modes).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuDynamicSamplerInternal));
     }

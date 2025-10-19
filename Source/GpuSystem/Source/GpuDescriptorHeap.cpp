@@ -8,7 +8,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "Internal/GpuDescriptorHeapInternal.hpp"
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -37,8 +37,7 @@ namespace AIHoloImager
     GpuDescriptorHeap::GpuDescriptorHeap() noexcept = default;
     GpuDescriptorHeap::GpuDescriptorHeap(
         GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
-        : impl_(
-              static_cast<Impl*>(gpu_system.InternalFactory().CreateDescriptorHeap(size, type, shader_visible, std::move(name)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateDescriptorHeap(size, type, shader_visible, std::move(name)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuDescriptorHeapInternal));
     }

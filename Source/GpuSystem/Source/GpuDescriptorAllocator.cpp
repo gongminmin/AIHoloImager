@@ -8,7 +8,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 using namespace AIHoloImager;
 
@@ -28,7 +28,7 @@ namespace
         auto& size = DescriptorSize(type);
         if (size == 0)
         {
-            size = gpu_system.InternalFactory().DescriptorSize(type);
+            size = gpu_system.Internal().DescriptorSize(type);
         }
     }
 } // namespace

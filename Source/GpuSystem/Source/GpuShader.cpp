@@ -8,7 +8,7 @@
 #include "Gpu/GpuCommandList.hpp"
 
 #include "Internal/GpuShaderInternal.hpp"
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -20,7 +20,7 @@ namespace AIHoloImager
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
         const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers, const States& states)
         : impl_(
-              static_cast<Impl*>(gpu_system.InternalFactory()
+              static_cast<Impl*>(gpu_system.Internal()
                                      .CreateRenderPipeline(topology, std::move(shaders), vertex_attribs, std::move(static_samplers), states)
                                      .release()))
     {
@@ -52,7 +52,7 @@ namespace AIHoloImager
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
     GpuComputePipeline::GpuComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateComputePipeline(shader, std::move(static_samplers)).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateComputePipeline(shader, std::move(static_samplers)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuComputePipelineInternal));
     }

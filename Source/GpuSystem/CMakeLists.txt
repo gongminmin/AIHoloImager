@@ -39,8 +39,6 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12Shader.hpp
     Source/Internal/D3D12/D3D12System.cpp
     Source/Internal/D3D12/D3D12System.hpp
-    Source/Internal/D3D12/D3D12SystemFactory.cpp
-    Source/Internal/D3D12/D3D12SystemFactory.hpp
     Source/Internal/D3D12/D3D12Texture.cpp
     Source/Internal/D3D12/D3D12Texture.hpp
     Source/Internal/D3D12/D3D12Util.hpp

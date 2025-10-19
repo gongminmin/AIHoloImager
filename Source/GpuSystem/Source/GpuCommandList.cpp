@@ -8,7 +8,7 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -16,7 +16,7 @@ namespace AIHoloImager
     {
     public:
         Impl(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
-            : gpu_system_(gpu_system), cmd_list_internal_(gpu_system.InternalFactory().CreateCommandList(cmd_alloc_info, type))
+            : gpu_system_(gpu_system), cmd_list_internal_(gpu_system.Internal().CreateCommandList(cmd_alloc_info, type))
         {
         }
 

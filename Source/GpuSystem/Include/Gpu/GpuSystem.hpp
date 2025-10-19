@@ -107,7 +107,6 @@ namespace AIHoloImager
 
         GpuMipmapper& Mipmapper() noexcept;
 
-        const GpuSystemInternalFactory& InternalFactory() const noexcept;
         GpuSystemInternal& Internal() noexcept;
 
     private:

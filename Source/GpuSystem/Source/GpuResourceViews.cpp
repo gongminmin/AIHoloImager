@@ -10,7 +10,7 @@
 #include "Gpu/GpuTexture.hpp"
 
 #include "Internal/GpuResourceViewsInternal.hpp"
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -37,7 +37,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateShaderResourceView(texture, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture, sub_resource, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuShaderResourceViewInternal));
     }
@@ -59,7 +59,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateShaderResourceView(texture_array, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture_array, sub_resource, format).release()))
     {
     }
 
@@ -80,7 +80,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateShaderResourceView(texture, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture, sub_resource, format).release()))
     {
     }
 
@@ -91,8 +91,7 @@ namespace AIHoloImager
 
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : impl_(static_cast<Impl*>(
-              gpu_system.InternalFactory().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
     {
     }
 
@@ -104,7 +103,7 @@ namespace AIHoloImager
     GpuShaderResourceView::GpuShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
         : impl_(static_cast<Impl*>(
-              gpu_system.InternalFactory().CreateShaderResourceView(buffer, first_element, num_elements, element_size).release()))
+              gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, element_size).release()))
     {
     }
 
@@ -155,7 +154,7 @@ namespace AIHoloImager
     {
     }
     GpuRenderTargetView::GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateRenderTargetView(texture, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateRenderTargetView(texture, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuRenderTargetViewInternal));
     }
@@ -212,7 +211,7 @@ namespace AIHoloImager
     {
     }
     GpuDepthStencilView::GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateDepthStencilView(texture, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateDepthStencilView(texture, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuDepthStencilViewInternal));
     }
@@ -280,7 +279,7 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateUnorderedAccessView(texture, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture, sub_resource, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuUnorderedAccessViewInternal));
     }
@@ -302,7 +301,7 @@ namespace AIHoloImager
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateUnorderedAccessView(texture_array, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture_array, sub_resource, format).release()))
     {
     }
 
@@ -322,7 +321,7 @@ namespace AIHoloImager
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateUnorderedAccessView(texture, sub_resource, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture, sub_resource, format).release()))
     {
     }
 
@@ -333,8 +332,7 @@ namespace AIHoloImager
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : impl_(static_cast<Impl*>(
-              gpu_system.InternalFactory().CreateUnorderedAccessView(buffer, first_element, num_elements, format).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, format).release()))
     {
     }
 
@@ -346,7 +344,7 @@ namespace AIHoloImager
     GpuUnorderedAccessView::GpuUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
         : impl_(static_cast<Impl*>(
-              gpu_system.InternalFactory().CreateUnorderedAccessView(buffer, first_element, num_elements, element_size).release()))
+              gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, element_size).release()))
     {
     }
 

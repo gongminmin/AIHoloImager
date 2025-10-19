@@ -9,7 +9,7 @@
 
 #include "Gpu/GpuCommandList.hpp"
 
-#include "Internal/D3D12/D3D12SystemFactory.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 #include "Internal/GpuSystemInternalFactory.hpp"
 
 namespace AIHoloImager
@@ -18,8 +18,7 @@ namespace AIHoloImager
     {
     public:
         Impl(GpuSystem& host, std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-            : host_(host), internal_factory_(std::make_unique<D3D12SystemFactory>(host)),
-              system_internal_(internal_factory_->CreateSystem(std::move(confirm_device), enable_sharing, enable_debug)),
+            : host_(host), system_internal_(CreateGpuSystemInternal(host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false),
               rtv_desc_allocator_(host, GpuDescriptorHeapType::Rtv, false), dsv_desc_allocator_(host, GpuDescriptorHeapType::Dsv, false),
               cbv_srv_uav_desc_allocator_(host, GpuDescriptorHeapType::CbvSrvUav, false),
@@ -46,12 +45,6 @@ namespace AIHoloImager
             upload_mem_allocator_.Clear();
 
             system_internal_.reset();
-            internal_factory_.reset();
-        }
-
-        GpuSystemInternalFactory& InternalFactory() noexcept
-        {
-            return *internal_factory_;
         }
 
         GpuSystemInternal& Internal() noexcept
@@ -225,7 +218,6 @@ namespace AIHoloImager
     private:
         GpuSystem& host_;
 
-        std::unique_ptr<GpuSystemInternalFactory> internal_factory_;
         std::unique_ptr<GpuSystemInternal> system_internal_;
 
         GpuMemoryAllocator upload_mem_allocator_;
@@ -478,12 +470,6 @@ namespace AIHoloImager
     {
         assert(impl_);
         return impl_->Mipmapper();
-    }
-
-    const GpuSystemInternalFactory& GpuSystem::InternalFactory() const noexcept
-    {
-        assert(impl_);
-        return impl_->InternalFactory();
     }
 
     GpuSystemInternal& GpuSystem::Internal() noexcept

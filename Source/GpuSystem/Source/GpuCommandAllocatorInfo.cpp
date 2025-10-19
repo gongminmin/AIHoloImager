@@ -5,7 +5,8 @@
 
 #include <cassert>
 
-#include "Internal/GpuSystemInternalFactory.hpp"
+#include "Internal/GpuCommandAllocatorInfoInternal.hpp"
+#include "Internal/GpuSystemInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -16,7 +17,7 @@ namespace AIHoloImager
     GpuCommandAllocatorInfo::GpuCommandAllocatorInfo() noexcept = default;
 
     GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type)
-        : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateCommandAllocatorInfo(type).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateCommandAllocatorInfo(type).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuCommandAllocatorInfoInternal));
     }
