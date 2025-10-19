@@ -30,7 +30,7 @@ namespace AIHoloImager
         GpuBuffer() noexcept;
         GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name = L"");
         GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
-        virtual ~GpuBuffer();
+        ~GpuBuffer() override;
 
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;

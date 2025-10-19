@@ -51,6 +51,7 @@ namespace AIHoloImager
 
     public:
         GpuDescriptorBlock() noexcept;
+        ~GpuDescriptorBlock() noexcept;
 
         GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept;
         GpuDescriptorBlock& operator=(GpuDescriptorBlock&& other) noexcept;
@@ -108,6 +109,7 @@ namespace AIHoloImager
 
     public:
         GpuDescriptorAllocator(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible) noexcept;
+        ~GpuDescriptorAllocator();
 
         GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept;
         GpuDescriptorAllocator& operator=(GpuDescriptorAllocator&& other) noexcept;

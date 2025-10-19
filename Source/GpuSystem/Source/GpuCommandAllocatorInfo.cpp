@@ -13,6 +13,8 @@ namespace AIHoloImager
     {
     };
 
+    GpuCommandAllocatorInfo::GpuCommandAllocatorInfo() noexcept = default;
+
     GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type)
         : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateCommandAllocatorInfo(type).release()))
     {
@@ -20,6 +22,9 @@ namespace AIHoloImager
     }
 
     GpuCommandAllocatorInfo::~GpuCommandAllocatorInfo() noexcept = default;
+
+    GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuCommandAllocatorInfo&& other) noexcept = default;
+    GpuCommandAllocatorInfo& GpuCommandAllocatorInfo::operator=(GpuCommandAllocatorInfo&& other) noexcept = default;
 
     GpuCommandAllocatorInfoInternal& GpuCommandAllocatorInfo::Internal() noexcept
     {

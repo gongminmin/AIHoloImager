@@ -29,7 +29,8 @@ namespace AIHoloImager
     class GpuVertexAttribs
     {
     public:
-        explicit GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs);
+        GpuVertexAttribs() noexcept;
+        GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs);
         ~GpuVertexAttribs() noexcept;
 
         GpuVertexAttribs(const GpuVertexAttribs& other);

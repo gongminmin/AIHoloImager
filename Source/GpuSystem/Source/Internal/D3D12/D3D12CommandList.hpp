@@ -67,12 +67,13 @@ namespace AIHoloImager
         void Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z, const GpuTexture& src,
             uint32_t src_sub_resource, const GpuBox& src_box) override;
 
-        void Upload(GpuBuffer& dest, const std::function<void(void*)>& copy_func) override;
+        void Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func) override;
         void Upload(GpuTexture& dest, uint32_t sub_resource,
-            const std::function<void(void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
-        [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, const std::function<void(const void*)>& copy_func) override;
+            const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
+        [[nodiscard]] std::future<void> ReadBackAsync(
+            const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func) override;
         [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
-            const std::function<void(const void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
+            const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
 
         void Close() override;
         void Reset(GpuCommandAllocatorInfo& cmd_alloc_info) override;

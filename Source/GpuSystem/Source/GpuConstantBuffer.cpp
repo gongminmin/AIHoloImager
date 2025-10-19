@@ -11,10 +11,6 @@ namespace AIHoloImager
           name_(std::move(name))
     {
     }
-    GpuConstantBuffer::GpuConstantBuffer(GpuConstantBuffer&& other) noexcept
-        : gpu_system_(other.gpu_system_), mem_block_(std::move(other.mem_block_)), name_(std::move(name_))
-    {
-    }
 
     GpuConstantBuffer::~GpuConstantBuffer()
     {
@@ -24,16 +20,8 @@ namespace AIHoloImager
         }
     }
 
-    GpuConstantBuffer& GpuConstantBuffer::operator=(GpuConstantBuffer&& other) noexcept
-    {
-        if (this != &other)
-        {
-            gpu_system_ = std::exchange(other.gpu_system_, {});
-            mem_block_ = std::move(other.mem_block_);
-            name_ = std::move(name_);
-        }
-        return *this;
-    }
+    GpuConstantBuffer::GpuConstantBuffer(GpuConstantBuffer&& other) noexcept = default;
+    GpuConstantBuffer& GpuConstantBuffer::operator=(GpuConstantBuffer&& other) noexcept = default;
 
     GpuConstantBuffer::operator bool() const noexcept
     {

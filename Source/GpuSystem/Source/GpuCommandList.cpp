@@ -148,7 +148,7 @@ namespace AIHoloImager
         impl_->Internal().Copy(dest, dest_sub_resource, dst_x, dst_y, dst_z, src, src_sub_resource, src_box);
     }
 
-    void GpuCommandList::Upload(GpuBuffer& dest, const std::function<void(void*)>& copy_func)
+    void GpuCommandList::Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func)
     {
         assert(impl_);
         impl_->Internal().Upload(dest, copy_func);
@@ -160,8 +160,8 @@ namespace AIHoloImager
         this->Upload(dest, [src_data, size](void* dst_data) { std::memcpy(dst_data, src_data, size); });
     }
 
-    void GpuCommandList::Upload(
-        GpuTexture& dest, uint32_t sub_resource, const std::function<void(void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+    void GpuCommandList::Upload(GpuTexture& dest, uint32_t sub_resource,
+        const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         assert(impl_);
         impl_->Internal().Upload(dest, sub_resource, copy_func);
@@ -193,7 +193,7 @@ namespace AIHoloImager
             });
     }
 
-    std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void*)>& copy_func)
+    std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func)
     {
         assert(impl_);
         return impl_->Internal().ReadBackAsync(src, copy_func);
@@ -206,7 +206,7 @@ namespace AIHoloImager
     }
 
     std::future<void> GpuCommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
-        const std::function<void(const void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+        const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         assert(impl_);
         return impl_->Internal().ReadBackAsync(src, sub_resource, copy_func);

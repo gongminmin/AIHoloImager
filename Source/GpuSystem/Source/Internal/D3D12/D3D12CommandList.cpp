@@ -638,7 +638,7 @@ namespace AIHoloImager
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, dst_x, dst_y, dst_z, &src_loc, &d3d12_src_box);
     }
 
-    void D3D12CommandList::Upload(GpuBuffer& dest, const std::function<void(void*)>& copy_func)
+    void D3D12CommandList::Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func)
     {
         D3D12_HEAP_PROPERTIES heap_prop;
         dest.NativeBuffer<D3D12Traits>()->GetHeapProperties(&heap_prop, nullptr);
@@ -673,8 +673,8 @@ namespace AIHoloImager
         }
     }
 
-    void D3D12CommandList::Upload(
-        GpuTexture& dest, uint32_t sub_resource, const std::function<void(void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+    void D3D12CommandList::Upload(GpuTexture& dest, uint32_t sub_resource,
+        const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         uint32_t mip;
         uint32_t array_slice;
@@ -726,7 +726,7 @@ namespace AIHoloImager
         gpu_system_->DeallocUploadMemBlock(std::move(upload_mem_block));
     }
 
-    std::future<void> D3D12CommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void*)>& copy_func)
+    std::future<void> D3D12CommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* dst_data)>& copy_func)
     {
         D3D12_HEAP_PROPERTIES heap_prop;
         src.NativeBuffer<D3D12Traits>()->GetHeapProperties(&heap_prop, nullptr);
@@ -768,7 +768,7 @@ namespace AIHoloImager
     }
 
     std::future<void> D3D12CommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
-        const std::function<void(const void*, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
+        const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         uint32_t mip;
         uint32_t array_slice;

@@ -55,6 +55,8 @@ namespace AIHoloImager
 
 
     GpuDescriptorBlock::GpuDescriptorBlock() noexcept = default;
+    GpuDescriptorBlock::~GpuDescriptorBlock() noexcept = default;
+
     GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept
         : native_heap_(std::exchange(other.native_heap_, {})), heap_type_(std::exchange(other.heap_type_, {})),
           offset_(std::exchange(other.offset_, {})), size_(std::exchange(other.size_, {})),
@@ -101,6 +103,8 @@ namespace AIHoloImager
         : gpu_system_(&gpu_system), type_(type), shader_visible_(shader_visible)
     {
     }
+
+    GpuDescriptorAllocator::~GpuDescriptorAllocator() = default;
 
     GpuDescriptorAllocator::GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept
         : gpu_system_(std::exchange(other.gpu_system_, {})), type_(other.type_), shader_visible_(other.shader_visible_),

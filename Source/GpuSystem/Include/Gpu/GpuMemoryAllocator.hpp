@@ -68,6 +68,7 @@ namespace AIHoloImager
 
     public:
         GpuMemoryBlock() noexcept;
+        ~GpuMemoryBlock();
 
         GpuMemoryBlock(GpuMemoryBlock&& other) noexcept;
         GpuMemoryBlock& operator=(GpuMemoryBlock&& other) noexcept;
@@ -130,6 +131,7 @@ namespace AIHoloImager
 
     public:
         GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept;
+        ~GpuMemoryAllocator();
 
         GpuMemoryAllocator(GpuMemoryAllocator&& other) noexcept;
         GpuMemoryAllocator& operator=(GpuMemoryAllocator&& other) noexcept;

@@ -52,6 +52,7 @@ namespace AIHoloImager
 
     public:
         GpuConstantBufferOfType() noexcept = default;
+        ~GpuConstantBufferOfType() override = default;
 
         explicit GpuConstantBufferOfType(GpuSystem& gpu_system, std::wstring_view name = L"")
             : GpuConstantBuffer(gpu_system, sizeof(value_type), std::move(name))

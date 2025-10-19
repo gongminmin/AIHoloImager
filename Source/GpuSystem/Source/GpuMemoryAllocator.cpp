@@ -54,6 +54,8 @@ namespace AIHoloImager
 
 
     GpuMemoryBlock::GpuMemoryBlock() noexcept = default;
+    GpuMemoryBlock::~GpuMemoryBlock() = default;
+
     GpuMemoryBlock::GpuMemoryBlock(GpuMemoryBlock&& other) noexcept = default;
     GpuMemoryBlock& GpuMemoryBlock::operator=(GpuMemoryBlock&& other) noexcept = default;
 
@@ -79,6 +81,8 @@ namespace AIHoloImager
     GpuMemoryAllocator::GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept : gpu_system_(&gpu_system), is_upload_(is_upload)
     {
     }
+
+    GpuMemoryAllocator::~GpuMemoryAllocator() = default;
 
     GpuMemoryAllocator::GpuMemoryAllocator(GpuMemoryAllocator&& other) noexcept
         : gpu_system_(std::exchange(other.gpu_system_, {})), is_upload_(other.is_upload_), pages_(std::move(other.pages_)),

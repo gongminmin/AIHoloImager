@@ -20,8 +20,8 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture)
 
     public:
-        GpuTexture();
-        virtual ~GpuTexture() noexcept;
+        GpuTexture() noexcept;
+        ~GpuTexture() override;
 
         GpuTexture(GpuTexture&& other) noexcept;
         GpuTexture& operator=(GpuTexture&& other) noexcept;
@@ -76,10 +76,11 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture2D)
 
     public:
-        GpuTexture2D();
+        GpuTexture2D() noexcept;
         GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags,
             std::wstring_view name = L"");
         GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+        ~GpuTexture2D() override;
 
         GpuTexture2D(GpuTexture2D&& other) noexcept;
         GpuTexture2D& operator=(GpuTexture2D&& other) noexcept;
@@ -90,10 +91,11 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture2DArray)
 
     public:
-        GpuTexture2DArray();
+        GpuTexture2DArray() noexcept;
         GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
             GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
         GpuTexture2DArray(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+        ~GpuTexture2DArray() override;
 
         GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
         GpuTexture2DArray& operator=(GpuTexture2DArray&& other) noexcept;
@@ -104,10 +106,11 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture3D)
 
     public:
-        GpuTexture3D();
+        GpuTexture3D() noexcept;
         GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, GpuFormat format,
             GpuResourceFlag flags, std::wstring_view name = L"");
         GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+        ~GpuTexture3D() override;
 
         GpuTexture3D(GpuTexture3D&& other) noexcept;
         GpuTexture3D& operator=(GpuTexture3D&& other) noexcept;

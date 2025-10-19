@@ -34,7 +34,7 @@ namespace AIHoloImager
     {
     };
 
-    GpuTexture::GpuTexture() = default;
+    GpuTexture::GpuTexture() noexcept = default;
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
@@ -146,7 +146,7 @@ namespace AIHoloImager
     }
 
 
-    GpuTexture2D::GpuTexture2D() = default;
+    GpuTexture2D::GpuTexture2D() noexcept = default;
 
     GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format,
         GpuResourceFlag flags, std::wstring_view name)
@@ -159,11 +159,13 @@ namespace AIHoloImager
     {
     }
 
+    GpuTexture2D::~GpuTexture2D() = default;
+
     GpuTexture2D::GpuTexture2D(GpuTexture2D&& other) noexcept = default;
     GpuTexture2D& GpuTexture2D::operator=(GpuTexture2D&& other) noexcept = default;
 
 
-    GpuTexture2DArray::GpuTexture2DArray() = default;
+    GpuTexture2DArray::GpuTexture2DArray() noexcept = default;
 
     GpuTexture2DArray::GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
         GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
@@ -177,11 +179,13 @@ namespace AIHoloImager
     {
     }
 
+    GpuTexture2DArray::~GpuTexture2DArray() = default;
+
     GpuTexture2DArray::GpuTexture2DArray(GpuTexture2DArray&& other) noexcept = default;
     GpuTexture2DArray& GpuTexture2DArray::operator=(GpuTexture2DArray&& other) noexcept = default;
 
 
-    GpuTexture3D::GpuTexture3D() = default;
+    GpuTexture3D::GpuTexture3D() noexcept = default;
 
     GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels,
         GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
@@ -193,6 +197,8 @@ namespace AIHoloImager
         : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
     {
     }
+
+    GpuTexture3D::~GpuTexture3D() = default;
 
     GpuTexture3D::GpuTexture3D(GpuTexture3D&& other) noexcept = default;
     GpuTexture3D& GpuTexture3D::operator=(GpuTexture3D&& other) noexcept = default;

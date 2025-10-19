@@ -14,6 +14,8 @@ namespace AIHoloImager
     {
     };
 
+    GpuVertexAttribs::GpuVertexAttribs() noexcept = default;
+
     GpuVertexAttribs::GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs)
         : impl_(static_cast<Impl*>(gpu_system.InternalFactory().CreateVertexAttribs(std::move(attribs)).release()))
     {
