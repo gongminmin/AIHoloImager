@@ -7,6 +7,7 @@ stages:
 
     steps:
     - script: |
+        clang-format --version
         find . -iname "*.hpp" -o -iname "*.cpp" | xargs clang-format -i
         git diff --exit-code $(Build.SourceVersion)
       failOnStderr: true

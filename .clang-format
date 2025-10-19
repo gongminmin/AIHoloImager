@@ -27,13 +27,13 @@ BraceWrapping:
     SplitEmptyNamespace: true
 BreakConstructorInitializers: BeforeColon
 ColumnLimit: 140
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
 Cpp11BracedListStyle: true
 IndentPPDirectives: BeforeHash
 IndentWidth: 4
 Language: Cpp
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
+PackConstructorInitializers: BinPack
 PointerAlignment: Left
 SpaceBeforeParens: ControlStatements
 Standard: Cpp11
