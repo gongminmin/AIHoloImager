@@ -7,7 +7,6 @@
 
 #include "Base/ErrorHandling.hpp"
 #include "Base/MiniWindows.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
 #include "D3D12Sampler.hpp"
@@ -44,8 +43,7 @@ namespace AIHoloImager
     D3D12RenderPipeline::D3D12RenderPipeline(GpuSystem& gpu_system, GpuRenderPipeline::PrimitiveTopology topology,
         std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states)
-        : root_sig_(static_cast<D3D12System&>(gpu_system.Internal()), nullptr),
-          pso_(static_cast<D3D12System&>(gpu_system.Internal()), nullptr), topology_(topology)
+        : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr), topology_(topology)
     {
         uint32_t num_desc_ranges = 0;
         for (const auto& shader : shaders)
@@ -137,7 +135,7 @@ namespace AIHoloImager
             }
         }
 
-        const auto input_elems = static_cast<const D3D12VertexAttribs&>(vertex_attribs.Internal()).InputElementDescs();
+        const auto input_elems = D3D12Imp(vertex_attribs).InputElementDescs();
         D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
         if (!input_elems.empty())
         {
@@ -147,7 +145,7 @@ namespace AIHoloImager
         auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
         for (uint32_t i = 0; i < static_samplers.size(); ++i)
         {
-            d3d12_static_samplers[i] = static_cast<const D3D12StaticSampler&>(static_samplers[i].Internal()).SamplerDesc(i);
+            d3d12_static_samplers[i] = D3D12Imp(static_samplers[i]).SamplerDesc(i);
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
@@ -163,7 +161,7 @@ namespace AIHoloImager
             TIFHR(hr);
         }
 
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
+        ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
 
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
@@ -271,7 +269,7 @@ namespace AIHoloImager
 
     void D3D12RenderPipeline::Bind(GpuCommandList& cmd_list) const
     {
-        this->Bind(static_cast<D3D12CommandList&>(cmd_list.Internal()));
+        this->Bind(D3D12Imp(cmd_list));
     }
 
     void D3D12RenderPipeline::Bind(D3D12CommandList& cmd_list) const
@@ -284,11 +282,15 @@ namespace AIHoloImager
         d3d12_cmd_list->SetGraphicsRootSignature(root_sig_.Object().Get());
     }
 
+    const D3D12RenderPipeline& D3D12Imp(const GpuRenderPipeline& pipeline)
+    {
+        return static_cast<const D3D12RenderPipeline&>(pipeline.Internal());
+    }
+
 
     D3D12ComputePipeline::D3D12ComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
-        : root_sig_(static_cast<D3D12System&>(gpu_system.Internal()), nullptr),
-          pso_(static_cast<D3D12System&>(gpu_system.Internal()), nullptr)
+        : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr)
     {
         const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0) + (shader.num_samplers ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
@@ -344,7 +346,7 @@ namespace AIHoloImager
         auto d3d12_static_samplers = std::make_unique<D3D12_STATIC_SAMPLER_DESC[]>(static_samplers.size());
         for (uint32_t i = 0; i < static_samplers.size(); ++i)
         {
-            d3d12_static_samplers[i] = static_cast<const D3D12StaticSampler&>(static_samplers[i].Internal()).SamplerDesc(i);
+            d3d12_static_samplers[i] = D3D12Imp(static_samplers[i]).SamplerDesc(i);
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(),
@@ -360,7 +362,7 @@ namespace AIHoloImager
             TIFHR(hr);
         }
 
-        ID3D12Device* d3d12_device = gpu_system.NativeDevice<D3D12Traits>();
+        ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
 
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
@@ -389,7 +391,7 @@ namespace AIHoloImager
 
     void D3D12ComputePipeline::Bind(GpuCommandList& cmd_list) const
     {
-        this->Bind(static_cast<D3D12CommandList&>(cmd_list.Internal()));
+        this->Bind(D3D12Imp(cmd_list));
     }
 
     void D3D12ComputePipeline::Bind(D3D12CommandList& cmd_list) const
@@ -398,5 +400,10 @@ namespace AIHoloImager
 
         d3d12_cmd_list->SetPipelineState(pso_.Object().Get());
         d3d12_cmd_list->SetComputeRootSignature(root_sig_.Object().Get());
+    }
+
+    const D3D12ComputePipeline& D3D12Imp(const GpuComputePipeline& pipeline)
+    {
+        return static_cast<const D3D12ComputePipeline&>(pipeline.Internal());
     }
 } // namespace AIHoloImager

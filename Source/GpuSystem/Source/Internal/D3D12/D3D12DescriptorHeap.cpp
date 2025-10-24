@@ -5,9 +5,9 @@
 
 #include "Base/ErrorHandling.hpp"
 #include "Base/Uuid.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
+#include "D3D12System.hpp"
 
 namespace AIHoloImager
 {
@@ -15,11 +15,13 @@ namespace AIHoloImager
         GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
         : type_(type)
     {
+        ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
+
         desc_.Type = ToD3D12DescriptorHeapType(type);
         desc_.NumDescriptors = size;
         desc_.Flags = shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         desc_.NodeMask = 0;
-        TIFHR(gpu_system.NativeDevice<D3D12Traits>()->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
+        TIFHR(d3d12_device->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
         this->Name(std::move(name));
     }
 
@@ -42,9 +44,14 @@ namespace AIHoloImager
         heap_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
     }
 
-    void* D3D12DescriptorHeap::NativeDescriptorHeap() const noexcept
+    ID3D12DescriptorHeap* D3D12DescriptorHeap::DescriptorHeap() const noexcept
     {
         return heap_.Get();
+    }
+
+    void* D3D12DescriptorHeap::NativeDescriptorHeap() const noexcept
+    {
+        return this->DescriptorHeap();
     }
 
     GpuDescriptorHeapType D3D12DescriptorHeap::Type() const noexcept
@@ -71,5 +78,10 @@ namespace AIHoloImager
     {
         heap_ = nullptr;
         desc_ = {};
+    }
+
+    const D3D12DescriptorHeap& D3D12Imp(const GpuDescriptorHeap& heap)
+    {
+        return static_cast<const D3D12DescriptorHeap&>(heap.Internal());
     }
 } // namespace AIHoloImager

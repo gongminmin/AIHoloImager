@@ -32,9 +32,13 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept override;
 
-        void* NativeCommandListBase() const noexcept override
+        ID3D12CommandList* CommandListBase() const noexcept
         {
             return cmd_list_.Get();
+        }
+        void* NativeCommandListBase() const noexcept override
+        {
+            return this->CommandListBase();
         }
         template <typename Traits>
         typename Traits::CommandListType NativeCommandListBase() const noexcept
@@ -94,4 +98,6 @@ namespace AIHoloImager
         ComPtr<ID3D12CommandList> cmd_list_;
         bool closed_ = false;
     };
+
+    D3D12CommandList& D3D12Imp(GpuCommandList& cmd_list);
 } // namespace AIHoloImager

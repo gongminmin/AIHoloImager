@@ -7,9 +7,11 @@
 
 #include <directx/d3d12.h>
 
-#include "../GpuSamplerInternal.hpp"
+#include "Base/ComPtr.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuSampler.hpp"
+
+#include "../GpuSamplerInternal.hpp"
 
 namespace AIHoloImager
 {
@@ -33,6 +35,8 @@ namespace AIHoloImager
         D3D12_STATIC_SAMPLER_DESC sampler_{};
     };
 
+    const D3D12StaticSampler& D3D12Imp(const GpuStaticSampler& sampler);
+
     class D3D12DynamicSampler : public GpuDynamicSamplerInternal
     {
     public:
@@ -50,11 +54,13 @@ namespace AIHoloImager
         const D3D12_SAMPLER_DESC& SamplerDesc() const noexcept;
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
+        ID3D12Device* d3d12_device_;
 
         GpuDescriptorBlock desc_block_;
         GpuDescriptorCpuHandle cpu_handle_{};
 
         D3D12_SAMPLER_DESC sampler_{};
     };
+
+    const D3D12DynamicSampler& D3D12Imp(const GpuDynamicSampler& sampler);
 } // namespace AIHoloImager

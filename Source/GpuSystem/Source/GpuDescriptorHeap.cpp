@@ -91,4 +91,10 @@ namespace AIHoloImager
         assert(impl_);
         impl_->Reset();
     }
+
+    const GpuDescriptorHeapInternal& GpuDescriptorHeap::Internal() const noexcept
+    {
+        assert(impl_);
+        return *impl_;
+    }
 } // namespace AIHoloImager

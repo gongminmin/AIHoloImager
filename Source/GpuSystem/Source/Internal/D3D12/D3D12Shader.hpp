@@ -42,10 +42,10 @@ namespace AIHoloImager
         GpuRenderPipeline::PrimitiveTopology topology_{};
     };
 
+    const D3D12RenderPipeline& D3D12Imp(const GpuRenderPipeline& pipeline);
+
     class D3D12ComputePipeline : public GpuComputePipelineInternal
     {
-        DISALLOW_COPY_AND_ASSIGN(D3D12ComputePipeline)
-
     public:
         D3D12ComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers);
         ~D3D12ComputePipeline() override;
@@ -62,4 +62,6 @@ namespace AIHoloImager
         D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
         D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
     };
+
+    const D3D12ComputePipeline& D3D12Imp(const GpuComputePipeline& pipeline);
 } // namespace AIHoloImager

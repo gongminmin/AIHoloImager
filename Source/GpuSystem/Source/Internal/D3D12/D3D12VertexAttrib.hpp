@@ -45,4 +45,6 @@ namespace AIHoloImager
         std::vector<D3D12_INPUT_ELEMENT_DESC> input_elems_;
         std::vector<std::string> semantics_;
     };
+
+    const D3D12VertexAttribs& D3D12Imp(const GpuVertexAttribs& vertex_attribs);
 } // namespace AIHoloImager

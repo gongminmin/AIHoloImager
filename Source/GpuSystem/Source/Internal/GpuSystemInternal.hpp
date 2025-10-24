@@ -37,7 +37,6 @@ namespace AIHoloImager
         virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) = 0;
         virtual uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value) = 0;
         virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value) = 0;
-        virtual uint64_t ExecuteAndReset(GpuCommandListInternal& cmd_list, uint64_t wait_fence_value) = 0;
 
         virtual uint32_t ConstantDataAlignment() const noexcept = 0;
         virtual uint32_t StructuredDataAlignment() const noexcept = 0;

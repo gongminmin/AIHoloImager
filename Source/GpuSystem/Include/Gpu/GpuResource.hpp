@@ -79,6 +79,8 @@ namespace AIHoloImager
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedHandle());
         }
 
+        virtual GpuResourceType Type() const noexcept = 0;
+
         virtual void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
 

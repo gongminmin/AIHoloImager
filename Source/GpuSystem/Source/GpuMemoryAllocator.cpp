@@ -19,17 +19,17 @@ namespace AIHoloImager
 {
     GpuMemoryPage::GpuMemoryPage(GpuSystem& gpu_system, bool is_upload, uint32_t size_in_bytes) : is_upload_(is_upload)
     {
-        buffer_ =
-            GpuBuffer(gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, L"GpuMemoryPage");
-        cpu_addr_ = buffer_.Map();
-        gpu_addr_ = buffer_.GpuVirtualAddress();
+        buffer_ = std::make_unique<GpuBuffer>(
+            gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, L"GpuMemoryPage");
+        cpu_addr_ = buffer_->Map();
+        gpu_addr_ = buffer_->GpuVirtualAddress();
     }
 
     GpuMemoryPage::~GpuMemoryPage() noexcept
     {
         if (buffer_)
         {
-            buffer_.Unmap();
+            buffer_->Unmap();
         }
     }
 
@@ -61,7 +61,7 @@ namespace AIHoloImager
 
     void GpuMemoryBlock::Reset() noexcept
     {
-        native_buffer_ = nullptr;
+        buffer_ = nullptr;
         offset_ = 0;
         size_ = 0;
         cpu_addr_ = nullptr;
@@ -70,7 +70,7 @@ namespace AIHoloImager
 
     void GpuMemoryBlock::Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
     {
-        native_buffer_ = page.Buffer().NativeBuffer();
+        buffer_ = &page.Buffer();
         offset_ = offset;
         size_ = size;
         cpu_addr_ = page.CpuAddress<std::byte>() + offset;
@@ -166,7 +166,7 @@ namespace AIHoloImager
         {
             for (auto& page : pages_)
             {
-                if (page.page.Buffer().NativeBuffer() == mem_block.NativeBuffer())
+                if (&page.page.Buffer() == mem_block.Buffer())
                 {
                     const uint32_t offset = mem_block.Offset() & ~SegmentMask;
                     const uint32_t size = (mem_block.Offset() + mem_block.Size() - offset + SegmentMask) & ~SegmentMask;

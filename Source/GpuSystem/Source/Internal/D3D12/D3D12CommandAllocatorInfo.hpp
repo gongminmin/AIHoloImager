@@ -8,6 +8,7 @@
 #include <directx/d3d12.h>
 
 #include "Base/ComPtr.hpp"
+#include "Gpu/GpuCommandAllocatorInfo.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandAllocatorInfoInternal.hpp"
@@ -25,7 +26,7 @@ namespace AIHoloImager
         D3D12CommandAllocatorInfo& operator=(D3D12CommandAllocatorInfo&& other) noexcept;
         GpuCommandAllocatorInfoInternal& operator=(GpuCommandAllocatorInfoInternal&& other) noexcept override;
 
-        ID3D12CommandAllocator* NativeCmdAllocator() const noexcept;
+        ID3D12CommandAllocator* CmdAllocator() const noexcept;
 
         uint64_t FenceValue() const noexcept;
         void FenceValue(uint64_t value) noexcept;
@@ -34,4 +35,6 @@ namespace AIHoloImager
         ComPtr<ID3D12CommandAllocator> cmd_allocator_;
         uint64_t fence_val_ = 0;
     };
+
+    D3D12CommandAllocatorInfo& D3D12Imp(GpuCommandAllocatorInfo& cmd_alloc_info);
 } // namespace AIHoloImager

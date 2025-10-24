@@ -37,11 +37,11 @@ namespace AIHoloImager
 {
     GpuDescriptorPage::GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size)
     {
-        heap_ = GpuDescriptorHeap(gpu_system, size, type, shader_visible, L"GpuDescriptorPage");
-        cpu_handle_ = heap_.CpuHandleStart();
+        heap_ = std::make_unique<GpuDescriptorHeap>(gpu_system, size, type, shader_visible, L"GpuDescriptorPage");
+        cpu_handle_ = heap_->CpuHandleStart();
         if (shader_visible)
         {
-            gpu_handle_ = heap_.GpuHandleStart();
+            gpu_handle_ = heap_->GpuHandleStart();
         }
         else
         {
@@ -57,30 +57,12 @@ namespace AIHoloImager
     GpuDescriptorBlock::GpuDescriptorBlock() noexcept = default;
     GpuDescriptorBlock::~GpuDescriptorBlock() noexcept = default;
 
-    GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept
-        : native_heap_(std::exchange(other.native_heap_, {})), heap_type_(std::exchange(other.heap_type_, {})),
-          offset_(std::exchange(other.offset_, {})), size_(std::exchange(other.size_, {})),
-          cpu_handle_(std::exchange(other.cpu_handle_, {})), gpu_handle_(std::exchange(other.gpu_handle_, {}))
-    {
-    }
-    GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept
-    {
-        if (this != &other)
-        {
-            native_heap_ = std::exchange(other.native_heap_, {});
-            heap_type_ = std::exchange(other.heap_type_, {});
-            offset_ = std::exchange(other.offset_, {});
-            size_ = std::exchange(other.size_, {});
-            cpu_handle_ = std::exchange(other.cpu_handle_, {});
-            gpu_handle_ = std::exchange(other.gpu_handle_, {});
-        }
-        return *this;
-    }
+    GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept = default;
+    GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept = default;
 
     void GpuDescriptorBlock::Reset() noexcept
     {
-        native_heap_ = nullptr;
-        heap_type_ = {};
+        heap_ = nullptr;
         offset_ = 0;
         size_ = 0;
         cpu_handle_ = {};
@@ -89,12 +71,11 @@ namespace AIHoloImager
 
     void GpuDescriptorBlock::Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept
     {
-        native_heap_ = page.Heap().NativeDescriptorHeap();
-        heap_type_ = page.Heap().Type();
+        heap_ = &page.Heap();
         offset_ = offset;
         size_ = size;
 
-        const uint32_t desc_size = DescriptorSize(heap_type_);
+        const uint32_t desc_size = DescriptorSize(heap_->Type());
         std::tie(cpu_handle_, gpu_handle_) = OffsetHandle(page.CpuHandleStart(), page.GpuHandleStart(), offset, desc_size);
     }
 
@@ -190,7 +171,7 @@ namespace AIHoloImager
         {
             for (auto& page : pages_)
             {
-                if (page.page.Heap().NativeDescriptorHeap() == desc_block.NativeDescriptorHeap())
+                if (&page.page.Heap() == desc_block.Heap())
                 {
                     page.stall_list.push_back(
                         {{static_cast<uint16_t>(desc_block.Offset()), static_cast<uint16_t>(desc_block.Offset() + desc_block.Size())},

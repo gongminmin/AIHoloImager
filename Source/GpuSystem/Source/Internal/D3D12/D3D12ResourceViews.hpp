@@ -46,6 +46,8 @@ namespace AIHoloImager
         GpuDescriptorCpuHandle cpu_handle_{};
     };
 
+    const D3D12ShaderResourceView& D3D12Imp(const GpuShaderResourceView& srv);
+
     class D3D12RenderTargetView : public GpuRenderTargetViewInternal
     {
     public:
@@ -74,6 +76,8 @@ namespace AIHoloImager
         GpuDescriptorCpuHandle cpu_handle_{};
     };
 
+    const D3D12RenderTargetView& D3D12Imp(const GpuRenderTargetView& rtv);
+
     class D3D12DepthStencilView : public GpuDepthStencilViewInternal
     {
     public:
@@ -101,6 +105,8 @@ namespace AIHoloImager
         GpuDescriptorBlock desc_block_;
         GpuDescriptorCpuHandle cpu_handle_{};
     };
+
+    const D3D12DepthStencilView& D3D12Imp(const GpuDepthStencilView& dsv);
 
     class D3D12UnorderedAccessView : public GpuUnorderedAccessViewInternal
     {
@@ -137,4 +143,6 @@ namespace AIHoloImager
         GpuDescriptorBlock desc_block_;
         GpuDescriptorCpuHandle cpu_handle_{};
     };
+
+    const D3D12UnorderedAccessView& D3D12Imp(const GpuUnorderedAccessView& uav);
 } // namespace AIHoloImager

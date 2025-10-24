@@ -7,6 +7,7 @@
 #include "Gpu/GpuCommandList.hpp"
 
 #include "../GpuBufferInternal.hpp"
+#include "D3D12CommandList.hpp"
 #include "D3D12Resource.hpp"
 
 namespace AIHoloImager
@@ -27,10 +28,13 @@ namespace AIHoloImager
 
         void Name(std::wstring_view name) override;
 
+        ID3D12Resource* Resource() const noexcept;
         void* NativeResource() const noexcept override;
         void* NativeBuffer() const noexcept override;
 
-        void* SharedHandle() const noexcept;
+        void* SharedHandle() const noexcept override;
+
+        GpuResourceType Type() const noexcept override;
 
         GpuVirtualAddressType GpuVirtualAddress() const noexcept override;
         uint32_t Size() const noexcept override;
@@ -44,11 +48,13 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-        void Transition(GpuCommandListInternal& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const override;
+        void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         GpuHeap heap_{};
         mutable GpuResourceState curr_state_{};
     };
+
+    const D3D12Buffer& D3D12Imp(const GpuBuffer& buffer);
 } // namespace AIHoloImager

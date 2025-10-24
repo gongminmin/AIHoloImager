@@ -81,6 +81,12 @@ namespace AIHoloImager
         return impl_ ? impl_->SharedHandle() : nullptr;
     }
 
+    GpuResourceType GpuTexture::Type() const noexcept
+    {
+        assert(impl_);
+        return impl_->Type();
+    }
+
     uint32_t GpuTexture::Width(uint32_t mip) const noexcept
     {
         return impl_ ? impl_->Width(mip) : 0;
