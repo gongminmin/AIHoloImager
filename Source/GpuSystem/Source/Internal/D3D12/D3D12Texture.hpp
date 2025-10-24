@@ -7,6 +7,7 @@
 #include "Gpu/GpuTexture.hpp"
 
 #include "../GpuTextureInternal.hpp"
+#include "D3D12CommandList.hpp"
 #include "D3D12Resource.hpp"
 
 namespace AIHoloImager
@@ -33,6 +34,8 @@ namespace AIHoloImager
 
         void* SharedHandle() const noexcept override;
 
+        GpuResourceType Type() const noexcept override;
+
         uint32_t Width(uint32_t mip) const noexcept override;
         uint32_t Height(uint32_t mip) const noexcept override;
         uint32_t Depth(uint32_t mip) const noexcept override;
@@ -46,12 +49,14 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-        void Transition(GpuCommandListInternal& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const override;
+        void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         mutable std::vector<GpuResourceState> curr_states_;
         GpuFormat format_{};
         GpuResourceFlag flags_{};
     };
+
+    const D3D12Texture& D3D12Imp(const GpuTexture& texture);
 } // namespace AIHoloImager

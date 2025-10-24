@@ -119,4 +119,9 @@ namespace AIHoloImager
             input_elems_[i].SemanticName = semantics_[i].c_str();
         }
     }
+
+    const D3D12VertexAttribs& D3D12Imp(const GpuVertexAttribs& vertex_attribs)
+    {
+        return static_cast<const D3D12VertexAttribs&>(vertex_attribs.Internal());
+    }
 } // namespace AIHoloImager

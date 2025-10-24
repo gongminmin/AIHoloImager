@@ -31,6 +31,7 @@ namespace AIHoloImager
 
         void Name(std::wstring_view name) override;
 
+        ID3D12DescriptorHeap* DescriptorHeap() const noexcept;
         void* NativeDescriptorHeap() const noexcept override;
 
         GpuDescriptorHeapType Type() const noexcept override;
@@ -47,4 +48,6 @@ namespace AIHoloImager
         D3D12_DESCRIPTOR_HEAP_DESC desc_{};
         GpuDescriptorHeapType type_{};
     };
+
+    const D3D12DescriptorHeap& D3D12Imp(const GpuDescriptorHeap& heap);
 } // namespace AIHoloImager

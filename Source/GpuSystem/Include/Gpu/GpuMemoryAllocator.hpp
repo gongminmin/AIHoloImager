@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <span>
 #include <vector>
@@ -27,7 +28,7 @@ namespace AIHoloImager
 
         const GpuBuffer& Buffer() const noexcept
         {
-            return buffer_;
+            return *buffer_;
         }
 
         void* CpuAddress() noexcept
@@ -57,7 +58,7 @@ namespace AIHoloImager
 
     private:
         const bool is_upload_;
-        GpuBuffer buffer_;
+        std::unique_ptr<GpuBuffer> buffer_;
         void* cpu_addr_;
         GpuVirtualAddressType gpu_addr_;
     };
@@ -76,19 +77,14 @@ namespace AIHoloImager
         void Reset() noexcept;
         void Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
 
-        void* NativeBuffer() const noexcept
+        const GpuBuffer* Buffer() const noexcept
         {
-            return native_buffer_;
-        }
-        template <typename Traits>
-        typename Traits::BufferType NativeBuffer() const noexcept
-        {
-            return reinterpret_cast<typename Traits::BufferType>(this->NativeBuffer());
+            return buffer_;
         }
 
         explicit operator bool() const noexcept
         {
-            return (native_buffer_ != nullptr);
+            return (buffer_ != nullptr);
         }
 
         uint32_t Offset() const noexcept
@@ -118,7 +114,7 @@ namespace AIHoloImager
         }
 
     private:
-        void* native_buffer_ = nullptr;
+        const GpuBuffer* buffer_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         void* cpu_addr_ = nullptr;

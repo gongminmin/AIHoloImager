@@ -7,8 +7,6 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResource.hpp"
 
-#include "GpuCommandListInternal.hpp"
-
 namespace AIHoloImager
 {
     class GpuResourceInternal
@@ -30,9 +28,9 @@ namespace AIHoloImager
 
         virtual void* SharedHandle() const noexcept = 0;
 
+        virtual GpuResourceType Type() const noexcept = 0;
+
         virtual void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
-        virtual void Transition(GpuCommandListInternal& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
-        virtual void Transition(GpuCommandListInternal& cmd_list, GpuResourceState target_state) const = 0;
     };
 } // namespace AIHoloImager

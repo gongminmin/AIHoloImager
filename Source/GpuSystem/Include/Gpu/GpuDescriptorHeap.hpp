@@ -39,6 +39,8 @@ namespace AIHoloImager
     std::tuple<GpuDescriptorCpuHandle, GpuDescriptorGpuHandle> OffsetHandle(
         const GpuDescriptorCpuHandle& cpu_handle, const GpuDescriptorGpuHandle& gpu_handle, int32_t offset, uint32_t desc_size);
 
+    class GpuDescriptorHeapInternal;
+
     class GpuDescriptorHeap final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuDescriptorHeap)
@@ -71,6 +73,8 @@ namespace AIHoloImager
         uint32_t Size() const noexcept;
 
         void Reset() noexcept;
+
+        const GpuDescriptorHeapInternal& Internal() const noexcept;
 
     private:
         class Impl;

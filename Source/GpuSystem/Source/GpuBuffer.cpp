@@ -61,6 +61,12 @@ namespace AIHoloImager
         return impl_ ? impl_->SharedHandle() : nullptr;
     }
 
+    GpuResourceType GpuBuffer::Type() const noexcept
+    {
+        assert(impl_);
+        return impl_->Type();
+    }
+
     GpuVirtualAddressType GpuBuffer::GpuVirtualAddress() const noexcept
     {
         return impl_ ? impl_->GpuVirtualAddress() : 0;

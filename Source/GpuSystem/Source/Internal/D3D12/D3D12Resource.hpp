@@ -12,6 +12,7 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 
+#include "D3D12CommandList.hpp"
 #include "D3D12Util.hpp"
 
 namespace AIHoloImager
@@ -28,7 +29,7 @@ namespace AIHoloImager
 
         void Name(std::wstring_view name);
 
-        void* NativeResource() const noexcept;
+        ID3D12Resource* Resource() const noexcept;
 
         void Reset();
 
@@ -49,10 +50,15 @@ namespace AIHoloImager
 
         GpuResourceFlag Flags() const noexcept;
 
+        virtual void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
+
     private:
         D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;
         GpuResourceType type_ = GpuResourceType::Buffer;
         D3D12_RESOURCE_DESC desc_{};
         Win32UniqueHandle shared_handle_;
     };
+
+    const D3D12Resource& D3D12Imp(const GpuResource& resource);
 } // namespace AIHoloImager

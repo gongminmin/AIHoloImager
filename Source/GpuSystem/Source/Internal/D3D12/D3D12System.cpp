@@ -12,7 +12,6 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/SmartPtrHelper.hpp"
 #include "Base/Uuid.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
 #include "D3D12/D3D12Conversion.hpp"
@@ -188,14 +187,24 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12System&&>(other));
     }
 
-    void* D3D12System::NativeDevice() const noexcept
+    ID3D12Device* D3D12System::Device() const noexcept
     {
         return device_.Get();
     }
 
-    void* D3D12System::NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept
+    void* D3D12System::NativeDevice() const noexcept
+    {
+        return this->Device();
+    }
+
+    ID3D12CommandQueue* D3D12System::CommandQueue(GpuSystem::CmdQueueType type) const noexcept
     {
         return cmd_queues_[static_cast<uint32_t>(type)].cmd_queue.Get();
+    }
+
+    void* D3D12System::NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept
+    {
+        return this->CommandQueue(type);
     }
 
     void* D3D12System::SharedFenceHandle() const noexcept
@@ -223,17 +232,17 @@ namespace AIHoloImager
 
     uint64_t D3D12System::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
     {
-        const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
+        const uint64_t new_fence_value = this->ExecuteOnly(D3D12Imp(cmd_list), wait_fence_value);
         this->GetOrCreateCommandQueue(cmd_list.Type()).free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
     uint64_t D3D12System::ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value)
     {
-        return this->ExecuteAndReset(static_cast<D3D12CommandList&>(cmd_list.Internal()), wait_fence_value);
+        return this->ExecuteAndReset(D3D12Imp(cmd_list), wait_fence_value);
     }
 
-    uint64_t D3D12System::ExecuteAndReset(GpuCommandListInternal& cmd_list, uint64_t wait_fence_value)
+    uint64_t D3D12System::ExecuteAndReset(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
         cmd_list.Reset(this->CurrentCommandAllocator(cmd_list.Type()));
@@ -382,10 +391,10 @@ namespace AIHoloImager
         const uint64_t completed_fence = fence_->GetCompletedValue();
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
-            auto& d3d12_alloc = static_cast<D3D12CommandAllocatorInfo&>(alloc->Internal());
+            auto& d3d12_alloc = D3D12Imp(*alloc);
             if (d3d12_alloc.FenceValue() <= completed_fence)
             {
-                d3d12_alloc.NativeCmdAllocator()->Reset();
+                d3d12_alloc.CmdAllocator()->Reset();
                 return *alloc;
             }
         }
@@ -393,12 +402,7 @@ namespace AIHoloImager
         return *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*gpu_system_, type));
     }
 
-    uint64_t D3D12System::ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value)
-    {
-        return this->ExecuteOnly(static_cast<GpuCommandListInternal&>(cmd_list.Internal()), wait_fence_value);
-    }
-
-    uint64_t D3D12System::ExecuteOnly(GpuCommandListInternal& cmd_list, uint64_t wait_fence_value)
+    uint64_t D3D12System::ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
     {
         auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
         cmd_list.Close();
@@ -410,14 +414,14 @@ namespace AIHoloImager
             cmd_queue->Wait(fence_.Get(), wait_fence_value);
         }
 
-        ID3D12CommandList* cmd_lists[] = {static_cast<D3D12CommandList&>(cmd_list).NativeCommandListBase<D3D12Traits>()};
+        ID3D12CommandList* cmd_lists[] = {cmd_list.CommandListBase()};
         cmd_queue->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
 
         const uint64_t curr_fence_value = fence_val_;
         TIFHR(cmd_queue->Signal(fence_.Get(), curr_fence_value));
         fence_val_ = curr_fence_value + 1;
 
-        static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal()).FenceValue(fence_val_);
+        D3D12Imp(cmd_alloc_info).FenceValue(fence_val_);
 
         this->ClearStallResources();
 
@@ -573,5 +577,10 @@ namespace AIHoloImager
         GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const
     {
         return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_alloc_info, type);
+    }
+
+    D3D12System& D3D12Imp(GpuSystem& gpu_system)
+    {
+        return static_cast<D3D12System&>(gpu_system.Internal());
     }
 } // namespace AIHoloImager

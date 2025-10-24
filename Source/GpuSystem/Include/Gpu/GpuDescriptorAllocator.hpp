@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -18,7 +19,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuDescriptorPage)
 
     public:
-        explicit GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size);
+        GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size);
         ~GpuDescriptorPage() noexcept;
 
         GpuDescriptorPage(GpuDescriptorPage&& other) noexcept;
@@ -26,7 +27,7 @@ namespace AIHoloImager
 
         const GpuDescriptorHeap& Heap() const noexcept
         {
-            return heap_;
+            return *heap_;
         }
 
         GpuDescriptorCpuHandle CpuHandleStart() const noexcept
@@ -40,7 +41,7 @@ namespace AIHoloImager
         }
 
     private:
-        GpuDescriptorHeap heap_;
+        std::unique_ptr<GpuDescriptorHeap> heap_;
         GpuDescriptorCpuHandle cpu_handle_;
         GpuDescriptorGpuHandle gpu_handle_;
     };
@@ -59,19 +60,14 @@ namespace AIHoloImager
         void Reset() noexcept;
         void Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept;
 
-        void* NativeDescriptorHeap() const noexcept
+        const GpuDescriptorHeap* Heap() const noexcept
         {
-            return native_heap_;
-        }
-        template <typename Traits>
-        typename Traits::DescriptorHeapType NativeDescriptorHeap() const noexcept
-        {
-            return reinterpret_cast<typename Traits::DescriptorHeapType>(this->NativeDescriptorHeap());
+            return heap_;
         }
 
         explicit operator bool() const noexcept
         {
-            return (native_heap_ != nullptr);
+            return (heap_ != nullptr);
         }
 
         uint32_t Offset() const noexcept
@@ -95,8 +91,7 @@ namespace AIHoloImager
         }
 
     private:
-        void* native_heap_ = nullptr;
-        GpuDescriptorHeapType heap_type_{};
+        const GpuDescriptorHeap* heap_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         GpuDescriptorCpuHandle cpu_handle_{};

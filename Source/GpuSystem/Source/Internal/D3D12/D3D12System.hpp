@@ -15,6 +15,7 @@
 
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
+#include "D3D12CommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -30,12 +31,14 @@ namespace AIHoloImager
         D3D12System& operator=(D3D12System&& other) noexcept;
         GpuSystemInternal& operator=(GpuSystemInternal&& other) noexcept override;
 
+        ID3D12Device* Device() const noexcept;
         void* NativeDevice() const noexcept override;
         template <typename Traits>
         typename Traits::DeviceType NativeDevice() const noexcept
         {
             return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
         }
+        ID3D12CommandQueue* CommandQueue(GpuSystem::CmdQueueType type) const noexcept;
         void* NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept override;
         template <typename Traits>
         typename Traits::CommandQueueType NativeCommandQueue() const noexcept
@@ -48,7 +51,7 @@ namespace AIHoloImager
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) override;
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value) override;
         uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value) override;
-        uint64_t ExecuteAndReset(GpuCommandListInternal& cmd_list, uint64_t wait_fence_value);
+        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
 
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
@@ -136,8 +139,7 @@ namespace AIHoloImager
     private:
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
         GpuCommandAllocatorInfo& CurrentCommandAllocator(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(GpuCommandList& cmd_list, uint64_t wait_fence_value);
-        uint64_t ExecuteOnly(GpuCommandListInternal& cmd_list, uint64_t wait_fence_value);
+        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
 
     private:
         GpuSystem* gpu_system_ = nullptr;
@@ -155,4 +157,6 @@ namespace AIHoloImager
 
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
     };
+
+    D3D12System& D3D12Imp(GpuSystem& gpu_system);
 } // namespace AIHoloImager

@@ -54,6 +54,8 @@ namespace AIHoloImager
 
         void* SharedHandle() const noexcept override;
 
+        GpuResourceType Type() const noexcept override;
+
         GpuVirtualAddressType GpuVirtualAddress() const noexcept;
         uint32_t Size() const noexcept;
 
