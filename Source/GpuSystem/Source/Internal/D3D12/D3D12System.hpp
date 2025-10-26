@@ -158,5 +158,5 @@ namespace AIHoloImager
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
     };
 
-    D3D12System& D3D12Imp(GpuSystem& gpu_system);
+    D3D12_DEFINE_IMP(System)
 } // namespace AIHoloImager

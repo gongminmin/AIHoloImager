@@ -12,6 +12,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandAllocatorInfoInternal.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -36,5 +37,5 @@ namespace AIHoloImager
         uint64_t fence_val_ = 0;
     };
 
-    D3D12CommandAllocatorInfo& D3D12Imp(GpuCommandAllocatorInfo& cmd_alloc_info);
+    D3D12_DEFINE_IMP(CommandAllocatorInfo)
 } // namespace AIHoloImager

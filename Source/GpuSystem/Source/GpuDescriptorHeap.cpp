@@ -9,6 +9,7 @@
 
 #include "Internal/GpuDescriptorHeapInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
@@ -30,9 +31,8 @@ namespace AIHoloImager
     }
 
 
-    class GpuDescriptorHeap::Impl : public GpuDescriptorHeapInternal
-    {
-    };
+    EMPTY_IMP(GpuDescriptorHeap)
+    IMP_INTERNAL(GpuDescriptorHeap)
 
     GpuDescriptorHeap::GpuDescriptorHeap() noexcept = default;
     GpuDescriptorHeap::GpuDescriptorHeap(
@@ -90,11 +90,5 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Reset();
-    }
-
-    const GpuDescriptorHeapInternal& GpuDescriptorHeap::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
     }
 } // namespace AIHoloImager

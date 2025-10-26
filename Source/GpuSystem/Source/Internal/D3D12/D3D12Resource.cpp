@@ -192,15 +192,20 @@ namespace AIHoloImager
         return FromD3D12ResourceFlags(desc_.Flags);
     }
 
-    const D3D12Resource& D3D12Imp(const GpuResource& resource)
+    D3D12Resource& D3D12Imp(GpuResource& resource)
     {
         if (resource.Type() == GpuResourceType::Buffer)
         {
-            return static_cast<const D3D12Buffer&>(resource.Internal());
+            return static_cast<D3D12Buffer&>(resource.Internal());
         }
         else
         {
-            return static_cast<const D3D12Texture&>(resource.Internal());
+            return static_cast<D3D12Texture&>(resource.Internal());
         }
+    }
+
+    const D3D12Resource& D3D12Imp(const GpuResource& resource)
+    {
+        return D3D12Imp(const_cast<GpuResource&>(resource));
     }
 } // namespace AIHoloImager

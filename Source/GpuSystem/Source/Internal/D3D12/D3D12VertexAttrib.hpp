@@ -13,6 +13,7 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 
 #include "../GpuVertexAttribInternal.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -46,5 +47,5 @@ namespace AIHoloImager
         std::vector<std::string> semantics_;
     };
 
-    const D3D12VertexAttribs& D3D12Imp(const GpuVertexAttribs& vertex_attribs);
+    D3D12_DEFINE_IMP(VertexAttribs)
 } // namespace AIHoloImager

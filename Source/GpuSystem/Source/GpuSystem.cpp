@@ -477,4 +477,9 @@ namespace AIHoloImager
         assert(impl_);
         return impl_->Internal();
     }
+
+    const GpuSystemInternal& GpuSystem::Internal() const noexcept
+    {
+        return const_cast<GpuSystem&>(*this).Internal();
+    }
 } // namespace AIHoloImager

@@ -10,12 +10,12 @@
 
 #include "Internal/GpuBufferInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuBuffer::Impl : public GpuBufferInternal
-    {
-    };
+    EMPTY_IMP(GpuBuffer)
+    IMP_INTERNAL2(GpuBuffer, GpuResource)
 
     GpuBuffer::GpuBuffer() noexcept = default;
 
@@ -131,11 +131,5 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Transition(cmd_list, target_state);
-    }
-
-    const GpuResourceInternal& GpuBuffer::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
     }
 } // namespace AIHoloImager

@@ -7,6 +7,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -15,6 +16,7 @@ namespace AIHoloImager
     class GpuCommandAllocatorInfo
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandAllocatorInfo)
+        DEFINE_INTERNAL(GpuCommandAllocatorInfo)
 
     public:
         GpuCommandAllocatorInfo() noexcept;
@@ -23,8 +25,6 @@ namespace AIHoloImager
 
         GpuCommandAllocatorInfo(GpuCommandAllocatorInfo&& other) noexcept;
         GpuCommandAllocatorInfo& operator=(GpuCommandAllocatorInfo&& other) noexcept;
-
-        GpuCommandAllocatorInfoInternal& Internal() noexcept;
 
     private:
         class Impl;

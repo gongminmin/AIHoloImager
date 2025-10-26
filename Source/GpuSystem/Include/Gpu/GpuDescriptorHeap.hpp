@@ -8,6 +8,7 @@
 #include <tuple>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -44,6 +45,7 @@ namespace AIHoloImager
     class GpuDescriptorHeap final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuDescriptorHeap)
+        DEFINE_INTERNAL(GpuDescriptorHeap)
 
     public:
         GpuDescriptorHeap() noexcept;
@@ -73,8 +75,6 @@ namespace AIHoloImager
         uint32_t Size() const noexcept;
 
         void Reset() noexcept;
-
-        const GpuDescriptorHeapInternal& Internal() const noexcept;
 
     private:
         class Impl;

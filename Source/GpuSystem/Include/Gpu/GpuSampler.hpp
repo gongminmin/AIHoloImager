@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -75,6 +76,7 @@ namespace AIHoloImager
     class GpuStaticSampler final : public GpuSampler
     {
         DISALLOW_COPY_AND_ASSIGN(GpuStaticSampler)
+        DEFINE_INTERNAL(GpuStaticSampler)
 
     public:
         GpuStaticSampler() noexcept;
@@ -84,8 +86,6 @@ namespace AIHoloImager
 
         GpuStaticSampler(GpuStaticSampler&& other) noexcept;
         GpuStaticSampler& operator=(GpuStaticSampler&& other) noexcept;
-
-        const GpuStaticSamplerInternal& Internal() const noexcept;
 
     private:
         class Impl;
@@ -97,6 +97,7 @@ namespace AIHoloImager
     class GpuDynamicSampler final : public GpuSampler
     {
         DISALLOW_COPY_AND_ASSIGN(GpuDynamicSampler)
+        DEFINE_INTERNAL(GpuDynamicSampler)
 
     public:
         GpuDynamicSampler() noexcept;
@@ -106,8 +107,6 @@ namespace AIHoloImager
 
         GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
         GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
-
-        const GpuDynamicSamplerInternal& Internal() const noexcept;
 
     private:
         class Impl;

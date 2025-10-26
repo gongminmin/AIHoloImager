@@ -15,6 +15,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -51,6 +52,7 @@ namespace AIHoloImager
     class GpuCommandList
     {
         DISALLOW_COPY_AND_ASSIGN(GpuCommandList)
+        DEFINE_INTERNAL(GpuCommandList)
 
     public:
         struct VertexBufferBinding
@@ -130,8 +132,6 @@ namespace AIHoloImager
         void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
 
         GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept;
-
-        GpuCommandListInternal& Internal() noexcept;
 
     private:
         class Impl;

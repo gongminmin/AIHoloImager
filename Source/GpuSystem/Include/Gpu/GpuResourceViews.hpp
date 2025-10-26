@@ -10,6 +10,7 @@
 #include "Gpu/GpuDescriptorHeap.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -25,6 +26,7 @@ namespace AIHoloImager
     class GpuShaderResourceView final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuShaderResourceView)
+        DEFINE_INTERNAL(GpuShaderResourceView)
 
     public:
         GpuShaderResourceView() noexcept;
@@ -60,8 +62,6 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
-        const GpuShaderResourceViewInternal& Internal() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -72,6 +72,7 @@ namespace AIHoloImager
     class GpuRenderTargetView final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuRenderTargetView)
+        DEFINE_INTERNAL(GpuRenderTargetView)
 
     public:
         GpuRenderTargetView() noexcept;
@@ -91,8 +92,6 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
-        const GpuRenderTargetViewInternal& Internal() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -103,6 +102,7 @@ namespace AIHoloImager
     class GpuDepthStencilView final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuDepthStencilView)
+        DEFINE_INTERNAL(GpuDepthStencilView)
 
     public:
         GpuDepthStencilView() noexcept;
@@ -122,8 +122,6 @@ namespace AIHoloImager
         void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
         GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
-        const GpuDepthStencilViewInternal& Internal() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -134,6 +132,7 @@ namespace AIHoloImager
     class GpuUnorderedAccessView final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuUnorderedAccessView)
+        DEFINE_INTERNAL(GpuUnorderedAccessView)
 
     public:
         GpuUnorderedAccessView() noexcept;
@@ -170,8 +169,6 @@ namespace AIHoloImager
 
         GpuResource* Resource() noexcept;
         const GpuResource* Resource() const noexcept;
-
-        const GpuUnorderedAccessViewInternal& Internal() const noexcept;
 
     private:
         class Impl;

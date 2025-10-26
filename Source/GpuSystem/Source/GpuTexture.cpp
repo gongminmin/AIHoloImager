@@ -11,6 +11,7 @@
 
 #include "Internal/GpuSystemInternal.hpp"
 #include "Internal/GpuTextureInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
@@ -30,9 +31,8 @@ namespace AIHoloImager
     }
 
 
-    class GpuTexture::Impl : public GpuTextureInternal
-    {
-    };
+    EMPTY_IMP(GpuTexture)
+    IMP_INTERNAL2(GpuTexture, GpuResource)
 
     GpuTexture::GpuTexture() noexcept = default;
 
@@ -143,12 +143,6 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Transition(cmd_list, target_state);
-    }
-
-    const GpuResourceInternal& GpuTexture::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
     }
 
 

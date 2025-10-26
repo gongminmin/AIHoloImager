@@ -9,12 +9,12 @@
 
 #include "Internal/GpuShaderInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuRenderPipeline::Impl : public GpuRenderPipelineInternal
-    {
-    };
+    EMPTY_IMP(GpuRenderPipeline)
+    IMP_INTERNAL(GpuRenderPipeline)
 
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
@@ -38,16 +38,9 @@ namespace AIHoloImager
         impl_->Bind(cmd_list);
     }
 
-    const GpuRenderPipelineInternal& GpuRenderPipeline::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
-    }
 
-
-    class GpuComputePipeline::Impl : public GpuComputePipelineInternal
-    {
-    };
+    EMPTY_IMP(GpuComputePipeline)
+    IMP_INTERNAL(GpuComputePipeline)
 
     GpuComputePipeline::GpuComputePipeline() noexcept = default;
     GpuComputePipeline::GpuComputePipeline(
@@ -66,11 +59,5 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Bind(cmd_list);
-    }
-
-    const GpuComputePipelineInternal& GpuComputePipeline::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
     }
 } // namespace AIHoloImager

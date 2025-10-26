@@ -12,6 +12,7 @@
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuVertexAttrib.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -29,6 +30,7 @@ namespace AIHoloImager
     class GpuRenderPipeline
     {
         DISALLOW_COPY_AND_ASSIGN(GpuRenderPipeline)
+        DEFINE_INTERNAL(GpuRenderPipeline)
 
     public:
         enum class ShaderStage
@@ -76,8 +78,6 @@ namespace AIHoloImager
 
         void Bind(GpuCommandList& cmd_list) const;
 
-        const GpuRenderPipelineInternal& Internal() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -88,6 +88,7 @@ namespace AIHoloImager
     class GpuComputePipeline
     {
         DISALLOW_COPY_AND_ASSIGN(GpuComputePipeline)
+        DEFINE_INTERNAL(GpuComputePipeline)
 
     public:
         GpuComputePipeline() noexcept;
@@ -98,8 +99,6 @@ namespace AIHoloImager
         GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
 
         void Bind(GpuCommandList& cmd_list) const;
-
-        const GpuComputePipelineInternal& Internal() const noexcept;
 
     private:
         class Impl;

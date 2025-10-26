@@ -9,6 +9,8 @@
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(CommandAllocatorInfo)
+
     D3D12CommandAllocatorInfo::D3D12CommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type)
     {
         D3D12_COMMAND_LIST_TYPE d3d12_type;
@@ -59,10 +61,5 @@ namespace AIHoloImager
     void D3D12CommandAllocatorInfo::FenceValue(uint64_t value) noexcept
     {
         fence_val_ = value;
-    }
-
-    D3D12CommandAllocatorInfo& D3D12Imp(GpuCommandAllocatorInfo& cmd_alloc_info)
-    {
-        return static_cast<D3D12CommandAllocatorInfo&>(cmd_alloc_info.Internal());
     }
 } // namespace AIHoloImager

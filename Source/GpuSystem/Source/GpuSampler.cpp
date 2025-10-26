@@ -7,6 +7,7 @@
 
 #include "Internal/GpuSamplerInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
@@ -44,9 +45,8 @@ namespace AIHoloImager
     GpuSampler::~GpuSampler() noexcept = default;
 
 
-    class GpuStaticSampler::Impl : public GpuStaticSamplerInternal
-    {
-    };
+    EMPTY_IMP(GpuStaticSampler)
+    IMP_INTERNAL(GpuStaticSampler)
 
     GpuStaticSampler::GpuStaticSampler() noexcept = default;
     GpuStaticSampler::GpuStaticSampler(GpuSystem& gpu_system)
@@ -67,15 +67,9 @@ namespace AIHoloImager
     GpuStaticSampler::GpuStaticSampler(GpuStaticSampler&& other) noexcept = default;
     GpuStaticSampler& GpuStaticSampler::operator=(GpuStaticSampler&& other) noexcept = default;
 
-    const GpuStaticSamplerInternal& GpuStaticSampler::Internal() const noexcept
-    {
-        return *impl_;
-    }
 
-
-    class GpuDynamicSampler::Impl : public GpuDynamicSamplerInternal
-    {
-    };
+    EMPTY_IMP(GpuDynamicSampler)
+    IMP_INTERNAL(GpuDynamicSampler)
 
     GpuDynamicSampler::GpuDynamicSampler() noexcept = default;
     GpuDynamicSampler::GpuDynamicSampler(GpuSystem& gpu_system)
@@ -94,9 +88,4 @@ namespace AIHoloImager
 
     GpuDynamicSampler::GpuDynamicSampler(GpuDynamicSampler&& other) noexcept = default;
     GpuDynamicSampler& GpuDynamicSampler::operator=(GpuDynamicSampler&& other) noexcept = default;
-
-    const GpuDynamicSamplerInternal& GpuDynamicSampler::Internal() const noexcept
-    {
-        return *impl_;
-    }
 } // namespace AIHoloImager

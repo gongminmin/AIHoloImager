@@ -13,6 +13,7 @@
 #include "Gpu/GpuDescriptorHeap.hpp"
 
 #include "../GpuDescriptorHeapInternal.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -49,5 +50,5 @@ namespace AIHoloImager
         GpuDescriptorHeapType type_{};
     };
 
-    const D3D12DescriptorHeap& D3D12Imp(const GpuDescriptorHeap& heap);
+    D3D12_DEFINE_IMP(DescriptorHeap)
 } // namespace AIHoloImager

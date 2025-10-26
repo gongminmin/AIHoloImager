@@ -19,6 +19,7 @@
 #include "D3D12CommandAllocatorInfo.hpp"
 #include "D3D12CommandList.hpp"
 #include "D3D12DescriptorHeap.hpp"
+#include "D3D12ImpDefine.hpp"
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Shader.hpp"
@@ -43,6 +44,8 @@ DEFINE_UUID_OF(ID3D12RootSignature);
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(System)
+
     D3D12System::D3D12System(
         GpuSystem& gpu_system, std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug)
         : gpu_system_(&gpu_system)
@@ -577,10 +580,5 @@ namespace AIHoloImager
         GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const
     {
         return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_alloc_info, type);
-    }
-
-    D3D12System& D3D12Imp(GpuSystem& gpu_system)
-    {
-        return static_cast<D3D12System&>(gpu_system.Internal());
     }
 } // namespace AIHoloImager

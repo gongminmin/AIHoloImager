@@ -14,6 +14,8 @@
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(ShaderResourceView)
+
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
@@ -197,11 +199,8 @@ namespace AIHoloImager
         return cpu_handle_;
     }
 
-    const D3D12ShaderResourceView& D3D12Imp(const GpuShaderResourceView& srv)
-    {
-        return static_cast<const D3D12ShaderResourceView&>(srv.Internal());
-    }
 
+    D3D12_IMP_IMP(RenderTargetView)
 
     D3D12RenderTargetView::D3D12RenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
@@ -270,11 +269,8 @@ namespace AIHoloImager
         return cpu_handle_;
     }
 
-    const D3D12RenderTargetView& D3D12Imp(const GpuRenderTargetView& rtv)
-    {
-        return static_cast<const D3D12RenderTargetView&>(rtv.Internal());
-    }
 
+    D3D12_IMP_IMP(DepthStencilView)
 
     D3D12DepthStencilView::D3D12DepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
@@ -343,11 +339,8 @@ namespace AIHoloImager
         return cpu_handle_;
     }
 
-    const D3D12DepthStencilView& D3D12Imp(const GpuDepthStencilView& dsv)
-    {
-        return static_cast<const D3D12DepthStencilView&>(dsv.Internal());
-    }
 
+    D3D12_IMP_IMP(UnorderedAccessView)
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
@@ -495,10 +488,5 @@ namespace AIHoloImager
     GpuResource* D3D12UnorderedAccessView::Resource() noexcept
     {
         return resource_;
-    }
-
-    const D3D12UnorderedAccessView& D3D12Imp(const GpuUnorderedAccessView& uav)
-    {
-        return static_cast<const D3D12UnorderedAccessView&>(uav.Internal());
     }
 } // namespace AIHoloImager

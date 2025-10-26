@@ -8,6 +8,7 @@
 
 #include "../GpuTextureInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12ImpDefine.hpp"
 #include "D3D12Resource.hpp"
 
 namespace AIHoloImager
@@ -58,5 +59,5 @@ namespace AIHoloImager
         GpuResourceFlag flags_{};
     };
 
-    const D3D12Texture& D3D12Imp(const GpuTexture& texture);
+    D3D12_DEFINE_IMP(Texture)
 } // namespace AIHoloImager

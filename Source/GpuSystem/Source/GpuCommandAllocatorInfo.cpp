@@ -3,16 +3,14 @@
 
 #include "Gpu/GpuCommandAllocatorInfo.hpp"
 
-#include <cassert>
-
 #include "Internal/GpuCommandAllocatorInfoInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuCommandAllocatorInfo::Impl : public GpuCommandAllocatorInfoInternal
-    {
-    };
+    EMPTY_IMP(GpuCommandAllocatorInfo)
+    IMP_INTERNAL(GpuCommandAllocatorInfo)
 
     GpuCommandAllocatorInfo::GpuCommandAllocatorInfo() noexcept = default;
 
@@ -26,10 +24,4 @@ namespace AIHoloImager
 
     GpuCommandAllocatorInfo::GpuCommandAllocatorInfo(GpuCommandAllocatorInfo&& other) noexcept = default;
     GpuCommandAllocatorInfo& GpuCommandAllocatorInfo::operator=(GpuCommandAllocatorInfo&& other) noexcept = default;
-
-    GpuCommandAllocatorInfoInternal& GpuCommandAllocatorInfo::Internal() noexcept
-    {
-        assert(impl_);
-        return *impl_;
-    }
 } // namespace AIHoloImager

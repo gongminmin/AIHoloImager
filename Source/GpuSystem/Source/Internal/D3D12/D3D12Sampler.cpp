@@ -118,6 +118,9 @@ namespace AIHoloImager
         sampler.MaxLOD = D3D12_FLOAT32_MAX;
     }
 
+
+    D3D12_IMP_IMP(StaticSampler)
+
     D3D12StaticSampler::D3D12StaticSampler(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
     {
         FillSamplerDesc(sampler_, filters, addr_modes);
@@ -144,11 +147,8 @@ namespace AIHoloImager
         return ret;
     }
 
-    const D3D12StaticSampler& D3D12Imp(const GpuStaticSampler& sampler)
-    {
-        return static_cast<const D3D12StaticSampler&>(sampler.Internal());
-    }
 
+    D3D12_IMP_IMP(DynamicSampler)
 
     D3D12DynamicSampler::D3D12DynamicSampler(
         GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
@@ -184,10 +184,5 @@ namespace AIHoloImager
     const D3D12_SAMPLER_DESC& D3D12DynamicSampler::SamplerDesc() const noexcept
     {
         return sampler_;
-    }
-
-    const D3D12DynamicSampler& D3D12Imp(const GpuDynamicSampler& sampler)
-    {
-        return static_cast<const D3D12DynamicSampler&>(sampler.Internal());
     }
 } // namespace AIHoloImager

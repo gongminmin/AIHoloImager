@@ -8,6 +8,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -25,6 +26,7 @@ namespace AIHoloImager
     class GpuBuffer : public GpuResource
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBuffer)
+        DEFINE_INTERNAL(GpuResource)
 
     public:
         GpuBuffer() noexcept;
@@ -92,8 +94,6 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-
-        const GpuResourceInternal& Internal() const noexcept override;
 
     private:
         class Impl;

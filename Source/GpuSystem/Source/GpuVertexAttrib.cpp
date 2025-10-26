@@ -7,12 +7,12 @@
 
 #include "Internal/GpuSystemInternal.hpp"
 #include "Internal/GpuVertexAttribInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuVertexAttribs::Impl : public GpuVertexAttribsInternal
-    {
-    };
+    EMPTY_IMP(GpuVertexAttribs)
+    IMP_INTERNAL(GpuVertexAttribs)
 
     GpuVertexAttribs::GpuVertexAttribs() noexcept = default;
 
@@ -55,10 +55,5 @@ namespace AIHoloImager
             impl_ = std::move(other.impl_);
         }
         return *this;
-    }
-
-    const GpuVertexAttribsInternal& GpuVertexAttribs::Internal() const noexcept
-    {
-        return *impl_;
     }
 } // namespace AIHoloImager

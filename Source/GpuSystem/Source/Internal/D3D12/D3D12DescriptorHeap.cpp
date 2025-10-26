@@ -11,6 +11,8 @@
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(DescriptorHeap)
+
     D3D12DescriptorHeap::D3D12DescriptorHeap(
         GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
         : type_(type)
@@ -78,10 +80,5 @@ namespace AIHoloImager
     {
         heap_ = nullptr;
         desc_ = {};
-    }
-
-    const D3D12DescriptorHeap& D3D12Imp(const GpuDescriptorHeap& heap)
-    {
-        return static_cast<const D3D12DescriptorHeap&>(heap.Internal());
     }
 } // namespace AIHoloImager

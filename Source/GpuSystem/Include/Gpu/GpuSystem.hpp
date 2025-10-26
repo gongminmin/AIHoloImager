@@ -19,6 +19,7 @@ namespace AIHoloImager
     class GpuSystem final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuSystem)
+        DEFINE_INTERNAL(GpuSystem)
 
     public:
         static constexpr uint64_t MaxFenceValue = ~0ull;
@@ -106,8 +107,6 @@ namespace AIHoloImager
         void HandleDeviceLost();
 
         GpuMipmapper& Mipmapper() noexcept;
-
-        GpuSystemInternal& Internal() noexcept;
 
     private:
         class Impl;

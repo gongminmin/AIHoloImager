@@ -9,6 +9,7 @@
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -18,6 +19,7 @@ namespace AIHoloImager
     class GpuTexture : public GpuResource
     {
         DISALLOW_COPY_AND_ASSIGN(GpuTexture)
+        DEFINE_INTERNAL(GpuResource)
 
     public:
         GpuTexture() noexcept;
@@ -60,8 +62,6 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-
-        const GpuResourceInternal& Internal() const noexcept override;
 
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,

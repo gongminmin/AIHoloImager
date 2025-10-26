@@ -261,6 +261,10 @@ namespace AIHoloImager
         assert(impl_);
         return impl_->Internal();
     }
+    const GpuCommandListInternal& GpuCommandList::Internal() const noexcept
+    {
+        return const_cast<GpuCommandList&>(*this).Internal();
+    }
 
     void GpuCommandList::GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter)
     {

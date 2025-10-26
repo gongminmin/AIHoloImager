@@ -14,6 +14,8 @@
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(Texture)
+
     D3D12Texture::D3D12Texture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
         : D3D12Resource(gpu_system), format_(format), flags_(flags)
@@ -231,10 +233,5 @@ namespace AIHoloImager
         }
 
         curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
-    }
-
-    const D3D12Texture& D3D12Imp(const GpuTexture& texture)
-    {
-        return static_cast<const D3D12Texture&>(texture.Internal());
     }
 } // namespace AIHoloImager

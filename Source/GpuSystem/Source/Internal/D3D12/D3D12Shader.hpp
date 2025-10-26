@@ -16,6 +16,7 @@
 
 #include "../GpuShaderInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12ImpDefine.hpp"
 #include "D3D12Util.hpp"
 
 namespace AIHoloImager
@@ -42,7 +43,7 @@ namespace AIHoloImager
         GpuRenderPipeline::PrimitiveTopology topology_{};
     };
 
-    const D3D12RenderPipeline& D3D12Imp(const GpuRenderPipeline& pipeline);
+    D3D12_DEFINE_IMP(RenderPipeline)
 
     class D3D12ComputePipeline : public GpuComputePipelineInternal
     {
@@ -63,5 +64,5 @@ namespace AIHoloImager
         D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
     };
 
-    const D3D12ComputePipeline& D3D12Imp(const GpuComputePipeline& pipeline);
+    D3D12_DEFINE_IMP(ComputePipeline)
 } // namespace AIHoloImager

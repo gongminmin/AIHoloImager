@@ -17,6 +17,8 @@ namespace AIHoloImager
         return D3D12_RANGE{range.begin, range.end};
     }
 
+    D3D12_IMP_IMP(Buffer)
+
     D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
         : D3D12Resource(gpu_system), heap_(heap),
           curr_state_(heap == GpuHeap::ReadBack ? GpuResourceState::CopyDst : GpuResourceState::Common)
@@ -167,10 +169,5 @@ namespace AIHoloImager
         }
 
         curr_state_ = target_state;
-    }
-
-    const D3D12Buffer& D3D12Imp(const GpuBuffer& buffer)
-    {
-        return static_cast<const D3D12Buffer&>(buffer.Internal());
     }
 } // namespace AIHoloImager

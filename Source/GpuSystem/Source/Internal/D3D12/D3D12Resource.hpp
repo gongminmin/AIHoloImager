@@ -13,6 +13,7 @@
 #include "Gpu/GpuResource.hpp"
 
 #include "D3D12CommandList.hpp"
+#include "D3D12ImpDefine.hpp"
 #include "D3D12Util.hpp"
 
 namespace AIHoloImager
@@ -60,5 +61,5 @@ namespace AIHoloImager
         Win32UniqueHandle shared_handle_;
     };
 
-    const D3D12Resource& D3D12Imp(const GpuResource& resource);
+    D3D12_DEFINE_IMP(Resource)
 } // namespace AIHoloImager

@@ -40,6 +40,8 @@ namespace
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(RenderPipeline)
+
     D3D12RenderPipeline::D3D12RenderPipeline(GpuSystem& gpu_system, GpuRenderPipeline::PrimitiveTopology topology,
         std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states)
@@ -282,11 +284,8 @@ namespace AIHoloImager
         d3d12_cmd_list->SetGraphicsRootSignature(root_sig_.Object().Get());
     }
 
-    const D3D12RenderPipeline& D3D12Imp(const GpuRenderPipeline& pipeline)
-    {
-        return static_cast<const D3D12RenderPipeline&>(pipeline.Internal());
-    }
 
+    D3D12_IMP_IMP(ComputePipeline)
 
     D3D12ComputePipeline::D3D12ComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
@@ -400,10 +399,5 @@ namespace AIHoloImager
 
         d3d12_cmd_list->SetPipelineState(pso_.Object().Get());
         d3d12_cmd_list->SetComputeRootSignature(root_sig_.Object().Get());
-    }
-
-    const D3D12ComputePipeline& D3D12Imp(const GpuComputePipeline& pipeline)
-    {
-        return static_cast<const D3D12ComputePipeline&>(pipeline.Internal());
     }
 } // namespace AIHoloImager

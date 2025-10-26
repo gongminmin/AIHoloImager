@@ -19,6 +19,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuSystem.hpp
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuVertexAttrib.hpp
+    Include/Gpu/InternalDefine.hpp
     Source/D3D12/D3D12Conversion.cpp
     Source/D3D12/D3D12Conversion.hpp
     Source/Internal/D3D12/D3D12Buffer.cpp
@@ -29,6 +30,7 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12CommandList.hpp
     Source/Internal/D3D12/D3D12DescriptorHeap.cpp
     Source/Internal/D3D12/D3D12DescriptorHeap.hpp
+    Source/Internal/D3D12/D3D12ImpDefine.hpp
     Source/Internal/D3D12/D3D12Resource.cpp
     Source/Internal/D3D12/D3D12Resource.hpp
     Source/Internal/D3D12/D3D12ResourceViews.cpp
@@ -85,6 +87,7 @@ set(aihi_gpu_system_files
     Source/GpuSystem.cpp
     Source/GpuTexture.cpp
     Source/GpuVertexAttrib.cpp
+    Source/InternalImp.hpp
     Source/pch.hpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})

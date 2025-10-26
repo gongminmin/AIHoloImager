@@ -12,6 +12,7 @@
 #include "Gpu/GpuSampler.hpp"
 
 #include "../GpuSamplerInternal.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -35,7 +36,7 @@ namespace AIHoloImager
         D3D12_STATIC_SAMPLER_DESC sampler_{};
     };
 
-    const D3D12StaticSampler& D3D12Imp(const GpuStaticSampler& sampler);
+    D3D12_DEFINE_IMP(StaticSampler)
 
     class D3D12DynamicSampler : public GpuDynamicSamplerInternal
     {
@@ -62,5 +63,5 @@ namespace AIHoloImager
         D3D12_SAMPLER_DESC sampler_{};
     };
 
-    const D3D12DynamicSampler& D3D12Imp(const GpuDynamicSampler& sampler);
+    D3D12_DEFINE_IMP(DynamicSampler)
 } // namespace AIHoloImager

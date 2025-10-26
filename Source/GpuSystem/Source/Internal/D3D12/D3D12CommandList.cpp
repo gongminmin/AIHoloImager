@@ -29,6 +29,8 @@ DEFINE_UUID_OF(ID3D12VideoEncodeCommandList);
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(CommandList)
+
     D3D12CommandList::D3D12CommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
         : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
@@ -944,10 +946,5 @@ namespace AIHoloImager
         }
 
         return srv_uav_desc_block;
-    }
-
-    D3D12CommandList& D3D12Imp(GpuCommandList& cmd_list)
-    {
-        return static_cast<D3D12CommandList&>(cmd_list.Internal());
     }
 } // namespace AIHoloImager

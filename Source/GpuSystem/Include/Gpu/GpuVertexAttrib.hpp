@@ -9,6 +9,7 @@
 #include <string>
 
 #include "Gpu/GpuFormat.hpp"
+#include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -28,6 +29,8 @@ namespace AIHoloImager
 
     class GpuVertexAttribs
     {
+        DEFINE_INTERNAL(GpuVertexAttribs)
+
     public:
         GpuVertexAttribs() noexcept;
         GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs);
@@ -38,8 +41,6 @@ namespace AIHoloImager
 
         GpuVertexAttribs(GpuVertexAttribs&& other) noexcept;
         GpuVertexAttribs& operator=(GpuVertexAttribs&& other) noexcept;
-
-        const GpuVertexAttribsInternal& Internal() const noexcept;
 
     private:
         class Impl;

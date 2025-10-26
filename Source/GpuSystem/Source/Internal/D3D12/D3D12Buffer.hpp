@@ -8,6 +8,7 @@
 
 #include "../GpuBufferInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12ImpDefine.hpp"
 #include "D3D12Resource.hpp"
 
 namespace AIHoloImager
@@ -56,5 +57,5 @@ namespace AIHoloImager
         mutable GpuResourceState curr_state_{};
     };
 
-    const D3D12Buffer& D3D12Imp(const GpuBuffer& buffer);
+    D3D12_DEFINE_IMP(Buffer)
 } // namespace AIHoloImager

@@ -14,6 +14,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandListInternal.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -99,5 +100,5 @@ namespace AIHoloImager
         bool closed_ = false;
     };
 
-    D3D12CommandList& D3D12Imp(GpuCommandList& cmd_list);
+    D3D12_DEFINE_IMP(CommandList)
 } // namespace AIHoloImager

@@ -11,12 +11,12 @@
 
 #include "Internal/GpuResourceViewsInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuShaderResourceView::Impl : public GpuShaderResourceViewInternal
-    {
-    };
+    EMPTY_IMP(GpuShaderResourceView)
+    IMP_INTERNAL(GpuShaderResourceView)
 
     GpuShaderResourceView::GpuShaderResourceView() noexcept = default;
 
@@ -136,16 +136,9 @@ namespace AIHoloImager
         return impl_->CpuHandle();
     }
 
-    const GpuShaderResourceViewInternal& GpuShaderResourceView::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
-    }
 
-
-    class GpuRenderTargetView::Impl : public GpuRenderTargetViewInternal
-    {
-    };
+    EMPTY_IMP(GpuRenderTargetView)
+    IMP_INTERNAL(GpuRenderTargetView)
 
     GpuRenderTargetView::GpuRenderTargetView() noexcept = default;
 
@@ -193,16 +186,9 @@ namespace AIHoloImager
         return impl_->CpuHandle();
     }
 
-    const GpuRenderTargetViewInternal& GpuRenderTargetView::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
-    }
 
-
-    class GpuDepthStencilView::Impl : public GpuDepthStencilViewInternal
-    {
-    };
+    EMPTY_IMP(GpuDepthStencilView)
+    IMP_INTERNAL(GpuDepthStencilView)
 
     GpuDepthStencilView::GpuDepthStencilView() noexcept = default;
 
@@ -250,16 +236,9 @@ namespace AIHoloImager
         return impl_->CpuHandle();
     }
 
-    const GpuDepthStencilViewInternal& GpuDepthStencilView::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
-    }
 
-
-    class GpuUnorderedAccessView::Impl : public GpuUnorderedAccessViewInternal
-    {
-    };
+    EMPTY_IMP(GpuUnorderedAccessView)
+    IMP_INTERNAL(GpuUnorderedAccessView)
 
     GpuUnorderedAccessView::GpuUnorderedAccessView() noexcept = default;
 
@@ -385,11 +364,5 @@ namespace AIHoloImager
     const GpuResource* GpuUnorderedAccessView::Resource() const noexcept
     {
         return const_cast<GpuUnorderedAccessView*>(this)->Resource();
-    }
-
-    const GpuUnorderedAccessViewInternal& GpuUnorderedAccessView::Internal() const noexcept
-    {
-        assert(impl_);
-        return *impl_;
     }
 } // namespace AIHoloImager
