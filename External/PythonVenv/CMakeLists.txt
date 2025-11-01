@@ -891,6 +891,7 @@ set(py_files
     sympy/utilities/__init__.py
     sympy/release.py
     sympy/__init__.py
+    torch/accelerator/memory.py
     torch/accelerator/_utils.py
     torch/accelerator/__init__.py
     torch/amp/autocast_mode.py
@@ -996,11 +997,13 @@ set(py_files
     torch/backends/cusparselt/__init__.py
     torch/backends/kleidiai/__init__.py
     torch/backends/mha/__init__.py
+    torch/backends/miopen/__init__.py
     torch/backends/mkl/__init__.py
     torch/backends/mkldnn/__init__.py
     torch/backends/mps/__init__.py
     torch/backends/nnpack/__init__.py
     torch/backends/openmp/__init__.py
+    torch/backends/opt_einsum/__init__.py
     torch/backends/quantized/__init__.py
     torch/backends/__init__.py
     torch/compiler/config.py
@@ -1071,14 +1074,12 @@ set(py_files
     torch/distributed/tensor/parallel/loss.py
     torch/distributed/tensor/parallel/style.py
     torch/distributed/tensor/parallel/_data_parallel_utils.py
-    torch/distributed/tensor/parallel/_utils.py
     torch/distributed/tensor/parallel/__init__.py
     torch/distributed/tensor/_ops/utils.py
     torch/distributed/tensor/_ops/_common_rules.py
     torch/distributed/tensor/_ops/_conv_ops.py
     torch/distributed/tensor/_ops/_einsum_strategy.py
     torch/distributed/tensor/_ops/_embedding_ops.py
-    torch/distributed/tensor/_ops/_experimental_ops.py
     torch/distributed/tensor/_ops/_math_ops.py
     torch/distributed/tensor/_ops/_matrix_ops.py
     torch/distributed/tensor/_ops/_pointwise_ops.py
@@ -1160,6 +1161,7 @@ set(py_files
     torch/distributions/exp_family.py
     torch/distributions/fishersnedecor.py
     torch/distributions/gamma.py
+    torch/distributions/generalized_pareto.py
     torch/distributions/geometric.py
     torch/distributions/gumbel.py
     torch/distributions/half_cauchy.py
@@ -1362,6 +1364,16 @@ set(py_files
     torch/nn/quantized/modules/__init__.py
     torch/nn/quantized/functional.py
     torch/nn/quantized/__init__.py
+    torch/nn/utils/_expanded_weights/conv_expanded_weights.py
+    torch/nn/utils/_expanded_weights/conv_utils.py
+    torch/nn/utils/_expanded_weights/embedding_expanded_weights.py
+    torch/nn/utils/_expanded_weights/expanded_weights_impl.py
+    torch/nn/utils/_expanded_weights/expanded_weights_utils.py
+    torch/nn/utils/_expanded_weights/group_norm_expanded_weights.py
+    torch/nn/utils/_expanded_weights/instance_norm_expanded_weights.py
+    torch/nn/utils/_expanded_weights/layer_norm_expanded_weights.py
+    torch/nn/utils/_expanded_weights/linear_expanded_weights.py
+    torch/nn/utils/_expanded_weights/__init__.py
     torch/nn/utils/clip_grad.py
     torch/nn/utils/convert_parameters.py
     torch/nn/utils/fusion.py
@@ -1382,90 +1394,33 @@ set(py_files
     torch/nn/parameter.py
     torch/nn/_reduction.py
     torch/nn/__init__.py
-    torch/onnx/_internal/diagnostics/infra/sarif/version.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_address.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_artifact.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_artifact_change.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_artifact_content.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_artifact_location.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_attachment.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_code_flow.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_configuration_override.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_conversion.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_edge.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_edge_traversal.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_exception.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_external_properties.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_external_property_file_reference.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_external_property_file_references.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_fix.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_graph.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_graph_traversal.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_invocation.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_location.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_location_relationship.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_logical_location.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_message.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_multiformat_message_string.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_node.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_notification.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_physical_location.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_property_bag.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_rectangle.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_region.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_replacement.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_reporting_configuration.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_reporting_descriptor.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_reporting_descriptor_reference.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_reporting_descriptor_relationship.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_result.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_result_provenance.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_run.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_run_automation_details.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_sarif_log.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_special_locations.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_stack.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_stack_frame.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_suppression.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_thread_flow.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_thread_flow_location.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_tool.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_tool_component.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_tool_component_reference.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_translation_metadata.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_version_control_details.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_web_request.py
-    torch/onnx/_internal/diagnostics/infra/sarif/_web_response.py
-    torch/onnx/_internal/diagnostics/infra/sarif/__init__.py
-    torch/onnx/_internal/diagnostics/infra/context.py
-    torch/onnx/_internal/diagnostics/infra/formatter.py
-    torch/onnx/_internal/diagnostics/infra/utils.py
-    torch/onnx/_internal/diagnostics/infra/_infra.py
-    torch/onnx/_internal/diagnostics/infra/__init__.py
-    torch/onnx/_internal/diagnostics/_diagnostic.py
-    torch/onnx/_internal/diagnostics/_rules.py
-    torch/onnx/_internal/diagnostics/__init__.py
+    torch/numa/binding.py
+    torch/numa/__init__.py
+    torch/onnx/ops/_dtype_mappings.py
+    torch/onnx/ops/_impl.py
+    torch/onnx/ops/_symbolic_impl.py
+    torch/onnx/ops/__init__.py
     torch/onnx/_internal/exporter/_constants.py
     torch/onnx/_internal/exporter/_dynamic_shapes.py
     torch/onnx/_internal/exporter/_ir_passes.py
     torch/onnx/_internal/exporter/_onnx_program.py
     torch/onnx/_internal/exporter/__init__.py
-    torch/onnx/_internal/fx/decomposition_table.py
-    torch/onnx/_internal/fx/patcher.py
-    torch/onnx/_internal/fx/registration.py
-    torch/onnx/_internal/fx/serialization.py
     torch/onnx/_internal/fx/__init__.py
-    torch/onnx/_internal/io_adapter.py
-    torch/onnx/_internal/jit_utils.py
-    torch/onnx/_internal/onnxruntime.py
-    torch/onnx/_internal/onnx_proto_utils.py
-    torch/onnx/_internal/registration.py
-    torch/onnx/_internal/_exporter_legacy.py
+    torch/onnx/_internal/torchscript_exporter/_globals.py
+    torch/onnx/_internal/torchscript_exporter/_type_utils.py
+    torch/onnx/_internal/torchscript_exporter/jit_utils.py
+    torch/onnx/_internal/torchscript_exporter/onnx_proto_utils.py
+    torch/onnx/_internal/torchscript_exporter/registration.py
+    torch/onnx/_internal/torchscript_exporter/symbolic_helper.py
+    torch/onnx/_internal/torchscript_exporter/symbolic_opset9.py
+    torch/onnx/_internal/torchscript_exporter/symbolic_opset10.py
+    torch/onnx/_internal/torchscript_exporter/symbolic_opset11.py
+    torch/onnx/_internal/torchscript_exporter/utils.py
+    torch/onnx/_internal/torchscript_exporter/__init__.py
     torch/onnx/_internal/_lazy_import.py
     torch/onnx/_internal/__init__.py
     torch/onnx/errors.py
     torch/onnx/operators.py
-    torch/onnx/symbolic_caffe2.py
     torch/onnx/symbolic_helper.py
     torch/onnx/symbolic_opset10.py
     torch/onnx/symbolic_opset11.py
@@ -1483,8 +1438,6 @@ set(py_files
     torch/onnx/symbolic_opset9.py
     torch/onnx/utils.py
     torch/onnx/_constants.py
-    torch/onnx/_globals.py
-    torch/onnx/_type_utils.py
     torch/onnx/__init__.py
     torch/optim/adadelta.py
     torch/optim/adagrad.py
@@ -1503,6 +1456,7 @@ set(py_files
     torch/optim/sparse_adam.py
     torch/optim/swa_utils.py
     torch/optim/_adafactor.py
+    torch/optim/_muon.py
     torch/optim/_functional.py
     torch/optim/__init__.py
     torch/package/analyze/find_first_use_of_broken_modules.py
@@ -1631,6 +1585,7 @@ set(py_files
     torch/utils/_contextlib.py
     torch/utils/_cxx_pytree.py
     torch/utils/_device.py
+    torch/utils/_dtype_abbrs.py
     torch/utils/_exposed_in.py
     torch/utils/_foreach_utils.py
     torch/utils/_functools.py
@@ -1661,6 +1616,7 @@ set(py_files
     torch/_dispatch/__init__.py
     torch/_dynamo/backends/registry.py
     torch/_dynamo/backends/__init__.py
+    torch/_dynamo/polyfills/_collections.py
     torch/_dynamo/polyfills/builtins.py
     torch/_dynamo/polyfills/functools.py
     torch/_dynamo/polyfills/fx.py
@@ -1669,7 +1625,9 @@ set(py_files
     torch/_dynamo/polyfills/operator.py
     torch/_dynamo/polyfills/os.py
     torch/_dynamo/polyfills/pytree.py
+    torch/_dynamo/polyfills/struct.py
     torch/_dynamo/polyfills/sys.py
+    torch/_dynamo/polyfills/tensor.py
     torch/_dynamo/polyfills/__init__.py
     torch/_dynamo/variables/base.py
     torch/_dynamo/variables/builder.py
@@ -1693,6 +1651,7 @@ set(py_files
     torch/_dynamo/variables/torch_function.py
     torch/_dynamo/variables/user_defined.py
     torch/_dynamo/variables/__init__.py
+    torch/_dynamo/aot_compile.py
     torch/_dynamo/bytecode_analysis.py
     torch/_dynamo/bytecode_transformation.py
     torch/_dynamo/cache_size.py
@@ -1712,9 +1671,11 @@ set(py_files
     torch/_dynamo/exc.py
     torch/_dynamo/external_utils.py
     torch/_dynamo/funcname_cache.py
+    torch/_dynamo/functional_export.py
     torch/_dynamo/graph_break_hints.py
     torch/_dynamo/graph_deduplication.py
     torch/_dynamo/graph_region_tracker.py
+    torch/_dynamo/graph_utils.py
     torch/_dynamo/guards.py
     torch/_dynamo/hooks.py
     torch/_dynamo/logging.py
@@ -1722,6 +1683,7 @@ set(py_files
     torch/_dynamo/mutation_guard.py
     torch/_dynamo/output_graph.py
     torch/_dynamo/pgo.py
+    torch/_dynamo/precompile_context.py
     torch/_dynamo/replay_record.py
     torch/_dynamo/resume_execution.py
     torch/_dynamo/side_effects.py
@@ -1740,15 +1702,14 @@ set(py_files
     torch/_functorch/_activation_checkpointing/__init__.py
     torch/_functorch/_aot_autograd/autograd_cache.py
     torch/_functorch/_aot_autograd/collect_metadata_analysis.py
-    torch/_functorch/_aot_autograd/dispatch_and_compile_graph.py
+    torch/_functorch/_aot_autograd/descriptors.py
     torch/_functorch/_aot_autograd/functional_utils.py
+    torch/_functorch/_aot_autograd/graph_capture_wrappers.py
     torch/_functorch/_aot_autograd/input_output_analysis.py
-    torch/_functorch/_aot_autograd/jit_compile_runtime_wrappers.py
     torch/_functorch/_aot_autograd/logging_utils.py
     torch/_functorch/_aot_autograd/runtime_wrappers.py
     torch/_functorch/_aot_autograd/schemas.py
     torch/_functorch/_aot_autograd/subclass_utils.py
-    torch/_functorch/_aot_autograd/traced_function_transforms.py
     torch/_functorch/_aot_autograd/utils.py
     torch/_functorch/_aot_autograd/__init__.py
     torch/_functorch/aot_autograd.py
@@ -1762,6 +1723,7 @@ set(py_files
     torch/_functorch/functional_call.py
     torch/_functorch/make_functional.py
     torch/_functorch/partitioners.py
+    torch/_functorch/predispatch.py
     torch/_functorch/pyfunctorch.py
     torch/_functorch/utils.py
     torch/_functorch/vmap.py
@@ -1782,6 +1744,7 @@ set(py_files
     torch/_higher_order_ops/out_dtype.py
     torch/_higher_order_ops/run_const_graph.py
     torch/_higher_order_ops/scan.py
+    torch/_higher_order_ops/schema.py
     torch/_higher_order_ops/strict_mode.py
     torch/_higher_order_ops/torchbind.py
     torch/_higher_order_ops/triton_kernel_wrap.py
@@ -1790,6 +1753,8 @@ set(py_files
     torch/_higher_order_ops/wrap.py
     torch/_higher_order_ops/_invoke_quant.py
     torch/_higher_order_ops/__init__.py
+    torch/_inductor/analysis/device_info.py
+    torch/_inductor/analysis/__init__.py
     torch/_inductor/codegen/cuda/cuda_env.py
     torch/_inductor/codegen/cuda/__init__.py
     torch/_inductor/codegen/rocm/compile_command.py
@@ -1812,6 +1777,7 @@ set(py_files
     torch/_inductor/metrics.py
     torch/_inductor/output_code.py
     torch/_inductor/remote_cache.py
+    torch/_inductor/standalone_compile.py
     torch/_inductor/test_operators.py
     torch/_inductor/triton_bundler.py
     torch/_inductor/utils.py
@@ -1820,6 +1786,7 @@ set(py_files
     torch/_library/custom_ops.py
     torch/_library/fake_class_registry.py
     torch/_library/fake_impl.py
+    torch/_library/fake_profile.py
     torch/_library/infer_schema.py
     torch/_library/simple_registry.py
     torch/_library/triton.py
@@ -2186,7 +2153,6 @@ set(copy_files
     torch/_functorch/config.py
     torch/compiler/config.py
     torch/fx/experimental/_config.py
-    torch/lib/asmjit.dll
     torch/lib/c10.dll
     torch/lib/c10_cuda.dll
     torch/lib/cublas64_12.dll
@@ -2202,7 +2168,6 @@ set(copy_files
     torch/lib/cupti64_2024.3.2.dll
     torch/lib/cusolver64_11.dll
     torch/lib/cusparse64_12.dll
-    torch/lib/fbgemm.dll
     torch/lib/libiomp5md.dll
     torch/lib/nvJitLink_120_0.dll
     torch/lib/nvToolsExt64_1.dll
@@ -2330,6 +2295,8 @@ set(py_files
     multiprocessing/process.py
     multiprocessing/reduction.py
     multiprocessing/resource_sharer.py
+    multiprocessing/resource_tracker.py
+    multiprocessing/spawn.py
     multiprocessing/synchronize.py
     multiprocessing/util.py
     multiprocessing/__init__.py

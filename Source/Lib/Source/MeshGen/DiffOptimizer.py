@@ -239,7 +239,7 @@ class DiffOptimizer:
             optimizer.zero_grad(set_to_none = True)
             loss.backward()
             optimizer.step()
-            scheduler.step(loss)
+            scheduler.step(loss.detach())
 
             with torch.no_grad():
                 rotation_opt[:] = NormalizeQuat(rotation_opt)
@@ -421,7 +421,7 @@ class DiffOptimizer:
             optimizer.zero_grad(set_to_none = True)
             loss.backward()
             optimizer.step()
-            scheduler.step(loss)
+            scheduler.step(loss.detach())
 
             with torch.no_grad():
                 texture_opt[:] = self.Dilate(texture_opt, mask_tex, mip_levels)

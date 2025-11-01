@@ -10,6 +10,7 @@
 
 #ifdef _MSC_VER
     #pragma warning(push)
+    #pragma warning(disable : 4018) // Ignore signed/unsigned compare mismatch
     #pragma warning(disable : 4100) // Ignore unreferenced formal parameters
     #pragma warning(disable : 4127) // Ignore constant conditional expression
     #pragma warning(disable : 4244) // Ignore type conversion from `int` to `float`
