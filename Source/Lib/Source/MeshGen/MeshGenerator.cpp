@@ -508,6 +508,7 @@ namespace AIHoloImager
 #endif
             }
 
+            if (sfm_input.views.size() > 1)
             {
                 std::cout << "Optimizing texture...\n";
 
