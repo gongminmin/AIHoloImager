@@ -192,6 +192,8 @@ set(py_files
     numpy/_pytesttester.py
     numpy/__config__.py
     numpy/__init__.py
+    packaging/_structures.py
+    packaging/version.py
     PIL/ExifTags.py
     PIL/features.py
     PIL/GimpGradientFile.py
@@ -206,6 +208,7 @@ set(py_files
     PIL/ImageOps.py
     PIL/ImagePalette.py
     PIL/ImageStat.py
+    PIL/ImageText.py
     PIL/PaletteFile.py
     PIL/TiffTags.py
     PIL/_binary.py
@@ -443,15 +446,25 @@ set(py_files
     scipy/_lib/array_api_compat/common/_fft.py
     scipy/_lib/array_api_compat/common/_helpers.py
     scipy/_lib/array_api_compat/common/_linalg.py
+    scipy/_lib/array_api_compat/common/_typing.py
     scipy/_lib/array_api_compat/common/__init__.py
     scipy/_lib/array_api_compat/numpy/fft.py
     scipy/_lib/array_api_compat/numpy/linalg.py
     scipy/_lib/array_api_compat/numpy/_aliases.py
     scipy/_lib/array_api_compat/numpy/_info.py
+    scipy/_lib/array_api_compat/numpy/_typing.py
     scipy/_lib/array_api_compat/numpy/__init__.py
     scipy/_lib/array_api_compat/_internal.py
     scipy/_lib/array_api_compat/__init__.py
-    scipy/_lib/array_api_extra/_funcs.py
+    scipy/_lib/array_api_extra/_lib/_utils/_compat.py
+    scipy/_lib/array_api_extra/_lib/_utils/_helpers.py
+    scipy/_lib/array_api_extra/_lib/_utils/_typing.py
+    scipy/_lib/array_api_extra/_lib/_utils/__init__.py
+    scipy/_lib/array_api_extra/_lib/_at.py
+    scipy/_lib/array_api_extra/_lib/_funcs.py
+    scipy/_lib/array_api_extra/_lib/_lazy.py
+    scipy/_lib/array_api_extra/_lib/__init__.py
+    scipy/_lib/array_api_extra/_delegation.py
     scipy/_lib/array_api_extra/__init__.py
     scipy/_lib/_uarray/_backend.py
     scipy/_lib/_uarray/__init__.py
@@ -459,9 +472,11 @@ set(py_files
     scipy/_lib/deprecation.py
     scipy/_lib/uarray.py
     scipy/_lib/_array_api.py
+    scipy/_lib/_array_api_compat_vendor.py
     scipy/_lib/_ccallback.py
     scipy/_lib/_docscrape.py
     scipy/_lib/_pep440.py
+    scipy/_lib/_sparse.py
     scipy/_lib/_testutils.py
     scipy/_lib/_threadsafety.py
     scipy/_lib/_util.py
@@ -2083,7 +2098,7 @@ set(copy_files
     numpy.libs/msvcp140-263139962577ecda4cd9469ca360a746.dll
     PIL/_imaging.${py_suffix}
     safetensors/_safetensors_rust.pyd
-    scipy.libs/libscipy_openblas-f07f5a5d207a3a47104dca54d6d0c86a.dll
+    scipy.libs/libscipy_openblas-48c358d105077551cc9cc3ba79387ed5.dll
     scipy/fft/_pocketfft/pypocketfft.${py_suffix}
     scipy/linalg/cython_blas.${py_suffix}
     scipy/linalg/cython_lapack.${py_suffix}
@@ -2095,11 +2110,10 @@ set(copy_files
     scipy/linalg/_flapack.${py_suffix}
     scipy/linalg/_linalg_pythran.${py_suffix}
     scipy/linalg/_matfuncs_expm.${py_suffix}
+    scipy/linalg/_matfuncs_schur_sqrtm.${py_suffix}
     scipy/linalg/_matfuncs_sqrtm_triu.${py_suffix}
     scipy/linalg/_solve_toeplitz.${py_suffix}
     scipy/optimize/_bglu_dense.${py_suffix}
-    scipy/optimize/_cobyla.${py_suffix}
-    scipy/optimize/_cython_nnls.${py_suffix}
     scipy/optimize/_direct.${py_suffix}
     scipy/optimize/_group_columns.${py_suffix}
     scipy/optimize/_lbfgsb.${py_suffix}
@@ -2107,7 +2121,7 @@ set(copy_files
     scipy/optimize/_minpack.${py_suffix}
     scipy/optimize/_moduleTNC.${py_suffix}
     scipy/optimize/_pava_pybind.${py_suffix}
-    scipy/optimize/_slsqp.${py_suffix}
+    scipy/optimize/_slsqplib.${py_suffix}
     scipy/optimize/_trlib/_trlib.${py_suffix}
     scipy/optimize/_zeros.${py_suffix}
     scipy/optimize/_highspy/_core.${py_suffix}
@@ -2128,8 +2142,8 @@ set(copy_files
     scipy/sparse/linalg/_propack/_zpropack.${py_suffix}
     scipy/sparse/_csparsetools.${py_suffix}
     scipy/sparse/_sparsetools.${py_suffix}
+    scipy/spatial/transform/_rigid_transform.${py_suffix}
     scipy/spatial/transform/_rotation.${py_suffix}
-    scipy/special/libsf_error_state.dll
     scipy/spatial/_ckdtree.${py_suffix}
     scipy/special/_comb.${py_suffix}
     scipy/spatial/_distance_pybind.${py_suffix}
@@ -2146,6 +2160,7 @@ set(copy_files
     scipy/_lib/_uarray/_uarray.${py_suffix}
     scipy/_lib/messagestream.${py_suffix}
     scipy/_lib/_ccallback_c.${py_suffix}
+    scipy/_cyutility.${py_suffix}
     torch/_C.${py_suffix}
     torch/functional.py
     torch/_dynamo/config.py
