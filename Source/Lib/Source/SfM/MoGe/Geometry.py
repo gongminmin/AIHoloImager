@@ -195,7 +195,7 @@ def ImageUV(height: int, width: int, left: Optional[int] = None, top: Optional[i
         height (int): image height
 
     Returns:
-        np.ndarray: shape (height, width, 2)
+        torch.Tensor: shape (height, width, 2)
     """
 
     if left is None:

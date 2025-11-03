@@ -220,6 +220,8 @@ class DiffOptimizer:
         loss_sum = 0.0
         n = 0
         for it in range(num_iter + 1):
+            optimizer.zero_grad(set_to_none = True)
+
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
@@ -236,10 +238,9 @@ class DiffOptimizer:
                 translation_best = translation_opt.detach().clone()
                 loss_best = loss_val
 
-            optimizer.zero_grad(set_to_none = True)
             loss.backward()
             optimizer.step()
-            scheduler.step(loss.detach())
+            scheduler.step(loss_val)
 
             with torch.no_grad():
                 rotation_opt[:] = NormalizeQuat(rotation_opt)
@@ -366,8 +367,8 @@ class DiffOptimizer:
             valid_mask_float = valid_mask.float().unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
 
             rgb_valid = rgb * valid_mask_float  # Shape: [1, 3, H, W]
-            rgb_sum = torch.nn.functional.conv2d(rgb_valid, kernel_rgb, padding = 1)  # Shape: [1, 3, H, W]
-            valid_count = torch.nn.functional.conv2d(valid_mask_float, kernel, padding = 1)  # Shape: [1, 1, H, W]
+            rgb_sum = functional.conv2d(rgb_valid, kernel_rgb, padding = 1)  # Shape: [1, 3, H, W]
+            valid_count = functional.conv2d(valid_mask_float, kernel, padding = 1)  # Shape: [1, 1, H, W]
             rgb_avg = rgb_sum / valid_count.clamp(min = 1e-6)  # Shape: [1, 3, H, W]
 
             rgb_avg = rgb_avg.squeeze(0).permute(1, 2, 0)  # Shape: [H, W, 3]
@@ -387,16 +388,16 @@ class DiffOptimizer:
                    crop_images, mvp_mtxs, viewports, rois,
                    resolutions, num_iter = 150):
         num_images = len(crop_images)
-        criterion = torch.nn.MSELoss()
+        criterion = nn.MSELoss()
 
         interval = 50
         lr_base = 1e-2
 
-        texture_opt = torch.nn.Parameter(texture)
+        texture_opt = nn.Parameter(texture)
 
         parameters = [texture_opt]
-        optimizer = torch.optim.Adam(parameters, betas = (0.9, 0.999), lr = lr_base)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = 0.85)
+        optimizer = optim.Adam(parameters, betas = (0.9, 0.999), lr = lr_base)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = 0.85)
 
         loss_best = 1e10
         texture_best = texture_opt.detach().clone()
@@ -406,6 +407,8 @@ class DiffOptimizer:
         loss_sum = 0
         n = 0
         for it in range(num_iter + 1):
+            optimizer.zero_grad(set_to_none = True)
+
             img_idx = random.randint(0, num_images - 1)
 
             color_opt = self.Render(mvp_mtxs[img_idx], viewports[img_idx], vtx_positions, indices, opposite_vertices, resolutions, rois[img_idx], vtx_uv = vtx_uv, texture = texture_opt)
@@ -418,10 +421,9 @@ class DiffOptimizer:
                 texture_best = texture_opt.detach().clone()
                 loss_best = loss_val
 
-            optimizer.zero_grad(set_to_none = True)
             loss.backward()
             optimizer.step()
-            scheduler.step(loss.detach())
+            scheduler.step(loss_val)
 
             with torch.no_grad():
                 texture_opt[:] = self.Dilate(texture_opt, mask_tex, mip_levels)

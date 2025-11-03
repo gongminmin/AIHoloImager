@@ -294,7 +294,7 @@ class MoGeModel(nn.Module):
         resolution_level: int = 9,
         num_tokens: int = None,
         use_fp16: bool = True,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> float:
         """
         User-friendly inference function
 
@@ -336,7 +336,7 @@ class MoGeModel(nn.Module):
         resolution_level: int = 9,
         num_tokens : int = None,
         use_fp16 : bool = True,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> torch.Tensor:
         """
         User-friendly inference function
 
