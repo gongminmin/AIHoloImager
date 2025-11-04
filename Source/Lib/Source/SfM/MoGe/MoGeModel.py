@@ -287,7 +287,7 @@ class MoGeModel(nn.Module):
 
         return points, mask
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def Focal(
         self,
         image: torch.Tensor,
@@ -328,7 +328,7 @@ class MoGeModel(nn.Module):
         fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
         return fy.item() * original_height
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def PointCloud(
         self, 
         image: torch.Tensor,

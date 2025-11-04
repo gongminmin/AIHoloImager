@@ -3,54 +3,64 @@
 
 # Based on MoGe, https://github.com/microsoft/MoGe/blob/main/moge/utils/geometry_numpy.py and https://github.com/microsoft/MoGe/blob/main/moge/utils/geometry_torch.py
 
-from functools import partial
 import math
 from typing import Optional, Tuple, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
-def SolveOptimalFocalShift(uv : np.ndarray, xyz : np.ndarray):
+@torch.enable_grad()
+def SolveOptimalFocalShift(uv : torch.Tensor, xyz : torch.Tensor, focal: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
     "Solve `min |focal * xy / (z + shift) - uv|` with respect to shift and focal"
 
-    uv = uv.reshape(-1, 2)
-    xy = xyz[..., : 2].reshape(-1, 2)
-    z = xyz[..., 2].reshape(-1)
+    criterion = nn.MSELoss(reduction = "sum")
+    shift = nn.Parameter(torch.zeros(1, dtype = xyz.dtype, device = xyz.device))
 
-    def Func(uv : np.ndarray, xy : np.ndarray, z : np.ndarray, shift : np.ndarray):
-        xy_proj = xy / (z + shift)[:, None]
-        f = (xy_proj * uv).sum() / np.square(xy_proj).sum()
-        err = (f * xy_proj - uv).ravel()
-        return err
+    lr_base = 1.0
+    max_iter = 10
 
-    from scipy.optimize import least_squares
-    solution = least_squares(partial(Func, uv, xy, z), x0 = 0, ftol = 1e-3, method = "lm")
-    optim_shift = solution["x"].squeeze().astype(np.float32)
+    optimizer = torch.optim.LBFGS([shift], lr = lr_base, max_iter = max_iter, line_search_fn = "strong_wolfe", tolerance_grad = 1e-3, tolerance_change = 1e-3)
 
-    xy_proj = xy / (z + optim_shift)[:, None]
-    optim_focal = (xy_proj * uv).sum() / np.square(xy_proj).sum()
+    def Closure():
+        optimizer.zero_grad()
+
+        xy_proj   = xyz[..., :2] / (xyz[..., 2] + shift).unsqueeze(-1)
+
+        if focal is None:
+            f = (xy_proj * uv).sum() / torch.square(xy_proj).sum()
+        else:
+            f = focal
+
+        pred_uv = f * xy_proj
+
+        loss = criterion(pred_uv, uv)
+
+        loss.backward()
+        return loss
+
+    prev_loss = 1e10
+    for it in range(max_iter):
+        loss = optimizer.step(Closure)
+
+        loss_val = loss.item()
+        if abs(prev_loss - loss_val) < 1e-3 * max(1.0, loss_val):
+            print(f"Converged at iteration {it}, loss {loss_val:.7f}")
+            break
+        prev_loss = loss_val
+
+        if it % 5 == 0:
+            print(f"Iteration {it}, loss {loss_val:.7f}")
+
+    optim_shift = shift[0].detach()
+
+    if focal is None:
+        xy_proj = xyz[..., : 2] / (xyz[..., 2] + optim_shift).unsqueeze(-1)
+        optim_focal = ((xy_proj * uv).sum() / torch.square(xy_proj).sum()).detach()
+    else:
+        optim_focal = focal
 
     return optim_focal, optim_shift
-
-def SolveOptimalShift(uv: np.ndarray, xyz: np.ndarray, focal: float):
-    "Solve `min |focal * xy / (z + shift) - uv|` with respect to shift"
-
-    uv = uv.reshape(-1, 2)
-    xy = xyz[..., : 2].reshape(-1, 2)
-    z = xyz[..., 2].reshape(-1)
-
-    def Func(uv: np.ndarray, xy: np.ndarray, z: np.ndarray, shift: np.ndarray):
-        xy_proj = xy / (z + shift)[:, None]
-        err = (focal * xy_proj - uv).ravel()
-        return err
-
-    from scipy.optimize import least_squares
-    solution = least_squares(partial(Func, uv, xy, z), x0 = 0, ftol = 1e-3, method = "lm")
-    optim_shift = solution["x"].squeeze().astype(np.float32)
-
-    return optim_shift
 
 def NormalizedViewPlaneUv(width : int, height : int, aspect_ratio : Optional[float] = None, dtype : Optional[torch.dtype] = None, device : Optional[torch.device] = None) -> torch.Tensor:
     "UV with left-top corner as (-width / diagonal, -height / diagonal) and right-bottom corner as (width / diagonal, height / diagonal)"
@@ -99,20 +109,15 @@ def RecoverFocalShift(points: torch.Tensor, mask: Optional[torch.Tensor] = None,
     uv_lr = functional.interpolate(uv.unsqueeze(0).permute(0, 3, 1, 2), downsample_size, mode = "nearest").squeeze(0).permute(1, 2, 0)
     mask_lr = None if mask is None else functional.interpolate(mask.to(torch.float32).unsqueeze(1), downsample_size, mode = "nearest").squeeze(1) > 0
 
-    uv_lr_np = uv_lr.cpu().numpy()
-    points_lr_np = points_lr.detach().cpu().numpy()
-    focal_np = focal.cpu().numpy() if focal is not None else None
-    mask_lr_np = None if mask is None else mask_lr.cpu().numpy()
+    points_lr = points_lr.detach()
     optim_focal = []
     optim_shift = []
     for i in range(points.shape[0]):
-        points_lr_i_np = points_lr_np[i] if mask is None else points_lr_np[i][mask_lr_np[i]]
-        uv_lr_i_np = uv_lr_np if mask is None else uv_lr_np[mask_lr_np[i]]
+        points_lr_i = points_lr[i] if mask is None else points_lr[i][mask_lr[i]]
+        uv_lr_i = uv_lr if mask is None else uv_lr[mask_lr[i]]
+        optim_focal_i, optim_shift_i = SolveOptimalFocalShift(uv_lr_i, points_lr_i, None if focal is None else focal[i])
         if focal is None:
-            optim_focal_i, optim_shift_i = SolveOptimalFocalShift(uv_lr_i_np, points_lr_i_np)
             optim_focal.append(float(optim_focal_i))
-        else:
-            optim_shift_i = SolveOptimalShift(uv_lr_i_np, points_lr_i_np, focal_np[i])
         optim_shift.append(float(optim_shift_i))
     optim_shift = torch.tensor(optim_shift, device = points.device, dtype = points.dtype).reshape(shape[: -3])
 
