@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes
 from MoGe import MoGeModel
 
 class PointCloudEstimator:
@@ -40,5 +40,5 @@ class PointCloudEstimator:
         image = image.to(torch.float16).contiguous()
         image /= 255.0
 
-        point_cloud = self.model.PointCloud(image, fov_x);
-        return (TensorToBytes(point_cloud), point_cloud.shape[-2], point_cloud.shape[-3])
+        point_cloud = self.model.PointCloud(image, fov_x)
+        return (point_cloud, point_cloud.shape[-2], point_cloud.shape[-3])

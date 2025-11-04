@@ -298,8 +298,15 @@ namespace AIHoloImager
 
                 auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_, *args);
 
-                const auto texture_opt = python_system.ToSpan<const float>(*py_opt_texture);
-                std::memcpy(texture.Data(), texture_opt.data(), texture.DataSize());
+                {
+                    cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    GpuTexture2D texture_opt;
+                    tensor_converter.ConvertPy(
+                        cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"texture_opt");
+                    const auto rb_future = cmd_list.ReadBackAsync(texture_opt, 0, texture.Data(), texture.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+                    rb_future.wait();
+                }
             }
         }
 

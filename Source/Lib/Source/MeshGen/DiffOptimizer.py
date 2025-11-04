@@ -352,7 +352,7 @@ class DiffOptimizer:
 
         texture = self.FitTexture(texture, mask_tex, mip_levels, vtx_positions, vtx_uv, indices, crop_images, mvp_mtxs, viewports, cropped_roi, cropped_resolution)
         texture = (texture * 255.0).clamp(0, 255).to(torch.uint8)
-        return TensorToBytes(texture)
+        return texture
 
     def Dilate(self, image, mask, times):
         image[:, :, 3] *= mask

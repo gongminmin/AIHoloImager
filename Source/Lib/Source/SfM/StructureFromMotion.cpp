@@ -715,9 +715,22 @@ namespace AIHoloImager
 
                     auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, *args);
 
-                    const auto point_cloud = python_system.ToSpan<const glm::vec3>(*python_system.GetTupleItem(*py_point_cloud_items, 0));
+                    const auto py_point_cloud = python_system.GetTupleItem(*py_point_cloud_items, 0);
                     const uint32_t point_cloud_width = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 1));
                     const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
+                    const uint32_t point_cloud_size = point_cloud_width * point_cloud_height;
+
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto& tensor_converter = aihi_.TensorConverterInstance();
+                    GpuBuffer point_cloud_buff;
+                    tensor_converter.ConvertPy(
+                        cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::None, L"point_cloud_buff");
+                    auto point_cloud = std::make_unique<glm::vec3[]>(point_cloud_size);
+                    const auto rb_future =
+                        cmd_list.ReadBackAsync(point_cloud_buff, point_cloud.get(), point_cloud_size * sizeof(glm::vec3));
+                    gpu_system.Execute(std::move(cmd_list));
+
+                    rb_future.wait();
 
                     ret.structure.reserve(point_cloud_width * point_cloud_height);
                     for (uint32_t y = 0; y < point_cloud_height; ++y)
