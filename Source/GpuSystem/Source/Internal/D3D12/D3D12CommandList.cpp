@@ -370,6 +370,7 @@ namespace AIHoloImager
                 ++root_index;
             }
 
+            heap_base = 0;
             if (!binding.samplers.empty())
             {
                 d3d12_cmd_list->SetGraphicsRootDescriptorTable(
@@ -542,6 +543,7 @@ namespace AIHoloImager
             ++root_index;
         }
 
+        heap_base = 0;
         if (!shader_binding.samplers.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(

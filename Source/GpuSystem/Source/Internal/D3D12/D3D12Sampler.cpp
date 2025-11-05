@@ -152,7 +152,7 @@ namespace AIHoloImager
 
     D3D12DynamicSampler::D3D12DynamicSampler(
         GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
-        : d3d12_device_(D3D12Imp(gpu_system).Device())
+        : gpu_system_(&gpu_system), d3d12_device_(D3D12Imp(gpu_system).Device())
     {
         desc_block_ = gpu_system.AllocSamplerDescBlock(1);
         cpu_handle_ = desc_block_.CpuHandle();
@@ -161,7 +161,14 @@ namespace AIHoloImager
         d3d12_device_->CreateSampler(&sampler_, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
-    D3D12DynamicSampler::~D3D12DynamicSampler() = default;
+    D3D12DynamicSampler::~D3D12DynamicSampler()
+    {
+        cpu_handle_ = {};
+        if (desc_block_)
+        {
+            gpu_system_->DeallocSamplerDescBlock(std::move(desc_block_));
+        }
+    }
 
     D3D12DynamicSampler::D3D12DynamicSampler(D3D12DynamicSampler&& other) noexcept = default;
     D3D12DynamicSampler::D3D12DynamicSampler(GpuDynamicSamplerInternal&& other) noexcept
