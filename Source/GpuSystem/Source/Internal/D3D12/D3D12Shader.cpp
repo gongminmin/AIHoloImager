@@ -8,7 +8,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/MiniWindows.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "D3D12Conversion.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12System.hpp"
 #include "D3D12VertexAttrib.hpp"

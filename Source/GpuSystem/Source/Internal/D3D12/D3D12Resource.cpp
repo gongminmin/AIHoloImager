@@ -3,9 +3,8 @@
 
 #include "D3D12Resource.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
-
 #include "D3D12Buffer.hpp"
+#include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
 #include "D3D12Texture.hpp"
 

@@ -89,7 +89,8 @@ namespace AIHoloImager
         }
 
     private:
-        GpuDescriptorBlock BindPipeline(const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding);
+        void Compute(
+            const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
 
     private:
         GpuSystem* gpu_system_ = nullptr;

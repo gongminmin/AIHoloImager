@@ -6,7 +6,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/Uuid.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
 
 namespace AIHoloImager

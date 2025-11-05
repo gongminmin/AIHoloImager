@@ -13,9 +13,9 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
 #include "D3D12Buffer.hpp"
 #include "D3D12CommandAllocatorInfo.hpp"
+#include "D3D12Conversion.hpp"
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12Resource.hpp"
 #include "D3D12ResourceViews.hpp"
@@ -466,6 +466,28 @@ namespace AIHoloImager
     void D3D12CommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
         const GpuCommandList::ShaderBinding& shader_binding)
     {
+        this->Compute(pipeline, shader_binding, [this, group_x, group_y, group_z]() {
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
+        });
+    }
+
+    void D3D12CommandList::ComputeIndirect(
+        const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const GpuCommandList::ShaderBinding& shader_binding)
+    {
+        this->Compute(pipeline, shader_binding, [this, &indirect_args]() {
+            const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
+            d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
+
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->ExecuteIndirect(
+                D3D12Imp(*gpu_system_).NativeDispatchIndirectSignature(), 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
+        });
+    }
+
+    void D3D12CommandList::Compute(
+        const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call)
+    {
         assert(gpu_system_ != nullptr);
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
@@ -568,27 +590,10 @@ namespace AIHoloImager
             ++root_index;
         }
 
-        d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
+        dispatch_call();
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
         gpu_system_->DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
-    }
-
-    void D3D12CommandList::ComputeIndirect(
-        const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const GpuCommandList::ShaderBinding& shader_binding)
-    {
-        assert(gpu_system_ != nullptr);
-
-        const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
-        d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
-
-        GpuDescriptorBlock srv_uav_desc_block = this->BindPipeline(pipeline, shader_binding);
-
-        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-        d3d12_cmd_list->ExecuteIndirect(
-            D3D12Imp(*gpu_system_).NativeDispatchIndirectSignature(), 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
-
-        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
     }
 
     void D3D12CommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
@@ -878,75 +883,5 @@ namespace AIHoloImager
             Unreachable();
         }
         closed_ = false;
-    }
-
-    GpuDescriptorBlock D3D12CommandList::BindPipeline(
-        const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding)
-    {
-        auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-
-        D3D12Imp(pipeline).Bind(*this);
-
-        const uint32_t num_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
-        GpuDescriptorBlock srv_uav_desc_block;
-        if (num_descs > 0)
-        {
-            srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_descs);
-
-            ID3D12DescriptorHeap* heaps[] = {D3D12Imp(*srv_uav_desc_block.Heap()).DescriptorHeap()};
-            d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
-        }
-        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
-
-        uint32_t heap_base = 0;
-        uint32_t root_index = 0;
-
-        if (!shader_binding.srvs.empty())
-        {
-            d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-            for (const auto* srv : shader_binding.srvs)
-            {
-                if (srv != nullptr)
-                {
-                    D3D12Imp(*srv).Transition(*this);
-
-                    auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                    srv->CopyTo(srv_cpu_handle);
-                }
-
-                ++heap_base;
-            }
-
-            ++root_index;
-        }
-
-        if (!shader_binding.uavs.empty())
-        {
-            d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-            for (const auto* uav : shader_binding.uavs)
-            {
-                if (uav != nullptr)
-                {
-                    D3D12Imp(*uav).Transition(*this);
-
-                    auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                    uav->CopyTo(uav_cpu_handle);
-                }
-
-                ++heap_base;
-            }
-
-            ++root_index;
-        }
-
-        for (const auto* cb : shader_binding.cbs)
-        {
-            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cb->GpuVirtualAddress());
-            ++root_index;
-        }
-
-        return srv_uav_desc_block;
     }
 } // namespace AIHoloImager

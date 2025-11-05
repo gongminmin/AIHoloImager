@@ -11,7 +11,7 @@
 
 #include "Gpu/GpuFormat.hpp"
 
-#include "D3D12/D3D12Conversion.hpp"
+#include "D3D12Conversion.hpp"
 
 namespace AIHoloImager
 {

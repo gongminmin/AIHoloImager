@@ -20,14 +20,14 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuVertexAttrib.hpp
     Include/Gpu/InternalDefine.hpp
-    Source/D3D12/D3D12Conversion.cpp
-    Source/D3D12/D3D12Conversion.hpp
     Source/Internal/D3D12/D3D12Buffer.cpp
     Source/Internal/D3D12/D3D12Buffer.hpp
     Source/Internal/D3D12/D3D12CommandAllocatorInfo.cpp
     Source/Internal/D3D12/D3D12CommandAllocatorInfo.hpp
     Source/Internal/D3D12/D3D12CommandList.cpp
     Source/Internal/D3D12/D3D12CommandList.hpp
+    Source/Internal/D3D12/D3D12Conversion.cpp
+    Source/Internal/D3D12/D3D12Conversion.hpp
     Source/Internal/D3D12/D3D12DescriptorHeap.cpp
     Source/Internal/D3D12/D3D12DescriptorHeap.hpp
     Source/Internal/D3D12/D3D12ImpDefine.hpp
