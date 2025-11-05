@@ -1927,6 +1927,7 @@ set(py_files
     concurrent/futures/_base.py
     concurrent/futures/__init__.py
     concurrent/__init__.py
+    ctypes/util.py
     ctypes/wintypes.py
     ctypes/_endian.py
     ctypes/__init__.py
@@ -2076,6 +2077,7 @@ set(py_files
     signal.py
     socket.py
     ssl.py
+    statistics.py
     string.py
     struct.py
     subprocess.py
