@@ -818,14 +818,12 @@ namespace AIHoloImager
                     }
                     python_system.SetTupleItem(*args, 0, std::move(imgs_args));
                 }
-                gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
+                gpu_system.ExecuteAndReset(cmd_list);
 
                 python_system.CallObject(*mesh_generator_gen_features_method_, *args);
 
                 const auto py_grid_res = python_system.CallObject(*mesh_generator_resolution_method_);
                 grid_res = python_system.Cast<uint32_t>(*py_grid_res);
-
-                cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
                 const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
                 GpuBuffer coords_buff;

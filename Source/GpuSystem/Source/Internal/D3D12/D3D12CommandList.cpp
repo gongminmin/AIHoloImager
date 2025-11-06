@@ -35,7 +35,8 @@ namespace AIHoloImager
         : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
     {
         ID3D12Device* d3d12_device = D3D12Imp(*gpu_system_).Device();
-        auto* cmd_allocator = D3D12Imp(cmd_alloc_info).CmdAllocator();
+        auto& d3d12_cmd_alloc_info = D3D12Imp(cmd_alloc_info);
+        auto* cmd_allocator = d3d12_cmd_alloc_info.CmdAllocator();
         switch (type)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -56,6 +57,8 @@ namespace AIHoloImager
         default:
             Unreachable();
         }
+
+        d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
     }
 
     D3D12CommandList::~D3D12CommandList()
@@ -860,6 +863,7 @@ namespace AIHoloImager
         default:
             Unreachable();
         }
+        D3D12Imp(*cmd_alloc_info_).UnregisterAllocatedCommandList(cmd_list_.Get());
         closed_ = true;
         cmd_alloc_info_ = nullptr;
     }
@@ -867,7 +871,8 @@ namespace AIHoloImager
     void D3D12CommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
     {
         cmd_alloc_info_ = &cmd_alloc_info;
-        auto* d3d12_cmd_alloc = D3D12Imp(cmd_alloc_info).CmdAllocator();
+        auto& d3d12_cmd_alloc_info = D3D12Imp(cmd_alloc_info);
+        auto* d3d12_cmd_alloc = d3d12_cmd_alloc_info.CmdAllocator();
         switch (type_)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -882,6 +887,7 @@ namespace AIHoloImager
         default:
             Unreachable();
         }
+        d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
         closed_ = false;
     }
 } // namespace AIHoloImager

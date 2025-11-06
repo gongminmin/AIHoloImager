@@ -173,7 +173,7 @@ namespace AIHoloImager
                     python_system.SetTupleItem(*args, 11,
                         python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation))));
                 }
-                gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
+                gpu_system.Execute(std::move(cmd_list));
 
                 auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_, *args);
 
@@ -294,19 +294,16 @@ namespace AIHoloImager
                     python_system.SetTupleItem(*args, 12,
                         python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(mask_tex.Data()), mask_tex.DataSize())));
                 }
-                gpu_system.Execute(std::move(cmd_list)); // TODO: Add multi-threading to GpuSystem command list submission.
+                gpu_system.ExecuteAndReset(cmd_list);
 
                 auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_, *args);
 
-                {
-                    cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
-                    GpuTexture2D texture_opt;
-                    tensor_converter.ConvertPy(
-                        cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"texture_opt");
-                    const auto rb_future = cmd_list.ReadBackAsync(texture_opt, 0, texture.Data(), texture.DataSize());
-                    gpu_system.Execute(std::move(cmd_list));
-                    rb_future.wait();
-                }
+                GpuTexture2D texture_opt;
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"texture_opt");
+                const auto rb_future = cmd_list.ReadBackAsync(texture_opt, 0, texture.Data(), texture.DataSize());
+                gpu_system.Execute(std::move(cmd_list));
+                rb_future.wait();
             }
         }
 

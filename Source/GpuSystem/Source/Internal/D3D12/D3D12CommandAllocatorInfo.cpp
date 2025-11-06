@@ -62,4 +62,23 @@ namespace AIHoloImager
     {
         fence_val_ = value;
     }
+
+    void D3D12CommandAllocatorInfo::RegisterAllocatedCommandList(ID3D12CommandList* cmd_list)
+    {
+        allocated_cmd_lists_.push_back(cmd_list);
+    }
+
+    void D3D12CommandAllocatorInfo::UnregisterAllocatedCommandList(ID3D12CommandList* cmd_list)
+    {
+        auto iter = std::find(allocated_cmd_lists_.begin(), allocated_cmd_lists_.end(), cmd_list);
+        if (iter != allocated_cmd_lists_.end())
+        {
+            allocated_cmd_lists_.erase(iter);
+        }
+    }
+
+    bool D3D12CommandAllocatorInfo::EmptyAllocatedCommandLists() const noexcept
+    {
+        return allocated_cmd_lists_.empty();
+    }
 } // namespace AIHoloImager

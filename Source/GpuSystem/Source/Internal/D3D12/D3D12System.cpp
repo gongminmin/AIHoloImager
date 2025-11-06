@@ -400,7 +400,7 @@ namespace AIHoloImager
         for (auto& alloc : cmd_queue.cmd_allocator_infos)
         {
             auto& d3d12_alloc = D3D12Imp(*alloc);
-            if (d3d12_alloc.FenceValue() <= completed_fence)
+            if (d3d12_alloc.EmptyAllocatedCommandLists() && (d3d12_alloc.FenceValue() <= completed_fence))
             {
                 d3d12_alloc.CmdAllocator()->Reset();
                 return *alloc;

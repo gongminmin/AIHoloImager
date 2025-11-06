@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <list>
+
 #include "Base/MiniWindows.hpp"
 
 #include <directx/d3d12.h>
@@ -12,6 +14,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandAllocatorInfoInternal.hpp"
+#include "D3D12CommandList.hpp"
 #include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
@@ -32,9 +35,15 @@ namespace AIHoloImager
         uint64_t FenceValue() const noexcept;
         void FenceValue(uint64_t value) noexcept;
 
+        void RegisterAllocatedCommandList(ID3D12CommandList* cmd_list);
+        void UnregisterAllocatedCommandList(ID3D12CommandList* cmd_list);
+        bool EmptyAllocatedCommandLists() const noexcept;
+
     private:
         ComPtr<ID3D12CommandAllocator> cmd_allocator_;
         uint64_t fence_val_ = 0;
+
+        std::list<ID3D12CommandList*> allocated_cmd_lists_;
     };
 
     D3D12_DEFINE_IMP(CommandAllocatorInfo)
