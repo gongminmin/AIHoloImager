@@ -142,6 +142,14 @@ namespace AIHoloImager
         return type_;
     }
 
+    uint32_t D3D12Resource::AllocationSize() const noexcept
+    {
+        auto& d3d12_system = *resource_.D3D12Sys();
+        ID3D12Device* d3d12_device = d3d12_system.Device();
+        const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &desc_);
+        return static_cast<uint32_t>(alloc_info.SizeInBytes);
+    }
+
     uint32_t D3D12Resource::Width() const noexcept
     {
         return static_cast<uint32_t>(desc_.Width);

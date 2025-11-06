@@ -16,6 +16,7 @@
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
@@ -45,6 +46,8 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::CommandQueueType>(this->NativeCommandQueue());
         }
+
+        LUID DeviceLuid() const noexcept override;
 
         void* SharedFenceHandle() const noexcept override;
 

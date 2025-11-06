@@ -34,7 +34,6 @@
 #endif
 
 #include "Base/ErrorHandling.hpp"
-#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "MiniCudaRt.hpp"
 
@@ -62,7 +61,7 @@ namespace AIHoloImager
                 MiniCudaRt::DeviceProp device_prop{};
                 TIFCE(cuda_rt_.GetDeviceProperties(&device_prop, device_index));
 
-                const LUID gpu_luid = gpu_system_.NativeDevice<D3D12Traits>()->GetAdapterLuid();
+                const LUID gpu_luid = gpu_system_.DeviceLuid();
 
                 cuda_copy_enabled_ = (std::memcmp(&gpu_luid, device_prop.luid, sizeof(gpu_luid)) == 0);
             }
@@ -391,15 +390,10 @@ namespace AIHoloImager
     private:
         MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
-            ID3D12Device* d3d12_device = gpu_system_.NativeDevice<D3D12Traits>();
-
-            const auto res_desc = resource.NativeResource<D3D12Traits>()->GetDesc();
-            const auto alloc_info = d3d12_device->GetResourceAllocationInfo(0, 1, &res_desc);
-
             MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};
             ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
             ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
-            ext_mem_handle_desc.size = alloc_info.SizeInBytes;
+            ext_mem_handle_desc.size = resource.AllocationSize();
             ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
 
             MiniCudaRt::ExternalMemory_t ext_mem;

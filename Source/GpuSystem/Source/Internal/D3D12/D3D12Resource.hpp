@@ -40,6 +40,7 @@ namespace AIHoloImager
         void* SharedHandle() const noexcept;
 
         GpuResourceType Type() const noexcept;
+        uint32_t AllocationSize() const noexcept;
 
         uint32_t Width() const noexcept;
         uint32_t Height() const noexcept;

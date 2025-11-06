@@ -114,9 +114,11 @@ target_precompile_headers(AIHoloImagerGpuSystem
 
 target_link_libraries(AIHoloImagerGpuSystem
     PUBLIC
+        DirectX-Headers
+
+    PRIVATE
         d3d12
         dxgi
         dxguid
-        DirectX-Headers
         AIHoloImagerBase
 )

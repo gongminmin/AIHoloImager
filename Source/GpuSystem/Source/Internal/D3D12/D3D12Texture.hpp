@@ -36,6 +36,7 @@ namespace AIHoloImager
         void* SharedHandle() const noexcept override;
 
         GpuResourceType Type() const noexcept override;
+        uint32_t AllocationSize() const noexcept override;
 
         uint32_t Width(uint32_t mip) const noexcept override;
         uint32_t Height(uint32_t mip) const noexcept override;

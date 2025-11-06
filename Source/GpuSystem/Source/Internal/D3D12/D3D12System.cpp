@@ -210,6 +210,11 @@ namespace AIHoloImager
         return this->CommandQueue(type);
     }
 
+    LUID D3D12System::DeviceLuid() const noexcept
+    {
+        return device_->GetAdapterLuid();
+    }
+
     void* D3D12System::SharedFenceHandle() const noexcept
     {
         return shared_fence_handle_.get();

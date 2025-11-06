@@ -99,6 +99,11 @@ namespace AIHoloImager
         return this->D3D12Resource::Type();
     }
 
+    uint32_t D3D12Texture::AllocationSize() const noexcept
+    {
+        return this->D3D12Resource::AllocationSize();
+    }
+
     uint32_t D3D12Texture::Width(uint32_t mip) const noexcept
     {
         return std::max(this->D3D12Resource::Width() >> mip, 1U);

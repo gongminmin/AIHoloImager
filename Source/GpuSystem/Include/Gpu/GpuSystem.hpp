@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 
+#include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuMemoryAllocator.hpp"
@@ -52,6 +53,8 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::CommandQueueType>(this->NativeCommandQueue());
         }
+
+        LUID DeviceLuid() const noexcept;
 
         void* SharedFenceHandle() const noexcept;
         template <typename Traits>

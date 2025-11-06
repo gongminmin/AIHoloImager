@@ -254,6 +254,12 @@ namespace AIHoloImager
         return impl_ ? impl_->Internal().NativeCommandQueue(type) : nullptr;
     }
 
+    LUID GpuSystem::DeviceLuid() const noexcept
+    {
+        assert(impl_);
+        return impl_->Internal().DeviceLuid();
+    }
+
     void* GpuSystem::SharedFenceHandle() const noexcept
     {
         return impl_ ? impl_->Internal().SharedFenceHandle() : nullptr;
