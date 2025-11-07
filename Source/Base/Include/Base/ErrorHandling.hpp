@@ -44,13 +44,13 @@ namespace AIHoloImager
     }
 } // namespace AIHoloImager
 
-
 #ifdef _WIN32
-    #define TIFHR(hr)                                                    \
-        {                                                                \
-            if (FAILED(hr))                                              \
-            {                                                            \
-                throw AIHoloImager::HrException(hr, __FILE__, __LINE__); \
-            }                                                            \
+    #define TIFHR(x)                                                           \
+        {                                                                      \
+            const auto inner_hr = (x);                                         \
+            if (FAILED(inner_hr))                                              \
+            {                                                                  \
+                throw AIHoloImager::HrException(inner_hr, __FILE__, __LINE__); \
+            }                                                                  \
         }
 #endif
