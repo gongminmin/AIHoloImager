@@ -4,6 +4,7 @@
 #include "D3D12System.hpp"
 
 #include <format>
+#include <iostream>
 #include <list>
 
 #include <dxgi1_6.h>
@@ -37,7 +38,7 @@ DEFINE_UUID_OF(ID3D12DescriptorHeap);
 DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
 DEFINE_UUID_OF(ID3D12Fence);
-DEFINE_UUID_OF(ID3D12InfoQueue);
+DEFINE_UUID_OF(ID3D12InfoQueue1);
 DEFINE_UUID_OF(ID3D12PipelineState);
 DEFINE_UUID_OF(ID3D12Resource);
 DEFINE_UUID_OF(ID3D12RootSignature);
@@ -125,10 +126,13 @@ namespace AIHoloImager
 
         if (enable_debug)
         {
-            if (ComPtr<ID3D12InfoQueue> d3d_info_queue = device_.TryAs<ID3D12InfoQueue>())
+            if (auto d3d_info_queue = device_.TryAs<ID3D12InfoQueue1>())
             {
                 d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
                 d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+
+                d3d_info_queue->RegisterMessageCallback(
+                    DebugMessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &dbg_callback_cookie_);
             }
         }
 
@@ -175,6 +179,11 @@ namespace AIHoloImager
             cmd_queue.free_cmd_lists.clear();
             cmd_queue.cmd_allocator_infos.clear();
             cmd_queue.cmd_queue = nullptr;
+        }
+
+        if (auto d3d_info_queue = device_.TryAs<ID3D12InfoQueue1>())
+        {
+            d3d_info_queue->UnregisterMessageCallback(dbg_callback_cookie_);
         }
 
         device_ = nullptr;
@@ -585,5 +594,91 @@ namespace AIHoloImager
         GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const
     {
         return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_alloc_info, type);
+    }
+
+    void D3D12System::DebugMessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id,
+        LPCSTR description, [[maybe_unused]] void* context)
+    {
+        constexpr const char* RedEscape = "\033[31m";
+        constexpr const char* GreenEscape = "\033[32m";
+        constexpr const char* YellowEscape = "\033[33m";
+        constexpr const char* CyanEscape = "\033[36m";
+        constexpr const char* EndEscape = "\033[0m";
+
+        const char* color_escape;
+        const char* severity_str;
+        switch (severity)
+        {
+        case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+            color_escape = RedEscape;
+            severity_str = "CORRUPTION";
+            break;
+        case D3D12_MESSAGE_SEVERITY_ERROR:
+            color_escape = RedEscape;
+            severity_str = "ERROR";
+            break;
+        case D3D12_MESSAGE_SEVERITY_WARNING:
+            color_escape = YellowEscape;
+            severity_str = "WARNING";
+            break;
+        case D3D12_MESSAGE_SEVERITY_INFO:
+            color_escape = CyanEscape;
+            severity_str = "INFO";
+            break;
+        case D3D12_MESSAGE_SEVERITY_MESSAGE:
+            color_escape = GreenEscape;
+            severity_str = "VERBOSE";
+            break;
+
+        default:
+            Unreachable("Invalid D3D12 message severity");
+        }
+
+        const char* category_str;
+        switch (category)
+        {
+        case D3D12_MESSAGE_CATEGORY_APPLICATION_DEFINED:
+            category_str = "Application Defined";
+            break;
+        case D3D12_MESSAGE_CATEGORY_MISCELLANEOUS:
+            category_str = "Miscellaneous";
+            break;
+        case D3D12_MESSAGE_CATEGORY_INITIALIZATION:
+            category_str = "Initialization";
+            break;
+        case D3D12_MESSAGE_CATEGORY_CLEANUP:
+            category_str = "Cleanup";
+            break;
+        case D3D12_MESSAGE_CATEGORY_COMPILATION:
+            category_str = "Compilation";
+            break;
+        case D3D12_MESSAGE_CATEGORY_STATE_CREATION:
+            category_str = "State Creation";
+            break;
+        case D3D12_MESSAGE_CATEGORY_STATE_SETTING:
+            category_str = "State Setting";
+            break;
+        case D3D12_MESSAGE_CATEGORY_STATE_GETTING:
+            category_str = "State Getting";
+            break;
+        case D3D12_MESSAGE_CATEGORY_RESOURCE_MANIPULATION:
+            category_str = "Resource Manipulation";
+            break;
+        case D3D12_MESSAGE_CATEGORY_EXECUTION:
+            category_str = "Execution";
+            break;
+        case D3D12_MESSAGE_CATEGORY_SHADER:
+            category_str = "Shader";
+            break;
+
+        default:
+            Unreachable("Invalid D3D12 message category");
+        }
+
+        std::ostream& output_stream =
+            (severity == D3D12_MESSAGE_SEVERITY_CORRUPTION || severity == D3D12_MESSAGE_SEVERITY_ERROR) ? std::cerr : std::cout;
+        output_stream << std::format(
+            "{}{}: {}({})[{}]: {}\n", color_escape, severity_str, EndEscape, category_str, static_cast<uint32_t>(id), description);
+        output_stream.flush();
     }
 } // namespace AIHoloImager

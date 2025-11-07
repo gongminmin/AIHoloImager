@@ -143,11 +143,14 @@ namespace AIHoloImager
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
         GpuCommandAllocatorInfo& CurrentCommandAllocator(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
+        static void DebugMessageCallback(
+            D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context);
 
     private:
         GpuSystem* gpu_system_ = nullptr;
 
         ComPtr<ID3D12Device> device_;
+        DWORD dbg_callback_cookie_ = 0;
 
         CmdQueue cmd_queues_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
