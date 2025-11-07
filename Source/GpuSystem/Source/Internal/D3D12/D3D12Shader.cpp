@@ -18,22 +18,28 @@ namespace
     D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,
         uint32_t num_descriptor_ranges, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept
     {
-        D3D12_ROOT_PARAMETER ret;
-        ret.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        ret.DescriptorTable.NumDescriptorRanges = num_descriptor_ranges;
-        ret.DescriptorTable.pDescriptorRanges = descriptor_ranges;
-        ret.ShaderVisibility = visibility;
+        D3D12_ROOT_PARAMETER ret{
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            .DescriptorTable{
+                .NumDescriptorRanges = num_descriptor_ranges,
+                .pDescriptorRanges = descriptor_ranges,
+            },
+            .ShaderVisibility = visibility,
+        };
         return ret;
     }
 
     D3D12_ROOT_PARAMETER CreateRootParameterAsConstantBufferView(
         uint32_t shader_register, uint32_t register_space = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL) noexcept
     {
-        D3D12_ROOT_PARAMETER ret;
-        ret.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        ret.Descriptor.ShaderRegister = shader_register;
-        ret.Descriptor.RegisterSpace = register_space;
-        ret.ShaderVisibility = visibility;
+        D3D12_ROOT_PARAMETER ret{
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+            .Descriptor{
+                .ShaderRegister = shader_register,
+                .RegisterSpace = register_space,
+            },
+            .ShaderVisibility = visibility,
+        };
         return ret;
     }
 } // namespace
@@ -59,18 +65,29 @@ namespace AIHoloImager
         {
             if (shader.num_srvs != 0)
             {
-                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader.num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                ranges[range_index] = {
+                    .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                    .NumDescriptors = shader.num_srvs,
+                    .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                };
                 ++range_index;
             }
             if (shader.num_uavs != 0)
             {
-                ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                ranges[range_index] = {
+                    .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                    .NumDescriptors = shader.num_uavs,
+                    .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                };
                 ++range_index;
             }
             if (shader.num_samplers != 0)
             {
                 ranges[range_index] = {
-                    D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, shader.num_samplers, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+                    .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+                    .NumDescriptors = shader.num_samplers,
+                    .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                };
                 ++range_index;
             }
         }
@@ -176,18 +193,24 @@ namespace AIHoloImager
             switch (static_cast<GpuRenderPipeline::ShaderStage>(s))
             {
             case GpuRenderPipeline::ShaderStage::Vertex:
-                pso_desc.VS.pShaderBytecode = shader.bytecode.data();
-                pso_desc.VS.BytecodeLength = shader.bytecode.size();
+                pso_desc.VS = {
+                    .pShaderBytecode = shader.bytecode.data(),
+                    .BytecodeLength = shader.bytecode.size(),
+                };
                 break;
 
             case GpuRenderPipeline::ShaderStage::Pixel:
-                pso_desc.PS.pShaderBytecode = shader.bytecode.data();
-                pso_desc.PS.BytecodeLength = shader.bytecode.size();
+                pso_desc.PS = {
+                    .pShaderBytecode = shader.bytecode.data(),
+                    .BytecodeLength = shader.bytecode.size(),
+                };
                 break;
 
             case GpuRenderPipeline::ShaderStage::Geometry:
-                pso_desc.GS.pShaderBytecode = shader.bytecode.data();
-                pso_desc.GS.BytecodeLength = shader.bytecode.size();
+                pso_desc.GS = {
+                    .pShaderBytecode = shader.bytecode.data(),
+                    .BytecodeLength = shader.bytecode.size(),
+                };
                 break;
 
             default:
@@ -196,14 +219,16 @@ namespace AIHoloImager
         }
         for (uint32_t i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
         {
-            pso_desc.BlendState.RenderTarget[i].SrcBlend = D3D12_BLEND_ONE;
-            pso_desc.BlendState.RenderTarget[i].DestBlend = D3D12_BLEND_ZERO;
-            pso_desc.BlendState.RenderTarget[i].BlendOp = D3D12_BLEND_OP_ADD;
-            pso_desc.BlendState.RenderTarget[i].SrcBlendAlpha = D3D12_BLEND_ONE;
-            pso_desc.BlendState.RenderTarget[i].DestBlendAlpha = D3D12_BLEND_ZERO;
-            pso_desc.BlendState.RenderTarget[i].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            pso_desc.BlendState.RenderTarget[i].LogicOp = D3D12_LOGIC_OP_NOOP;
-            pso_desc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+            pso_desc.BlendState.RenderTarget[i] = {
+                .SrcBlend = D3D12_BLEND_ONE,
+                .DestBlend = D3D12_BLEND_ZERO,
+                .BlendOp = D3D12_BLEND_OP_ADD,
+                .SrcBlendAlpha = D3D12_BLEND_ONE,
+                .DestBlendAlpha = D3D12_BLEND_ZERO,
+                .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+                .LogicOp = D3D12_LOGIC_OP_NOOP,
+                .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+            };
         }
         pso_desc.SampleMask = UINT_MAX;
         pso_desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -248,8 +273,10 @@ namespace AIHoloImager
             pso_desc.RTVFormats[i] = ToDxgiFormat(states.rtv_formats[i]);
         }
         pso_desc.DSVFormat = ToDxgiFormat(states.dsv_format);
-        pso_desc.SampleDesc.Count = 1;
-        pso_desc.SampleDesc.Quality = 0;
+        pso_desc.SampleDesc = {
+            .Count = 1,
+            .Quality = 0,
+        };
         pso_desc.NodeMask = 0;
         pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
         TIFHR(d3d12_device->CreateGraphicsPipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.Object().PutVoid()));
@@ -296,17 +323,29 @@ namespace AIHoloImager
         uint32_t range_index = 0;
         if (shader.num_srvs != 0)
         {
-            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shader.num_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ranges[range_index] = {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                .NumDescriptors = shader.num_srvs,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+            };
             ++range_index;
         }
         if (shader.num_uavs != 0)
         {
-            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shader.num_uavs, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ranges[range_index] = {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                .NumDescriptors = shader.num_uavs,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+            };
             ++range_index;
         }
         if (shader.num_samplers != 0)
         {
-            ranges[range_index] = {D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, shader.num_samplers, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND};
+            ranges[range_index] = {
+                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+                .NumDescriptors = shader.num_samplers,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+            };
             ++range_index;
         }
 
@@ -366,11 +405,14 @@ namespace AIHoloImager
         TIFHR(d3d12_device->CreateRootSignature(
             1, blob->GetBufferPointer(), blob->GetBufferSize(), UuidOf<ID3D12RootSignature>(), root_sig_.Object().PutVoid()));
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{};
-        pso_desc.pRootSignature = root_sig_.Object().Get();
-        pso_desc.CS.pShaderBytecode = shader.bytecode.data();
-        pso_desc.CS.BytecodeLength = shader.bytecode.size();
-        pso_desc.NodeMask = 0;
+        const D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{
+            .pRootSignature = root_sig_.Object().Get(),
+            .CS{
+                .pShaderBytecode = shader.bytecode.data(),
+                .BytecodeLength = shader.bytecode.size(),
+            },
+            .NodeMask = 0,
+        };
         TIFHR(d3d12_device->CreateComputePipelineState(&pso_desc, UuidOf<ID3D12PipelineState>(), pso_.Object().PutVoid()));
     }
 

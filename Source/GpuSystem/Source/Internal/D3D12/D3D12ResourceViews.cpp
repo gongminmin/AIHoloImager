@@ -26,10 +26,14 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture2D{
+                .ResourceMinLODClamp = 0,
+            },
+        };
         if (sub_resource == ~0U)
         {
             srv_desc.Texture2D.MostDetailedMip = 0;
@@ -43,7 +47,6 @@ namespace AIHoloImager
                 sub_resource, texture.MipLevels(), 1, srv_desc.Texture2D.MostDetailedMip, array_slice, srv_desc.Texture2D.PlaneSlice);
             srv_desc.Texture2D.MipLevels = 1;
         }
-        srv_desc.Texture2D.ResourceMinLODClamp = 0;
         d3d12_device->CreateShaderResourceView(d3d12_texture, &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -57,10 +60,14 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture_array).Resource();
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format);
-        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format),
+            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture2DArray{
+                .ResourceMinLODClamp = 0,
+            },
+        };
         if (sub_resource == ~0U)
         {
             srv_desc.Texture2DArray.MostDetailedMip = 0;
@@ -75,7 +82,6 @@ namespace AIHoloImager
                 srv_desc.Texture2DArray.MostDetailedMip, srv_desc.Texture2DArray.FirstArraySlice, srv_desc.Texture2DArray.PlaneSlice);
             srv_desc.Texture2DArray.MipLevels = 1;
         }
-        srv_desc.Texture2DArray.ResourceMinLODClamp = 0;
         d3d12_device->CreateShaderResourceView(d3d12_texture, &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -89,10 +95,14 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture3D{
+                .ResourceMinLODClamp = 0,
+            },
+        };
         if (sub_resource == ~0U)
         {
             srv_desc.Texture3D.MostDetailedMip = 0;
@@ -105,7 +115,6 @@ namespace AIHoloImager
             DecomposeSubResource(sub_resource, texture.MipLevels(), 1, srv_desc.Texture3D.MostDetailedMip, array_slice, plane_slice);
             srv_desc.Texture3D.MipLevels = 1;
         }
-        srv_desc.Texture3D.ResourceMinLODClamp = 0;
         d3d12_device->CreateShaderResourceView(d3d12_texture, &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -119,14 +128,17 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = ToDxgiFormat(format);
-        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srv_desc.Buffer.FirstElement = first_element;
-        srv_desc.Buffer.NumElements = num_elements;
-        srv_desc.Buffer.StructureByteStride = 0;
-        srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        const D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+            .Format = ToDxgiFormat(format),
+            .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = 0,
+                .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
+            },
+        };
         d3d12_device->CreateShaderResourceView(d3d12_buff, &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -140,14 +152,17 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
-        srv_desc.Format = DXGI_FORMAT_UNKNOWN;
-        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srv_desc.Buffer.FirstElement = first_element;
-        srv_desc.Buffer.NumElements = num_elements;
-        srv_desc.Buffer.StructureByteStride = element_size;
-        srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        const D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = element_size,
+                .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
+            },
+        };
         d3d12_device->CreateShaderResourceView(d3d12_buff, &srv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -211,9 +226,10 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
-        rtv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        const D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+        };
         d3d12_device->CreateRenderTargetView(d3d12_texture, &rtv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -281,9 +297,10 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{};
-        dsv_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        const D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
+        };
         d3d12_device->CreateDepthStencilView(d3d12_texture, &dsv_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -352,9 +369,10 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
+        };
         uint32_t array_slice;
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture2D.MipSlice, array_slice, uav_desc.Texture2D.PlaneSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
@@ -370,10 +388,13 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture_array).Resource();
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format);
-        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-        uav_desc.Texture2DArray.ArraySize = 1;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture_array.Format() : format),
+            .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY,
+            .Texture2DArray{
+                .ArraySize = 1,
+            },
+        };
         DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), uav_desc.Texture2DArray.MipSlice,
             uav_desc.Texture2DArray.FirstArraySlice, uav_desc.Texture2DArray.PlaneSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
@@ -389,13 +410,16 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format);
-        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
+            .Format = ToDxgiFormat(format == GpuFormat::Unknown ? texture.Format() : format),
+            .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D,
+            .Texture3D{
+                .FirstWSlice = 0,
+            },
+        };
         uint32_t array_slice;
         uint32_t plane_slice;
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture3D.MipSlice, array_slice, plane_slice);
-        uav_desc.Texture3D.FirstWSlice = 0;
         uav_desc.Texture3D.WSize = texture.Depth(uav_desc.Texture3D.MipSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
@@ -410,12 +434,15 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = ToDxgiFormat(format);
-        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-        uav_desc.Buffer.FirstElement = first_element;
-        uav_desc.Buffer.NumElements = num_elements;
-        uav_desc.Buffer.StructureByteStride = 0;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
+            .Format = ToDxgiFormat(format),
+            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = 0,
+            },
+        };
         d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 
@@ -429,12 +456,15 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-        uav_desc.Format = DXGI_FORMAT_UNKNOWN;
-        uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-        uav_desc.Buffer.FirstElement = first_element;
-        uav_desc.Buffer.NumElements = num_elements;
-        uav_desc.Buffer.StructureByteStride = element_size;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = element_size,
+            },
+        };
         d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &uav_desc, ToD3D12CpuDescriptorHandle(cpu_handle_));
     }
 

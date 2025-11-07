@@ -255,9 +255,11 @@ namespace AIHoloImager
                 D3D12Imp(*vb_binding.vb).Transition(*this, GpuResourceState::Common);
 
                 D3D12_VERTEX_BUFFER_VIEW& vbv = vbvs[i];
-                vbv.BufferLocation = vb_binding.vb->GpuVirtualAddress() + vb_binding.offset;
-                vbv.SizeInBytes = vb_binding.vb->Size();
-                vbv.StrideInBytes = vb_binding.stride;
+                vbv = {
+                    .BufferLocation = vb_binding.vb->GpuVirtualAddress() + vb_binding.offset,
+                    .SizeInBytes = vb_binding.vb->Size(),
+                    .StrideInBytes = vb_binding.stride,
+                };
             }
             d3d12_cmd_list->IASetVertexBuffers(0, static_cast<uint32_t>(vbs.size()), vbvs.get());
         }
@@ -270,10 +272,11 @@ namespace AIHoloImager
         {
             D3D12Imp(*ib->ib).Transition(*this, GpuResourceState::Common);
 
-            D3D12_INDEX_BUFFER_VIEW ibv;
-            ibv.BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset;
-            ibv.SizeInBytes = ib->ib->Size();
-            ibv.Format = ToDxgiFormat(ib->format);
+            const D3D12_INDEX_BUFFER_VIEW ibv{
+                .BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset,
+                .SizeInBytes = ib->ib->Size(),
+                .Format = ToDxgiFormat(ib->format),
+            };
             d3d12_cmd_list->IASetIndexBuffer(&ibv);
         }
         else
@@ -436,8 +439,12 @@ namespace AIHoloImager
 
         if (scissor_rects.empty())
         {
-            D3D12_RECT d3d12_scissor_rect = {static_cast<LONG>(viewports[0].left), static_cast<LONG>(viewports[0].top),
-                static_cast<LONG>(viewports[0].left + viewports[0].width), static_cast<LONG>(viewports[0].top + viewports[0].height)};
+            const D3D12_RECT d3d12_scissor_rect{
+                .left = static_cast<LONG>(viewports[0].left),
+                .top = static_cast<LONG>(viewports[0].top),
+                .right = static_cast<LONG>(viewports[0].left + viewports[0].width),
+                .bottom = static_cast<LONG>(viewports[0].top + viewports[0].height),
+            };
             d3d12_cmd_list->RSSetScissorRects(1, &d3d12_scissor_rect);
         }
         else
@@ -445,10 +452,12 @@ namespace AIHoloImager
             auto d3d12_scissor_rects = std::make_unique<D3D12_RECT[]>(scissor_rects.size());
             for (size_t i = 0; i < scissor_rects.size(); ++i)
             {
-                d3d12_scissor_rects[i].left = scissor_rects[i].left;
-                d3d12_scissor_rects[i].top = scissor_rects[i].top;
-                d3d12_scissor_rects[i].right = scissor_rects[i].right;
-                d3d12_scissor_rects[i].bottom = scissor_rects[i].bottom;
+                d3d12_scissor_rects[i] = {
+                    .left = scissor_rects[i].left,
+                    .top = scissor_rects[i].top,
+                    .right = scissor_rects[i].right,
+                    .bottom = scissor_rects[i].bottom,
+                };
             }
             d3d12_cmd_list->RSSetScissorRects(static_cast<uint32_t>(scissor_rects.size()), d3d12_scissor_rects.get());
         }
@@ -632,22 +641,31 @@ namespace AIHoloImager
     void D3D12CommandList::Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
         const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box)
     {
-        D3D12_TEXTURE_COPY_LOCATION src_loc;
-        src_loc.pResource = D3D12Imp(src).Resource();
-        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src_loc.SubresourceIndex = src_sub_resource;
+        const D3D12_TEXTURE_COPY_LOCATION src_loc{
+            .pResource = D3D12Imp(src).Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = src_sub_resource,
+        };
 
-        D3D12_TEXTURE_COPY_LOCATION dst_loc;
-        dst_loc.pResource = D3D12Imp(dest).Resource();
-        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst_loc.SubresourceIndex = dest_sub_resource;
+        const D3D12_TEXTURE_COPY_LOCATION dst_loc{
+            .pResource = D3D12Imp(dest).Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = dest_sub_resource,
+        };
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
         D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
 
-        const D3D12_BOX d3d12_src_box{src_box.left, src_box.top, src_box.front, src_box.right, src_box.bottom, src_box.back};
+        const D3D12_BOX d3d12_src_box{
+            .left = src_box.left,
+            .top = src_box.top,
+            .front = src_box.front,
+            .right = src_box.right,
+            .bottom = src_box.bottom,
+            .back = src_box.back,
+        };
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, dst_x, dst_y, dst_z, &src_loc, &d3d12_src_box);
     }
 
@@ -714,23 +732,26 @@ namespace AIHoloImager
         copy_func(tex_data, layout.Footprint.RowPitch, layout.Footprint.RowPitch * layout.Footprint.Height);
 
         layout.Offset += upload_mem_block.Offset();
-        D3D12_TEXTURE_COPY_LOCATION src_loc;
-        src_loc.pResource = D3D12Imp(*upload_mem_block.Buffer()).Resource();
-        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        src_loc.PlacedFootprint = layout;
+        const D3D12_TEXTURE_COPY_LOCATION src_loc{
+            .pResource = D3D12Imp(*upload_mem_block.Buffer()).Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            .PlacedFootprint = layout,
+        };
 
-        D3D12_TEXTURE_COPY_LOCATION dst_loc;
-        dst_loc.pResource = d3d12_dest_texture;
-        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst_loc.SubresourceIndex = sub_resource;
+        const D3D12_TEXTURE_COPY_LOCATION dst_loc{
+            .pResource = d3d12_dest_texture,
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = sub_resource,
+        };
 
-        D3D12_BOX src_box;
-        src_box.left = 0;
-        src_box.top = 0;
-        src_box.front = 0;
-        src_box.right = width;
-        src_box.bottom = height;
-        src_box.back = depth;
+        const D3D12_BOX src_box{
+            .left = 0,
+            .top = 0,
+            .front = 0,
+            .right = width,
+            .bottom = height,
+            .back = depth,
+        };
 
         assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
@@ -808,24 +829,27 @@ namespace AIHoloImager
         auto read_back_mem_block =
             gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(required_size), gpu_system_->TextureDataAlignment());
 
-        D3D12_TEXTURE_COPY_LOCATION src_loc;
-        src_loc.pResource = d3d12_src_texture;
-        src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src_loc.SubresourceIndex = sub_resource;
+        const D3D12_TEXTURE_COPY_LOCATION src_loc{
+            .pResource = d3d12_src_texture,
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = sub_resource,
+        };
 
         layout.Offset = read_back_mem_block.Offset();
-        D3D12_TEXTURE_COPY_LOCATION dst_loc;
-        dst_loc.pResource = D3D12Imp(*read_back_mem_block.Buffer()).Resource();
-        dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dst_loc.PlacedFootprint = layout;
+        const D3D12_TEXTURE_COPY_LOCATION dst_loc{
+            .pResource = D3D12Imp(*read_back_mem_block.Buffer()).Resource(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            .PlacedFootprint = layout,
+        };
 
-        D3D12_BOX src_box;
-        src_box.left = 0;
-        src_box.top = 0;
-        src_box.front = 0;
-        src_box.right = width;
-        src_box.bottom = height;
-        src_box.back = depth;
+        const D3D12_BOX src_box{
+            .left = 0,
+            .top = 0,
+            .front = 0,
+            .right = width,
+            .bottom = height,
+            .back = depth,
+        };
 
         assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();

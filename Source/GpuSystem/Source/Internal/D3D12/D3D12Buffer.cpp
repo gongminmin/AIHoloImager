@@ -14,7 +14,10 @@ namespace AIHoloImager
 {
     D3D12_RANGE ToD3D12Range(const GpuRange& range)
     {
-        return D3D12_RANGE{range.begin, range.end};
+        return D3D12_RANGE{
+            .Begin = range.begin,
+            .End = range.end,
+        };
     }
 
     D3D12_IMP_IMP(Buffer)
@@ -154,22 +157,27 @@ namespace AIHoloImager
         auto* native_resource = this->D3D12Resource::Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
 
-        D3D12_RESOURCE_BARRIER barrier;
         if (curr_state_ != target_state)
         {
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = native_resource;
-            barrier.Transition.StateBefore = ToD3D12ResourceState(curr_state_);
-            barrier.Transition.StateAfter = d3d12_target_state;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            const D3D12_RESOURCE_BARRIER barrier{
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .Transition{
+                    .pResource = native_resource,
+                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    .StateBefore = ToD3D12ResourceState(curr_state_),
+                    .StateAfter = d3d12_target_state,
+                },
+            };
             cmd_list.Transition(std::span(&barrier, 1));
         }
         else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.UAV.pResource = native_resource;
+            const D3D12_RESOURCE_BARRIER barrier{.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .UAV{
+                    .pResource = native_resource,
+                }};
             cmd_list.Transition(std::span(&barrier, 1));
         }
 

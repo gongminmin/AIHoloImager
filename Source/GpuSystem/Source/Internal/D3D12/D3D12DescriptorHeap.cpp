@@ -19,10 +19,12 @@ namespace AIHoloImager
     {
         ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
 
-        desc_.Type = ToD3D12DescriptorHeapType(type);
-        desc_.NumDescriptors = size;
-        desc_.Flags = shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        desc_.NodeMask = 0;
+        desc_ = {
+            .Type = ToD3D12DescriptorHeapType(type),
+            .NumDescriptors = size,
+            .Flags = shader_visible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            .NodeMask = 0,
+        };
         TIFHR(d3d12_device->CreateDescriptorHeap(&desc_, UuidOf<ID3D12DescriptorHeap>(), heap_.PutVoid()));
         this->Name(std::move(name));
     }

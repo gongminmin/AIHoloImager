@@ -112,13 +112,31 @@ namespace AIHoloImager
             Unreachable("Invalid resource type");
         }
 
-        desc_ = {ToD3D12ResourceDimension(type), 0, static_cast<uint64_t>(width), height, depth_or_array_size,
-            static_cast<uint16_t>(mip_levels), ToDxgiFormat(format), {1, 0}, layout, ToD3D12ResourceFlags(flags)};
+        desc_ = {
+            .Dimension = ToD3D12ResourceDimension(type),
+            .Width = static_cast<uint64_t>(width),
+            .Height = height,
+            .DepthOrArraySize = depth_or_array_size,
+            .MipLevels = static_cast<uint16_t>(mip_levels),
+            .Format = ToDxgiFormat(format),
+            .SampleDesc{
+                .Count = 1,
+                .Quality = 0,
+            },
+            .Layout = layout,
+            .Flags = ToD3D12ResourceFlags(flags),
+        };
 
         auto& d3d12_system = *resource_.D3D12Sys();
         ID3D12Device* d3d12_device = d3d12_system.Device();
 
-        const D3D12_HEAP_PROPERTIES heap_prop = {ToD3D12HeapType(heap), D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1};
+        const D3D12_HEAP_PROPERTIES heap_prop{
+            .Type = ToD3D12HeapType(heap),
+            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+            .CreationNodeMask = 1,
+            .VisibleNodeMask = 1,
+        };
 
         TIFHR(d3d12_device->CreateCommittedResource(&heap_prop, ToD3D12HeapFlags(flags), &desc_, ToD3D12ResourceState(init_state), nullptr,
             UuidOf<ID3D12Resource>(), resource_.Object().PutVoid()));

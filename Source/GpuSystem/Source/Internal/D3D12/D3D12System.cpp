@@ -151,14 +151,16 @@ namespace AIHoloImager
         }
 
         {
-            D3D12_INDIRECT_ARGUMENT_DESC indirect_param;
-            indirect_param.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+            const D3D12_INDIRECT_ARGUMENT_DESC indirect_param{
+                .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH,
+            };
 
-            D3D12_COMMAND_SIGNATURE_DESC cmd_signature_desc;
-            cmd_signature_desc.ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS);
-            cmd_signature_desc.NumArgumentDescs = 1;
-            cmd_signature_desc.pArgumentDescs = &indirect_param;
-            cmd_signature_desc.NodeMask = 1;
+            const D3D12_COMMAND_SIGNATURE_DESC cmd_signature_desc{
+                .ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS),
+                .NumArgumentDescs = 1,
+                .pArgumentDescs = &indirect_param,
+                .NodeMask = 1,
+            };
 
             TIFHR(device_->CreateCommandSignature(
                 &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), dispatch_indirect_signature_.PutVoid()));
@@ -394,7 +396,11 @@ namespace AIHoloImager
                 Unreachable();
             }
 
-            const D3D12_COMMAND_QUEUE_DESC queue_desc{d3d12_type, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0};
+            const D3D12_COMMAND_QUEUE_DESC queue_desc{
+                .Type = d3d12_type,
+                .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
+                .NodeMask = 0,
+            };
             TIFHR(device_->CreateCommandQueue(&queue_desc, UuidOf<ID3D12CommandQueue>(), cmd_queue.cmd_queue.PutVoid()));
             cmd_queue.cmd_queue->SetName(std::format(L"cmd_queue {}", static_cast<uint32_t>(type)).c_str());
         }
