@@ -24,6 +24,7 @@
 #include "CompiledShader/InterpolateFwdCs.h"
 #include "CompiledShader/InterpolateFwdDerivateAttribsCs.h"
 #include "CompiledShader/RasterizeBwdCs.h"
+#include "CompiledShader/RasterizeBwdDerivateBcCs.h"
 #include "CompiledShader/RasterizeFwdDerivateBcGs.h"
 #include "CompiledShader/RasterizeFwdDerivateBcPs.h"
 #include "CompiledShader/RasterizeFwdGs.h"
@@ -81,7 +82,7 @@ namespace AIHoloImager
             rasterize_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {RasterizeBwdCs_shader, 1, 6, 1};
+            const ShaderInfo shader = {RasterizeBwdDerivateBcCs_shader, 1, 6, 1};
             rasterize_bwd_derivative_bc_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
