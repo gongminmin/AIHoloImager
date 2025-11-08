@@ -96,7 +96,7 @@ namespace AIHoloImager
 
                 const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
                 tensor_converter.ConvertPy(
-                    cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"delighted_tex");
+                    cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "delighted_tex");
 
                 {
                     constexpr uint32_t BlockDim = 16;
@@ -105,7 +105,7 @@ namespace AIHoloImager
 
                     GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
 
-                    GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, L"merge_mask_cb");
+                    GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, "merge_mask_cb");
                     merge_mask_cb->dest_size.x = width;
                     merge_mask_cb->dest_size.y = height;
                     merge_mask_cb.UploadStaging();

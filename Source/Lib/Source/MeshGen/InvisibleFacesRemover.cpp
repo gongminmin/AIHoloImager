@@ -86,15 +86,15 @@ namespace AIHoloImager
             : gpu_system_(aihi.GpuSystemInstance()), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 1.0f, 3.0f))
         {
             face_id_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::R32_Uint,
-                GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, L"face_id_tex_");
+                GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, "face_id_tex_");
             face_id_rtv_ = GpuRenderTargetView(gpu_system_, face_id_tex_);
             face_id_srv_ = GpuShaderResourceView(gpu_system_, face_id_tex_);
 
-            ds_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::D32_Float, GpuResourceFlag::DepthStencil, L"ds_tex_");
+            ds_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::D32_Float, GpuResourceFlag::DepthStencil, "ds_tex_");
             dsv_ = GpuDepthStencilView(gpu_system_, ds_tex_);
 
             filtered_counter_buff_ =
-                GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_counter_buff_");
+                GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "filtered_counter_buff_");
             filtered_counter_uav_ = GpuUnorderedAccessView(gpu_system_, filtered_counter_buff_, GpuFormat::R32_Uint);
 
             {
@@ -140,20 +140,20 @@ namespace AIHoloImager
             const uint32_t vertex_stride = vertex_desc.Stride();
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::None, L"vb");
+                GpuResourceFlag::None, "vb");
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::None, L"ib");
+                GpuResourceFlag::None, "ib");
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
             const uint32_t num_faces = num_indices / 3;
 
-            face_mark_buff_ = GpuBuffer(
-                gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"face_mark_buff_");
+            face_mark_buff_ =
+                GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "face_mark_buff_");
             face_mark_srv_ = GpuShaderResourceView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
             face_mark_uav_ = GpuUnorderedAccessView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
 
             view_counter_buff_ = GpuBuffer(
-                gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"view_counter_buff");
+                gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "view_counter_buff");
             view_counter_srv_ = GpuShaderResourceView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
             view_counter_uav_ = GpuUnorderedAccessView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
 
@@ -179,7 +179,7 @@ namespace AIHoloImager
             }
 
             GpuBuffer filtered_index_buff(
-                gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"filtered_index_buff");
+                gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "filtered_index_buff");
             FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
 
             auto filtered_indices = std::make_unique<uint32_t[]>(num_indices);
@@ -216,7 +216,7 @@ namespace AIHoloImager
 
             const glm::mat4x4 view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), up_vec);
 
-            GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system_, L"render_cb");
+            GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system_, "render_cb");
             render_cb->mvp = glm::transpose(proj_mtx_ * view_mtx);
             render_cb.UploadStaging();
 
@@ -246,7 +246,7 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 16;
 
-                GpuConstantBufferOfType<MarkFacesConstantBuffer> mark_faces_cb(gpu_system_, L"mark_faces_cb");
+                GpuConstantBufferOfType<MarkFacesConstantBuffer> mark_faces_cb(gpu_system_, "mark_faces_cb");
                 mark_faces_cb->width_height = glm::uvec2(face_id_tex_.Width(0), face_id_tex_.Height(0));
                 mark_faces_cb.UploadStaging();
 
@@ -263,7 +263,7 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 256;
 
-                GpuConstantBufferOfType<AccumFacesConstantBuffer> accum_faces_cb(gpu_system_, L"accum_faces_cb");
+                GpuConstantBufferOfType<AccumFacesConstantBuffer> accum_faces_cb(gpu_system_, "accum_faces_cb");
                 accum_faces_cb->num_faces = num_faces;
                 accum_faces_cb.UploadStaging();
 
@@ -279,7 +279,7 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 256;
 
-            GpuConstantBufferOfType<FilterFacesConstantBuffer> filter_faces_cb(gpu_system_, L"filter_faces_cb");
+            GpuConstantBufferOfType<FilterFacesConstantBuffer> filter_faces_cb(gpu_system_, "filter_faces_cb");
             filter_faces_cb->num_faces = num_faces;
             filter_faces_cb->threshold = NumViews / 100;
             filter_faces_cb.UploadStaging();

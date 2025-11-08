@@ -16,6 +16,7 @@ set(aihi_base_files
     Source/Errorhandling.cpp
     Source/pch.hpp
     Source/Timer.cpp
+    Source/Util.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_base_files})
 

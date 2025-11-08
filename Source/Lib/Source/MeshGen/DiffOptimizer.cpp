@@ -300,7 +300,7 @@ namespace AIHoloImager
 
                 GpuTexture2D texture_opt;
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, L"texture_opt");
+                    cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "texture_opt");
                 const auto rb_future = cmd_list.ReadBackAsync(texture_opt, 0, texture.Data(), texture.DataSize());
                 gpu_system.Execute(std::move(cmd_list));
                 rb_future.wait();

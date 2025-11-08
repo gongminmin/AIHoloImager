@@ -19,13 +19,13 @@ namespace AIHoloImager
 
     GpuBuffer::GpuBuffer() noexcept = default;
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateBuffer(size, heap, flags, std::move(name)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuBufferInternal));
     }
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
+    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateBuffer(native_resource, curr_state, std::move(name)).release()))
     {
     }
@@ -35,7 +35,7 @@ namespace AIHoloImager
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;
     GpuBuffer& GpuBuffer::operator=(GpuBuffer&& other) noexcept = default;
 
-    void GpuBuffer::Name(std::wstring_view name)
+    void GpuBuffer::Name(std::string_view name)
     {
         assert(impl_);
         return impl_->Name(std::move(name));

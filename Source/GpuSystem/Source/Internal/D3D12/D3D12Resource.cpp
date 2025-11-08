@@ -7,13 +7,14 @@
 #include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
 #include "D3D12Texture.hpp"
+#include "D3D12Util.hpp"
 
 namespace AIHoloImager
 {
     D3D12Resource::D3D12Resource(GpuSystem& gpu_system) : resource_(D3D12Imp(gpu_system), nullptr)
     {
     }
-    D3D12Resource::D3D12Resource(GpuSystem& gpu_system, void* native_resource, std::wstring_view name)
+    D3D12Resource::D3D12Resource(GpuSystem& gpu_system, void* native_resource, std::string_view name)
         : resource_(D3D12Imp(gpu_system), ComPtr<ID3D12Resource>(reinterpret_cast<ID3D12Resource*>(native_resource), false))
     {
         if (resource_)
@@ -51,9 +52,9 @@ namespace AIHoloImager
 
     D3D12Resource& D3D12Resource::operator=(D3D12Resource&& other) noexcept = default;
 
-    void D3D12Resource::Name(std::wstring_view name)
+    void D3D12Resource::Name(std::string_view name)
     {
-        resource_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
+        SetName(*resource_.Object(), std::move(name));
     }
 
     ID3D12Resource* D3D12Resource::Resource() const noexcept
@@ -68,7 +69,7 @@ namespace AIHoloImager
     }
 
     void D3D12Resource::CreateResource(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
-        uint32_t mip_levels, GpuFormat format, GpuHeap heap, GpuResourceFlag flags, GpuResourceState init_state, std::wstring_view name)
+        uint32_t mip_levels, GpuFormat format, GpuHeap heap, GpuResourceFlag flags, GpuResourceState init_state, std::string_view name)
     {
         type_ = type;
 

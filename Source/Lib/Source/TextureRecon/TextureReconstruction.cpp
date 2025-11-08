@@ -94,11 +94,11 @@ namespace AIHoloImager
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::None, L"mesh_vb");
+                GpuResourceFlag::None, "mesh_vb");
             cmd_list.Upload(mesh_vb, mesh.VertexBuffer().data(), mesh_vb.Size());
 
             GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::None, L"mesh_ib");
+                GpuResourceFlag::None, "mesh_ib");
             cmd_list.Upload(mesh_ib, mesh.IndexBuffer().data(), mesh_ib.Size());
 
             GpuTexture2D flatten_pos_tex;
@@ -154,14 +154,14 @@ namespace AIHoloImager
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             flatten_pos_tex =
-                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, GpuResourceFlag::RenderTarget, L"flatten_pos_tex");
+                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, GpuResourceFlag::RenderTarget, "flatten_pos_tex");
             flatten_normal_tex =
-                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, NormalFmt, GpuResourceFlag::RenderTarget, L"flatten_normal_tex");
+                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, NormalFmt, GpuResourceFlag::RenderTarget, "flatten_normal_tex");
 
             GpuRenderTargetView pos_rtv(gpu_system_, flatten_pos_tex);
             GpuRenderTargetView normal_rtv(gpu_system_, flatten_normal_tex);
 
-            GpuConstantBufferOfType<FlattenConstantBuffer> flatten_cb(gpu_system_, L"flatten_cb");
+            GpuConstantBufferOfType<FlattenConstantBuffer> flatten_cb(gpu_system_, "flatten_cb");
             flatten_cb->model_mtx = glm::transpose(model_mtx);
             flatten_cb->model_it_mtx = glm::inverse(model_mtx);
             flatten_cb.UploadStaging();
@@ -195,7 +195,7 @@ namespace AIHoloImager
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             GpuTexture2D accum_color_tex(
-                gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"accum_color_tex");
+                gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "accum_color_tex");
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
 
             {
@@ -214,7 +214,7 @@ namespace AIHoloImager
                 const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
                 GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::R32_Float,
-                    GpuResourceFlag::DepthStencil, L"shadow_map_tex");
+                    GpuResourceFlag::DepthStencil, "shadow_map_tex");
                 const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
@@ -251,7 +251,7 @@ namespace AIHoloImager
             const glm::mat4x4& mvp_mtx, const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic,
             GpuDepthStencilView& shadow_map_dsv)
         {
-            GpuConstantBufferOfType<GenShadowMapConstantBuffer> gen_shadow_map_cb(gpu_system_, L"gen_shadow_map_cb");
+            GpuConstantBufferOfType<GenShadowMapConstantBuffer> gen_shadow_map_cb(gpu_system_, "gen_shadow_map_cb");
             gen_shadow_map_cb->mvp = glm::transpose(mvp_mtx);
             gen_shadow_map_cb.UploadStaging();
 
@@ -281,7 +281,7 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
-            GpuConstantBufferOfType<ProjectTextureConstantBuffer> project_tex_cb(gpu_system_, L"project_tex_cb");
+            GpuConstantBufferOfType<ProjectTextureConstantBuffer> project_tex_cb(gpu_system_, "project_tex_cb");
             project_tex_cb->camera_view_proj = glm::transpose(proj_mtx * view_mtx);
             project_tex_cb->camera_view = glm::transpose(view_mtx);
             project_tex_cb->camera_view_it = glm::inverse(view_mtx);
@@ -305,12 +305,12 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 16;
 
-            GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, L"color_tex");
+            GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "color_tex");
             GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
 
             const GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
 
-            GpuConstantBufferOfType<ResolveTextureConstantBuffer> resolve_texture_cb(gpu_system_, L"resolve_texture_cb");
+            GpuConstantBufferOfType<ResolveTextureConstantBuffer> resolve_texture_cb(gpu_system_, "resolve_texture_cb");
             resolve_texture_cb->texture_size = texture_size;
             resolve_texture_cb.UploadStaging();
 

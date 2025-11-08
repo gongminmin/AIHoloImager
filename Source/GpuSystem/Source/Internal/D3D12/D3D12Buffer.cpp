@@ -22,13 +22,13 @@ namespace AIHoloImager
 
     D3D12_IMP_IMP(Buffer)
 
-    D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name)
+    D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name)
         : D3D12Resource(gpu_system), heap_(heap),
           curr_state_(heap == GpuHeap::ReadBack ? GpuResourceState::CopyDst : GpuResourceState::Common)
     {
         this->CreateResource(GpuResourceType::Buffer, size, 1, 1, 1, 1, GpuFormat::Unknown, heap_, flags, curr_state_, std::move(name));
     }
-    D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
+    D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
         : D3D12Resource(gpu_system, native_resource, std::move(name)), curr_state_(curr_state)
     {
         if (native_resource != nullptr)
@@ -58,7 +58,7 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12Buffer&&>(other));
     }
 
-    void D3D12Buffer::Name(std::wstring_view name)
+    void D3D12Buffer::Name(std::string_view name)
     {
         this->D3D12Resource::Name(std::move(name));
     }

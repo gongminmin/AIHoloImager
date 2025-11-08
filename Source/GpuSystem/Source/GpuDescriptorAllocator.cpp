@@ -37,7 +37,7 @@ namespace AIHoloImager
 {
     GpuDescriptorPage::GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size)
     {
-        heap_ = std::make_unique<GpuDescriptorHeap>(gpu_system, size, type, shader_visible, L"GpuDescriptorPage");
+        heap_ = std::make_unique<GpuDescriptorHeap>(gpu_system, size, type, shader_visible, "GpuDescriptorPage");
         cpu_handle_ = heap_->CpuHandleStart();
         if (shader_visible)
         {

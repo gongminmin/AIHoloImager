@@ -59,7 +59,7 @@ namespace AIHoloImager
     public:
         virtual ~GpuResource() noexcept;
 
-        virtual void Name(std::wstring_view name) = 0;
+        virtual void Name(std::string_view name) = 0;
 
         virtual void* NativeResource() const noexcept = 0;
         template <typename Traits>

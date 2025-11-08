@@ -615,7 +615,7 @@ namespace AIHoloImager
                     if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) || (distort_gpu_tex.Height(0) != image.Height()))
                     {
                         distort_gpu_tex =
-                            GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, L"distort_gpu_tex");
+                            GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, "distort_gpu_tex");
                     }
 
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
@@ -645,7 +645,7 @@ namespace AIHoloImager
                             (undistort_gpu_tex.Height(0) != image.Height()))
                         {
                             undistort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
-                                GpuResourceFlag::UnorderedAccess, L"undistort_gpu_tex");
+                                GpuResourceFlag::UnorderedAccess, "undistort_gpu_tex");
                         }
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
@@ -724,7 +724,7 @@ namespace AIHoloImager
                     auto& tensor_converter = aihi_.TensorConverterInstance();
                     GpuBuffer point_cloud_buff;
                     tensor_converter.ConvertPy(
-                        cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::None, L"point_cloud_buff");
+                        cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::None, "point_cloud_buff");
                     auto point_cloud = std::make_unique<glm::vec3[]>(point_cloud_size);
                     const auto rb_future =
                         cmd_list.ReadBackAsync(point_cloud_buff, point_cloud.get(), point_cloud_size * sizeof(glm::vec3));
@@ -845,7 +845,7 @@ namespace AIHoloImager
 
             constexpr uint32_t BlockDim = 16;
 
-            GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb(gpu_system, L"undistort_cb");
+            GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb(gpu_system, "undistort_cb");
 
             const auto& k = camera.K();
             undistort_cb->k.x = static_cast<float>(k(0, 0));
@@ -888,7 +888,7 @@ namespace AIHoloImager
             const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
             const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
             GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(),
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"roi_image");
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "roi_image");
             cmd_list.Copy(roi_image, 0, 0, 0, 0, image, 0, GpuBox{expanded_roi.x, expanded_roi.y, 0, expanded_roi.z, expanded_roi.w, 1});
 
             return roi_image;

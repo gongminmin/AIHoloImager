@@ -21,7 +21,7 @@ namespace AIHoloImager
     {
     public:
         D3D12DescriptorHeap(
-            GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name = L"");
+            GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name = "");
         ~D3D12DescriptorHeap() noexcept;
 
         D3D12DescriptorHeap(D3D12DescriptorHeap&& other) noexcept;
@@ -30,7 +30,7 @@ namespace AIHoloImager
         D3D12DescriptorHeap& operator=(D3D12DescriptorHeap&& other) noexcept;
         GpuDescriptorHeapInternal& operator=(GpuDescriptorHeapInternal&& other) noexcept override;
 
-        void Name(std::wstring_view name) override;
+        void Name(std::string_view name) override;
 
         ID3D12DescriptorHeap* DescriptorHeap() const noexcept;
         void* NativeDescriptorHeap() const noexcept override;

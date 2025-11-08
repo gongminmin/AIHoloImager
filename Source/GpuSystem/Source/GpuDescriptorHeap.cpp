@@ -36,7 +36,7 @@ namespace AIHoloImager
 
     GpuDescriptorHeap::GpuDescriptorHeap() noexcept = default;
     GpuDescriptorHeap::GpuDescriptorHeap(
-        GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
+        GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateDescriptorHeap(size, type, shader_visible, std::move(name)).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuDescriptorHeapInternal));
@@ -47,7 +47,7 @@ namespace AIHoloImager
     GpuDescriptorHeap::GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept = default;
     GpuDescriptorHeap& GpuDescriptorHeap::operator=(GpuDescriptorHeap&& other) noexcept = default;
 
-    void GpuDescriptorHeap::Name(std::wstring_view name)
+    void GpuDescriptorHeap::Name(std::string_view name)
     {
         assert(impl_);
         impl_->Name(std::move(name));

@@ -69,9 +69,9 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(positions), rast_intermediate_.positions, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.RasterizeFwd.positions");
+            "GpuDiffRenderTorch.RasterizeFwd.positions");
         tensor_converter_.Convert(cmd_list, std::move(indices), rast_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.RasterizeFwd.indices");
+            "GpuDiffRenderTorch.RasterizeFwd.indices");
 
         if (viewport != nullptr)
         {
@@ -115,11 +115,11 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_barycentric), rast_intermediate_.grad_barycentric, GpuFormat::RG32_Float,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.RasterizeBwd.grad_barycentric");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.RasterizeBwd.grad_barycentric");
         if (needs_derivative_barycentric)
         {
             tensor_converter_.Convert(cmd_list, *grad_derivative_barycentric, rast_intermediate_.grad_derivative_barycentric,
-                GpuFormat::RGBA32_Float, GpuResourceFlag::None, L"GpuDiffRenderTorch.RasterizeBwd.grad_derivative_barycentric");
+                GpuFormat::RGBA32_Float, GpuResourceFlag::None, "GpuDiffRenderTorch.RasterizeBwd.grad_derivative_barycentric");
         }
 
         gpu_dr_.RasterizeBwd(cmd_list, rast_intermediate_.positions, rast_intermediate_.indices, rast_intermediate_.viewport,
@@ -208,17 +208,17 @@ namespace AIHoloImager
 
         interpolate_intermediate_.num_attribs = num_attribs;
         tensor_converter_.Convert(cmd_list, std::move(vtx_attribs), interpolate_intermediate_.vtx_attribs, GpuHeap::Default,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.vtx_attribs");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateFwd.vtx_attribs");
         tensor_converter_.Convert(cmd_list, std::move(barycentric), interpolate_intermediate_.barycentric, GpuFormat::RG32_Float,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.barycentric");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateFwd.barycentric");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), interpolate_intermediate_.prim_id, GpuFormat::R32_Uint,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.prim_id");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(indices), interpolate_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.InterpolateFwd.indices");
+            "GpuDiffRenderTorch.InterpolateFwd.indices");
         if (needs_dbc)
         {
             tensor_converter_.Convert(cmd_list, *derivative_barycentric, interpolate_intermediate_.derivative_barycentric,
-                GpuFormat::RGBA32_Float, GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateFwd.derivative_barycentric");
+                GpuFormat::RGBA32_Float, GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateFwd.derivative_barycentric");
         }
         else
         {
@@ -253,11 +253,11 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_shading), interpolate_intermediate_.grad_shading, GpuHeap::Default,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateBwd.grad_shading");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateBwd.grad_shading");
         if (needs_dbc)
         {
             tensor_converter_.Convert(cmd_list, *grad_derivative_shading, interpolate_intermediate_.grad_derivative_shading,
-                GpuHeap::Default, GpuResourceFlag::None, L"GpuDiffRenderTorch.InterpolateBwd.grad_derivative_shading");
+                GpuHeap::Default, GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateBwd.grad_derivative_shading");
         }
         else
         {
@@ -417,15 +417,15 @@ namespace AIHoloImager
         }
 
         tensor_converter_.Convert(cmd_list, std::move(texture), texture_intermediate_.texture, fmt, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.TextureFwd.texture");
+            "GpuDiffRenderTorch.TextureFwd.texture");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), texture_intermediate_.prim_id, GpuFormat::R32_Uint, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.TextureFwd.prim_id");
-        tensor_converter_.Convert(cmd_list, std::move(uv), texture_intermediate_.uv, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.TextureFwd.uv");
+            "GpuDiffRenderTorch.TextureFwd.prim_id");
+        tensor_converter_.Convert(
+            cmd_list, std::move(uv), texture_intermediate_.uv, GpuHeap::Default, GpuResourceFlag::None, "GpuDiffRenderTorch.TextureFwd.uv");
         if (derivative_uv != nullptr)
         {
             tensor_converter_.Convert(cmd_list, *derivative_uv, texture_intermediate_.derivative_uv, GpuHeap::Default,
-                GpuResourceFlag::None, L"GpuDiffRenderTorch.TextureFwd.derivative_uv");
+                GpuResourceFlag::None, "GpuDiffRenderTorch.TextureFwd.derivative_uv");
         }
         else
         {
@@ -535,7 +535,7 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_image), texture_intermediate_.grad_image, format, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.TextureBwd.grad_image");
+            "GpuDiffRenderTorch.TextureBwd.grad_image");
 
         gpu_dr_.TextureBwd(cmd_list, texture_intermediate_.texture, texture_intermediate_.prim_id, texture_intermediate_.uv,
             texture_intermediate_.derivative_uv, texture_intermediate_.grad_image, texture_intermediate_.sampler,
@@ -563,7 +563,7 @@ namespace AIHoloImager
 
         GpuBuffer indices_buff;
         tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
+            "GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
 
         AntiAliasOppositeVertices ret;
         gpu_dr_.AntiAliasConstructOppositeVertices(cmd_list, indices_buff, ret.opposite_vertices);
@@ -620,13 +620,13 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.shading");
+            "GpuDiffRenderTorch.AntiAliasFwd.shading");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), aa_intermediate_.prim_id, GpuFormat::R32_Uint, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.prim_id");
+            "GpuDiffRenderTorch.AntiAliasFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(positions), aa_intermediate_.positions, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.positions");
+            "GpuDiffRenderTorch.AntiAliasFwd.positions");
         tensor_converter_.Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::None,
-            L"GpuDiffRenderTorch.AntiAliasFwd.indices");
+            "GpuDiffRenderTorch.AntiAliasFwd.indices");
 
         if (viewport != nullptr)
         {
@@ -667,7 +667,7 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_anti_aliased), aa_intermediate_.grad_anti_aliased, GpuHeap::Default,
-            GpuResourceFlag::None, L"GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
+            GpuResourceFlag::None, "GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
 
         gpu_dr_.AntiAliasBwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
             aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,

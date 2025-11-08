@@ -73,14 +73,14 @@ namespace AIHoloImager
         ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
 
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
-            uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name) const override;
+            uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const override;
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
-            void* native_resource, GpuResourceState curr_state, std::wstring_view name) const override;
+            void* native_resource, GpuResourceState curr_state, std::string_view name) const override;
 
         std::unique_ptr<GpuTextureInternal> CreateTexture(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
-            uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name) const override;
+            uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name) const override;
         std::unique_ptr<GpuTextureInternal> CreateTexture(
-            void* native_resource, GpuResourceState curr_state, std::wstring_view name) const override;
+            void* native_resource, GpuResourceState curr_state, std::string_view name) const override;
 
         std::unique_ptr<GpuStaticSamplerInternal> CreateStaticSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;
@@ -90,7 +90,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const override;
 
         std::unique_ptr<GpuDescriptorHeapInternal> CreateDescriptorHeap(
-            uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name) const override;
+            uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name) const override;
 
         uint32_t DescriptorSize(GpuDescriptorHeapType type) const override;
 

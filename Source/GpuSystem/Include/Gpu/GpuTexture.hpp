@@ -28,7 +28,7 @@ namespace AIHoloImager
         GpuTexture(GpuTexture&& other) noexcept;
         GpuTexture& operator=(GpuTexture&& other) noexcept;
 
-        void Name(std::wstring_view name) override;
+        void Name(std::string_view name) override;
 
         void* NativeResource() const noexcept override;
         template <typename Traits>
@@ -66,8 +66,8 @@ namespace AIHoloImager
 
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
-            uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+            uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
+        GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
 
     private:
         class Impl;
@@ -81,8 +81,8 @@ namespace AIHoloImager
     public:
         GpuTexture2D() noexcept;
         GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name = L"");
-        GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+            std::string_view name = "");
+        GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture2D() override;
 
         GpuTexture2D(GpuTexture2D&& other) noexcept;
@@ -96,8 +96,8 @@ namespace AIHoloImager
     public:
         GpuTexture2DArray() noexcept;
         GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
-            GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuTexture2DArray(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+            GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
+        GpuTexture2DArray(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture2DArray() override;
 
         GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
@@ -111,8 +111,8 @@ namespace AIHoloImager
     public:
         GpuTexture3D() noexcept;
         GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, GpuFormat format,
-            GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"") noexcept;
+            GpuResourceFlag flags, std::string_view name = "");
+        GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture3D() override;
 
         GpuTexture3D(GpuTexture3D&& other) noexcept;

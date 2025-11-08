@@ -102,7 +102,7 @@ namespace AIHoloImager
         }
 
         void Convert(GpuCommandList& cmd_list, const torch::Tensor& input_tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
-            std::wstring_view name) const
+            std::string_view name) const
         {
             const bool uses_cuda_copy = cuda_copy_enabled_ && this->SameTorchDevice(input_tensor.device());
             const uint32_t size = static_cast<uint32_t>(input_tensor.nbytes());
@@ -167,7 +167,7 @@ namespace AIHoloImager
         }
 
         void Convert(GpuCommandList& cmd_list, const torch::Tensor& input_tensor, GpuTexture2D& tex, GpuFormat format,
-            GpuResourceFlag flags, std::wstring_view name) const
+            GpuResourceFlag flags, std::string_view name) const
         {
             assert(input_tensor.size(-1) == FormatChannels(format));
             assert(input_tensor.element_size() == FormatChannelSize(format));
@@ -362,14 +362,14 @@ namespace AIHoloImager
         }
 
         void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap, GpuResourceFlag flags,
-            std::wstring_view name) const
+            std::string_view name) const
         {
             const torch::Tensor& tensor = THPVariable_Unpack(const_cast<PyObject*>(&py_tensor));
             this->Convert(cmd_list, tensor, buff, heap, flags, std::move(name));
         }
 
         void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
-            std::wstring_view name) const
+            std::string_view name) const
         {
             const torch::Tensor& tensor = THPVariable_Unpack(const_cast<PyObject*>(&py_tensor));
             this->Convert(cmd_list, tensor, tex, format, flags, std::move(name));
@@ -503,13 +503,13 @@ namespace AIHoloImager
     TensorConverter::~TensorConverter() noexcept = default;
 
     void TensorConverter::Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuBuffer& buff, GpuHeap heap,
-        GpuResourceFlag flags, std::wstring_view name) const
+        GpuResourceFlag flags, std::string_view name) const
     {
         impl_->Convert(cmd_list, tensor, buff, heap, flags, std::move(name));
     }
 
     void TensorConverter::Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture2D& tex, GpuFormat format,
-        GpuResourceFlag flags, std::wstring_view name) const
+        GpuResourceFlag flags, std::string_view name) const
     {
         impl_->Convert(cmd_list, tensor, tex, format, flags, std::move(name));
     }
@@ -526,13 +526,13 @@ namespace AIHoloImager
     }
 
     void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap,
-        GpuResourceFlag flags, std::wstring_view name) const
+        GpuResourceFlag flags, std::string_view name) const
     {
         impl_->ConvertPy(cmd_list, py_tensor, buff, heap, flags, std::move(name));
     }
 
     void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format,
-        GpuResourceFlag flags, std::wstring_view name) const
+        GpuResourceFlag flags, std::string_view name) const
     {
         impl_->ConvertPy(cmd_list, py_tensor, tex, format, flags, std::move(name));
     }

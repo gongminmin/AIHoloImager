@@ -50,13 +50,13 @@ namespace AIHoloImager
     public:
         GpuDescriptorHeap() noexcept;
         GpuDescriptorHeap(
-            GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name = L"");
+            GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name = "");
         ~GpuDescriptorHeap() noexcept;
 
         GpuDescriptorHeap(GpuDescriptorHeap&& other) noexcept;
         GpuDescriptorHeap& operator=(GpuDescriptorHeap&& other) noexcept;
 
-        void Name(std::wstring_view name);
+        void Name(std::string_view name);
 
         void* NativeDescriptorHeap() const noexcept;
         template <typename Traits>

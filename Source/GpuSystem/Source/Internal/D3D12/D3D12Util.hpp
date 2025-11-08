@@ -3,6 +3,12 @@
 
 #pragma once
 
+#include <string_view>
+
+#include "Base/MiniWindows.hpp"
+
+#include <directx/d3d12.h>
+
 #include "Base/Noncopyable.hpp"
 
 namespace AIHoloImager
@@ -91,4 +97,6 @@ namespace AIHoloImager
         D3D12System* d3d12_system_ = nullptr;
         T object_;
     };
+
+    void SetName(ID3D12Object& d3d12_object, std::string_view name);
 } // namespace AIHoloImager

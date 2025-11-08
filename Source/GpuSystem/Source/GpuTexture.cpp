@@ -37,7 +37,7 @@ namespace AIHoloImager
     GpuTexture::GpuTexture() noexcept = default;
 
     GpuTexture::GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
-        uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+        uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : impl_(static_cast<Impl*>(gpu_system.Internal()
                                        .CreateTexture(type, width, height, depth, array_size, mip_levels, format, flags, std::move(name))
                                        .release()))
@@ -45,7 +45,7 @@ namespace AIHoloImager
         static_assert(sizeof(Impl) == sizeof(GpuTextureInternal));
     }
 
-    GpuTexture::GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
+    GpuTexture::GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateTexture(native_resource, curr_state, std::move(name)).release()))
     {
     }
@@ -55,7 +55,7 @@ namespace AIHoloImager
     GpuTexture::GpuTexture(GpuTexture&& other) noexcept = default;
     GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept = default;
 
-    void GpuTexture::Name(std::wstring_view name)
+    void GpuTexture::Name(std::string_view name)
     {
         assert(impl_);
         return impl_->Name(std::move(name));
@@ -155,12 +155,12 @@ namespace AIHoloImager
     GpuTexture2D::GpuTexture2D() noexcept = default;
 
     GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format,
-        GpuResourceFlag flags, std::wstring_view name)
+        GpuResourceFlag flags, std::string_view name)
         : GpuTexture(gpu_system, GpuResourceType::Texture2D, width, height, 1, 1, mip_levels, format, flags, std::move(name))
     {
     }
 
-    GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
+    GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
         : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
     {
     }
@@ -174,13 +174,13 @@ namespace AIHoloImager
     GpuTexture2DArray::GpuTexture2DArray() noexcept = default;
 
     GpuTexture2DArray::GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
-        GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+        GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : GpuTexture(gpu_system, GpuResourceType::Texture2DArray, width, height, 1, array_size, mip_levels, format, flags, std::move(name))
     {
     }
 
     GpuTexture2DArray::GpuTexture2DArray(
-        GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
+        GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
         : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
     {
     }
@@ -194,12 +194,12 @@ namespace AIHoloImager
     GpuTexture3D::GpuTexture3D() noexcept = default;
 
     GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels,
-        GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+        GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : GpuTexture(gpu_system, GpuResourceType::Texture3D, width, height, depth, 1, mip_levels, format, flags, std::move(name))
     {
     }
 
-    GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name) noexcept
+    GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
         : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
     {
     }

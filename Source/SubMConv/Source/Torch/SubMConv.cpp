@@ -38,7 +38,7 @@ namespace AIHoloImager
         if (coord_hash_.Size() < expected_hash_buff_size)
         {
             coord_hash_ = GpuBuffer(
-                gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess, L"SubMConv3DHelper.coord_hash_");
+                gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "SubMConv3DHelper.coord_hash_");
             coord_hash_srv_ = GpuShaderResourceView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
             coord_hash_uav_ = GpuUnorderedAccessView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
         }
@@ -46,13 +46,13 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(
-            cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::None, L"SubMConv3DHelper.coords_buff_");
+            cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::None, "SubMConv3DHelper.coords_buff_");
         coords_srv_ = GpuShaderResourceView(gpu_system_, coords_buff_, GpuFormat::RGBA32_Uint);
 
         {
             constexpr uint32_t BlockDim = 256;
 
-            GpuConstantBufferOfType<BuildCoordHashConstantBuffer> build_coord_hash_cb(gpu_system_, L"build_coord_hash_cb");
+            GpuConstantBufferOfType<BuildCoordHashConstantBuffer> build_coord_hash_cb(gpu_system_, "build_coord_hash_cb");
             build_coord_hash_cb->num_coords = num_coords_;
             build_coord_hash_cb->hash_size = coord_hash_.Size() / (sizeof(uint32_t) * 5);
             build_coord_hash_cb.UploadStaging();
@@ -81,7 +81,7 @@ namespace AIHoloImager
         if (nei_indices_.Size() < expected_indices_size)
         {
             nei_indices_ = GpuBuffer(gpu_system_, expected_indices_size, GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"SubMConv3DHelper.nei_indices_");
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "SubMConv3DHelper.nei_indices_");
             nei_indices_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_, GpuFormat::RG32_Uint);
         }
 
@@ -89,7 +89,7 @@ namespace AIHoloImager
         if (nei_indices_count_.Size() < expected_index_count_size)
         {
             nei_indices_count_ = GpuBuffer(gpu_system_, expected_index_count_size, GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"SubMConv3DHelper.nei_indices_count_");
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "SubMConv3DHelper.nei_indices_count_");
             nei_indices_count_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_count_, GpuFormat::R32_Uint);
         }
 
@@ -97,7 +97,7 @@ namespace AIHoloImager
         if (offsets_buff_.Size() < expected_offsets_size)
         {
             offsets_buff_ =
-                GpuBuffer(gpu_system_, expected_offsets_size, GpuHeap::Default, GpuResourceFlag::None, L"SubMConv3DHelper.offsets_buff_");
+                GpuBuffer(gpu_system_, expected_offsets_size, GpuHeap::Default, GpuResourceFlag::None, "SubMConv3DHelper.offsets_buff_");
             offsets_srv_ = GpuShaderResourceView(gpu_system_, offsets_buff_, GpuFormat::RGB32_Sint);
         }
 
@@ -116,7 +116,7 @@ namespace AIHoloImager
         {
             constexpr uint32_t BlockDim = 256;
 
-            GpuConstantBufferOfType<FindAvailableNeighborsConstantBuffer> find_avail_nei_cb(gpu_system_, L"find_avail_nei_cb");
+            GpuConstantBufferOfType<FindAvailableNeighborsConstantBuffer> find_avail_nei_cb(gpu_system_, "find_avail_nei_cb");
             find_avail_nei_cb->num_offsets = num_offsets;
             find_avail_nei_cb->num_coords = num_coords_;
             find_avail_nei_cb->hash_size = coord_hash_.Size() / (sizeof(uint32_t) * 5);

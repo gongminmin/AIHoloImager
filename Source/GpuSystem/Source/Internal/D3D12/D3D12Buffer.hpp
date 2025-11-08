@@ -16,8 +16,8 @@ namespace AIHoloImager
     class D3D12Buffer : public GpuBufferInternal, public D3D12Resource
     {
     public:
-        D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name);
-        D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name);
+        D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name);
+        D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name);
         ~D3D12Buffer() override;
 
         D3D12Buffer(D3D12Buffer&& other) noexcept;
@@ -27,7 +27,7 @@ namespace AIHoloImager
         GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept override;
         GpuBufferInternal& operator=(GpuBufferInternal&& other) noexcept override;
 
-        void Name(std::wstring_view name) override;
+        void Name(std::string_view name) override;
 
         ID3D12Resource* Resource() const noexcept;
         void* NativeResource() const noexcept override;

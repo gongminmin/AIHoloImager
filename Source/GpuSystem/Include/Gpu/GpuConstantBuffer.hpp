@@ -31,7 +31,7 @@ namespace AIHoloImager
 
     protected:
         GpuConstantBuffer() noexcept;
-        GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name = L"");
+        GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::string_view name = "");
 
         GpuConstantBuffer(GpuConstantBuffer&& other) noexcept;
         GpuConstantBuffer& operator=(GpuConstantBuffer&& other) noexcept;
@@ -39,7 +39,7 @@ namespace AIHoloImager
     protected:
         GpuSystem* gpu_system_ = nullptr;
         GpuMemoryBlock mem_block_;
-        std::wstring name_;
+        std::string name_;
     };
 
     template <typename T>
@@ -54,7 +54,7 @@ namespace AIHoloImager
         GpuConstantBufferOfType() noexcept = default;
         ~GpuConstantBufferOfType() override = default;
 
-        explicit GpuConstantBufferOfType(GpuSystem& gpu_system, std::wstring_view name = L"")
+        explicit GpuConstantBufferOfType(GpuSystem& gpu_system, std::string_view name = "")
             : GpuConstantBuffer(gpu_system, sizeof(value_type), std::move(name))
         {
         }

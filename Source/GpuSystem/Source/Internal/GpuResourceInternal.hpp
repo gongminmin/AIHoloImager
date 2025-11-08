@@ -20,7 +20,7 @@ namespace AIHoloImager
         GpuResourceInternal(GpuResourceInternal&& other) noexcept;
         virtual GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept = 0;
 
-        virtual void Name(std::wstring_view name) = 0;
+        virtual void Name(std::string_view name) = 0;
 
         virtual void* NativeResource() const noexcept = 0;
 

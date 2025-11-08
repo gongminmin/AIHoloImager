@@ -30,14 +30,14 @@ namespace AIHoloImager
 
     public:
         GpuBuffer() noexcept;
-        GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::wstring_view name = L"");
-        GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
+        GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name = "");
+        GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "");
         ~GpuBuffer() override;
 
         GpuBuffer(GpuBuffer&& other) noexcept;
         GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
-        void Name(std::wstring_view name) override;
+        void Name(std::string_view name) override;
 
         void* NativeResource() const noexcept override;
         template <typename Traits>

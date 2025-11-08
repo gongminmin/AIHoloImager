@@ -40,7 +40,7 @@ namespace AIHoloImager
                 const uint32_t this_width = texture.Width(i);
                 const uint32_t this_height = texture.Height(i);
 
-                GpuConstantBufferOfType<GenMipmapConstantBuffer> gen_mipmap_cb(gpu_system_, L"gen_mipmap_cb");
+                GpuConstantBufferOfType<GenMipmapConstantBuffer> gen_mipmap_cb(gpu_system_, "gen_mipmap_cb");
                 gen_mipmap_cb->this_level_width = this_width;
                 gen_mipmap_cb->this_level_height = this_height;
                 gen_mipmap_cb.UploadStaging();

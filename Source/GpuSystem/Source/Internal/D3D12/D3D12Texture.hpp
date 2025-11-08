@@ -17,8 +17,8 @@ namespace AIHoloImager
     {
     public:
         D3D12Texture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
-            uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name = L"");
-        D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name = L"");
+            uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name);
+        D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name);
         ~D3D12Texture() noexcept;
 
         D3D12Texture(D3D12Texture&& other) noexcept;
@@ -28,7 +28,7 @@ namespace AIHoloImager
         GpuResourceInternal& operator=(GpuResourceInternal&& other) noexcept override;
         GpuTextureInternal& operator=(GpuTextureInternal&& other) noexcept override;
 
-        void Name(std::wstring_view name) override;
+        void Name(std::string_view name) override;
 
         void* NativeResource() const noexcept override;
         void* NativeTexture() const noexcept override;

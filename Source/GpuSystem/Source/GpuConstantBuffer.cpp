@@ -6,7 +6,7 @@
 namespace AIHoloImager
 {
     GpuConstantBuffer::GpuConstantBuffer() noexcept = default;
-    GpuConstantBuffer::GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::wstring_view name)
+    GpuConstantBuffer::GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::string_view name)
         : gpu_system_(&gpu_system), mem_block_(gpu_system.AllocUploadMemBlock(size, gpu_system.ConstantDataAlignment())),
           name_(std::move(name))
     {

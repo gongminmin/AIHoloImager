@@ -19,7 +19,7 @@ namespace AIHoloImager
         GpuDescriptorHeapInternal(GpuDescriptorHeapInternal&& other) noexcept;
         virtual GpuDescriptorHeapInternal& operator=(GpuDescriptorHeapInternal&& other) noexcept = 0;
 
-        virtual void Name(std::wstring_view name) = 0;
+        virtual void Name(std::string_view name) = 0;
 
         virtual void* NativeDescriptorHeap() const noexcept = 0;
 

@@ -20,7 +20,7 @@ namespace AIHoloImager
     GpuMemoryPage::GpuMemoryPage(GpuSystem& gpu_system, bool is_upload, uint32_t size_in_bytes) : is_upload_(is_upload)
     {
         buffer_ = std::make_unique<GpuBuffer>(
-            gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, L"GpuMemoryPage");
+            gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, "GpuMemoryPage");
         cpu_addr_ = buffer_->Map();
         gpu_addr_ = buffer_->GpuVirtualAddress();
     }

@@ -17,7 +17,7 @@ namespace AIHoloImager
     D3D12_IMP_IMP(Texture)
 
     D3D12Texture::D3D12Texture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
-        uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::wstring_view name)
+        uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : D3D12Resource(gpu_system), format_(format), flags_(flags)
     {
         if (mip_levels == 0)
@@ -44,7 +44,7 @@ namespace AIHoloImager
             type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags_, curr_states_[0], std::move(name));
     }
 
-    D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::wstring_view name)
+    D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
         : D3D12Resource(gpu_system, native_resource, std::move(name))
     {
         if (this->NativeResource() != nullptr)
@@ -74,9 +74,9 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12Texture&&>(other));
     }
 
-    void D3D12Texture::Name(std::wstring_view name)
+    void D3D12Texture::Name(std::string_view name)
     {
-        this->D3D12Resource::Name(name);
+        this->D3D12Resource::Name(std::move(name));
     }
 
     void* D3D12Texture::NativeResource() const noexcept

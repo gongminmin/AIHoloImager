@@ -469,12 +469,12 @@ namespace AIHoloImager
                         constexpr uint32_t BlockDim = 16;
 
                         GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
-                            GpuResourceFlag::UnorderedAccess, L"mask_gpu_tex");
+                            GpuResourceFlag::UnorderedAccess, "mask_gpu_tex");
 
                         GpuShaderResourceView input_srv(gpu_system, texture_result.color_tex);
                         GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
 
-                        auto extract_mask_cb = GpuConstantBufferOfType<ExtractMaskConstantBuffer>(gpu_system, L"extract_mask_cb");
+                        auto extract_mask_cb = GpuConstantBufferOfType<ExtractMaskConstantBuffer>(gpu_system, "extract_mask_cb");
                         extract_mask_cb->texture_size = glm::uvec2(texture_size, texture_size);
                         extract_mask_cb.UploadStaging();
 
@@ -490,7 +490,7 @@ namespace AIHoloImager
                     }
 
                     GpuTexture2D dilated_tmp_gpu_tex(gpu_system, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
-                        texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_tmp_tex");
+                        texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
 
                     GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
 
@@ -683,7 +683,7 @@ namespace AIHoloImager
                     const uint32_t delighted_height = view.delighted_tex.Height(0);
                     const GpuShaderResourceView delighted_srv(gpu_system, view.delighted_tex);
 
-                    GpuConstantBufferOfType<RotateConstantBuffer> rotation_cb(gpu_system, L"rotation_cb");
+                    GpuConstantBufferOfType<RotateConstantBuffer> rotation_cb(gpu_system, "rotation_cb");
 
                     const auto& view_mtx = CalcViewMatrix(view);
                     const glm::vec3 forward_vec(0, 0, 1);
@@ -708,8 +708,8 @@ namespace AIHoloImager
                     const float cos_theta = glm::dot(new_right_vec, old_right_vec);
                     const float abs_sin_theta = std::sqrt(1 - cos_theta * cos_theta);
                     const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(cos_theta) + abs_sin_theta)));
-                    rotated_roi_tex = GpuTexture2D(
-                        gpu_system, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, L"rotated_roi_tex");
+                    rotated_roi_tex =
+                        GpuTexture2D(gpu_system, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, "rotated_roi_tex");
                     GpuRenderTargetView rotated_roi_rtv(gpu_system, rotated_roi_tex);
 
                     const float clear_clr[] = {0, 0, 0, 1};
@@ -732,17 +732,17 @@ namespace AIHoloImager
                 const uint32_t rotated_height = rotated_roi_tex.Height(0);
 
                 GpuTexture2D resized_rotated_roi_x_tex(gpu_system, ResizedImageSize, rotated_height, 1, ColorFmt,
-                    GpuResourceFlag::UnorderedAccess, L"resized_rotated_roi_x_tex");
+                    GpuResourceFlag::UnorderedAccess, "resized_rotated_roi_x_tex");
                 auto& resized_rotated_roi_tex = rotated_images[i];
                 resized_rotated_roi_tex = GpuTexture2D(gpu_system, ResizedImageSize, ResizedImageSize, 1, ColorFmt,
-                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, L"resized_rotated_roi_tex");
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "resized_rotated_roi_tex");
                 {
                     constexpr uint32_t BlockDim = 16;
 
                     const GpuShaderResourceView input_srv(gpu_system, rotated_roi_tex);
                     GpuUnorderedAccessView output_uav(gpu_system, resized_rotated_roi_x_tex);
 
-                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, L"downsample_x_cb");
+                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, "downsample_x_cb");
                     downsample_x_cb->src_roi = glm::uvec4(0, 0, rotated_width, rotated_height);
                     downsample_x_cb->dest_size = glm::uvec2(ResizedImageSize, rotated_height);
                     downsample_x_cb->scale = static_cast<float>(rotated_width) / ResizedImageSize;
@@ -762,7 +762,7 @@ namespace AIHoloImager
                     const GpuShaderResourceView input_srv(gpu_system, resized_rotated_roi_x_tex);
                     GpuUnorderedAccessView output_uav(gpu_system, resized_rotated_roi_tex);
 
-                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, L"downsample_y_cb");
+                    GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, "downsample_y_cb");
                     downsample_y_cb->src_roi = glm::uvec4(0, 0, ResizedImageSize, rotated_height);
                     downsample_y_cb->dest_size = glm::uvec2(ResizedImageSize, ResizedImageSize);
                     downsample_y_cb->scale = static_cast<float>(rotated_height) / ResizedImageSize;
@@ -827,15 +827,15 @@ namespace AIHoloImager
 
                 const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
                 GpuBuffer coords_buff;
-                tensor_converter.ConvertPy(cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::None, L"coords_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::None, "coords_buff");
                 const GpuShaderResourceView coords_srv(gpu_system, coords_buff, GpuFormat::RGB32_Uint);
 
                 index_vol_tex = GpuTexture3D(
-                    gpu_system, grid_res, grid_res, grid_res, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, L"index_vol_tex");
+                    gpu_system, grid_res, grid_res, grid_res, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, "index_vol_tex");
                 {
                     const uint32_t num_features = coords_buff.Size() / sizeof(glm::uvec3);
 
-                    GpuConstantBufferOfType<ScatterIndexConstantBuffer> scatter_index_cb(gpu_system, L"scatter_index_cb");
+                    GpuConstantBufferOfType<ScatterIndexConstantBuffer> scatter_index_cb(gpu_system, "scatter_index_cb");
                     scatter_index_cb->num_features = num_features;
                     scatter_index_cb.UploadStaging();
 
@@ -855,15 +855,15 @@ namespace AIHoloImager
 
                 const auto py_density_features = python_system.CallObject(*mesh_generator_density_features_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_density_features, density_features_buff, GpuHeap::Default, GpuResourceFlag::None,
-                    L"density_features_buff");
+                    "density_features_buff");
 
                 const auto py_deformation_features = python_system.CallObject(*mesh_generator_deformation_features_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_deformation_features, deformation_features_buff, GpuHeap::Default,
-                    GpuResourceFlag::None, L"deformation_features_buff");
+                    GpuResourceFlag::None, "deformation_features_buff");
 
                 const auto py_color_features = python_system.CallObject(*mesh_generator_color_features_method_);
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_color_features, color_features_buff, GpuHeap::Default, GpuResourceFlag::None, L"color_features_buff");
+                    cmd_list, *py_color_features, color_features_buff, GpuHeap::Default, GpuResourceFlag::None, "color_features_buff");
             }
 
             const GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);
@@ -872,12 +872,12 @@ namespace AIHoloImager
 
             const uint32_t size = grid_res + 1;
             GpuTexture3D density_deformation_tex(
-                gpu_system, size, size, size, 1, GpuFormat::RGBA16_Float, GpuResourceFlag::UnorderedAccess, L"density_deformation_tex");
+                gpu_system, size, size, size, 1, GpuFormat::RGBA16_Float, GpuResourceFlag::UnorderedAccess, "density_deformation_tex");
             color_tex =
-                GpuTexture3D(gpu_system, size, size, size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, L"color_tex");
+                GpuTexture3D(gpu_system, size, size, size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "color_tex");
 
             {
-                GpuConstantBufferOfType<GatherVolumeConstantBuffer> gather_volume_cb(gpu_system, L"gather_volume_cb");
+                GpuConstantBufferOfType<GatherVolumeConstantBuffer> gather_volume_cb(gpu_system, "gather_volume_cb");
                 gather_volume_cb->grid_res = grid_res;
                 gather_volume_cb->size = size;
                 gather_volume_cb.UploadStaging();
@@ -901,7 +901,7 @@ namespace AIHoloImager
             }
 
             GpuTexture3D dilated_3d_tmp_gpu_tex(gpu_system, color_tex.Width(0), color_tex.Height(0), color_tex.Depth(0), 1,
-                color_tex.Format(), GpuResourceFlag::UnorderedAccess, L"dilated_3d_tmp_gpu_tex");
+                color_tex.Format(), GpuResourceFlag::UnorderedAccess, "dilated_3d_tmp_gpu_tex");
 
             GpuTexture3D* dilated_gpu_tex = this->DilateTexture(cmd_list, color_tex, dilated_3d_tmp_gpu_tex);
             if (dilated_gpu_tex != &color_tex)
@@ -1148,7 +1148,7 @@ namespace AIHoloImager
 
             const uint32_t num_vertices = mesh.NumVertices();
 
-            GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb(gpu_system, L"apply_vertex_color_cb");
+            GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb(gpu_system, "apply_vertex_color_cb");
             apply_vertex_color_cb->inv_scale = 1 / GridScale;
             apply_vertex_color_cb->num_vertices = num_vertices;
             apply_vertex_color_cb.UploadStaging();
@@ -1157,13 +1157,13 @@ namespace AIHoloImager
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
             GpuBuffer pos_vb(
-                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default, GpuResourceFlag::None, L"pos_vb");
+                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default, GpuResourceFlag::None, "pos_vb");
 
             const GpuShaderResourceView pos_srv(gpu_system, pos_vb, GpuFormat::RGB32_Float);
             const GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
 
             GpuBuffer color_vb(gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, L"pos_color_vb");
+                GpuResourceFlag::UnorderedAccess, "pos_color_vb");
             GpuUnorderedAccessView color_uav(gpu_system, color_vb, GpuFormat::R32_Float);
 
             constexpr uint32_t BlockDim = 256;
@@ -1479,7 +1479,7 @@ namespace AIHoloImager
 
             const uint32_t texture_size = color_tex.Width(0);
 
-            GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, L"merge_texture_cb");
+            GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, "merge_texture_cb");
             merge_texture_cb->inv_scale = 1 / GridScale;
             merge_texture_cb->inv_model = glm::transpose(glm::inverse(model_mtx));
             merge_texture_cb->texture_size = texture_size;
@@ -1521,7 +1521,7 @@ namespace AIHoloImager
             const uint32_t dilate_times = LogNextPowerOf2(max_size);
             const GpuComputePipeline& dilate_pipeline = std::is_same_v<GpuTextureT, GpuTexture2D> ? dilate_pipeline_ : dilate_3d_pipeline_;
 
-            GpuConstantBufferOfType<DilateConstantBuffer> dilate_cb(gpu_system, L"dilate_cb");
+            GpuConstantBufferOfType<DilateConstantBuffer> dilate_cb(gpu_system, "dilate_cb");
             dilate_cb->texture_size = tex.Width(0);
             dilate_cb.UploadStaging();
 

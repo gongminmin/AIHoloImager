@@ -8,13 +8,14 @@
 
 #include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
+#include "D3D12Util.hpp"
 
 namespace AIHoloImager
 {
     D3D12_IMP_IMP(DescriptorHeap)
 
     D3D12DescriptorHeap::D3D12DescriptorHeap(
-        GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::wstring_view name)
+        GpuSystem& gpu_system, uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name)
         : type_(type)
     {
         ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
@@ -43,9 +44,9 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12DescriptorHeap&&>(other));
     }
 
-    void D3D12DescriptorHeap::Name(std::wstring_view name)
+    void D3D12DescriptorHeap::Name(std::string_view name)
     {
-        heap_->SetName(name.empty() ? L"" : std::wstring(std::move(name)).c_str());
+        SetName(*heap_, std::move(name));
     }
 
     ID3D12DescriptorHeap* D3D12DescriptorHeap::DescriptorHeap() const noexcept

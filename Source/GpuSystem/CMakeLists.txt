@@ -43,6 +43,7 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12System.hpp
     Source/Internal/D3D12/D3D12Texture.cpp
     Source/Internal/D3D12/D3D12Texture.hpp
+    Source/Internal/D3D12/D3D12Util.cpp
     Source/Internal/D3D12/D3D12Util.hpp
     Source/Internal/D3D12/D3D12VertexAttrib.cpp
     Source/Internal/D3D12/D3D12VertexAttrib.hpp
