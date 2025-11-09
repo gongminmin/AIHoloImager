@@ -111,7 +111,7 @@ namespace AIHoloImager
             const GpuStaticSampler bilinear_sampler(
                 gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
-            const ShaderInfo shader = {UndistortCs_shader, 1, 1, 1};
+            const ShaderInfo shader = {UndistortCs_shader};
             undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
         }
 

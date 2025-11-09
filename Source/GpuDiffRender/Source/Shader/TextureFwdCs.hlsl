@@ -23,7 +23,7 @@ Buffer<float4> derivative_uv_buff : register(t3);
 
 RWTexture2D<float4> image : register(u0);
 
-SamplerState tex_sampler : register(s0);
+SamplerState tex_sampler : register(s0, space1);
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

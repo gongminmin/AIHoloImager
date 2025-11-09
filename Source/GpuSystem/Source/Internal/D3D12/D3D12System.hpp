@@ -8,6 +8,8 @@
 #include "Base/MiniWindows.hpp"
 
 #include <directx/d3d12.h>
+#include <directx/d3d12shader.h>
+#include <dxcapi.h>
 
 #include "Base/ComPtr.hpp"
 #include "Base/SmartPtrHelper.hpp"
@@ -71,6 +73,7 @@ namespace AIHoloImager
         void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
 
         ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
+        ComPtr<ID3D12ShaderReflection> ShaderReflect(std::span<const uint8_t> bytecode);
 
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
             uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const override;
@@ -162,6 +165,8 @@ namespace AIHoloImager
         std::list<std::tuple<ComPtr<ID3D12DeviceChild>, uint64_t>> stall_resources_;
 
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
+
+        ComPtr<IDxcUtils> dxc_utils_;
     };
 
     D3D12_DEFINE_IMP(System)

@@ -19,11 +19,11 @@ namespace AIHoloImager
           tensor_converter_(gpu_system_, torch_device_)
     {
         {
-            const ShaderInfo shader = {BuildCoordHashCs_shader, 1, 1, 1};
+            const ShaderInfo shader = {BuildCoordHashCs_shader};
             build_coord_hash_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {FindAvailableNeighborsCs_shader, 1, 3, 2};
+            const ShaderInfo shader = {FindAvailableNeighborsCs_shader};
             find_available_neighbors_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
     }

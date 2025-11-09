@@ -18,7 +18,7 @@ namespace AIHoloImager
     public:
         explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
-            const ShaderInfo shader = {GenMipmapCs_shader, 1, 1, 1, 1};
+            const ShaderInfo shader = {GenMipmapCs_shader};
             gen_mipmap_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 

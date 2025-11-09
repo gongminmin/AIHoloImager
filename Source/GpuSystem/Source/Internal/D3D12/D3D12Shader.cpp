@@ -42,6 +42,14 @@ namespace
         };
         return ret;
     }
+
+    struct ShaderReflectionInfo
+    {
+        uint32_t num_cbs = 0;
+        uint32_t num_srvs = 0;
+        uint32_t num_uavs = 0;
+        uint32_t num_dynamic_samplers = 0;
+    };
 } // namespace
 
 namespace AIHoloImager
@@ -53,49 +61,99 @@ namespace AIHoloImager
         const GpuRenderPipeline::States& states)
         : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr), topology_(topology)
     {
+        ShaderReflectionInfo shader_rfls[static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num)] = {};
         uint32_t num_desc_ranges = 0;
-        for (const auto& shader : shaders)
+        for (size_t s = 0; s < shaders.size(); ++s)
         {
-            num_desc_ranges += (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0) + (shader.num_samplers ? 1 : 0);
+            const auto bytecode = shaders[s].bytecode;
+            if (bytecode.empty())
+            {
+                continue;
+            }
+
+            ComPtr<ID3D12ShaderReflection> reflection = D3D12Imp(gpu_system).ShaderReflect(bytecode);
+
+            D3D12_SHADER_DESC shader_desc;
+            TIFHR(reflection->GetDesc(&shader_desc));
+
+            auto& shader_rfl = shader_rfls[s];
+            for (uint32_t resource_index = 0; resource_index < shader_desc.BoundResources; ++resource_index)
+            {
+                D3D12_SHADER_INPUT_BIND_DESC bind_desc;
+                reflection->GetResourceBindingDesc(resource_index, &bind_desc);
+
+                switch (bind_desc.Type)
+                {
+                case D3D_SIT_CBUFFER:
+                case D3D_SIT_TBUFFER:
+                    ++shader_rfl.num_cbs;
+                    break;
+
+                case D3D_SIT_TEXTURE:
+                case D3D_SIT_STRUCTURED:
+                case D3D_SIT_BYTEADDRESS:
+                    ++shader_rfl.num_srvs;
+                    break;
+
+                case D3D_SIT_UAV_RWTYPED:
+                case D3D_SIT_UAV_RWSTRUCTURED:
+                case D3D_SIT_UAV_RWBYTEADDRESS:
+                case D3D_SIT_UAV_APPEND_STRUCTURED:
+                case D3D_SIT_UAV_CONSUME_STRUCTURED:
+                case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+                    ++shader_rfl.num_uavs;
+                    break;
+
+                case D3D_SIT_SAMPLER:
+                    if (bind_desc.Space != 0)
+                    {
+                        ++shader_rfl.num_dynamic_samplers;
+                    }
+                    break;
+
+                default:
+                    Unreachable("Unknown bind type.");
+                }
+            }
+
+            num_desc_ranges += (shader_rfl.num_srvs ? 1 : 0) + (shader_rfl.num_uavs ? 1 : 0) + (shader_rfl.num_dynamic_samplers ? 1 : 0);
         }
 
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
-        for (const auto& shader : shaders)
+        uint32_t num_root_params = num_desc_ranges;
+        for (const auto& shader_rfl : shader_rfls)
         {
-            if (shader.num_srvs != 0)
+            if (shader_rfl.num_srvs != 0)
             {
                 ranges[range_index] = {
                     .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                    .NumDescriptors = shader.num_srvs,
+                    .NumDescriptors = shader_rfl.num_srvs,
                     .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                 };
                 ++range_index;
             }
-            if (shader.num_uavs != 0)
+            if (shader_rfl.num_uavs != 0)
             {
                 ranges[range_index] = {
                     .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-                    .NumDescriptors = shader.num_uavs,
+                    .NumDescriptors = shader_rfl.num_uavs,
                     .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                 };
                 ++range_index;
             }
-            if (shader.num_samplers != 0)
+            if (shader_rfl.num_dynamic_samplers != 0)
             {
                 ranges[range_index] = {
                     .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
-                    .NumDescriptors = shader.num_samplers,
+                    .NumDescriptors = shader_rfl.num_dynamic_samplers,
+                    .RegisterSpace = 1,
                     .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                 };
                 ++range_index;
             }
-        }
 
-        uint32_t num_root_params = num_desc_ranges;
-        for (const auto& shader : shaders)
-        {
-            num_root_params += shader.num_cbs;
+            num_root_params += shader_rfl.num_cbs;
         }
 
         std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
@@ -106,7 +164,7 @@ namespace AIHoloImager
             range_index = 0;
             for (size_t s = 0; s < shaders.size(); ++s)
             {
-                const auto& shader = shaders[s];
+                const auto& shader_rfl = shader_rfls[s];
 
                 D3D12_SHADER_VISIBILITY visibility;
                 switch (static_cast<GpuRenderPipeline::ShaderStage>(s))
@@ -128,25 +186,25 @@ namespace AIHoloImager
                     break;
                 }
 
-                if (shader.num_srvs != 0)
+                if (shader_rfl.num_srvs != 0)
                 {
                     root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
                     ++root_index;
                     ++range_index;
                 }
-                if (shader.num_uavs != 0)
+                if (shader_rfl.num_uavs != 0)
                 {
                     root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
                     ++root_index;
                     ++range_index;
                 }
-                if (shader.num_samplers != 0)
+                if (shader_rfl.num_dynamic_samplers != 0)
                 {
                     root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1, visibility);
                     ++root_index;
                     ++range_index;
                 }
-                for (uint32_t i = 0; i < shader.num_cbs; ++i)
+                for (uint32_t i = 0; i < shader_rfl.num_cbs; ++i)
                 {
                     root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
                     ++root_index;
@@ -189,28 +247,24 @@ namespace AIHoloImager
         pso_desc.pRootSignature = root_sig_.Object().Get();
         for (size_t s = 0; s < shaders.size(); ++s)
         {
-            const auto& shader = shaders[s];
+            const std::span<const uint8_t> bytecode = shaders[s].bytecode;
+            const D3D12_SHADER_BYTECODE shader_bytecode{
+                .pShaderBytecode = bytecode.data(),
+                .BytecodeLength = bytecode.size(),
+            };
+
             switch (static_cast<GpuRenderPipeline::ShaderStage>(s))
             {
             case GpuRenderPipeline::ShaderStage::Vertex:
-                pso_desc.VS = {
-                    .pShaderBytecode = shader.bytecode.data(),
-                    .BytecodeLength = shader.bytecode.size(),
-                };
+                pso_desc.VS = shader_bytecode;
                 break;
 
             case GpuRenderPipeline::ShaderStage::Pixel:
-                pso_desc.PS = {
-                    .pShaderBytecode = shader.bytecode.data(),
-                    .BytecodeLength = shader.bytecode.size(),
-                };
+                pso_desc.PS = shader_bytecode;
                 break;
 
             case GpuRenderPipeline::ShaderStage::Geometry:
-                pso_desc.GS = {
-                    .pShaderBytecode = shader.bytecode.data(),
-                    .BytecodeLength = shader.bytecode.size(),
-                };
+                pso_desc.GS = shader_bytecode;
                 break;
 
             default:
@@ -318,63 +372,114 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
         : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr)
     {
-        const uint32_t num_desc_ranges = (shader.num_srvs ? 1 : 0) + (shader.num_uavs ? 1 : 0) + (shader.num_samplers ? 1 : 0);
+        const auto bytecode = shader.bytecode;
+
+        ShaderReflectionInfo shader_rfl{};
+        {
+            ComPtr<ID3D12ShaderReflection> reflection = D3D12Imp(gpu_system).ShaderReflect(bytecode);
+
+            D3D12_SHADER_DESC shader_desc;
+            TIFHR(reflection->GetDesc(&shader_desc));
+
+            for (uint32_t resource_index = 0; resource_index < shader_desc.BoundResources; ++resource_index)
+            {
+                D3D12_SHADER_INPUT_BIND_DESC bind_desc;
+                reflection->GetResourceBindingDesc(resource_index, &bind_desc);
+
+                switch (bind_desc.Type)
+                {
+                case D3D_SIT_CBUFFER:
+                case D3D_SIT_TBUFFER:
+                    ++shader_rfl.num_cbs;
+                    break;
+
+                case D3D_SIT_TEXTURE:
+                case D3D_SIT_STRUCTURED:
+                case D3D_SIT_BYTEADDRESS:
+                    ++shader_rfl.num_srvs;
+                    break;
+
+                case D3D_SIT_UAV_RWTYPED:
+                case D3D_SIT_UAV_RWSTRUCTURED:
+                case D3D_SIT_UAV_RWBYTEADDRESS:
+                case D3D_SIT_UAV_APPEND_STRUCTURED:
+                case D3D_SIT_UAV_CONSUME_STRUCTURED:
+                case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+                    ++shader_rfl.num_uavs;
+                    break;
+
+                case D3D_SIT_SAMPLER:
+                    if (bind_desc.Space != 0)
+                    {
+                        ++shader_rfl.num_dynamic_samplers;
+                    }
+                    break;
+
+                default:
+                    Unreachable("Unknown bind type.");
+                }
+            }
+        }
+
+        const uint32_t num_desc_ranges =
+            (shader_rfl.num_srvs ? 1 : 0) + (shader_rfl.num_uavs ? 1 : 0) + (shader_rfl.num_dynamic_samplers ? 1 : 0);
         auto ranges = std::make_unique<D3D12_DESCRIPTOR_RANGE[]>(num_desc_ranges);
         uint32_t range_index = 0;
-        if (shader.num_srvs != 0)
+        if (shader_rfl.num_srvs != 0)
         {
             ranges[range_index] = {
                 .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                .NumDescriptors = shader.num_srvs,
+                .NumDescriptors = shader_rfl.num_srvs,
                 .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
             };
             ++range_index;
         }
-        if (shader.num_uavs != 0)
+        if (shader_rfl.num_uavs != 0)
         {
             ranges[range_index] = {
                 .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-                .NumDescriptors = shader.num_uavs,
+                .NumDescriptors = shader_rfl.num_uavs,
                 .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
             };
             ++range_index;
         }
-        if (shader.num_samplers != 0)
+        if (shader_rfl.num_dynamic_samplers != 0)
         {
             ranges[range_index] = {
                 .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
-                .NumDescriptors = shader.num_samplers,
+                .NumDescriptors = shader_rfl.num_dynamic_samplers,
+                .RegisterSpace = 1,
                 .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
             };
             ++range_index;
         }
 
-        const uint32_t num_root_params = num_desc_ranges + shader.num_cbs;
+        const uint32_t num_root_params = num_desc_ranges + shader_rfl.num_cbs;
         std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
         if (num_root_params > 0)
         {
             root_params = std::make_unique<D3D12_ROOT_PARAMETER[]>(num_root_params);
             uint32_t root_index = 0;
             range_index = 0;
-            if (shader.num_srvs != 0)
+            if (shader_rfl.num_srvs != 0)
             {
                 root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
                 ++root_index;
                 ++range_index;
             }
-            if (shader.num_uavs != 0)
+            if (shader_rfl.num_uavs != 0)
             {
                 root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
                 ++root_index;
                 ++range_index;
             }
-            if (shader.num_samplers != 0)
+            if (shader_rfl.num_dynamic_samplers != 0)
             {
                 root_params[root_index] = CreateRootParameterAsDescriptorTable(&ranges[range_index], 1);
                 ++root_index;
                 ++range_index;
             }
-            for (uint32_t i = 0; i < shader.num_cbs; ++i)
+            for (uint32_t i = 0; i < shader_rfl.num_cbs; ++i)
             {
                 root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
                 ++root_index;
@@ -408,8 +513,8 @@ namespace AIHoloImager
         const D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{
             .pRootSignature = root_sig_.Object().Get(),
             .CS{
-                .pShaderBytecode = shader.bytecode.data(),
-                .BytecodeLength = shader.bytecode.size(),
+                .pShaderBytecode = bytecode.data(),
+                .BytecodeLength = bytecode.size(),
             },
             .NodeMask = 0,
         };

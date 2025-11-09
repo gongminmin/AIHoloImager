@@ -99,8 +99,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {FaceIdVs_shader, 1, 0, 0},
-                    {FaceIdPs_shader, 0, 0, 0},
+                    {FaceIdVs_shader},
+                    {FaceIdPs_shader},
                 };
 
                 const GpuFormat rtv_formats[] = {face_id_tex_.Format()};
@@ -121,15 +121,15 @@ namespace AIHoloImager
             }
 
             {
-                const ShaderInfo shader = {MarkFacesCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {MarkFacesCs_shader};
                 mark_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {AccumFacesCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {AccumFacesCs_shader};
                 accum_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {FilterFacesCs_shader, 1, 2, 2};
+                const ShaderInfo shader = {FilterFacesCs_shader};
                 filter_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

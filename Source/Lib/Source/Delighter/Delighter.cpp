@@ -34,7 +34,7 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
-                const ShaderInfo shader = {MergeMaskCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {MergeMaskCs_shader};
                 merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }

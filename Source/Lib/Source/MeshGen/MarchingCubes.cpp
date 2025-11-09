@@ -326,15 +326,15 @@ namespace AIHoloImager
             gpu_system_.Execute(std::move(cmd_list));
 
             {
-                const ShaderInfo shader = {CalcCubeIndicesCs_shader, 1, 2, 2};
+                const ShaderInfo shader = {CalcCubeIndicesCs_shader};
                 calc_cube_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {ProcessNonEmptyCubesCs_shader, 1, 4, 4};
+                const ShaderInfo shader = {ProcessNonEmptyCubesCs_shader};
                 process_non_empty_cubes_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {GenVerticesIndicesCs_shader, 1, 7, 2};
+                const ShaderInfo shader = {GenVerticesIndicesCs_shader};
                 gen_vertices_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

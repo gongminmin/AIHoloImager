@@ -12,7 +12,7 @@ Texture2D last_level_tex : register(t0);
 
 RWTexture2D<float4> this_level_tex : register(u0);
 
-SamplerState mip_sampler : register(s0);
+SamplerState mip_sampler : register(s0, space1);
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

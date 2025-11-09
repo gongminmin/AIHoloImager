@@ -35,8 +35,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {FlattenVs_shader, 1, 0, 0},
-                    {FlattenPs_shader, 0, 0, 0},
+                    {FlattenVs_shader},
+                    {FlattenPs_shader},
                 };
 
                 const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
@@ -52,7 +52,7 @@ namespace AIHoloImager
             }
             {
                 const ShaderInfo shaders[] = {
-                    {GenShadowMapVs_shader, 1, 0, 0},
+                    {GenShadowMapVs_shader},
                 };
 
                 GpuRenderPipeline::States states;
@@ -72,11 +72,11 @@ namespace AIHoloImager
                         GpuStaticSampler::AddressMode::Clamp),
                 };
 
-                const ShaderInfo shader = {ProjectTextureCs_shader, 1, 4, 1};
+                const ShaderInfo shader = {ProjectTextureCs_shader};
                 project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{samplers});
             }
             {
-                const ShaderInfo shader = {ResolveTextureCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {ResolveTextureCs_shader};
                 resolve_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

@@ -19,10 +19,6 @@ namespace AIHoloImager
     struct ShaderInfo
     {
         std::span<const uint8_t> bytecode;
-        uint32_t num_cbs = 0;
-        uint32_t num_srvs = 0;
-        uint32_t num_uavs = 0;
-        uint32_t num_samplers = 0;
     };
 
     class GpuRenderPipelineInternal;

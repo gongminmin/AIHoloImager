@@ -196,8 +196,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {RotateVs_shader, 1, 0, 0},
-                    {RotatePs_shader, 0, 1, 0},
+                    {RotateVs_shader},
+                    {RotatePs_shader},
                 };
 
                 const GpuFormat rtv_formats[] = {ColorFmt};
@@ -213,38 +213,38 @@ namespace AIHoloImager
                     GpuVertexAttribs(gpu_system, {}), std::span(&bilinear_sampler, 1), states);
             }
             {
-                const ShaderInfo shader = {ResizeCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {ResizeCs_shader};
                 resize_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ScatterIndexCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {ScatterIndexCs_shader};
                 scatter_index_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {GatherVolumeCs_shader, 1, 4, 2};
+                const ShaderInfo shader = {GatherVolumeCs_shader};
                 gather_volume_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
 
             const GpuStaticSampler trilinear_sampler(
                 gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
             {
-                const ShaderInfo shader = {MergeTextureCs_shader, 1, 2, 1};
+                const ShaderInfo shader = {MergeTextureCs_shader};
                 merge_texture_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
             {
-                const ShaderInfo shader = {DilateCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {DilateCs_shader};
                 dilate_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {Dilate3DCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {Dilate3DCs_shader};
                 dilate_3d_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ApplyVertexColorCs_shader, 1, 2, 1};
+                const ShaderInfo shader = {ApplyVertexColorCs_shader};
                 apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
             {
-                const ShaderInfo shader = {ExtractMaskCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {ExtractMaskCs_shader};
                 extract_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }

@@ -43,6 +43,10 @@ DEFINE_UUID_OF(ID3D12InfoQueue1);
 DEFINE_UUID_OF(ID3D12PipelineState);
 DEFINE_UUID_OF(ID3D12Resource);
 DEFINE_UUID_OF(ID3D12RootSignature);
+DEFINE_UUID_OF(ID3D12ShaderReflection);
+
+const auto IID_IDxcUtils = __uuidof(IDxcUtils);
+DEFINE_UUID_OF(IDxcUtils);
 
 namespace AIHoloImager
 {
@@ -166,6 +170,8 @@ namespace AIHoloImager
             TIFHR(device_->CreateCommandSignature(
                 &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), dispatch_indirect_signature_.PutVoid()));
         }
+
+        TIFHR(DxcCreateInstance(CLSID_DxcUtils, UuidOf<IDxcUtils>(), dxc_utils_.PutVoid()));
     }
 
     D3D12System::~D3D12System()
@@ -455,6 +461,19 @@ namespace AIHoloImager
     ID3D12CommandSignature* D3D12System::NativeDispatchIndirectSignature() const noexcept
     {
         return dispatch_indirect_signature_.Get();
+    }
+
+    ComPtr<ID3D12ShaderReflection> D3D12System::ShaderReflect(std::span<const uint8_t> bytecode)
+    {
+        const DxcBuffer reflection_buffer{
+            .Ptr = bytecode.data(),
+            .Size = bytecode.size(),
+            .Encoding = DXC_CP_ACP,
+        };
+
+        ComPtr<ID3D12ShaderReflection> reflection;
+        TIFHR(dxc_utils_->CreateReflection(&reflection_buffer, UuidOf<ID3D12ShaderReflection>(), reflection.PutVoid()));
+        return reflection;
     }
 
     std::unique_ptr<GpuBufferInternal> D3D12System::CreateBuffer(

@@ -121,5 +121,6 @@ target_link_libraries(AIHoloImagerGpuSystem
         d3d12
         dxgi
         dxguid
+        dxcompiler
         AIHoloImagerBase
 )

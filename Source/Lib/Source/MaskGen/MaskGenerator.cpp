@@ -52,39 +52,39 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
-                const ShaderInfo shader = {DownsampleCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {DownsampleCs_shader};
                 downsample_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {StatImageCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {StatImageCs_shader};
                 stat_image_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {NormalizeImageCs_shader, 1, 2, 1};
+                const ShaderInfo shader = {NormalizeImageCs_shader};
                 normalize_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {CalcBBoxCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {CalcBBoxCs_shader};
                 calc_bbox_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {StatPredCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {StatPredCs_shader};
                 stat_pred_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {UpsampleCs_shader, 1, 2, 1};
+                const ShaderInfo shader = {UpsampleCs_shader};
                 upsample_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ErosionDilationCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {ErosionDilationCs_shader};
                 erosion_dilation_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {GaussianBlurCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {GaussianBlurCs_shader};
                 gaussian_blur_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {MergeMaskCs_shader, 1, 1, 1};
+                const ShaderInfo shader = {MergeMaskCs_shader};
                 merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }
