@@ -29,7 +29,6 @@ namespace AIHoloImager
 
         void Name(std::string_view name) override;
 
-        ID3D12Resource* Resource() const noexcept;
         void* NativeResource() const noexcept override;
         void* NativeBuffer() const noexcept override;
 

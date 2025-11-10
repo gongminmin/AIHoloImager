@@ -28,9 +28,13 @@ namespace AIHoloImager
         D3D12Resource(D3D12Resource&& other) noexcept;
         D3D12Resource& operator=(D3D12Resource&& other) noexcept;
 
-        void Name(std::string_view name);
-
         ID3D12Resource* Resource() const noexcept;
+
+        virtual void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
+
+    protected:
+        void Name(std::string_view name);
 
         void Reset();
 
@@ -51,9 +55,6 @@ namespace AIHoloImager
         GpuFormat Format() const noexcept;
 
         GpuResourceFlag Flags() const noexcept;
-
-        virtual void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
-        virtual void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
 
     private:
         D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;

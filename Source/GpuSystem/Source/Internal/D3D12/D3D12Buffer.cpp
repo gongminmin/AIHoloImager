@@ -63,11 +63,6 @@ namespace AIHoloImager
         this->D3D12Resource::Name(std::move(name));
     }
 
-    ID3D12Resource* D3D12Buffer::Resource() const noexcept
-    {
-        return this->D3D12Resource::Resource();
-    }
-
     void* D3D12Buffer::NativeResource() const noexcept
     {
         return this->Resource();
@@ -170,6 +165,8 @@ namespace AIHoloImager
                 },
             };
             cmd_list.Transition(std::span(&barrier, 1));
+
+            curr_state_ = target_state;
         }
         else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
@@ -180,7 +177,5 @@ namespace AIHoloImager
                 }};
             cmd_list.Transition(std::span(&barrier, 1));
         }
-
-        curr_state_ = target_state;
     }
 } // namespace AIHoloImager

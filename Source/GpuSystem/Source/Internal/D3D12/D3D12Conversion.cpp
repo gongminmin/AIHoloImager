@@ -96,9 +96,9 @@ namespace AIHoloImager
         }
     }
 
-    GpuFormat FromDxgiFormat(DXGI_FORMAT dxgi_fmt)
+    GpuFormat FromDxgiFormat(DXGI_FORMAT fmt)
     {
-        switch (dxgi_fmt)
+        switch (fmt)
         {
         case DXGI_FORMAT_UNKNOWN:
             return GpuFormat::Unknown;

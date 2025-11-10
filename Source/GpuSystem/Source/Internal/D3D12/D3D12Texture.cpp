@@ -162,7 +162,6 @@ namespace AIHoloImager
 
     void D3D12Texture::Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
-        const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
         if (curr_states_[sub_resource] != target_state)
         {
             const D3D12_RESOURCE_BARRIER barrier{
@@ -172,7 +171,7 @@ namespace AIHoloImager
                     .pResource = this->D3D12Resource::Resource(),
                     .Subresource = sub_resource,
                     .StateBefore = ToD3D12ResourceState(curr_states_[sub_resource]),
-                    .StateAfter = d3d12_target_state,
+                    .StateAfter = ToD3D12ResourceState(target_state),
                 },
             };
             cmd_list.Transition(std::span(&barrier, 1));
