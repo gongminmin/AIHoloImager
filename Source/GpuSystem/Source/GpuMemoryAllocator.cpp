@@ -22,7 +22,6 @@ namespace AIHoloImager
         buffer_ = std::make_unique<GpuBuffer>(
             gpu_system, size_in_bytes, is_upload_ ? GpuHeap::Upload : GpuHeap::ReadBack, GpuResourceFlag::None, "GpuMemoryPage");
         cpu_addr_ = buffer_->Map();
-        gpu_addr_ = buffer_->GpuVirtualAddress();
     }
 
     GpuMemoryPage::~GpuMemoryPage() noexcept
@@ -34,8 +33,7 @@ namespace AIHoloImager
     }
 
     GpuMemoryPage::GpuMemoryPage(GpuMemoryPage&& other) noexcept
-        : is_upload_(other.is_upload_), buffer_(std::move(other.buffer_)), cpu_addr_(std::exchange(other.cpu_addr_, {})),
-          gpu_addr_(std::exchange(other.gpu_addr_, {}))
+        : is_upload_(other.is_upload_), buffer_(std::move(other.buffer_)), cpu_addr_(std::exchange(other.cpu_addr_, {}))
     {
     }
 
@@ -47,7 +45,6 @@ namespace AIHoloImager
 
             buffer_ = std::move(other.buffer_);
             cpu_addr_ = std::exchange(other.cpu_addr_, {});
-            gpu_addr_ = std::exchange(other.gpu_addr_, {});
         }
         return *this;
     }
@@ -65,7 +62,6 @@ namespace AIHoloImager
         offset_ = 0;
         size_ = 0;
         cpu_addr_ = nullptr;
-        gpu_addr_ = {};
     }
 
     void GpuMemoryBlock::Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
@@ -74,7 +70,6 @@ namespace AIHoloImager
         offset_ = offset;
         size_ = size;
         cpu_addr_ = page.CpuAddress<std::byte>() + offset;
-        gpu_addr_ = page.GpuAddress() + offset;
     }
 
 

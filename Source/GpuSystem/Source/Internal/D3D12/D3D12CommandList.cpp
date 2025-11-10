@@ -256,7 +256,7 @@ namespace AIHoloImager
 
                 D3D12_VERTEX_BUFFER_VIEW& vbv = vbvs[i];
                 vbv = {
-                    .BufferLocation = vb_binding.vb->GpuVirtualAddress() + vb_binding.offset,
+                    .BufferLocation = D3D12Imp(*vb_binding.vb).GpuVirtualAddress() + vb_binding.offset,
                     .SizeInBytes = vb_binding.vb->Size(),
                     .StrideInBytes = vb_binding.stride,
                 };
@@ -273,7 +273,7 @@ namespace AIHoloImager
             D3D12Imp(*ib->ib).Transition(*this, GpuResourceState::Common);
 
             const D3D12_INDEX_BUFFER_VIEW ibv{
-                .BufferLocation = ib->ib->GpuVirtualAddress() + ib->offset,
+                .BufferLocation = D3D12Imp(*ib->ib).GpuVirtualAddress() + ib->offset,
                 .SizeInBytes = ib->ib->Size(),
                 .Format = ToDxgiFormat(ib->format),
             };
@@ -397,7 +397,9 @@ namespace AIHoloImager
 
             for (const auto* cb : binding.cbs)
             {
-                d3d12_cmd_list->SetGraphicsRootConstantBufferView(root_index, cb->GpuVirtualAddress());
+                const auto& mem_block = cb->MemBlock();
+                d3d12_cmd_list->SetGraphicsRootConstantBufferView(
+                    root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
                 ++root_index;
             }
         }
@@ -598,7 +600,9 @@ namespace AIHoloImager
 
         for (const auto* cb : shader_binding.cbs)
         {
-            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, cb->GpuVirtualAddress());
+            const auto& mem_block = cb->MemBlock();
+            d3d12_cmd_list->SetComputeRootConstantBufferView(
+                root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
             ++root_index;
         }
 

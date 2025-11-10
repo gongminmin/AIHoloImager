@@ -21,8 +21,6 @@ namespace AIHoloImager
         uint64_t end;
     };
 
-    using GpuVirtualAddressType = uint64_t;
-
     class GpuBuffer : public GpuResource
     {
         DISALLOW_COPY_AND_ASSIGN(GpuBuffer)
@@ -59,7 +57,6 @@ namespace AIHoloImager
         GpuResourceType Type() const noexcept override;
         uint32_t AllocationSize() const noexcept override;
 
-        GpuVirtualAddressType GpuVirtualAddress() const noexcept;
         uint32_t Size() const noexcept;
 
         void* Map(const GpuRange& read_range);

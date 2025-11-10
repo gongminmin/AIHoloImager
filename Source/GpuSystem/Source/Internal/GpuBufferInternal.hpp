@@ -23,7 +23,6 @@ namespace AIHoloImager
 
         virtual void* NativeBuffer() const noexcept = 0;
 
-        virtual GpuVirtualAddressType GpuVirtualAddress() const noexcept = 0;
         virtual uint32_t Size() const noexcept = 0;
 
         virtual void* Map(const GpuRange& read_range) = 0;

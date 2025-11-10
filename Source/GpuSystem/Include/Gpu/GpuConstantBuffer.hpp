@@ -27,7 +27,6 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::BufferType>(this->NativeResource());
         }
-        GpuVirtualAddressType GpuVirtualAddress() const noexcept;
 
     protected:
         GpuConstantBuffer() noexcept;

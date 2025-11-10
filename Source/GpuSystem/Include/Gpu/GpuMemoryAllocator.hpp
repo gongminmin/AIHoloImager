@@ -51,16 +51,10 @@ namespace AIHoloImager
             return reinterpret_cast<const T*>(this->CpuAddress());
         }
 
-        GpuVirtualAddressType GpuAddress() const noexcept
-        {
-            return gpu_addr_;
-        }
-
     private:
         const bool is_upload_;
         std::unique_ptr<GpuBuffer> buffer_;
         void* cpu_addr_;
-        GpuVirtualAddressType gpu_addr_;
     };
 
     class GpuMemoryBlock final
@@ -108,17 +102,11 @@ namespace AIHoloImager
             return std::span<const T>(reinterpret_cast<const T*>(cpu_addr_), size_ / sizeof(const T));
         }
 
-        GpuVirtualAddressType GpuAddress() const noexcept
-        {
-            return gpu_addr_;
-        }
-
     private:
         const GpuBuffer* buffer_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         void* cpu_addr_ = nullptr;
-        GpuVirtualAddressType gpu_addr_ = 0;
     };
 
     class GpuMemoryAllocator final

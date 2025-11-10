@@ -73,11 +73,6 @@ namespace AIHoloImager
         return impl_->AllocationSize();
     }
 
-    GpuVirtualAddressType GpuBuffer::GpuVirtualAddress() const noexcept
-    {
-        return impl_ ? impl_->GpuVirtualAddress() : 0;
-    }
-
     uint32_t GpuBuffer::Size() const noexcept
     {
         return impl_ ? impl_->Size() : 0;

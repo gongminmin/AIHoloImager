@@ -38,7 +38,6 @@ namespace AIHoloImager
         GpuResourceType Type() const noexcept override;
         uint32_t AllocationSize() const noexcept override;
 
-        GpuVirtualAddressType GpuVirtualAddress() const noexcept override;
         uint32_t Size() const noexcept override;
 
         void* Map(const GpuRange& read_range) override;
@@ -52,6 +51,8 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
         void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
+
+        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
 
     private:
         GpuHeap heap_{};

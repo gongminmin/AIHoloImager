@@ -37,9 +37,4 @@ namespace AIHoloImager
     {
         return mem_block_ ? mem_block_.Buffer()->NativeBuffer() : nullptr;
     }
-
-    GpuVirtualAddressType GpuConstantBuffer::GpuVirtualAddress() const noexcept
-    {
-        return mem_block_.GpuAddress();
-    }
 } // namespace AIHoloImager

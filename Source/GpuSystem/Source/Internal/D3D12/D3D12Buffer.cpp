@@ -93,7 +93,7 @@ namespace AIHoloImager
         return this->D3D12Resource::AllocationSize();
     }
 
-    GpuVirtualAddressType D3D12Buffer::GpuVirtualAddress() const noexcept
+    D3D12_GPU_VIRTUAL_ADDRESS D3D12Buffer::GpuVirtualAddress() const noexcept
     {
         return this->D3D12Resource::Resource()->GetGPUVirtualAddress();
     }
