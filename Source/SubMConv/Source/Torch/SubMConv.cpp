@@ -9,8 +9,8 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
 
-#include "CompiledShader/Torch/BuildCoordHashCs.h"
-#include "CompiledShader/Torch/FindAvailableNeighborsCs.h"
+#include "CompiledShader/Torch/Dxil/BuildCoordHashCs.h"
+#include "CompiledShader/Torch/Dxil/FindAvailableNeighborsCs.h"
 
 namespace AIHoloImager
 {
@@ -19,11 +19,11 @@ namespace AIHoloImager
           tensor_converter_(gpu_system_, torch_device_)
     {
         {
-            const ShaderInfo shader = {BuildCoordHashCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(BuildCoordHashCs)};
             build_coord_hash_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {FindAvailableNeighborsCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(FindAvailableNeighborsCs)};
             find_available_neighbors_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
     }

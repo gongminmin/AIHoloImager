@@ -14,11 +14,23 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 #include "Gpu/InternalDefine.hpp"
 
+#define DEFINE_SHADER(name) \
+    {                       \
+        name##_dxil,        \
+    }
+
 namespace AIHoloImager
 {
     struct ShaderInfo
     {
-        std::span<const uint8_t> bytecode;
+        enum class BytecodeFormat
+        {
+            Dxil = 0,
+
+            Num,
+        };
+
+        std::span<const uint8_t> bytecodes[static_cast<uint32_t>(BytecodeFormat::Num)];
     };
 
     class GpuRenderPipelineInternal;

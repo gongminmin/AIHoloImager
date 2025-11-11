@@ -13,28 +13,28 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuTexture.hpp"
 
-#include "CompiledShader/AccumGradMipsCs.h"
-#include "CompiledShader/AntiAliasConstructOppoVertCs.h"
-#include "CompiledShader/AntiAliasConstructOppoVertHashCs.h"
-#include "CompiledShader/AntialiasBwdCs.h"
-#include "CompiledShader/AntialiasFwdCs.h"
-#include "CompiledShader/AntialiasIndirectCs.h"
-#include "CompiledShader/InterpolateBwdCs.h"
-#include "CompiledShader/InterpolateBwdDerivateAttribsCs.h"
-#include "CompiledShader/InterpolateFwdCs.h"
-#include "CompiledShader/InterpolateFwdDerivateAttribsCs.h"
-#include "CompiledShader/RasterizeBwdCs.h"
-#include "CompiledShader/RasterizeBwdDerivateBcCs.h"
-#include "CompiledShader/RasterizeFwdDerivateBcGs.h"
-#include "CompiledShader/RasterizeFwdDerivateBcPs.h"
-#include "CompiledShader/RasterizeFwdGs.h"
-#include "CompiledShader/RasterizeFwdPs.h"
-#include "CompiledShader/RasterizeFwdVs.h"
-#include "CompiledShader/TextureBwdCs.h"
-#include "CompiledShader/TextureBwdMipCs.h"
-#include "CompiledShader/TextureCopyCs.h"
-#include "CompiledShader/TextureFwdCs.h"
-#include "CompiledShader/TextureFwdMipCs.h"
+#include "CompiledShader/Dxil/AccumGradMipsCs.h"
+#include "CompiledShader/Dxil/AntiAliasConstructOppoVertCs.h"
+#include "CompiledShader/Dxil/AntiAliasConstructOppoVertHashCs.h"
+#include "CompiledShader/Dxil/AntialiasBwdCs.h"
+#include "CompiledShader/Dxil/AntialiasFwdCs.h"
+#include "CompiledShader/Dxil/AntialiasIndirectCs.h"
+#include "CompiledShader/Dxil/InterpolateBwdCs.h"
+#include "CompiledShader/Dxil/InterpolateBwdDerivateAttribsCs.h"
+#include "CompiledShader/Dxil/InterpolateFwdCs.h"
+#include "CompiledShader/Dxil/InterpolateFwdDerivateAttribsCs.h"
+#include "CompiledShader/Dxil/RasterizeBwdCs.h"
+#include "CompiledShader/Dxil/RasterizeBwdDerivateBcCs.h"
+#include "CompiledShader/Dxil/RasterizeFwdDerivateBcGs.h"
+#include "CompiledShader/Dxil/RasterizeFwdDerivateBcPs.h"
+#include "CompiledShader/Dxil/RasterizeFwdGs.h"
+#include "CompiledShader/Dxil/RasterizeFwdPs.h"
+#include "CompiledShader/Dxil/RasterizeFwdVs.h"
+#include "CompiledShader/Dxil/TextureBwdCs.h"
+#include "CompiledShader/Dxil/TextureBwdMipCs.h"
+#include "CompiledShader/Dxil/TextureCopyCs.h"
+#include "CompiledShader/Dxil/TextureFwdCs.h"
+#include "CompiledShader/Dxil/TextureFwdMipCs.h"
 
 namespace AIHoloImager
 {
@@ -52,9 +52,9 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {RasterizeFwdVs_shader},
-                    {RasterizeFwdPs_shader},
-                    {RasterizeFwdGs_shader},
+                    {DEFINE_SHADER(RasterizeFwdVs)},
+                    {DEFINE_SHADER(RasterizeFwdPs)},
+                    {DEFINE_SHADER(RasterizeFwdGs)},
                 };
 
                 const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint};
@@ -65,9 +65,9 @@ namespace AIHoloImager
             }
             {
                 const ShaderInfo shaders[] = {
-                    {RasterizeFwdVs_shader},
-                    {RasterizeFwdDerivateBcPs_shader},
-                    {RasterizeFwdDerivateBcGs_shader},
+                    {DEFINE_SHADER(RasterizeFwdVs)},
+                    {DEFINE_SHADER(RasterizeFwdDerivateBcPs)},
+                    {DEFINE_SHADER(RasterizeFwdDerivateBcGs)},
                 };
 
                 const GpuFormat rtv_formats[] = {GpuFormat::RG32_Float, GpuFormat::R32_Uint, GpuFormat::RGBA32_Float};
@@ -78,62 +78,62 @@ namespace AIHoloImager
             }
         }
         {
-            const ShaderInfo shader = {RasterizeBwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(RasterizeBwdCs)};
             rasterize_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {RasterizeBwdDerivateBcCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(RasterizeBwdDerivateBcCs)};
             rasterize_bwd_derivative_bc_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
-            const ShaderInfo shader = {InterpolateFwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(InterpolateFwdCs)};
             interpolate_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {InterpolateFwdDerivateAttribsCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(InterpolateFwdDerivateAttribsCs)};
             interpolate_fwd_derivative_attribs_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {InterpolateBwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(InterpolateBwdCs)};
             interpolate_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {InterpolateBwdDerivateAttribsCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(InterpolateBwdDerivateAttribsCs)};
             interpolate_bwd_derivative_attribs_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
-            const ShaderInfo shader = {TextureCopyCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(TextureCopyCs)};
             texture_copy_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {TextureFwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(TextureFwdCs)};
             texture_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {TextureFwdMipCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(TextureFwdMipCs)};
             texture_fwd_mip_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {TextureBwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(TextureBwdCs)};
             texture_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {TextureBwdMipCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(TextureBwdMipCs)};
             texture_bwd_mip_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {AccumGradMipsCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AccumGradMipsCs)};
             accum_grad_mips_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
         {
-            const ShaderInfo shader = {AntiAliasConstructOppoVertHashCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AntiAliasConstructOppoVertHashCs)};
             anti_alias_construct_oppo_vert_hash_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {AntiAliasConstructOppoVertCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AntiAliasConstructOppoVertCs)};
             anti_alias_construct_oppo_vert_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
@@ -142,15 +142,15 @@ namespace AIHoloImager
             anti_alias_indirect_args_cb_->bwd_block_dim = 256;
             anti_alias_indirect_args_cb_.UploadStaging();
 
-            const ShaderInfo shader = {AntiAliasIndirectCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AntiAliasIndirectCs)};
             anti_alias_indirect_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {AntiAliasFwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AntiAliasFwdCs)};
             anti_alias_fwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
         {
-            const ShaderInfo shader = {AntiAliasBwdCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(AntiAliasBwdCs)};
             anti_alias_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 

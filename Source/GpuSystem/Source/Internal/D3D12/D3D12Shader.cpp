@@ -65,7 +65,7 @@ namespace AIHoloImager
         uint32_t num_desc_ranges = 0;
         for (size_t s = 0; s < shaders.size(); ++s)
         {
-            const auto bytecode = shaders[s].bytecode;
+            const auto bytecode = shaders[s].bytecodes[static_cast<uint32_t>(ShaderInfo::BytecodeFormat::Dxil)];
             if (bytecode.empty())
             {
                 continue;
@@ -247,7 +247,7 @@ namespace AIHoloImager
         pso_desc.pRootSignature = root_sig_.Object().Get();
         for (size_t s = 0; s < shaders.size(); ++s)
         {
-            const std::span<const uint8_t> bytecode = shaders[s].bytecode;
+            const auto bytecode = shaders[s].bytecodes[static_cast<uint32_t>(ShaderInfo::BytecodeFormat::Dxil)];
             const D3D12_SHADER_BYTECODE shader_bytecode{
                 .pShaderBytecode = bytecode.data(),
                 .BytecodeLength = bytecode.size(),
@@ -372,7 +372,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
         : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr)
     {
-        const auto bytecode = shader.bytecode;
+        const auto bytecode = shader.bytecodes[static_cast<uint32_t>(ShaderInfo::BytecodeFormat::Dxil)];
 
         ShaderReflectionInfo shader_rfl{};
         {

@@ -43,16 +43,16 @@
 #include "Util/BoundingBox.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
-#include "CompiledShader/MeshGen/Dilate3DCs.h"
-#include "CompiledShader/MeshGen/DilateCs.h"
-#include "CompiledShader/MeshGen/ExtractMaskCs.h"
-#include "CompiledShader/MeshGen/GatherVolumeCs.h"
-#include "CompiledShader/MeshGen/MergeTextureCs.h"
-#include "CompiledShader/MeshGen/ResizeCs.h"
-#include "CompiledShader/MeshGen/RotatePs.h"
-#include "CompiledShader/MeshGen/RotateVs.h"
-#include "CompiledShader/MeshGen/ScatterIndexCs.h"
+#include "CompiledShader/MeshGen/Dxil/ApplyVertexColorCs.h"
+#include "CompiledShader/MeshGen/Dxil/Dilate3DCs.h"
+#include "CompiledShader/MeshGen/Dxil/DilateCs.h"
+#include "CompiledShader/MeshGen/Dxil/ExtractMaskCs.h"
+#include "CompiledShader/MeshGen/Dxil/GatherVolumeCs.h"
+#include "CompiledShader/MeshGen/Dxil/MergeTextureCs.h"
+#include "CompiledShader/MeshGen/Dxil/ResizeCs.h"
+#include "CompiledShader/MeshGen/Dxil/RotatePs.h"
+#include "CompiledShader/MeshGen/Dxil/RotateVs.h"
+#include "CompiledShader/MeshGen/Dxil/ScatterIndexCs.h"
 
 namespace AIHoloImager
 {
@@ -196,8 +196,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {RotateVs_shader},
-                    {RotatePs_shader},
+                    {DEFINE_SHADER(RotateVs)},
+                    {DEFINE_SHADER(RotatePs)},
                 };
 
                 const GpuFormat rtv_formats[] = {ColorFmt};
@@ -213,38 +213,38 @@ namespace AIHoloImager
                     GpuVertexAttribs(gpu_system, {}), std::span(&bilinear_sampler, 1), states);
             }
             {
-                const ShaderInfo shader = {ResizeCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ResizeCs)};
                 resize_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ScatterIndexCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ScatterIndexCs)};
                 scatter_index_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {GatherVolumeCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(GatherVolumeCs)};
                 gather_volume_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
 
             const GpuStaticSampler trilinear_sampler(
                 gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
             {
-                const ShaderInfo shader = {MergeTextureCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(MergeTextureCs)};
                 merge_texture_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
             {
-                const ShaderInfo shader = {DilateCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(DilateCs)};
                 dilate_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {Dilate3DCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(Dilate3DCs)};
                 dilate_3d_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ApplyVertexColorCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ApplyVertexColorCs)};
                 apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
             }
             {
-                const ShaderInfo shader = {ExtractMaskCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ExtractMaskCs)};
                 extract_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }

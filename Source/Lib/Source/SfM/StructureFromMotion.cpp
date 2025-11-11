@@ -67,7 +67,7 @@
     #include "AIHoloImager/Mesh.hpp"
 #endif
 
-#include "CompiledShader/SfM/UndistortCs.h"
+#include "CompiledShader/SfM/Dxil/UndistortCs.h"
 
 using namespace openMVG;
 using namespace openMVG::cameras;
@@ -111,7 +111,7 @@ namespace AIHoloImager
             const GpuStaticSampler bilinear_sampler(
                 gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
 
-            const ShaderInfo shader = {UndistortCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(UndistortCs)};
             undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
         }
 

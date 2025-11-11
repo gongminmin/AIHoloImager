@@ -13,9 +13,9 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 
-#include "CompiledShader/MeshGen/MarchingCubes/CalcCubeIndicesCs.h"
-#include "CompiledShader/MeshGen/MarchingCubes/GenVerticesIndicesCs.h"
-#include "CompiledShader/MeshGen/MarchingCubes/ProcessNonEmptyCubesCs.h"
+#include "CompiledShader/MeshGen/MarchingCubes/Dxil/CalcCubeIndicesCs.h"
+#include "CompiledShader/MeshGen/MarchingCubes/Dxil/GenVerticesIndicesCs.h"
+#include "CompiledShader/MeshGen/MarchingCubes/Dxil/ProcessNonEmptyCubesCs.h"
 
 namespace
 {
@@ -326,15 +326,15 @@ namespace AIHoloImager
             gpu_system_.Execute(std::move(cmd_list));
 
             {
-                const ShaderInfo shader = {CalcCubeIndicesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(CalcCubeIndicesCs)};
                 calc_cube_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {ProcessNonEmptyCubesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ProcessNonEmptyCubesCs)};
                 process_non_empty_cubes_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {GenVerticesIndicesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(GenVerticesIndicesCs)};
                 gen_vertices_indices_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

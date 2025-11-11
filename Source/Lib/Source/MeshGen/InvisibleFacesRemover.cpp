@@ -19,11 +19,11 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/AccumFacesCs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/FaceIdPs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/FaceIdVs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/FilterFacesCs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/MarkFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/AccumFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FaceIdPs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FaceIdVs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FilterFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/MarkFacesCs.h"
 
 using namespace AIHoloImager;
 
@@ -99,8 +99,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {FaceIdVs_shader},
-                    {FaceIdPs_shader},
+                    {DEFINE_SHADER(FaceIdVs)},
+                    {DEFINE_SHADER(FaceIdPs)},
                 };
 
                 const GpuFormat rtv_formats[] = {face_id_tex_.Format()};
@@ -121,15 +121,15 @@ namespace AIHoloImager
             }
 
             {
-                const ShaderInfo shader = {MarkFacesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(MarkFacesCs)};
                 mark_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {AccumFacesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(AccumFacesCs)};
                 accum_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
             {
-                const ShaderInfo shader = {FilterFacesCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(FilterFacesCs)};
                 filter_faces_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

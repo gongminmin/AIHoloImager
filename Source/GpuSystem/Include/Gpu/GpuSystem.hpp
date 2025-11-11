@@ -23,6 +23,11 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuSystem)
 
     public:
+        enum class Api
+        {
+            D3D12,
+        };
+
         static constexpr uint64_t MaxFenceValue = ~0ull;
 
         enum class CmdQueueType : uint32_t
@@ -35,7 +40,8 @@ namespace AIHoloImager
         };
 
     public:
-        GpuSystem(std::function<bool(void* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false);
+        GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
+            bool enable_debug = false);
         ~GpuSystem();
 
         GpuSystem(GpuSystem&& other) noexcept;

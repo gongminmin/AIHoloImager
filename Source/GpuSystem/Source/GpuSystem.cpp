@@ -17,8 +17,8 @@ namespace AIHoloImager
     class GpuSystem::Impl
     {
     public:
-        Impl(GpuSystem& host, std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-            : host_(host), system_internal_(CreateGpuSystemInternal(host, std::move(confirm_device), enable_sharing, enable_debug)),
+        Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
+            : host_(host), system_internal_(CreateGpuSystemInternal(api, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false),
               rtv_desc_allocator_(host, GpuDescriptorHeapType::Rtv, false), dsv_desc_allocator_(host, GpuDescriptorHeapType::Dsv, false),
               cbv_srv_uav_desc_allocator_(host, GpuDescriptorHeapType::CbvSrvUav, false),
@@ -234,8 +234,8 @@ namespace AIHoloImager
         std::unique_ptr<GpuMipmapper> mipmapper_;
     };
 
-    GpuSystem::GpuSystem(std::function<bool(void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : impl_(std::make_unique<Impl>(*this, std::move(confirm_device), enable_sharing, enable_debug))
+    GpuSystem::GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
+        : impl_(std::make_unique<Impl>(api, *this, std::move(confirm_device), enable_sharing, enable_debug))
     {
     }
 

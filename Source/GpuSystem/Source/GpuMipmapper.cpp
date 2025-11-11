@@ -9,7 +9,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "CompiledShader/GenMipmapCs.h"
+#include "CompiledShader/Dxil/GenMipmapCs.h"
 
 namespace AIHoloImager
 {
@@ -18,7 +18,7 @@ namespace AIHoloImager
     public:
         explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
-            const ShaderInfo shader = {GenMipmapCs_shader};
+            const ShaderInfo shader = {DEFINE_SHADER(GenMipmapCs)};
             gen_mipmap_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 

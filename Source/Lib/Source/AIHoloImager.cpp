@@ -12,6 +12,7 @@
 #include <directx/d3d12.h>
 
 #include "AIHoloImagerInternal.hpp"
+#include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"
@@ -26,7 +27,7 @@ namespace AIHoloImager
     {
     public:
         Impl(DeviceType device, const std::filesystem::path& tmp_dir)
-            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(ConfirmDevice, true),
+            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(GpuSystem::Api::D3D12, ConfirmDevice, true),
               python_system_(GetDeviceName(device), exe_dir_), tensor_converter_(gpu_system_, GetDeviceName(device))
         {
         }
@@ -38,16 +39,25 @@ namespace AIHoloImager
             return std::filesystem::path(exe_path).parent_path();
         }
 
-        static bool ConfirmDevice(void* device)
+        static bool ConfirmDevice(GpuSystem::Api api, void* device)
         {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
-            reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
-            if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
+            switch (api)
             {
-                return false;
+            case GpuSystem::Api::D3D12:
+            {
+                D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
+                reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+                if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
+                {
+                    return false;
+                }
+
+                return true;
             }
 
-            return true;
+            default:
+                Unreachable("Invalid API");
+            }
         }
 
         static std::string_view GetDeviceName(DeviceType device)

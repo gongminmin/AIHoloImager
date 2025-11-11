@@ -10,6 +10,7 @@
 
 namespace AIHoloImager
 {
-    std::unique_ptr<GpuSystemInternal> CreateGpuSystemInternal(GpuSystem& gpu_system,
-        std::function<bool(void* device)> confirm_device = nullptr, bool enable_sharing = false, bool enable_debug = false);
+    std::unique_ptr<GpuSystemInternal> CreateGpuSystemInternal(GpuSystem::Api api, GpuSystem& gpu_system,
+        std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
+        bool enable_debug = false);
 } // namespace AIHoloImager

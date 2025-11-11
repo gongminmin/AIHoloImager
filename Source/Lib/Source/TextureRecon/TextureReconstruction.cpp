@@ -14,11 +14,11 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 
-#include "CompiledShader/TextureRecon/FlattenPs.h"
-#include "CompiledShader/TextureRecon/FlattenVs.h"
-#include "CompiledShader/TextureRecon/GenShadowMapVs.h"
-#include "CompiledShader/TextureRecon/ProjectTextureCs.h"
-#include "CompiledShader/TextureRecon/ResolveTextureCs.h"
+#include "CompiledShader/TextureRecon/Dxil/FlattenPs.h"
+#include "CompiledShader/TextureRecon/Dxil/FlattenVs.h"
+#include "CompiledShader/TextureRecon/Dxil/GenShadowMapVs.h"
+#include "CompiledShader/TextureRecon/Dxil/ProjectTextureCs.h"
+#include "CompiledShader/TextureRecon/Dxil/ResolveTextureCs.h"
 
 namespace AIHoloImager
 {
@@ -35,8 +35,8 @@ namespace AIHoloImager
 
             {
                 const ShaderInfo shaders[] = {
-                    {FlattenVs_shader},
-                    {FlattenPs_shader},
+                    {DEFINE_SHADER(FlattenVs)},
+                    {DEFINE_SHADER(FlattenPs)},
                 };
 
                 const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
@@ -52,7 +52,7 @@ namespace AIHoloImager
             }
             {
                 const ShaderInfo shaders[] = {
-                    {GenShadowMapVs_shader},
+                    {DEFINE_SHADER(GenShadowMapVs)},
                 };
 
                 GpuRenderPipeline::States states;
@@ -72,11 +72,11 @@ namespace AIHoloImager
                         GpuStaticSampler::AddressMode::Clamp),
                 };
 
-                const ShaderInfo shader = {ProjectTextureCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ProjectTextureCs)};
                 project_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, std::span{samplers});
             }
             {
-                const ShaderInfo shader = {ResolveTextureCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ResolveTextureCs)};
                 resolve_texture_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
             }
         }

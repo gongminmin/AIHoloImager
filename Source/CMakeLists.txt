@@ -19,14 +19,14 @@ macro(AddShaderFile file_name shader_type entry_point)
     list(REMOVE_AT path_list 0 2)
     list(REMOVE_AT path_list -1)
     string(REPLACE ";" "/" rel_dir "${path_list}")
-    set(variable_name ${file_base_name}_shader)
-    set(output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${rel_dir}/${file_base_name}.h")
+    set(dxil_variable_name ${file_base_name}_dxil)
+    set(dxil_output_name "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/CompiledShader/${rel_dir}/Dxil/${file_base_name}.h")
     set(debug_option "-Zi;-Od;-Qembed_debug")
     set(release_option "-O2")
 
-    add_custom_command(OUTPUT ${output_name}
-        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${CMAKE_CURRENT_SOURCE_DIR}/Source/Util/Shader/"
-        COMMENT "Compiling ${file_name} to ${output_name}..."
+    add_custom_command(OUTPUT ${dxil_output_name}
+        COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${dxil_variable_name} -E "${entry_point}" -Fh "${dxil_output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${CMAKE_CURRENT_SOURCE_DIR}/Source/Util/Shader/"
+        COMMENT "Compiling ${file_name} to ${dxil_output_name}..."
         MAIN_DEPENDENCY ${file_name}
         DEPENDS ${file_name}
         VERBATIM COMMAND_EXPAND_LISTS

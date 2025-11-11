@@ -17,15 +17,15 @@
 #include "Gpu/GpuTexture.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/MaskGen/CalcBBoxCs.h"
-#include "CompiledShader/MaskGen/DownsampleCs.h"
-#include "CompiledShader/MaskGen/ErosionDilationCs.h"
-#include "CompiledShader/MaskGen/GaussianBlurCs.h"
-#include "CompiledShader/MaskGen/MergeMaskCs.h"
-#include "CompiledShader/MaskGen/NormalizeImageCs.h"
-#include "CompiledShader/MaskGen/StatImageCs.h"
-#include "CompiledShader/MaskGen/StatPredCs.h"
-#include "CompiledShader/MaskGen/UpsampleCs.h"
+#include "CompiledShader/MaskGen/Dxil/CalcBBoxCs.h"
+#include "CompiledShader/MaskGen/Dxil/DownsampleCs.h"
+#include "CompiledShader/MaskGen/Dxil/ErosionDilationCs.h"
+#include "CompiledShader/MaskGen/Dxil/GaussianBlurCs.h"
+#include "CompiledShader/MaskGen/Dxil/MergeMaskCs.h"
+#include "CompiledShader/MaskGen/Dxil/NormalizeImageCs.h"
+#include "CompiledShader/MaskGen/Dxil/StatImageCs.h"
+#include "CompiledShader/MaskGen/Dxil/StatPredCs.h"
+#include "CompiledShader/MaskGen/Dxil/UpsampleCs.h"
 
 namespace AIHoloImager
 {
@@ -52,39 +52,39 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
-                const ShaderInfo shader = {DownsampleCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(DownsampleCs)};
                 downsample_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {StatImageCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(StatImageCs)};
                 stat_image_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {NormalizeImageCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(NormalizeImageCs)};
                 normalize_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {CalcBBoxCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(CalcBBoxCs)};
                 calc_bbox_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {StatPredCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(StatPredCs)};
                 stat_pred_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {UpsampleCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(UpsampleCs)};
                 upsample_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {ErosionDilationCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(ErosionDilationCs)};
                 erosion_dilation_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {GaussianBlurCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(GaussianBlurCs)};
                 gaussian_blur_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
             {
-                const ShaderInfo shader = {MergeMaskCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(MergeMaskCs)};
                 merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }

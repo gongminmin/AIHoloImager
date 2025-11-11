@@ -7,7 +7,7 @@
 
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/Delighter/MergeMaskCs.h"
+#include "CompiledShader/Delighter/Dxil/MergeMaskCs.h"
 
 namespace AIHoloImager
 {
@@ -34,7 +34,7 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
-                const ShaderInfo shader = {MergeMaskCs_shader};
+                const ShaderInfo shader = {DEFINE_SHADER(MergeMaskCs)};
                 merge_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
         }
