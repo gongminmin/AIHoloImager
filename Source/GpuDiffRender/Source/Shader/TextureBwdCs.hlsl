@@ -5,7 +5,7 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 gbuffer_size;
     uint32_t2 tex_size;
@@ -17,17 +17,17 @@ cbuffer param_cb : register(b0)
     uint32_t4 mip_level_offsets[4];
 };
 
-Texture2D texture : register(t0);
-Buffer<float2> uv_buff : register(t1);
-Texture2D grad_image : register(t2);
+Texture2D texture;
+Buffer<float2> uv_buff;
+Texture2D grad_image;
 #if ENABLE_MIP
-Buffer<float4> derivative_uv_buff : register(t3);
+Buffer<float4> derivative_uv_buff;
 #endif
 
-RWBuffer<uint32_t> grad_texture : register(u0);
-RWBuffer<float2> grad_uv : register(u1);
+RWBuffer<uint32_t> grad_texture;
+RWBuffer<float2> grad_uv;
 #if ENABLE_MIP
-RWBuffer<float4> grad_derivative_uv : register(u2);
+RWBuffer<float4> grad_derivative_uv;
 #endif
 
 float Wrap(float f, uint32_t size)

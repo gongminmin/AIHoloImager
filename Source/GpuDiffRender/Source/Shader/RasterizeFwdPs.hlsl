@@ -4,13 +4,13 @@
 #if ENABLE_DERIVATIVE_BC
 #include "Common.hlslh"
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4 viewport;
 };
 
-Buffer<float4> positions_buff : register(t0);
-Buffer<uint32_t> indices_buff : register(t1);
+Buffer<float4> positions_buff;
+Buffer<uint32_t> indices_buff;
 #endif
 
 void main(float2 bc : TEXCOORD0, uint32_t prim_id : PRIMITIVE_ID,

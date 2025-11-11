@@ -7,23 +7,23 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 gbuffer_size;
     uint32_t2 tex_size;
     uint32_t mip_levels;
 };
 
-Texture2D<uint32_t> prim_id_tex : register(t0);
-Texture2D texture : register(t1);
-Buffer<float2> uv_buff : register(t2);
+Texture2D<uint32_t> prim_id_tex;
+Texture2D texture;
+Buffer<float2> uv_buff;
 #if ENABLE_MIP
-Buffer<float4> derivative_uv_buff : register(t3);
+Buffer<float4> derivative_uv_buff;
 #endif
 
-RWTexture2D<float4> image : register(u0);
+RWTexture2D<float4> image;
 
-SamplerState tex_sampler : register(s0, space1);
+SamplerState tex_sampler : register(space1);
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

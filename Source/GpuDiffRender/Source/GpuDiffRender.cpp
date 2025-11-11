@@ -236,8 +236,13 @@ namespace AIHoloImager
             const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
             const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
 
-            const GpuConstantBuffer* cbs[] = {&rasterize_fwd_ps_derivative_bc_cb};
-            const GpuShaderResourceView* srvs[] = {&positions_srv, &indices_srv};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &rasterize_fwd_ps_derivative_bc_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"positions_buff", &positions_srv},
+                {"indices_buff", &indices_srv},
+            };
             const GpuCommandList::ShaderBinding shader_bindings[] = {
                 {{}, {}, {}},
                 {cbs, srvs, {}},
@@ -303,21 +308,23 @@ namespace AIHoloImager
         const uint32_t clear_clr[] = {0, 0, 0, 0};
         cmd_list.Clear(grad_positions_uav, clear_clr);
 
-        const GpuConstantBuffer* cbs[] = {&rasterize_bwd_cb};
-        GpuUnorderedAccessView* uavs[] = {&grad_positions_uav};
-        if (needs_derivative_barycentric)
-        {
-            const GpuShaderResourceView* srvs[] = {
-                &barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv, &grad_derivative_barycentric_srv};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(rasterize_bwd_derivative_bc_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
-        else
-        {
-            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &grad_barycentric_srv, &positions_srv, &indices_srv};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(rasterize_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
+        std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+            {"param_cb", &rasterize_bwd_cb},
+        };
+        std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+            {"barycentric_tex", &barycentric_srv},
+            {"prim_id_tex", &prim_id_srv},
+            {"grad_barycentric_tex", &grad_barycentric_srv},
+            {"positions_buff", &positions_srv},
+            {"indices_buff", &indices_srv},
+            {"grad_derivative_barycentric_tex", &grad_derivative_barycentric_srv},
+        };
+        std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+            {"grad_positions_buff", &grad_positions_uav},
+        };
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+        cmd_list.Compute(needs_derivative_barycentric ? rasterize_bwd_derivative_bc_pipeline_ : rasterize_bwd_pipeline_,
+            DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
@@ -381,22 +388,23 @@ namespace AIHoloImager
             cmd_list.Clear(derivative_shading_uav, clear_clr);
         }
 
-        const GpuConstantBuffer* cbs[] = {&interpolate_fwd_cb};
-        if (needs_dbc)
-        {
-            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv, &derivative_barycentric_srv};
-            GpuUnorderedAccessView* uavs[] = {&shading_uav, &derivative_shading_uav};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(
-                interpolate_fwd_derivative_attribs_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
-        else
-        {
-            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &attrib_srv, &index_srv};
-            GpuUnorderedAccessView* uavs[] = {&shading_uav};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(interpolate_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
+        std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+            {"param_cb", &interpolate_fwd_cb},
+        };
+        std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+            {"barycentric_tex", &barycentric_srv},
+            {"prim_id_tex", &prim_id_srv},
+            {"vtx_attribs_buff", &attrib_srv},
+            {"indices_buff", &index_srv},
+            {"derivative_barycentric_tex", &derivative_barycentric_srv},
+        };
+        std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+            {"shading", &shading_uav},
+            {"derivative_shading", &derivative_shading_uav},
+        };
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+        cmd_list.Compute(needs_dbc ? interpolate_fwd_derivative_attribs_pipeline_ : interpolate_fwd_pipeline_, DivUp(width, BlockDim),
+            DivUp(height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::InterpolateBwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
@@ -479,23 +487,26 @@ namespace AIHoloImager
             }
         }
 
-        const GpuConstantBuffer* cbs[] = {&interpolate_bwd_cb};
-        if (needs_dbc)
-        {
-            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv,
-                &derivative_barycentric_srv, &grad_derivative_shading_srv};
-            GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav, &grad_derivative_barycentric_uav};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(
-                interpolate_bwd_derivative_attribs_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
-        else
-        {
-            const GpuShaderResourceView* srvs[] = {&barycentric_srv, &prim_id_srv, &vtx_attribs_srv, &indices_srv, &grad_shading_srv};
-            GpuUnorderedAccessView* uavs[] = {&grad_vtx_attribs_uav, &grad_barycentric_uav};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-            cmd_list.Compute(interpolate_bwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
-        }
+        std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+            {"param_cb", &interpolate_bwd_cb},
+        };
+        std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+            {"barycentric_tex", &barycentric_srv},
+            {"prim_id_tex", &prim_id_srv},
+            {"vtx_attribs_buff", &vtx_attribs_srv},
+            {"indices_buff", &indices_srv},
+            {"grad_shading_buff", &grad_shading_srv},
+            {"derivative_barycentric_tex", &derivative_barycentric_srv},
+            {"grad_derivative_shading_buff", &grad_derivative_shading_srv},
+        };
+        std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+            {"grad_vtx_attribs", &grad_vtx_attribs_uav},
+            {"grad_barycentric", &grad_barycentric_uav},
+            {"grad_derivative_barycentric", &grad_derivative_barycentric_uav},
+        };
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+        cmd_list.Compute(needs_dbc ? interpolate_bwd_derivative_attribs_pipeline_ : interpolate_bwd_pipeline_, DivUp(width, BlockDim),
+            DivUp(height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels)
@@ -528,9 +539,15 @@ namespace AIHoloImager
 
                 GpuUnorderedAccessView texture_mip_uav(gpu_system_, *texture_mip, 0);
 
-                const GpuConstantBuffer* cbs[] = {&texture_copy_cb};
-                const GpuShaderResourceView* srvs[] = {&texture_srv};
-                GpuUnorderedAccessView* uavs[] = {&texture_mip_uav};
+                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                    {"param_cb", &texture_copy_cb},
+                };
+                std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                    {"texture", &texture_srv},
+                };
+                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                    {"texture_f32", &texture_mip_uav},
+                };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(texture_copy_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
             }
@@ -589,23 +606,24 @@ namespace AIHoloImager
         const float clear_clr[] = {0, 0, 0, 0};
         cmd_list.Clear(image_uav, clear_clr);
 
-        const GpuConstantBuffer* cbs[] = {&texture_fwd_cb};
-        if (mip_mode)
-        {
-            const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv, &derivative_uv_srv};
-            GpuUnorderedAccessView* uavs[] = {&image_uav};
-            const GpuDynamicSampler* samplers[] = {&sampler};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
-            cmd_list.Compute(texture_fwd_mip_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
-        }
-        else
-        {
-            const GpuShaderResourceView* srvs[] = {&prim_id_srv, &texture_srv, &uv_srv};
-            GpuUnorderedAccessView* uavs[] = {&image_uav};
-            const GpuDynamicSampler* samplers[] = {&sampler};
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
-            cmd_list.Compute(texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
-        }
+        std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+            {"param_cb", &texture_fwd_cb},
+        };
+        std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+            {"prim_id_tex", &prim_id_srv},
+            {"texture", &texture_srv},
+            {"uv_buff", &uv_srv},
+            {"derivative_uv_buff", &derivative_uv_srv},
+        };
+        std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+            {"image", &image_uav},
+        };
+        std::tuple<std::string_view, const GpuDynamicSampler*> samplers[] = {
+            {"tex_sampler", &sampler},
+        };
+        const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
+        cmd_list.Compute(mip_mode ? texture_fwd_mip_pipeline_ : texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim),
+            DivUp(gbuffer_height, BlockDim), 1, shader_binding);
     }
 
     void GpuDiffRender::TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
@@ -711,22 +729,23 @@ namespace AIHoloImager
                 }
             }
 
-            const GpuConstantBuffer* cbs[] = {&texture_bwd_cb};
-            if (mip_mode)
-            {
-                const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv, &derivative_uv_srv};
-                GpuUnorderedAccessView* uavs[] = {&grad_texture_mips_uav, &grad_uv_uav, &grad_derivative_uv_uav};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(
-                    texture_bwd_mip_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
-            }
-            else
-            {
-                const GpuShaderResourceView* srvs[] = {&texture_srv, &uv_srv, &grad_image_srv};
-                GpuUnorderedAccessView* uavs[] = {&grad_texture_mips_uav, &grad_uv_uav};
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1, shader_binding);
-            }
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &texture_bwd_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"texture", &texture_srv},
+                {"uv_buff", &uv_srv},
+                {"grad_image", &grad_image_srv},
+                {"derivative_uv_buff", &derivative_uv_srv},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"grad_texture", &grad_texture_mips_uav},
+                {"grad_uv", &grad_uv_uav},
+                {"grad_derivative_uv", &grad_derivative_uv_uav},
+            };
+            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            cmd_list.Compute(mip_mode ? texture_bwd_mip_pipeline_ : texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim),
+                DivUp(gbuffer_height, BlockDim), 1, shader_binding);
         }
 
         if (mip_mode)
@@ -745,9 +764,15 @@ namespace AIHoloImager
 
             GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Float);
 
-            const GpuConstantBuffer* cbs[] = {&accum_grad_mips_cb};
-            const GpuShaderResourceView* srvs[] = {&grad_texture_mips_srv};
-            GpuUnorderedAccessView* uavs[] = {&grad_texture_uav};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &accum_grad_mips_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"grad_texture_mips", &grad_texture_mips_srv},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"grad_texture", &grad_texture_uav},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(accum_grad_mips_pipeline_, DivUp(tex_width, BlockDim), DivUp(tex_height, BlockDim), 1, shader_binding);
         }
@@ -782,9 +807,15 @@ namespace AIHoloImager
                 cmd_list.Clear(opposite_vertices_hash_uav_, clear_clr);
             }
 
-            const GpuConstantBuffer* cbs[] = {&anti_alias_construct_oppo_vert_hash_cb};
-            const GpuShaderResourceView* srvs[] = {&indices_srv};
-            GpuUnorderedAccessView* uavs[] = {&opposite_vertices_hash_uav_};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &anti_alias_construct_oppo_vert_hash_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"indices_buff", &indices_srv},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"hash_table", &opposite_vertices_hash_uav_},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_construct_oppo_vert_hash_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
         }
@@ -806,9 +837,16 @@ namespace AIHoloImager
 
             GpuUnorderedAccessView oppo_vert_uav(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
 
-            const GpuConstantBuffer* cbs[] = {&anti_alias_construct_oppo_vert_cb};
-            const GpuShaderResourceView* srvs[] = {&indices_srv, &opposite_vertices_hash_srv_};
-            GpuUnorderedAccessView* uavs[] = {&oppo_vert_uav};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &anti_alias_construct_oppo_vert_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"indices_buff", &indices_srv},
+                {"hash_table", &opposite_vertices_hash_srv_},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"oppo_vert", &oppo_vert_uav},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_construct_oppo_vert_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
         }
@@ -862,10 +900,22 @@ namespace AIHoloImager
                 cmd_list.Clear(silhouette_counter_uav_, clear_clr);
             }
 
-            const GpuConstantBuffer* cbs[] = {&anti_alias_fwd_cb};
-            const GpuShaderResourceView* srvs[] = {
-                &shading_srv, &prim_id_srv, &depth_srv_, &positions_srv, &indices_srv, &opposite_vertices_srv};
-            GpuUnorderedAccessView* uavs[] = {&anti_aliased_uav, &silhouette_counter_uav_, &silhouette_info_uav_};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &anti_alias_fwd_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"shading_buff", &shading_srv},
+                {"prim_id_tex", &prim_id_srv},
+                {"depth_tex", &depth_srv_},
+                {"positions_buff", &positions_srv},
+                {"indices_buff", &indices_srv},
+                {"opposite_vertices_buff", &opposite_vertices_srv},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"anti_aliased", &anti_aliased_uav},
+                {"silhouette_counter", &silhouette_counter_uav_},
+                {"silhouette_info", &silhouette_info_uav_},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
         }
@@ -882,9 +932,15 @@ namespace AIHoloImager
         {
             // constexpr uint32_t BlockDim = 32;
 
-            const GpuConstantBuffer* cbs[] = {&anti_alias_indirect_args_cb_};
-            const GpuShaderResourceView* srvs[] = {&silhouette_counter_srv_};
-            GpuUnorderedAccessView* uavs[] = {&indirect_args_uav_};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &anti_alias_indirect_args_cb_},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"silhouette_counter", &silhouette_counter_srv_},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"indirect_args", &indirect_args_uav_},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(anti_alias_indirect_pipeline_, 1, 1, 1, shader_binding);
         }
@@ -928,10 +984,22 @@ namespace AIHoloImager
                 cmd_list.Clear(grad_positions_uav, clear_clr);
             }
 
-            const GpuConstantBuffer* cbs[] = {&anti_alias_bwd_cb};
-            const GpuShaderResourceView* srvs[] = {&shading_srv, &prim_id_srv, &positions_srv, &indices_srv, &silhouette_counter_srv_,
-                &silhouette_info_srv_, &grad_anti_aliased_srv};
-            GpuUnorderedAccessView* uavs[] = {&grad_shading_uav, &grad_positions_uav};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &anti_alias_bwd_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"shading_buff", &shading_srv},
+                {"prim_id_tex", &prim_id_srv},
+                {"positions_buff", &positions_srv},
+                {"indices_buff", &indices_srv},
+                {"silhouette_counter", &silhouette_counter_srv_},
+                {"silhouette_info", &silhouette_info_srv_},
+                {"grad_anti_aliased", &grad_anti_aliased_srv},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"grad_shading", &grad_shading_uav},
+                {"grad_positions", &grad_positions_uav},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.ComputeIndirect(anti_alias_bwd_pipeline_, indirect_args_, shader_binding);
         }

@@ -3,14 +3,14 @@
 
 static const uint32_t BlockDim = 256;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t num_faces;
 };
 
-Buffer<uint32_t> face_mark_buff : register(t0);
+Buffer<uint32_t> face_mark_buff;
 
-RWBuffer<uint32_t> view_counter_buff : register(u0);
+RWBuffer<uint32_t> view_counter_buff;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

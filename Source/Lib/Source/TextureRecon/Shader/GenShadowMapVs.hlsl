@@ -1,7 +1,7 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4x4 mvp;
 };

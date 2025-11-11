@@ -4,16 +4,16 @@
 static const uint32_t BlockDim = 16;
 static const int32_t KernelRadius = 2;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 texture_size;
     bool x_dir;
     float weights[KernelRadius * 2 + 1];
 };
 
-Texture2D<float> input_tex : register(t0);
+Texture2D<float> input_tex;
 
-RWTexture2D<unorm float> output_tex : register(u0);
+RWTexture2D<unorm float> output_tex;
 
 groupshared float group_cache[BlockDim * (BlockDim + KernelRadius * 2)];
 

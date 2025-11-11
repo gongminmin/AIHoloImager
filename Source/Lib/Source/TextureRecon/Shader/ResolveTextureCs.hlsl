@@ -1,16 +1,16 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t texture_size;
 };
 
-Texture2D accum_color_tex : register(t0);
+Texture2D accum_color_tex;
 
-RWTexture2D<unorm float4> color_tex : register(u0);
+RWTexture2D<unorm float4> color_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

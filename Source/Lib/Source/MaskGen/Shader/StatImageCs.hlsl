@@ -6,14 +6,14 @@
 static const uint32_t BlockDim = 16;
 static const uint32_t MinWaveSize = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 texture_size;
 };
 
-Texture2D<float4> input_tex : register(t0);
+Texture2D<float4> input_tex;
 
-RWTexture2D<uint32_t> max_tex : register(u0);
+RWTexture2D<uint32_t> max_tex;
 
 groupshared float group_wave_max[BlockDim * BlockDim / MinWaveSize];
 

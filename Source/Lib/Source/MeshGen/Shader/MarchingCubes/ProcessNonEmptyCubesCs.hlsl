@@ -5,22 +5,22 @@
 
 static const uint32_t BlockDim = 256;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t size;
     uint32_t total_cubes;
     float isovalue;
 };
 
-Buffer<uint16_t> edge_table : register(t0);
-Buffer<uint16_t> triangle_table : register(t1);
-Buffer<uint32_t> cube_offsets : register(t2);
-Texture3D<float4> scalar_deformation : register(t3);
+Buffer<uint16_t> edge_table;
+Buffer<uint16_t> triangle_table;
+Buffer<uint32_t> cube_offsets;
+Texture3D<float4> scalar_deformation;
 
-RWBuffer<uint32_t> non_empty_cube_ids : register(u0);
-RWBuffer<uint32_t> non_empty_cube_indices : register(u1);
-RWBuffer<uint32_t2> vertex_index_offsets : register(u2);
-RWBuffer<uint32_t> counter : register(u3);
+RWBuffer<uint32_t> non_empty_cube_ids;
+RWBuffer<uint32_t> non_empty_cube_indices;
+RWBuffer<uint32_t2> vertex_index_offsets;
+RWBuffer<uint32_t> counter;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

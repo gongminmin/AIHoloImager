@@ -3,18 +3,18 @@
 
 static const uint32_t BlockDim = 256;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t num_vertices;
     float inv_scale;
 };
 
-Texture3D color_vol_tex : register(t0);
-Buffer<float3> pos_vertex_buff : register(t1);
+Texture3D color_vol_tex;
+Buffer<float3> pos_vertex_buff;
 
-SamplerState trilinear_sampler : register(s0);
+SamplerState trilinear_sampler;
 
-RWBuffer<float> color_vertex_buff : register(u0);
+RWBuffer<float> color_vertex_buff;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

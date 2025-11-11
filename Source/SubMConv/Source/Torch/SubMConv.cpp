@@ -62,9 +62,15 @@ namespace AIHoloImager
                 cmd_list.Clear(coord_hash_uav_, clear_clr);
             }
 
-            const GpuConstantBuffer* cbs[] = {&build_coord_hash_cb};
-            const GpuShaderResourceView* srvs[] = {&coords_srv_};
-            GpuUnorderedAccessView* uavs[] = {&coord_hash_uav_};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &build_coord_hash_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"coords_buff", &coords_srv_},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"hash_table", &coord_hash_uav_},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(build_coord_hash_pipeline_, DivUp(num_coords_, BlockDim), 1, 1, shader_binding);
         }
@@ -127,9 +133,18 @@ namespace AIHoloImager
                 cmd_list.Clear(nei_indices_count_uav_, clear_clr);
             }
 
-            const GpuConstantBuffer* cbs[] = {&find_avail_nei_cb};
-            const GpuShaderResourceView* srvs[] = {&coords_srv_, &coord_hash_srv_, &offsets_srv_};
-            GpuUnorderedAccessView* uavs[] = {&nei_indices_uav_, &nei_indices_count_uav_};
+            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                {"param_cb", &find_avail_nei_cb},
+            };
+            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                {"coords_buff", &coords_srv_},
+                {"hash_table", &coord_hash_srv_},
+                {"offsets_buff", &offsets_srv_},
+            };
+            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                {"nei_indices", &nei_indices_uav_},
+                {"nei_indices_count", &nei_indices_count_uav_},
+            };
             const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
             cmd_list.Compute(find_available_neighbors_pipeline_, DivUp(num_coords_, BlockDim), num_offsets, 1, shader_binding);
         }

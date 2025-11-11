@@ -3,14 +3,14 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 width_height;
 };
 
-Texture2D<uint32_t> face_id_tex : register(t0);
+Texture2D<uint32_t> face_id_tex;
 
-RWBuffer<uint32_t> face_mark_buff : register(u0);
+RWBuffer<uint32_t> face_mark_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

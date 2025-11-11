@@ -3,16 +3,16 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 this_level_size;
 };
 
-Texture2D last_level_tex : register(t0);
+Texture2D last_level_tex;
 
-RWTexture2D<float4> this_level_tex : register(u0);
+RWTexture2D<float4> this_level_tex;
 
-SamplerState mip_sampler : register(s0, space1);
+SamplerState mip_sampler : register(space1);
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

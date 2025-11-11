@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string_view>
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuFormat.hpp"
@@ -17,7 +18,8 @@
 #define DEFINE_SHADER(name) \
     {                       \
         name##_dxil,        \
-    }
+    },                      \
+        #name,
 
 namespace AIHoloImager
 {
@@ -31,6 +33,7 @@ namespace AIHoloImager
         };
 
         std::span<const uint8_t> bytecodes[static_cast<uint32_t>(BytecodeFormat::Num)];
+        std::string_view name;
     };
 
     class GpuRenderPipelineInternal;

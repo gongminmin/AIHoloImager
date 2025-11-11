@@ -3,19 +3,19 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t grid_res;
     uint32_t size;
 };
 
-Texture3D<uint32_t> index_volume : register(t0);
-Buffer<float16_t> density_features : register(t1);
-Buffer<float16_t> deformation_features : register(t2);
-Buffer<float16_t> color_features : register(t3);
+Texture3D<uint32_t> index_volume;
+Buffer<float16_t> density_features;
+Buffer<float16_t> deformation_features;
+Buffer<float16_t> color_features;
 
-RWTexture3D<float4> density_deformation_volume : register(u0);
-RWTexture3D<unorm float4> color_volume : register(u1);
+RWTexture3D<float4> density_deformation_volume;
+RWTexture3D<unorm float4> color_volume;
 
 float3 Sigmoid(float3 v)
 {

@@ -6,7 +6,7 @@
 static const uint32_t BlockDim = 16;
 static const uint32_t KernelRadius = 3;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t4 src_roi;
     uint32_t2 dest_size;
@@ -14,10 +14,10 @@ cbuffer param_cb : register(b0)
     bool x_dir;
 };
 
-Texture2D<float> input_tex : register(t0);
-Texture2D<uint32_t> min_max_tex : register(t1);
+Texture2D<float> input_tex;
+Texture2D<uint32_t> min_max_tex;
 
-RWTexture2D<unorm float> output_tex : register(u0);
+RWTexture2D<unorm float> output_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

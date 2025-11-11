@@ -5,7 +5,7 @@
 
 static const uint32_t BlockDim = 256;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t size;
     uint32_t num_non_empty_cubes;
@@ -13,16 +13,16 @@ cbuffer param_cb : register(b0)
     float scale;
 };
 
-Buffer<uint16_t> edge_table : register(t0);
-Buffer<uint16_t> triangle_table : register(t1);
-Texture3D<float4> scalar_deformation : register(t2);
-Buffer<uint32_t> non_empty_cube_ids : register(t3);
-Buffer<uint32_t> non_empty_cube_indices : register(t4);
-Buffer<uint32_t> cube_offsets : register(t5);
-Buffer<uint32_t2> vertex_index_offsets : register(t6);
+Buffer<uint16_t> edge_table;
+Buffer<uint16_t> triangle_table;
+Texture3D<float4> scalar_deformation;
+Buffer<uint32_t> non_empty_cube_ids;
+Buffer<uint32_t> non_empty_cube_indices;
+Buffer<uint32_t> cube_offsets;
+Buffer<uint32_t2> vertex_index_offsets;
 
-RWStructuredBuffer<float3> mesh_vertices : register(u0);
-RWBuffer<uint32_t> mesh_indices : register(u1);
+RWStructuredBuffer<float3> mesh_vertices;
+RWBuffer<uint32_t> mesh_indices;
 
 float3 InterpolateVertex(float3 p0, float3 p1, float v0, float v1, float isovalue)
 {

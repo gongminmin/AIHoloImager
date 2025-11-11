@@ -5,14 +5,14 @@
 
 static const uint32_t BlockDim = 32;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t bwd_block_dim;
 };
 
-Buffer<uint32_t> silhouette_counter : register(t0);
+Buffer<uint32_t> silhouette_counter;
 
-RWBuffer<uint32_t> indirect_args : register(u0);
+RWBuffer<uint32_t> indirect_args;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

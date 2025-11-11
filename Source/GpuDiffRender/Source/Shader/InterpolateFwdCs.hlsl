@@ -3,23 +3,23 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 gbuffer_size;
     uint32_t num_attribs;
 };
 
-Texture2D<float2> barycentric_tex : register(t0);
-Texture2D<uint32_t> prim_id_tex : register(t1);
-Buffer<float> vtx_attribs_buff : register(t2);
-Buffer<uint32_t> indices_buff : register(t3);
+Texture2D<float2> barycentric_tex;
+Texture2D<uint32_t> prim_id_tex;
+Buffer<float> vtx_attribs_buff;
+Buffer<uint32_t> indices_buff;
 #if ENABLE_DERIVATIVE_BC
-Texture2D<float4> derivative_barycentric_tex : register(t4);
+Texture2D<float4> derivative_barycentric_tex;
 #endif
 
-RWBuffer<float> shading : register(u0);
+RWBuffer<float> shading;
 #if ENABLE_DERIVATIVE_BC
-RWBuffer<float2> derivative_shading : register(u1);
+RWBuffer<float2> derivative_shading;
 #endif
 
 [numthreads(BlockDim, BlockDim, 1)]

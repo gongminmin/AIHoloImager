@@ -6,6 +6,8 @@
 #include <future>
 #include <memory>
 #include <span>
+#include <string_view>
+#include <tuple>
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuCommandAllocatorInfo.hpp"
@@ -71,10 +73,10 @@ namespace AIHoloImager
 
         struct ShaderBinding
         {
-            std::span<const GpuConstantBuffer*> cbs;
-            std::span<const GpuShaderResourceView*> srvs;
-            std::span<GpuUnorderedAccessView*> uavs;
-            std::span<const GpuDynamicSampler*> samplers;
+            std::span<std::tuple<std::string_view, const GpuConstantBuffer*>> cbs;
+            std::span<std::tuple<std::string_view, const GpuShaderResourceView*>> srvs;
+            std::span<std::tuple<std::string_view, GpuUnorderedAccessView*>> uavs;
+            std::span<std::tuple<std::string_view, const GpuDynamicSampler*>> samplers;
         };
 
     public:

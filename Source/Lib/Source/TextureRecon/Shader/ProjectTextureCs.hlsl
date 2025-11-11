@@ -1,9 +1,9 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4x4 camera_view_proj;
     float4x4 camera_view;
@@ -14,15 +14,15 @@ cbuffer param_cb : register(b0)
     uint32_t texture_size;
 };
 
-Texture2D pos_tex : register(t0);
-Texture2D normal_tex : register(t1);
-Texture2D photo_tex : register(t2);
-Texture2D<float> depth_tex : register(t3);
+Texture2D pos_tex;
+Texture2D normal_tex;
+Texture2D photo_tex;
+Texture2D<float> depth_tex;
 
-SamplerState point_sampler : register(s0);
-SamplerState bilinear_sampler : register(s1);
+SamplerState point_sampler;
+SamplerState bilinear_sampler;
 
-RWTexture2D<unorm float4> accum_color_tex : register(u0);
+RWTexture2D<unorm float4> accum_color_tex;
 
 float Sqr(float x)
 {

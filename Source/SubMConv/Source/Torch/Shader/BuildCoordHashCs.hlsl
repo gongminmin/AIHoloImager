@@ -7,15 +7,15 @@ static const uint32_t BlockDim = 256;
 static const uint32_t MaxProbeTime = 1024;
 static const uint32_t Empty = ~0U;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t num_coords;
     uint32_t hash_size;
 };
 
-Buffer<uint32_t4> coords_buff : register(t0);
+Buffer<uint32_t4> coords_buff;
 
-RWBuffer<uint32_t> hash_table : register(u0);
+RWBuffer<uint32_t> hash_table;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

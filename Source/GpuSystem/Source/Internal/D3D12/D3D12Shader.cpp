@@ -65,6 +65,8 @@ namespace AIHoloImager
         uint32_t num_desc_ranges = 0;
         for (size_t s = 0; s < shaders.size(); ++s)
         {
+            shader_names_[s] = shaders[s].name;
+
             const auto bytecode = shaders[s].bytecodes[static_cast<uint32_t>(ShaderInfo::BytecodeFormat::Dxil)];
             if (bytecode.empty())
             {
@@ -76,6 +78,8 @@ namespace AIHoloImager
             D3D12_SHADER_DESC shader_desc;
             TIFHR(reflection->GetDesc(&shader_desc));
 
+            auto& binding_slots = binding_slots_[s];
+
             auto& shader_rfl = shader_rfls[s];
             for (uint32_t resource_index = 0; resource_index < shader_desc.BoundResources; ++resource_index)
             {
@@ -86,13 +90,17 @@ namespace AIHoloImager
                 {
                 case D3D_SIT_CBUFFER:
                 case D3D_SIT_TBUFFER:
-                    ++shader_rfl.num_cbs;
+                    shader_rfl.num_cbs = std::max(shader_rfl.num_cbs, bind_desc.BindPoint + 1);
+                    binding_slots.cbs.resize(shader_rfl.num_cbs);
+                    binding_slots.cbs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_TEXTURE:
                 case D3D_SIT_STRUCTURED:
                 case D3D_SIT_BYTEADDRESS:
-                    ++shader_rfl.num_srvs;
+                    shader_rfl.num_srvs = std::max(shader_rfl.num_srvs, bind_desc.BindPoint + 1);
+                    binding_slots.srvs.resize(shader_rfl.num_srvs);
+                    binding_slots.srvs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_UAV_RWTYPED:
@@ -101,13 +109,17 @@ namespace AIHoloImager
                 case D3D_SIT_UAV_APPEND_STRUCTURED:
                 case D3D_SIT_UAV_CONSUME_STRUCTURED:
                 case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-                    ++shader_rfl.num_uavs;
+                    shader_rfl.num_uavs = std::max(shader_rfl.num_uavs, bind_desc.BindPoint + 1);
+                    binding_slots.uavs.resize(shader_rfl.num_uavs);
+                    binding_slots.uavs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_SAMPLER:
                     if (bind_desc.Space != 0)
                     {
-                        ++shader_rfl.num_dynamic_samplers;
+                        shader_rfl.num_dynamic_samplers = std::max(shader_rfl.num_dynamic_samplers, bind_desc.BindPoint + 1);
+                        binding_slots.samplers.resize(shader_rfl.num_dynamic_samplers);
+                        binding_slots.samplers[bind_desc.BindPoint] = bind_desc.Name;
                     }
                     break;
 
@@ -365,12 +377,22 @@ namespace AIHoloImager
         d3d12_cmd_list->SetGraphicsRootSignature(root_sig_.Object().Get());
     }
 
+    const D3D12BindingSlots& D3D12RenderPipeline::BindingSlots(GpuRenderPipeline::ShaderStage stage) const noexcept
+    {
+        return binding_slots_[static_cast<uint32_t>(stage)];
+    }
+
+    const std::string& D3D12RenderPipeline::ShaderName(GpuRenderPipeline::ShaderStage stage) const noexcept
+    {
+        return shader_names_[static_cast<uint32_t>(stage)];
+    }
+
 
     D3D12_IMP_IMP(ComputePipeline)
 
     D3D12ComputePipeline::D3D12ComputePipeline(
         GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers)
-        : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr)
+        : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr), shader_name_(shader.name)
     {
         const auto bytecode = shader.bytecodes[static_cast<uint32_t>(ShaderInfo::BytecodeFormat::Dxil)];
 
@@ -390,13 +412,17 @@ namespace AIHoloImager
                 {
                 case D3D_SIT_CBUFFER:
                 case D3D_SIT_TBUFFER:
-                    ++shader_rfl.num_cbs;
+                    shader_rfl.num_cbs = std::max(shader_rfl.num_cbs, bind_desc.BindPoint + 1);
+                    binding_slots_.cbs.resize(shader_rfl.num_cbs);
+                    binding_slots_.cbs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_TEXTURE:
                 case D3D_SIT_STRUCTURED:
                 case D3D_SIT_BYTEADDRESS:
-                    ++shader_rfl.num_srvs;
+                    shader_rfl.num_srvs = std::max(shader_rfl.num_srvs, bind_desc.BindPoint + 1);
+                    binding_slots_.srvs.resize(shader_rfl.num_srvs);
+                    binding_slots_.srvs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_UAV_RWTYPED:
@@ -405,13 +431,17 @@ namespace AIHoloImager
                 case D3D_SIT_UAV_APPEND_STRUCTURED:
                 case D3D_SIT_UAV_CONSUME_STRUCTURED:
                 case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-                    ++shader_rfl.num_uavs;
+                    shader_rfl.num_uavs = std::max(shader_rfl.num_uavs, bind_desc.BindPoint + 1);
+                    binding_slots_.uavs.resize(shader_rfl.num_uavs);
+                    binding_slots_.uavs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_SAMPLER:
                     if (bind_desc.Space != 0)
                     {
-                        ++shader_rfl.num_dynamic_samplers;
+                        shader_rfl.num_dynamic_samplers = std::max(shader_rfl.num_dynamic_samplers, bind_desc.BindPoint + 1);
+                        binding_slots_.samplers.resize(shader_rfl.num_dynamic_samplers);
+                        binding_slots_.samplers[bind_desc.BindPoint] = bind_desc.Name;
                     }
                     break;
 
@@ -546,5 +576,15 @@ namespace AIHoloImager
 
         d3d12_cmd_list->SetPipelineState(pso_.Object().Get());
         d3d12_cmd_list->SetComputeRootSignature(root_sig_.Object().Get());
+    }
+
+    const D3D12BindingSlots& D3D12ComputePipeline::BindingSlots() const noexcept
+    {
+        return binding_slots_;
+    }
+
+    const std::string& D3D12ComputePipeline::ShaderName() const noexcept
+    {
+        return shader_name_;
     }
 } // namespace AIHoloImager

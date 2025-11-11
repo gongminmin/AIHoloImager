@@ -3,7 +3,7 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4x4 inv_model;
 
@@ -11,12 +11,12 @@ cbuffer param_cb : register(b0)
     float inv_scale;
 };
 
-Texture3D color_vol_tex : register(t0);
-Texture2D pos_tex : register(t1);
+Texture3D color_vol_tex;
+Texture2D pos_tex;
 
-SamplerState trilinear_sampler : register(s0);
+SamplerState trilinear_sampler;
 
-RWTexture2D<unorm float4> merged_tex : register(u0);
+RWTexture2D<unorm float4> merged_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

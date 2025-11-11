@@ -6,16 +6,16 @@
 static const uint32_t BlockDim = 256;
 static const uint32_t MaxProbeTime = 256;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t num_indices;
     uint32_t hash_size;
 };
 
-Buffer<uint32_t> indices_buff : register(t0);
-Buffer<uint32_t> hash_table : register(t1);
+Buffer<uint32_t> indices_buff;
+Buffer<uint32_t> hash_table;
 
-RWBuffer<uint32_t> oppo_vert : register(u0);
+RWBuffer<uint32_t> oppo_vert;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

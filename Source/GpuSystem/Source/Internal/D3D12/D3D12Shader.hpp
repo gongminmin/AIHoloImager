@@ -4,6 +4,7 @@
 #pragma once
 
 #include <span>
+#include <string>
 
 #include "Base/MiniWindows.hpp"
 
@@ -21,6 +22,14 @@
 
 namespace AIHoloImager
 {
+    struct D3D12BindingSlots
+    {
+        std::vector<std::string> cbs;
+        std::vector<std::string> srvs;
+        std::vector<std::string> uavs;
+        std::vector<std::string> samplers;
+    };
+
     class D3D12RenderPipeline : public GpuRenderPipelineInternal
     {
     public:
@@ -37,10 +46,16 @@ namespace AIHoloImager
         void Bind(GpuCommandList& cmd_list) const override;
         void Bind(D3D12CommandList& cmd_list) const;
 
+        const D3D12BindingSlots& BindingSlots(GpuRenderPipeline::ShaderStage stage) const noexcept;
+        const std::string& ShaderName(GpuRenderPipeline::ShaderStage stage) const noexcept;
+
     private:
         D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
         D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
         GpuRenderPipeline::PrimitiveTopology topology_{};
+
+        D3D12BindingSlots binding_slots_[static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num)];
+        std::string shader_names_[static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num)];
     };
 
     D3D12_DEFINE_IMP(RenderPipeline)
@@ -59,9 +74,15 @@ namespace AIHoloImager
         void Bind(GpuCommandList& cmd_list) const override;
         void Bind(D3D12CommandList& cmd_list) const;
 
+        const D3D12BindingSlots& BindingSlots() const noexcept;
+        const std::string& ShaderName() const noexcept;
+
     private:
         D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
         D3D12RecyclableObject<ComPtr<ID3D12PipelineState>> pso_;
+
+        D3D12BindingSlots binding_slots_;
+        std::string shader_name_;
     };
 
     D3D12_DEFINE_IMP(ComputePipeline)

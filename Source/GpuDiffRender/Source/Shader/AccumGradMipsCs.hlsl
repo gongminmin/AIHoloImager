@@ -5,7 +5,7 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     uint32_t2 tex_size;
     uint32_t num_channels;
@@ -13,9 +13,9 @@ cbuffer param_cb : register(b0)
     uint32_t4 mip_level_offsets[4];
 };
 
-Buffer<float> grad_texture_mips : register(t0);
+Buffer<float> grad_texture_mips;
 
-RWBuffer<float> grad_texture : register(u0);
+RWBuffer<float> grad_texture;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

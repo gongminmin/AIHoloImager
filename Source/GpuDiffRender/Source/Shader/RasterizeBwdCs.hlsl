@@ -5,22 +5,22 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4 viewport;
     uint32_t2 gbuffer_size;
 };
 
-Texture2D<float2> barycentric_tex : register(t0);
-Texture2D<uint32_t> prim_id_tex : register(t1);
-Texture2D<float2> grad_barycentric_tex : register(t2);
-Buffer<float4> positions_buff : register(t3);
-Buffer<uint32_t> indices_buff : register(t4);
+Texture2D<float2> barycentric_tex;
+Texture2D<uint32_t> prim_id_tex;
+Texture2D<float2> grad_barycentric_tex;
+Buffer<float4> positions_buff;
+Buffer<uint32_t> indices_buff;
 #if ENABLE_DERIVATIVE_BC
-Texture2D<float4> grad_derivative_barycentric_tex : register(t5);
+Texture2D<float4> grad_derivative_barycentric_tex;
 #endif
 
-RWBuffer<uint32_t> grad_positions_buff : register(u0);
+RWBuffer<uint32_t> grad_positions_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

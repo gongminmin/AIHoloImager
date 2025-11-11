@@ -5,23 +5,23 @@
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4 viewport;
     uint32_t2 gbuffer_size;
     uint32_t num_attribs;
 };
 
-Buffer<float> shading_buff : register(t0);
-Texture2D<uint32_t> prim_id_tex : register(t1);
-Texture2D<float> depth_tex : register(t2);
-Buffer<float4> positions_buff : register(t3);
-Buffer<uint32_t> indices_buff : register(t4);
-Buffer<uint32_t> opposite_vertices_buff : register(t5);
+Buffer<float> shading_buff;
+Texture2D<uint32_t> prim_id_tex;
+Texture2D<float> depth_tex;
+Buffer<float4> positions_buff;
+Buffer<uint32_t> indices_buff;
+Buffer<uint32_t> opposite_vertices_buff;
 
-RWBuffer<uint32_t> anti_aliased : register(u0);
-RWBuffer<uint32_t> silhouette_counter : register(u1);
-RWBuffer<uint32_t> silhouette_info : register(u2);
+RWBuffer<uint32_t> anti_aliased;
+RWBuffer<uint32_t> silhouette_counter;
+RWBuffer<uint32_t> silhouette_info;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

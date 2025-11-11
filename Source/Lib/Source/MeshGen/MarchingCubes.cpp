@@ -372,9 +372,17 @@ namespace AIHoloImager
 
                 constexpr uint32_t BlockDim = 256;
 
-                const GpuConstantBuffer* cbs[] = {&calc_cube_indices_cb};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &scalar_deformation_srv};
-                GpuUnorderedAccessView* uavs[] = {&cube_offsets_uav, &counter_uav};
+                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                    {"param_cb", &calc_cube_indices_cb},
+                };
+                std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                    {"edge_table", &edge_table_srv_},
+                    {"scalar_deformation", &scalar_deformation_srv},
+                };
+                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                    {"cube_offsets", &cube_offsets_uav},
+                    {"counter", &counter_uav},
+                };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
@@ -413,10 +421,21 @@ namespace AIHoloImager
 
                 constexpr uint32_t BlockDim = 256;
 
-                const GpuConstantBuffer* cbs[] = {&process_non_empty_cubes_cb};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &cube_offsets_srv, &scalar_deformation_srv};
-                GpuUnorderedAccessView* uavs[] = {
-                    &non_empty_cube_ids_uav, &non_empty_cube_indices_uav, &vertex_index_offsets_uav, &counter_uav};
+                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                    {"param_cb", &process_non_empty_cubes_cb},
+                };
+                std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                    {"edge_table", &edge_table_srv_},
+                    {"triangle_table", &triangle_table_srv_},
+                    {"cube_offsets", &cube_offsets_srv},
+                    {"scalar_deformation", &scalar_deformation_srv},
+                };
+                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                    {"non_empty_cube_ids", &non_empty_cube_ids_uav},
+                    {"non_empty_cube_indices", &non_empty_cube_indices_uav},
+                    {"vertex_index_offsets", &vertex_index_offsets_uav},
+                    {"counter", &counter_uav},
+                };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(process_non_empty_cubes_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
             }
@@ -459,10 +478,22 @@ namespace AIHoloImager
 
                 constexpr uint32_t BlockDim = 256;
 
-                const GpuConstantBuffer* cbs[] = {&gen_vertices_indices_cb};
-                const GpuShaderResourceView* srvs[] = {&edge_table_srv_, &triangle_table_srv_, &scalar_deformation_srv,
-                    &non_empty_cube_ids_srv, &non_empty_cube_indices_srv, &cube_offsets_srv, &vertex_index_offsets_srv};
-                GpuUnorderedAccessView* uavs[] = {&mesh_vertices_uav, &mesh_indices_uav};
+                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
+                    {"param_cb", &gen_vertices_indices_cb},
+                };
+                std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                    {"edge_table", &edge_table_srv_},
+                    {"triangle_table", &triangle_table_srv_},
+                    {"scalar_deformation", &scalar_deformation_srv},
+                    {"non_empty_cube_ids", &non_empty_cube_ids_srv},
+                    {"non_empty_cube_indices", &non_empty_cube_indices_srv},
+                    {"cube_offsets", &cube_offsets_srv},
+                    {"vertex_index_offsets", &vertex_index_offsets_srv},
+                };
+                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                    {"mesh_vertices", &mesh_vertices_uav},
+                    {"mesh_indices", &mesh_indices_uav},
+                };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
                 cmd_list.Compute(gen_vertices_indices_pipeline_, DivUp(num_non_empty_cubes, BlockDim), 1, 1, shader_binding);
 

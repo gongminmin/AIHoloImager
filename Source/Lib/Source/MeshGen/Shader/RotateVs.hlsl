@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float4x4 rotation_mtx;
     float4 tc_bounding_box;

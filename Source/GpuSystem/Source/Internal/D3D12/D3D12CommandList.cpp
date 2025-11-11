@@ -3,6 +3,9 @@
 
 #include "D3D12CommandList.hpp"
 
+#include <format>
+#include <iostream>
+
 #include "Base/MiniWindows.hpp"
 
 #include <directx/d3d12.h>
@@ -26,6 +29,12 @@
 
 DEFINE_UUID_OF(ID3D12GraphicsCommandList);
 DEFINE_UUID_OF(ID3D12VideoEncodeCommandList);
+
+namespace
+{
+    constexpr const char* YellowEscape = "\033[33m";
+    constexpr const char* EndEscape = "\033[0m";
+} // namespace
 
 namespace AIHoloImager
 {
@@ -296,14 +305,17 @@ namespace AIHoloImager
             D3D12Imp(*dsv).Transition(*this);
         }
 
-        D3D12Imp(pipeline).Bind(*this);
+        auto& d3d12_pipeline = D3D12Imp(pipeline);
+        d3d12_pipeline.Bind(*this);
 
         uint32_t num_srv_uav_descs = 0;
         uint32_t num_sampler_descs = 0;
-        for (const auto& binding : shader_bindings)
+        for (uint32_t s = 0; s < static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num); ++s)
         {
-            num_srv_uav_descs += static_cast<uint32_t>(binding.srvs.size() + binding.uavs.size());
-            num_sampler_descs += static_cast<uint32_t>(binding.samplers.size());
+            const auto stage = static_cast<GpuRenderPipeline::ShaderStage>(s);
+            const auto& binding_slots = d3d12_pipeline.BindingSlots(stage);
+            num_srv_uav_descs += static_cast<uint32_t>(binding_slots.srvs.size() + binding_slots.uavs.size());
+            num_sampler_descs += static_cast<uint32_t>(binding_slots.samplers.size());
         }
 
         ID3D12DescriptorHeap* heaps[2] = {};
@@ -331,75 +343,162 @@ namespace AIHoloImager
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
         const uint32_t sampler_desc_size = gpu_system_->SamplerDescSize();
 
-        uint32_t heap_base = 0;
+        uint32_t srv_uav_heap_base = 0;
+        uint32_t sampler_heap_base = 0;
         uint32_t root_index = 0;
 
-        for (const auto& binding : shader_bindings)
+        for (uint32_t s = 0; s < static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num); ++s)
         {
-            if (!binding.srvs.empty())
-            {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-                for (const auto* srv : binding.srvs)
-                {
-                    if (srv != nullptr)
-                    {
-                        D3D12Imp(*srv).Transition(*this);
+            const auto stage = static_cast<GpuRenderPipeline::ShaderStage>(s);
+            const auto& binding_slots = d3d12_pipeline.BindingSlots(stage);
+            const auto& shader_name = d3d12_pipeline.ShaderName(stage);
+            const auto& shader_binding = shader_bindings[s];
 
-                        auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                        srv->CopyTo(srv_cpu_handle);
+            if (!binding_slots.srvs.empty())
+            {
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
+                    ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+
+                for (const auto& srv_name : binding_slots.srvs)
+                {
+                    if (!srv_name.empty())
+                    {
+                        bool found = false;
+                        for (const auto& binding_srv : shader_binding.srvs)
+                        {
+                            if (std::get<0>(binding_srv) == srv_name)
+                            {
+                                const auto* srv = std::get<1>(binding_srv);
+                                if (srv != nullptr)
+                                {
+                                    D3D12Imp(*srv).Transition(*this);
+
+                                    auto srv_cpu_handle =
+                                        OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
+                                    srv->CopyTo(srv_cpu_handle);
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            std::cout << std::format(
+                                "{}WARNING: {} SRV {} of shader {} is not bound\n", YellowEscape, EndEscape, srv_name, shader_name);
+                        }
                     }
 
-                    ++heap_base;
+                    ++srv_uav_heap_base;
                 }
 
                 ++root_index;
             }
 
-            if (!binding.uavs.empty())
+            if (!binding_slots.uavs.empty())
             {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-                for (const auto* uav : binding.uavs)
-                {
-                    if (uav != nullptr)
-                    {
-                        D3D12Imp(*uav).Transition(*this);
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
+                    ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
 
-                        auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                        uav->CopyTo(uav_cpu_handle);
+                for (const auto& uav_name : binding_slots.uavs)
+                {
+                    if (!uav_name.empty())
+                    {
+                        bool found = false;
+                        for (const auto& binding_uav : shader_binding.uavs)
+                        {
+                            if (std::get<0>(binding_uav) == uav_name)
+                            {
+                                auto* uav = std::get<1>(binding_uav);
+                                if (uav != nullptr)
+                                {
+                                    D3D12Imp(*uav).Transition(*this);
+
+                                    auto uav_cpu_handle =
+                                        OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
+                                    uav->CopyTo(uav_cpu_handle);
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            std::cout << std::format(
+                                "{}WARNING: {} UAV {} of shader {} is not bound\n", YellowEscape, EndEscape, uav_name, shader_name);
+                        }
                     }
 
-                    ++heap_base;
+                    ++srv_uav_heap_base;
                 }
 
                 ++root_index;
             }
 
-            heap_base = 0;
-            if (!binding.samplers.empty())
+            if (!binding_slots.samplers.empty())
             {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
-                    root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size)));
-                for (const auto* sampler : binding.samplers)
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
+                    ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size)));
+
+                for (const auto& sampler_name : binding_slots.samplers)
                 {
-                    if (sampler != nullptr)
+                    if (!sampler_name.empty())
                     {
-                        auto sampler_cpu_handle = OffsetHandle(sampler_desc_block.CpuHandle(), heap_base, sampler_desc_size);
-                        D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                        bool found = false;
+                        for (const auto& binding_sampler : shader_binding.samplers)
+                        {
+                            if (std::get<0>(binding_sampler) == sampler_name)
+                            {
+                                auto* sampler = std::get<1>(binding_sampler);
+                                if (sampler != nullptr)
+                                {
+                                    auto sampler_cpu_handle =
+                                        OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
+                                    D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            std::cout << std::format(
+                                "{}WARNING: {} Sampler {} of shader {} is not bound\n", YellowEscape, EndEscape, sampler_name, shader_name);
+                        }
                     }
 
-                    ++heap_base;
+                    ++sampler_heap_base;
                 }
 
                 ++root_index;
             }
 
-            for (const auto* cb : binding.cbs)
+            for (const auto& cb_name : binding_slots.cbs)
             {
-                const auto& mem_block = cb->MemBlock();
-                d3d12_cmd_list->SetGraphicsRootConstantBufferView(
-                    root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+                if (!cb_name.empty())
+                {
+                    bool found = false;
+                    for (const auto& binding_cb : shader_binding.cbs)
+                    {
+                        if (std::get<0>(binding_cb) == cb_name)
+                        {
+                            auto* cb = std::get<1>(binding_cb);
+                            if (cb != nullptr)
+                            {
+                                const auto& mem_block = cb->MemBlock();
+                                d3d12_cmd_list->SetGraphicsRootConstantBufferView(
+                                    root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        std::cout << std::format(
+                            "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cb_name, shader_name);
+                    }
+                }
+
                 ++root_index;
             }
         }
@@ -506,10 +605,13 @@ namespace AIHoloImager
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(pipeline).Bind(*this);
+        auto& d3d12_pipeline = D3D12Imp(pipeline);
+        d3d12_pipeline.Bind(*this);
 
-        const uint32_t num_srv_uav_descs = static_cast<uint32_t>(shader_binding.srvs.size() + shader_binding.uavs.size());
-        const uint32_t num_sampler_descs = static_cast<uint32_t>(shader_binding.samplers.size());
+        const auto& binding_slots = d3d12_pipeline.BindingSlots();
+
+        const uint32_t num_srv_uav_descs = static_cast<uint32_t>(binding_slots.srvs.size() + binding_slots.uavs.size());
+        const uint32_t num_sampler_descs = static_cast<uint32_t>(binding_slots.samplers.size());
 
         ID3D12DescriptorHeap* heaps[2] = {};
         uint32_t num_heaps = 0;
@@ -536,73 +638,154 @@ namespace AIHoloImager
         const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
         const uint32_t sampler_desc_size = gpu_system_->SamplerDescSize();
 
-        uint32_t heap_base = 0;
+        uint32_t srv_uav_heap_base = 0;
+        uint32_t sampler_heap_base = 0;
         uint32_t root_index = 0;
 
-        if (!shader_binding.srvs.empty())
+        const auto& shader_name = d3d12_pipeline.ShaderName();
+
+        if (!binding_slots.srvs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-            for (const auto* srv : shader_binding.srvs)
-            {
-                if (srv != nullptr)
-                {
-                    D3D12Imp(*srv).Transition(*this);
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
 
-                    auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                    srv->CopyTo(srv_cpu_handle);
+            for (const auto& srv_name : binding_slots.srvs)
+            {
+                if (!srv_name.empty())
+                {
+                    bool found = false;
+                    for (const auto& binding_srv : shader_binding.srvs)
+                    {
+                        if (std::get<0>(binding_srv) == srv_name)
+                        {
+                            const auto* srv = std::get<1>(binding_srv);
+                            if (srv != nullptr)
+                            {
+                                D3D12Imp(*srv).Transition(*this);
+
+                                auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
+                                srv->CopyTo(srv_cpu_handle);
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        std::cout << std::format(
+                            "{}WARNING: {} SRV {} of shader {} is not bound\n", YellowEscape, EndEscape, srv_name, shader_name);
+                    }
                 }
 
-                ++heap_base;
+                ++srv_uav_heap_base;
             }
 
             ++root_index;
         }
 
-        if (!shader_binding.uavs.empty())
+        if (!binding_slots.uavs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), heap_base, srv_uav_desc_size)));
-            for (const auto* uav : shader_binding.uavs)
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+
+            for (const auto& uav_name : binding_slots.uavs)
             {
-                if (uav != nullptr)
+                if (!uav_name.empty())
                 {
-                    D3D12Imp(*uav).Transition(*this);
+                    bool found = false;
+                    for (const auto& binding_uav : shader_binding.uavs)
+                    {
+                        if (std::get<0>(binding_uav) == uav_name)
+                        {
+                            const auto* uav = std::get<1>(binding_uav);
+                            if (uav != nullptr)
+                            {
+                                D3D12Imp(*uav).Transition(*this);
 
-                    auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), heap_base, srv_uav_desc_size);
-                    uav->CopyTo(uav_cpu_handle);
+                                auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
+                                uav->CopyTo(uav_cpu_handle);
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        std::cout << std::format(
+                            "{}WARNING: {} UAV {} of shader {} is not bound\n", YellowEscape, EndEscape, uav_name, shader_name);
+                    }
                 }
-
-                ++heap_base;
+                ++srv_uav_heap_base;
             }
 
             ++root_index;
         }
 
-        heap_base = 0;
-        if (!shader_binding.samplers.empty())
+        if (!binding_slots.samplers.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), heap_base, sampler_desc_size)));
-            for (const auto* sampler : shader_binding.samplers)
+                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size)));
+
+            for (const auto& sampler_name : binding_slots.samplers)
             {
-                if (sampler != nullptr)
+                if (!sampler_name.empty())
                 {
-                    auto sampler_cpu_handle = OffsetHandle(sampler_desc_block.CpuHandle(), heap_base, sampler_desc_size);
-                    D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                    bool found = false;
+                    for (const auto& binding_sampler : shader_binding.samplers)
+                    {
+                        if (std::get<0>(binding_sampler) == sampler_name)
+                        {
+                            const auto* sampler = std::get<1>(binding_sampler);
+                            if (sampler != nullptr)
+                            {
+                                auto sampler_cpu_handle =
+                                    OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
+                                D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        std::cout << std::format(
+                            "{}WARNING: {} Sampler {} of shader {} is not bound\n", YellowEscape, EndEscape, sampler_name, shader_name);
+                    }
                 }
 
-                ++heap_base;
+                ++sampler_heap_base;
             }
 
             ++root_index;
         }
 
-        for (const auto* cb : shader_binding.cbs)
+        for (const auto& cb_name : binding_slots.cbs)
         {
-            const auto& mem_block = cb->MemBlock();
-            d3d12_cmd_list->SetComputeRootConstantBufferView(
-                root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+            if (!cb_name.empty())
+            {
+                bool found = false;
+                for (const auto& binding_cb : shader_binding.cbs)
+                {
+                    if (std::get<0>(binding_cb) == cb_name)
+                    {
+                        auto* cb = std::get<1>(binding_cb);
+                        if (cb != nullptr)
+                        {
+                            const auto& mem_block = cb->MemBlock();
+                            d3d12_cmd_list->SetComputeRootConstantBufferView(
+                                root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    std::cout << std::format(
+                        "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cb_name, shader_name);
+                }
+            }
+
             ++root_index;
         }
 

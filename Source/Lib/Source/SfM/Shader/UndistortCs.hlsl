@@ -1,19 +1,19 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2025 Minmin Gong
 //
 
 static const uint32_t BlockDim = 16;
 
-cbuffer param_cb : register(b0)
+cbuffer param_cb
 {
     float3 k; // (0, 0), (0, 2), (1, 2)
     float3 params;
     float4 width_height;
 };
 
-Texture2D distorted_tex : register(t0);
-SamplerState bilinear_sampler : register(s0);
+Texture2D distorted_tex;
+SamplerState bilinear_sampler;
 
-RWTexture2D<unorm float4> undistorted_tex : register(u0);
+RWTexture2D<unorm float4> undistorted_tex;
 
 // From Pinhole_Intrinsic_Radial_K3
 
