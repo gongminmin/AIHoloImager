@@ -18,7 +18,8 @@ namespace AIHoloImager
     {
     public:
         Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-            : host_(host), system_internal_(CreateGpuSystemInternal(api, host, std::move(confirm_device), enable_sharing, enable_debug)),
+            : host_(host), api_(api),
+              system_internal_(CreateGpuSystemInternal(api, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false),
               rtv_desc_allocator_(host, GpuDescriptorHeapType::Rtv, false), dsv_desc_allocator_(host, GpuDescriptorHeapType::Dsv, false),
               cbv_srv_uav_desc_allocator_(host, GpuDescriptorHeapType::CbvSrvUav, false),
@@ -50,6 +51,11 @@ namespace AIHoloImager
         GpuSystemInternal& Internal() noexcept
         {
             return *system_internal_;
+        }
+
+        GpuSystem::Api NativeApi() const noexcept
+        {
+            return api_;
         }
 
         uint32_t RtvDescSize() const noexcept
@@ -218,6 +224,8 @@ namespace AIHoloImager
     private:
         GpuSystem& host_;
 
+        Api api_;
+
         std::unique_ptr<GpuSystemInternal> system_internal_;
 
         GpuMemoryAllocator upload_mem_allocator_;
@@ -243,6 +251,11 @@ namespace AIHoloImager
 
     GpuSystem::GpuSystem(GpuSystem&& other) noexcept = default;
     GpuSystem& GpuSystem::operator=(GpuSystem&& other) noexcept = default;
+
+    GpuSystem::Api GpuSystem::NativeApi() const noexcept
+    {
+        return impl_->NativeApi();
+    }
 
     void* GpuSystem::NativeDevice() const noexcept
     {

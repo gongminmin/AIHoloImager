@@ -34,7 +34,7 @@ namespace AIHoloImager
         if (native_resource != nullptr)
         {
             D3D12_HEAP_PROPERTIES heap_prop;
-            static_cast<ID3D12Resource*>(native_resource)->GetHeapProperties(&heap_prop, nullptr);
+            this->Resource()->GetHeapProperties(&heap_prop, nullptr);
             heap_ = FromD3D12HeapType(heap_prop.Type);
         }
     }
@@ -78,6 +78,11 @@ namespace AIHoloImager
         return this->D3D12Resource::SharedHandle();
     }
 
+    GpuHeap D3D12Buffer::Heap() const noexcept
+    {
+        return heap_;
+    }
+
     GpuResourceType D3D12Buffer::Type() const noexcept
     {
         return this->D3D12Resource::Type();
@@ -90,7 +95,7 @@ namespace AIHoloImager
 
     D3D12_GPU_VIRTUAL_ADDRESS D3D12Buffer::GpuVirtualAddress() const noexcept
     {
-        return this->D3D12Resource::Resource()->GetGPUVirtualAddress();
+        return this->Resource()->GetGPUVirtualAddress();
     }
 
     uint32_t D3D12Buffer::Size() const noexcept
@@ -102,21 +107,21 @@ namespace AIHoloImager
     {
         void* addr;
         const D3D12_RANGE d3d12_read_range = ToD3D12Range(read_range);
-        TIFHR(this->D3D12Resource::Resource()->Map(0, &d3d12_read_range, &addr));
+        TIFHR(this->Resource()->Map(0, &d3d12_read_range, &addr));
         return addr;
     }
     void* D3D12Buffer::Map()
     {
         void* addr;
         const D3D12_RANGE d3d12_read_range{0, 0};
-        TIFHR(this->D3D12Resource::Resource()->Map(0, (heap_ == GpuHeap::ReadBack) ? nullptr : &d3d12_read_range, &addr));
+        TIFHR(this->Resource()->Map(0, (heap_ == GpuHeap::ReadBack) ? nullptr : &d3d12_read_range, &addr));
         return addr;
     }
 
     void D3D12Buffer::Unmap(const GpuRange& write_range)
     {
         const D3D12_RANGE d3d12_write_range = ToD3D12Range(write_range);
-        this->D3D12Resource::Resource()->Unmap(0, (heap_ == GpuHeap::Upload) ? nullptr : &d3d12_write_range);
+        this->Resource()->Unmap(0, (heap_ == GpuHeap::Upload) ? nullptr : &d3d12_write_range);
     }
 
     void D3D12Buffer::Unmap()
@@ -149,7 +154,7 @@ namespace AIHoloImager
 
     void D3D12Buffer::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
-        auto* native_resource = this->D3D12Resource::Resource();
+        auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
 
         if (curr_state_ != target_state)

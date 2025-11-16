@@ -47,6 +47,8 @@ namespace AIHoloImager
         GpuSystem(GpuSystem&& other) noexcept;
         GpuSystem& operator=(GpuSystem&& other) noexcept;
 
+        Api NativeApi() const noexcept;
+
         void* NativeDevice() const noexcept;
         template <typename Traits>
         typename Traits::DeviceType NativeDevice() const noexcept

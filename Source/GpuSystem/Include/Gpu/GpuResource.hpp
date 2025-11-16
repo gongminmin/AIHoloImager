@@ -79,6 +79,7 @@ namespace AIHoloImager
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedHandle());
         }
 
+        virtual GpuHeap Heap() const noexcept = 0;
         virtual GpuResourceType Type() const noexcept = 0;
         virtual uint32_t AllocationSize() const noexcept = 0;
 

@@ -81,7 +81,7 @@ namespace AIHoloImager
 
     void* D3D12Texture::NativeResource() const noexcept
     {
-        return this->D3D12Resource::Resource();
+        return this->Resource();
     }
 
     void* D3D12Texture::NativeTexture() const noexcept
@@ -168,7 +168,7 @@ namespace AIHoloImager
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
                 .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                 .Transition{
-                    .pResource = this->D3D12Resource::Resource(),
+                    .pResource = this->Resource(),
                     .Subresource = sub_resource,
                     .StateBefore = ToD3D12ResourceState(curr_states_[sub_resource]),
                     .StateAfter = ToD3D12ResourceState(target_state),
@@ -182,7 +182,7 @@ namespace AIHoloImager
 
     void D3D12Texture::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
-        auto* native_resource = this->D3D12Resource::Resource();
+        auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
         if ((curr_states_[0] == target_state) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))

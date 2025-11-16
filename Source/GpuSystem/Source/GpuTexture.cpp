@@ -81,6 +81,11 @@ namespace AIHoloImager
         return impl_ ? impl_->SharedHandle() : nullptr;
     }
 
+    GpuHeap GpuTexture::Heap() const noexcept
+    {
+        return GpuHeap::Default;
+    }
+
     GpuResourceType GpuTexture::Type() const noexcept
     {
         assert(impl_);

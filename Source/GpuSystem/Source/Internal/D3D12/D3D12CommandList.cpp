@@ -860,18 +860,15 @@ namespace AIHoloImager
     {
         auto* d3d12_dest = D3D12Imp(dest).Resource();
 
-        D3D12_HEAP_PROPERTIES heap_prop;
-        d3d12_dest->GetHeapProperties(&heap_prop, nullptr);
-
-        switch (heap_prop.Type)
+        switch (dest.Heap())
         {
-        case D3D12_HEAP_TYPE_UPLOAD:
-        case D3D12_HEAP_TYPE_READBACK:
+        case GpuHeap::Upload:
+        case GpuHeap::ReadBack:
             copy_func(dest.Map());
             dest.Unmap();
             break;
 
-        case D3D12_HEAP_TYPE_DEFAULT:
+        case GpuHeap::Default:
         {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
@@ -954,18 +951,15 @@ namespace AIHoloImager
     {
         auto* d3d12_src_buff = D3D12Imp(src).Resource();
 
-        D3D12_HEAP_PROPERTIES heap_prop;
-        d3d12_src_buff->GetHeapProperties(&heap_prop, nullptr);
-
-        switch (heap_prop.Type)
+        switch (src.Heap())
         {
-        case D3D12_HEAP_TYPE_UPLOAD:
-        case D3D12_HEAP_TYPE_READBACK:
+        case GpuHeap::Upload:
+        case GpuHeap::ReadBack:
             copy_func(src.Map());
             src.Unmap();
             return {};
 
-        case D3D12_HEAP_TYPE_DEFAULT:
+        case GpuHeap::Default:
         {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
