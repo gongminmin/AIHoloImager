@@ -69,7 +69,15 @@ namespace AIHoloImager
             if (cuda_copy_enabled_)
             {
                 MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
-                ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
+                switch (gpu_system_.NativeApi())
+                {
+                case GpuSystem::Api::D3D12:
+                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
+                    break;
+
+                default:
+                    Unreachable("Invalid API");
+                }
                 ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle();
                 ext_semaphore_handle_desc.flags = 0;
                 TIFCE(cuda_rt_.ImportExternalSemaphore(&ext_semaphore_, &ext_semaphore_handle_desc));
@@ -391,7 +399,15 @@ namespace AIHoloImager
         MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
             MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};
-            ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
+            switch (gpu_system_.NativeApi())
+            {
+            case GpuSystem::Api::D3D12:
+                ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
+                break;
+
+            default:
+                Unreachable("Invalid API");
+            }
             ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
             ext_mem_handle_desc.size = resource.AllocationSize();
             ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
