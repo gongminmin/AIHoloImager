@@ -73,6 +73,11 @@ namespace AIHoloImager
         return impl_->Type();
     }
 
+    GpuResourceFlag GpuBuffer::Flags() const noexcept
+    {
+        return impl_ ? impl_->Flags() : GpuResourceFlag::None;
+    }
+
     uint32_t GpuBuffer::AllocationSize() const noexcept
     {
         assert(impl_);

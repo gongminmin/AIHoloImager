@@ -88,6 +88,11 @@ namespace AIHoloImager
         return this->D3D12Resource::Type();
     }
 
+    GpuResourceFlag D3D12Buffer::Flags() const noexcept
+    {
+        return this->D3D12Resource::Flags();
+    }
+
     uint32_t D3D12Buffer::AllocationSize() const noexcept
     {
         return this->D3D12Resource::AllocationSize();

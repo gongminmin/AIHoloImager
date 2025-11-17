@@ -36,6 +36,7 @@ namespace AIHoloImager
 
         GpuHeap Heap() const noexcept override;
         GpuResourceType Type() const noexcept override;
+        GpuResourceFlag Flags() const noexcept override;
         uint32_t AllocationSize() const noexcept override;
 
         uint32_t Size() const noexcept override;

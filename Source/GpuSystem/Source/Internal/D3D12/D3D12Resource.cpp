@@ -43,6 +43,8 @@ namespace AIHoloImager
             default:
                 Unreachable("Invalid resource dimension");
             }
+
+            flags_ = FromD3D12ResourceFlags(desc_.Flags);
         }
     }
 
@@ -72,6 +74,7 @@ namespace AIHoloImager
         uint32_t mip_levels, GpuFormat format, GpuHeap heap, GpuResourceFlag flags, GpuResourceState init_state, std::string_view name)
     {
         type_ = type;
+        flags_ = flags;
 
         uint16_t depth_or_array_size;
         D3D12_TEXTURE_LAYOUT layout;
@@ -215,7 +218,7 @@ namespace AIHoloImager
 
     GpuResourceFlag D3D12Resource::Flags() const noexcept
     {
-        return FromD3D12ResourceFlags(desc_.Flags);
+        return flags_;
     }
 
     D3D12Resource& D3D12Imp(GpuResource& resource)

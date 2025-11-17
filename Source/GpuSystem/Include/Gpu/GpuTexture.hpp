@@ -49,6 +49,7 @@ namespace AIHoloImager
 
         GpuHeap Heap() const noexcept override;
         GpuResourceType Type() const noexcept override;
+        GpuResourceFlag Flags() const noexcept override;
         uint32_t AllocationSize() const noexcept override;
 
         uint32_t Width(uint32_t mip) const noexcept;
@@ -58,7 +59,6 @@ namespace AIHoloImager
         uint32_t MipLevels() const noexcept;
         uint32_t Planes() const noexcept;
         GpuFormat Format() const noexcept;
-        GpuResourceFlag Flags() const noexcept;
 
         void Reset();
 

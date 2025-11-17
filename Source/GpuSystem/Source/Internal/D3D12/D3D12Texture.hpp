@@ -36,6 +36,7 @@ namespace AIHoloImager
         void* SharedHandle() const noexcept override;
 
         GpuResourceType Type() const noexcept override;
+        GpuResourceFlag Flags() const noexcept override;
         uint32_t AllocationSize() const noexcept override;
 
         uint32_t Width(uint32_t mip) const noexcept override;
@@ -45,7 +46,6 @@ namespace AIHoloImager
         uint32_t MipLevels() const noexcept override;
         uint32_t Planes() const noexcept override;
         GpuFormat Format() const noexcept override;
-        GpuResourceFlag Flags() const noexcept override;
 
         void Reset() override;
 
@@ -57,7 +57,6 @@ namespace AIHoloImager
     private:
         mutable std::vector<GpuResourceState> curr_states_;
         GpuFormat format_{};
-        GpuResourceFlag flags_{};
     };
 
     D3D12_DEFINE_IMP(Texture)

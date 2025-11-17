@@ -215,9 +215,9 @@ namespace AIHoloImager
                 const auto& view = sfm_input.views[i];
                 const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::R32_Float,
+                GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::D32_Float,
                     GpuResourceFlag::DepthStencil, "shadow_map_tex");
-                const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex);
+                const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex, GpuFormat::R32_Float);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
                 const GpuShaderResourceView photo_srv(gpu_system_, view.delighted_tex);

@@ -31,6 +31,5 @@ namespace AIHoloImager
         virtual uint32_t MipLevels() const noexcept = 0;
         virtual uint32_t Planes() const noexcept = 0;
         virtual GpuFormat Format() const noexcept = 0;
-        virtual GpuResourceFlag Flags() const noexcept = 0;
     };
 } // namespace AIHoloImager

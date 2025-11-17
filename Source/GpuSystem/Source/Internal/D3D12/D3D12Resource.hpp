@@ -44,6 +44,7 @@ namespace AIHoloImager
         void* SharedHandle() const noexcept;
 
         GpuResourceType Type() const noexcept;
+        GpuResourceFlag Flags() const noexcept;
         uint32_t AllocationSize() const noexcept;
 
         uint32_t Width() const noexcept;
@@ -54,11 +55,10 @@ namespace AIHoloImager
 
         GpuFormat Format() const noexcept;
 
-        GpuResourceFlag Flags() const noexcept;
-
     private:
         D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;
         GpuResourceType type_ = GpuResourceType::Buffer;
+        GpuResourceFlag flags_ = GpuResourceFlag::None;
         D3D12_RESOURCE_DESC desc_{};
         Win32UniqueHandle shared_handle_;
     };

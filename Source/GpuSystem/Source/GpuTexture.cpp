@@ -92,6 +92,11 @@ namespace AIHoloImager
         return impl_->Type();
     }
 
+    GpuResourceFlag GpuTexture::Flags() const noexcept
+    {
+        return impl_ ? impl_->Flags() : GpuResourceFlag::None;
+    }
+
     uint32_t GpuTexture::AllocationSize() const noexcept
     {
         assert(impl_);
@@ -131,11 +136,6 @@ namespace AIHoloImager
     GpuFormat GpuTexture::Format() const noexcept
     {
         return impl_ ? impl_->Format() : GpuFormat::Unknown;
-    }
-
-    GpuResourceFlag GpuTexture::Flags() const noexcept
-    {
-        return impl_ ? impl_->Flags() : GpuResourceFlag::None;
     }
 
     void GpuTexture::Reset()

@@ -18,7 +18,7 @@ namespace AIHoloImager
 
     D3D12Texture::D3D12Texture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name)
-        : D3D12Resource(gpu_system), format_(format), flags_(flags)
+        : D3D12Resource(gpu_system), format_(format)
     {
         if (mip_levels == 0)
         {
@@ -41,7 +41,7 @@ namespace AIHoloImager
         }
 
         this->CreateResource(
-            type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags_, curr_states_[0], std::move(name));
+            type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags, curr_states_[0], std::move(name));
     }
 
     D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
@@ -51,7 +51,6 @@ namespace AIHoloImager
         {
             curr_states_.assign(this->MipLevels() * this->Planes(), curr_state);
             format_ = this->D3D12Resource::Format();
-            flags_ = this->D3D12Resource::Flags();
         }
     }
 
@@ -99,6 +98,11 @@ namespace AIHoloImager
         return this->D3D12Resource::Type();
     }
 
+    GpuResourceFlag D3D12Texture::Flags() const noexcept
+    {
+        return this->D3D12Resource::Flags();
+    }
+
     uint32_t D3D12Texture::AllocationSize() const noexcept
     {
         return this->D3D12Resource::AllocationSize();
@@ -137,11 +141,6 @@ namespace AIHoloImager
     GpuFormat D3D12Texture::Format() const noexcept
     {
         return format_;
-    }
-
-    GpuResourceFlag D3D12Texture::Flags() const noexcept
-    {
-        return flags_;
     }
 
     void D3D12Texture::Reset()
