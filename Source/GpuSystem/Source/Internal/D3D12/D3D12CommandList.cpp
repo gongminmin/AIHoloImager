@@ -64,7 +64,7 @@ namespace AIHoloImager
             break;
 
         default:
-            Unreachable();
+            Unreachable("Invalid command queue type");
         }
 
         d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
@@ -148,7 +148,7 @@ namespace AIHoloImager
             break;
 
         default:
-            Unreachable();
+            Unreachable("Invalid command queue type");
         }
     }
 
@@ -1066,7 +1066,7 @@ namespace AIHoloImager
             break;
 
         default:
-            Unreachable();
+            Unreachable("Invalid command queue type");
         }
         D3D12Imp(*cmd_alloc_info_).UnregisterAllocatedCommandList(cmd_list_.Get());
         closed_ = true;
@@ -1090,7 +1090,7 @@ namespace AIHoloImager
             break;
 
         default:
-            Unreachable();
+            Unreachable("Invalid command queue type");
         }
         d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
         closed_ = false;

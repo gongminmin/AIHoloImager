@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -37,6 +38,7 @@ namespace AIHoloImager
     [[noreturn]] inline void Unreachable([[maybe_unused]] std::string_view msg = {})
     {
 #if defined(_MSC_VER)
+        assert(false);
         __assume(false);
 #else
         __builtin_unreachable();

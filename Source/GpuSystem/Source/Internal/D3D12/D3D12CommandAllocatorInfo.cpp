@@ -29,7 +29,7 @@ namespace AIHoloImager
             break;
 
         default:
-            Unreachable();
+            Unreachable("Invalid command queue type");
         }
 
         ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();

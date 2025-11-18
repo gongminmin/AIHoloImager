@@ -412,7 +412,7 @@ namespace AIHoloImager
                 break;
 
             default:
-                Unreachable();
+                Unreachable("Invalid command queue type");
             }
 
             const D3D12_COMMAND_QUEUE_DESC queue_desc{
