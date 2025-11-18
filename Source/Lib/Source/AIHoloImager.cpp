@@ -26,8 +26,8 @@ namespace AIHoloImager
     class AIHoloImager::Impl : public AIHoloImagerInternal
     {
     public:
-        Impl(DeviceType device, const std::filesystem::path& tmp_dir)
-            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(GpuSystem::Api::D3D12, ConfirmDevice, true),
+        Impl(DeviceType device, const std::filesystem::path& tmp_dir, bool gpu_debug)
+            : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(GpuSystem::Api::D3D12, ConfirmDevice, true, gpu_debug),
               python_system_(GetDeviceName(device), exe_dir_), tensor_converter_(gpu_system_, GetDeviceName(device))
         {
         }
@@ -132,7 +132,8 @@ namespace AIHoloImager
         TensorConverter tensor_converter_;
     };
 
-    AIHoloImager::AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir) : impl_(std::make_unique<Impl>(device, tmp_dir))
+    AIHoloImager::AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir, bool gpu_debug)
+        : impl_(std::make_unique<Impl>(device, tmp_dir, gpu_debug))
     {
     }
     AIHoloImager::AIHoloImager(AIHoloImager&& rhs) noexcept = default;

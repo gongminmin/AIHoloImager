@@ -136,6 +136,18 @@ namespace AIHoloImager
                 d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
                 d3d_info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
 
+                D3D12_MESSAGE_ID deny_msg_ids[] = {
+                    D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                    D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+                };
+                D3D12_INFO_QUEUE_FILTER filter{
+                    .DenyList{
+                        .NumIDs = std::size(deny_msg_ids),
+                        .pIDList = deny_msg_ids,
+                    },
+                };
+                d3d_info_queue->AddStorageFilterEntries(&filter);
+
                 d3d_info_queue->RegisterMessageCallback(
                     DebugMessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &dbg_callback_cookie_);
             }

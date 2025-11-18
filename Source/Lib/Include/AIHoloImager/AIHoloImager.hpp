@@ -20,7 +20,7 @@ namespace AIHoloImager
         };
 
     public:
-        AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir);
+        AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir, bool gpu_debug = false);
         AIHoloImager(const AIHoloImager& rhs) = delete;
         AIHoloImager(AIHoloImager&& rhs) noexcept;
         ~AIHoloImager() noexcept;
