@@ -4,6 +4,7 @@
 #include "MarchingCubesUtil.hlslh"
 
 static const uint32_t BlockDim = 256;
+static const uint32_t MaxGroupDim = 65535;
 
 cbuffer param_cb
 {
@@ -25,13 +26,14 @@ RWBuffer<uint32_t> counter;
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
+    const uint32_t cid = dtid.y * MaxGroupDim + dtid.x;
+
     [branch]
-    if (dtid.x >= total_cubes)
+    if (cid >= total_cubes)
     {
         return;
     }
 
-    const uint32_t cid = dtid.x;
     const uint32_t offset = cube_offsets[cid];
     [branch]
     if (offset == ~0U)

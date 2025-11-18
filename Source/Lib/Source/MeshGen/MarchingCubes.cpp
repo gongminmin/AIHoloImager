@@ -343,10 +343,18 @@ namespace AIHoloImager
         {
             assert(scalar_deformation.Width(0) >= 3);
 
+            constexpr uint32_t BlockDim = 256;
+            constexpr uint32_t MaxGroupDim = 65535;
+
             const uint32_t size = scalar_deformation.Width(0);
             assert((scalar_deformation.Height(0) == size) && (scalar_deformation.Depth(0) == size));
 
             const uint32_t total_cubes = size * size * size;
+            const uint32_t groups = DivUp(total_cubes, BlockDim);
+
+            const uint32_t group_z = 1;
+            const uint32_t group_y = DivUp(groups, MaxGroupDim);
+            const uint32_t group_x = std::min(groups, MaxGroupDim);
 
             const GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation);
 
@@ -370,8 +378,6 @@ namespace AIHoloImager
 
                 GpuUnorderedAccessView cube_offsets_uav(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
 
-                constexpr uint32_t BlockDim = 256;
-
                 std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
                     {"param_cb", &calc_cube_indices_cb},
                 };
@@ -384,7 +390,7 @@ namespace AIHoloImager
                     {"counter", &counter_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(calc_cube_indices_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(calc_cube_indices_pipeline_, group_x, group_y, group_z, shader_binding);
             }
 
             glm::uvec3 counter(0, 0, 0);
@@ -419,8 +425,6 @@ namespace AIHoloImager
                 GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
                 GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
-                constexpr uint32_t BlockDim = 256;
-
                 std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
                     {"param_cb", &process_non_empty_cubes_cb},
                 };
@@ -437,7 +441,7 @@ namespace AIHoloImager
                     {"counter", &counter_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
-                cmd_list.Compute(process_non_empty_cubes_pipeline_, DivUp(total_cubes, BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(process_non_empty_cubes_pipeline_, group_x, group_y, group_z, shader_binding);
             }
 
             rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
@@ -475,8 +479,6 @@ namespace AIHoloImager
                     gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "mesh_indices_buff");
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, GpuFormat::R32_Uint);
-
-                constexpr uint32_t BlockDim = 256;
 
                 std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
                     {"param_cb", &gen_vertices_indices_cb},
