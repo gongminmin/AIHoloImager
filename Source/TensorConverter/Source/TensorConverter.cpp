@@ -203,7 +203,7 @@ namespace AIHoloImager
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
                 MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, 1};
+                ext_mem_mip_desc.extent = {width, height, 0};
                 ext_mem_mip_desc.format_desc = this->FormatDesc(format);
                 ext_mem_mip_desc.num_levels = 1;
                 ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
@@ -220,7 +220,7 @@ namespace AIHoloImager
                 p.src_ptr.x_size = width;
                 p.src_ptr.y_size = height;
                 p.dst_array = cu_array;
-                p.extent = ext_mem_mip_desc.extent;
+                p.extent = {width, height, 1};
                 p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
                 TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
 
@@ -323,7 +323,7 @@ namespace AIHoloImager
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
                 MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, 1};
+                ext_mem_mip_desc.extent = {width, height, 0};
                 ext_mem_mip_desc.format_desc = this->FormatDesc(fmt);
                 ext_mem_mip_desc.num_levels = 1;
                 ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
@@ -343,7 +343,7 @@ namespace AIHoloImager
                 p.dst_ptr.pitch = width * FormatSize(fmt);
                 p.dst_ptr.x_size = width;
                 p.dst_ptr.y_size = height;
-                p.extent = ext_mem_mip_desc.extent;
+                p.extent = {width, height, 1};
                 p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
                 TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
 
@@ -403,6 +403,7 @@ namespace AIHoloImager
             {
             case GpuSystem::Api::D3D12:
                 ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
+                ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
                 break;
 
             default:
@@ -410,7 +411,6 @@ namespace AIHoloImager
             }
             ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
             ext_mem_handle_desc.size = resource.AllocationSize();
-            ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
 
             MiniCudaRt::ExternalMemory_t ext_mem;
             TIFCE(cuda_rt_.ImportExternalMemory(&ext_mem, &ext_mem_handle_desc));

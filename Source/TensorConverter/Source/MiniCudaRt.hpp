@@ -340,10 +340,11 @@ namespace AIHoloImager
     };
 } // namespace AIHoloImager
 
-#define TIFCE(err)                                                           \
-    {                                                                        \
-        if (err != MiniCudaRt::Error_t::Success)                             \
-        {                                                                    \
-            throw AIHoloImager::CudaErrorException(err, __FILE__, __LINE__); \
-        }                                                                    \
+#define TIFCE(x)                                                                   \
+    {                                                                              \
+        const auto inner_err = (x);                                                \
+        if (inner_err != MiniCudaRt::Error_t::Success)                             \
+        {                                                                          \
+            throw AIHoloImager::CudaErrorException(inner_err, __FILE__, __LINE__); \
+        }                                                                          \
     }
