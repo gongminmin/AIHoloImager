@@ -477,7 +477,7 @@ namespace AIHoloImager
                     GpuResourceFlag::UnorderedAccess, "mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(
                     gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "mesh_indices_buff");
-                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, sizeof(glm::vec3));
+                GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, GpuFormat::R32_Float);
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, GpuFormat::R32_Uint);
 
                 std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {

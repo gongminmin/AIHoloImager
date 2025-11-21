@@ -21,7 +21,7 @@ Buffer<uint32_t> non_empty_cube_indices;
 Buffer<uint32_t> cube_offsets;
 Buffer<uint32_t2> vertex_index_offsets;
 
-RWStructuredBuffer<float3> mesh_vertices;
+RWBuffer<float> mesh_vertices;
 RWBuffer<uint32_t> mesh_indices;
 
 float3 InterpolateVertex(float3 p0, float3 p1, float v0, float v1, float isovalue)
@@ -143,8 +143,11 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
             const float3 end_p = end_coord + end_scalar_deformation.yzw;
             const float beg_scalar = beg_scalar_deformation.x;
             const float end_scalar = end_scalar_deformation.x;
-            const float3 pos = InterpolateVertex(beg_p, end_p, beg_scalar, end_scalar, isovalue);
-            mesh_vertices[vertex_offset] = (pos / (size - 1) - 0.5f) * scale;
+            float3 pos = InterpolateVertex(beg_p, end_p, beg_scalar, end_scalar, isovalue);
+            pos = (pos / (size - 1) - 0.5f) * scale;
+            mesh_vertices[vertex_offset * 3 + 0] = pos.x;
+            mesh_vertices[vertex_offset * 3 + 1] = pos.y;
+            mesh_vertices[vertex_offset * 3 + 2] = pos.z;
             ++vertex_offset;
         }
     }
