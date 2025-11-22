@@ -9,6 +9,7 @@
 
 #include "../GpuResourceViewsInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12DescriptorAllocator.hpp"
 
 namespace AIHoloImager
 {
@@ -42,7 +43,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         const GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
+        D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -72,7 +73,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
+        D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -102,7 +103,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
+        D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
@@ -140,7 +141,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
-        GpuDescriptorBlock desc_block_;
+        D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 

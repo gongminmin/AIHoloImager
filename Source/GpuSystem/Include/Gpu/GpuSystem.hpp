@@ -8,7 +8,6 @@
 
 #include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuMipmapper.hpp"
 
@@ -75,33 +74,9 @@ namespace AIHoloImager
         uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
         uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
 
-        uint32_t RtvDescSize() const noexcept;
-        uint32_t DsvDescSize() const noexcept;
-        uint32_t CbvSrvUavDescSize() const noexcept;
-        uint32_t SamplerDescSize() const noexcept;
-
         uint32_t ConstantDataAlignment() const noexcept;
         uint32_t StructuredDataAlignment() const noexcept;
         uint32_t TextureDataAlignment() const noexcept;
-
-        GpuDescriptorBlock AllocRtvDescBlock(uint32_t size);
-        void DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocRtvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
-        GpuDescriptorBlock AllocDsvDescBlock(uint32_t size);
-        void DeallocDsvDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocDsvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
-        GpuDescriptorBlock AllocCbvSrvUavDescBlock(uint32_t size);
-        void DeallocCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
-        GpuDescriptorBlock AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size);
-        void DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
-        GpuDescriptorBlock AllocSamplerDescBlock(uint32_t size);
-        void DeallocSamplerDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
-        GpuDescriptorBlock AllocShaderVisibleSamplerDescBlock(uint32_t size);
-        void DeallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock&& desc_block);
-        void ReallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size);
 
         GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment);
         void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block);

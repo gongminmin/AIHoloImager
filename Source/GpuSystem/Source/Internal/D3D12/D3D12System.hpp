@@ -18,6 +18,7 @@
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12DescriptorAllocator.hpp"
 #include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
@@ -75,6 +76,29 @@ namespace AIHoloImager
         ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
         ComPtr<ID3D12ShaderReflection> ShaderReflect(std::span<const uint8_t> bytecode);
 
+        uint32_t RtvDescSize() const noexcept;
+        uint32_t DsvDescSize() const noexcept;
+        uint32_t CbvSrvUavDescSize() const noexcept;
+        uint32_t SamplerDescSize() const noexcept;
+
+        std::unique_ptr<D3D12DescriptorHeap> CreateDescriptorHeap(
+            uint32_t size, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shader_visible, std::string_view name) const;
+
+        uint32_t DescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
+        D3D12DescriptorBlock AllocRtvDescBlock(uint32_t size);
+        void DeallocRtvDescBlock(D3D12DescriptorBlock&& desc_block);
+        D3D12DescriptorBlock AllocDsvDescBlock(uint32_t size);
+        void DeallocDsvDescBlock(D3D12DescriptorBlock&& desc_block);
+        D3D12DescriptorBlock AllocCbvSrvUavDescBlock(uint32_t size);
+        void DeallocCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block);
+        D3D12DescriptorBlock AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size);
+        void DeallocShaderVisibleCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block);
+        D3D12DescriptorBlock AllocSamplerDescBlock(uint32_t size);
+        void DeallocSamplerDescBlock(D3D12DescriptorBlock&& desc_block);
+        D3D12DescriptorBlock AllocShaderVisibleSamplerDescBlock(uint32_t size);
+        void DeallocShaderVisibleSamplerDescBlock(D3D12DescriptorBlock&& desc_block);
+
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
             uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const override;
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
@@ -91,11 +115,6 @@ namespace AIHoloImager
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;
 
         std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const override;
-
-        std::unique_ptr<GpuDescriptorHeapInternal> CreateDescriptorHeap(
-            uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name) const override;
-
-        uint32_t DescriptorSize(GpuDescriptorHeapType type) const override;
 
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
@@ -167,6 +186,13 @@ namespace AIHoloImager
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
 
         ComPtr<IDxcUtils> dxc_utils_;
+
+        D3D12DescriptorAllocator rtv_desc_allocator_;
+        D3D12DescriptorAllocator dsv_desc_allocator_;
+        D3D12DescriptorAllocator cbv_srv_uav_desc_allocator_;
+        D3D12DescriptorAllocator shader_visible_cbv_srv_uav_desc_allocator_;
+        D3D12DescriptorAllocator sampler_desc_allocator_;
+        D3D12DescriptorAllocator shader_visible_sampler_desc_allocator_;
     };
 
     D3D12_DEFINE_IMP(System)

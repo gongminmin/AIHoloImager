@@ -20,12 +20,7 @@ namespace AIHoloImager
         Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
             : host_(host), api_(api),
               system_internal_(CreateGpuSystemInternal(api, host, std::move(confirm_device), enable_sharing, enable_debug)),
-              upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false),
-              rtv_desc_allocator_(host, GpuDescriptorHeapType::Rtv, false), dsv_desc_allocator_(host, GpuDescriptorHeapType::Dsv, false),
-              cbv_srv_uav_desc_allocator_(host, GpuDescriptorHeapType::CbvSrvUav, false),
-              shader_visible_cbv_srv_uav_desc_allocator_(host, GpuDescriptorHeapType::CbvSrvUav, true),
-              sampler_desc_allocator_(host, GpuDescriptorHeapType::Sampler, false),
-              shader_visible_sampler_desc_allocator_(host, GpuDescriptorHeapType::Sampler, true)
+              upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false)
         {
         }
 
@@ -34,13 +29,6 @@ namespace AIHoloImager
             host_.CpuWait();
 
             mipmapper_.reset();
-
-            rtv_desc_allocator_.Clear();
-            shader_visible_sampler_desc_allocator_.Clear();
-            sampler_desc_allocator_.Clear();
-            shader_visible_cbv_srv_uav_desc_allocator_.Clear();
-            cbv_srv_uav_desc_allocator_.Clear();
-            dsv_desc_allocator_.Clear();
 
             read_back_mem_allocator_.Clear();
             upload_mem_allocator_.Clear();
@@ -56,101 +44,6 @@ namespace AIHoloImager
         GpuSystem::Api NativeApi() const noexcept
         {
             return api_;
-        }
-
-        uint32_t RtvDescSize() const noexcept
-        {
-            return rtv_desc_allocator_.DescriptorSize();
-        }
-        uint32_t DsvDescSize() const noexcept
-        {
-            return dsv_desc_allocator_.DescriptorSize();
-        }
-        uint32_t CbvSrvUavDescSize() const noexcept
-        {
-            return cbv_srv_uav_desc_allocator_.DescriptorSize();
-        }
-        uint32_t SamplerDescSize() const noexcept
-        {
-            return sampler_desc_allocator_.DescriptorSize();
-        }
-
-        GpuDescriptorBlock AllocRtvDescBlock(uint32_t size)
-        {
-            return rtv_desc_allocator_.Allocate(size);
-        }
-        void DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return rtv_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocRtvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return rtv_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
-        }
-
-        GpuDescriptorBlock AllocDsvDescBlock(uint32_t size)
-        {
-            return dsv_desc_allocator_.Allocate(size);
-        }
-        void DeallocDsvDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return dsv_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocDsvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return dsv_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
-        }
-
-        GpuDescriptorBlock AllocCbvSrvUavDescBlock(uint32_t size)
-        {
-            return cbv_srv_uav_desc_allocator_.Allocate(size);
-        }
-        void DeallocCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return cbv_srv_uav_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
-        }
-
-        GpuDescriptorBlock AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
-        {
-            return shader_visible_cbv_srv_uav_desc_allocator_.Allocate(size);
-        }
-        void DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return shader_visible_cbv_srv_uav_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
-        }
-
-        GpuDescriptorBlock AllocSamplerDescBlock(uint32_t size)
-        {
-            return sampler_desc_allocator_.Allocate(size);
-        }
-        void DeallocSamplerDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return sampler_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return sampler_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
-        }
-
-        GpuDescriptorBlock AllocShaderVisibleSamplerDescBlock(uint32_t size)
-        {
-            return shader_visible_sampler_desc_allocator_.Allocate(size);
-        }
-        void DeallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock&& desc_block)
-        {
-            return shader_visible_sampler_desc_allocator_.Deallocate(std::move(desc_block), system_internal_->FenceValue());
-        }
-        void ReallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-        {
-            return shader_visible_sampler_desc_allocator_.Reallocate(desc_block, system_internal_->FenceValue(), size);
         }
 
         GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -194,13 +87,6 @@ namespace AIHoloImager
             upload_mem_allocator_.Clear();
             read_back_mem_allocator_.Clear();
 
-            rtv_desc_allocator_.Clear();
-            dsv_desc_allocator_.Clear();
-            cbv_srv_uav_desc_allocator_.Clear();
-            shader_visible_cbv_srv_uav_desc_allocator_.Clear();
-            sampler_desc_allocator_.Clear();
-            shader_visible_sampler_desc_allocator_.Clear();
-
             system_internal_->HandleDeviceLost();
         }
 
@@ -212,13 +98,6 @@ namespace AIHoloImager
 
             upload_mem_allocator_.ClearStallPages(completed_fence);
             read_back_mem_allocator_.ClearStallPages(completed_fence);
-
-            rtv_desc_allocator_.ClearStallPages(completed_fence);
-            dsv_desc_allocator_.ClearStallPages(completed_fence);
-            cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
-            shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
-            sampler_desc_allocator_.ClearStallPages(completed_fence);
-            shader_visible_sampler_desc_allocator_.ClearStallPages(completed_fence);
         }
 
     private:
@@ -230,13 +109,6 @@ namespace AIHoloImager
 
         GpuMemoryAllocator upload_mem_allocator_;
         GpuMemoryAllocator read_back_mem_allocator_;
-
-        GpuDescriptorAllocator rtv_desc_allocator_;
-        GpuDescriptorAllocator dsv_desc_allocator_;
-        GpuDescriptorAllocator cbv_srv_uav_desc_allocator_;
-        GpuDescriptorAllocator shader_visible_cbv_srv_uav_desc_allocator_;
-        GpuDescriptorAllocator sampler_desc_allocator_;
-        GpuDescriptorAllocator shader_visible_sampler_desc_allocator_;
 
         std::mutex mipmapper_mutex_;
         std::unique_ptr<GpuMipmapper> mipmapper_;
@@ -296,27 +168,6 @@ namespace AIHoloImager
         return impl_->Internal().ExecuteAndReset(cmd_list, wait_fence_value);
     }
 
-    uint32_t GpuSystem::RtvDescSize() const noexcept
-    {
-        assert(impl_);
-        return impl_->RtvDescSize();
-    }
-    uint32_t GpuSystem::DsvDescSize() const noexcept
-    {
-        assert(impl_);
-        return impl_->DsvDescSize();
-    }
-    uint32_t GpuSystem::CbvSrvUavDescSize() const noexcept
-    {
-        assert(impl_);
-        return impl_->CbvSrvUavDescSize();
-    }
-    uint32_t GpuSystem::SamplerDescSize() const noexcept
-    {
-        assert(impl_);
-        return impl_->SamplerDescSize();
-    }
-
     uint32_t GpuSystem::ConstantDataAlignment() const noexcept
     {
         assert(impl_);
@@ -331,102 +182,6 @@ namespace AIHoloImager
     {
         assert(impl_);
         return impl_->Internal().TextureDataAlignment();
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocRtvDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocRtvDescBlock(size);
-    }
-    void GpuSystem::DeallocRtvDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocRtvDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocRtvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocRtvDescBlock(desc_block, size);
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocDsvDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocDsvDescBlock(size);
-    }
-    void GpuSystem::DeallocDsvDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocDsvDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocDsvDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocDsvDescBlock(desc_block, size);
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocCbvSrvUavDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocCbvSrvUavDescBlock(size);
-    }
-    void GpuSystem::DeallocCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocCbvSrvUavDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocCbvSrvUavDescBlock(desc_block, size);
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocShaderVisibleCbvSrvUavDescBlock(size);
-    }
-    void GpuSystem::DeallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocShaderVisibleCbvSrvUavDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocShaderVisibleCbvSrvUavDescBlock(desc_block, size);
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocSamplerDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocSamplerDescBlock(size);
-    }
-    void GpuSystem::DeallocSamplerDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocSamplerDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocSamplerDescBlock(desc_block, size);
-    }
-
-    GpuDescriptorBlock GpuSystem::AllocShaderVisibleSamplerDescBlock(uint32_t size)
-    {
-        assert(impl_);
-        return impl_->AllocShaderVisibleSamplerDescBlock(size);
-    }
-    void GpuSystem::DeallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock&& desc_block)
-    {
-        assert(impl_);
-        impl_->DeallocShaderVisibleSamplerDescBlock(std::move(desc_block));
-    }
-    void GpuSystem::ReallocShaderVisibleSamplerDescBlock(GpuDescriptorBlock& desc_block, uint32_t size)
-    {
-        assert(impl_);
-        impl_->ReallocShaderVisibleSamplerDescBlock(desc_block, size);
     }
 
     GpuMemoryBlock GpuSystem::AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)

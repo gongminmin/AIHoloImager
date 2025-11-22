@@ -180,16 +180,17 @@ namespace AIHoloImager
         auto& d3d12_uav = D3D12Imp(uav);
         d3d12_uav.Transition(*this);
 
-        GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
-        d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_desc_block.CpuHandle()));
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        ID3D12DescriptorHeap* heaps[] = {D3D12Imp(*uav_desc_block.Heap()).DescriptorHeap()};
+        D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
+        d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
+
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewFloat(
-            ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewFloat(uav_desc_block.GpuHandle(), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
 
-        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
+        d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
 
     void D3D12CommandList::Clear(GpuUnorderedAccessView& uav, const uint32_t color[4])
@@ -211,16 +212,17 @@ namespace AIHoloImager
         auto& d3d12_uav = D3D12Imp(uav);
         d3d12_uav.Transition(*this);
 
-        GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
-        d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_desc_block.CpuHandle()));
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        ID3D12DescriptorHeap* heaps[] = {D3D12Imp(*uav_desc_block.Heap()).DescriptorHeap()};
+        D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
+        d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
+
+        ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewUint(
-            ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewUint(uav_desc_block.GpuHandle(), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
 
-        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
+        d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
 
     void D3D12CommandList::ClearDepth(GpuDepthStencilView& dsv, float depth)
@@ -323,21 +325,23 @@ namespace AIHoloImager
             num_sampler_descs += static_cast<uint32_t>(binding_slots.samplers.size());
         }
 
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
+
         ID3D12DescriptorHeap* heaps[2] = {};
         uint32_t num_heaps = 0;
 
-        GpuDescriptorBlock srv_uav_desc_block;
+        D3D12DescriptorBlock srv_uav_desc_block;
         if (num_srv_uav_descs > 0)
         {
-            srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
-            heaps[num_heaps] = D3D12Imp(*srv_uav_desc_block.Heap()).DescriptorHeap();
+            srv_uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
+            heaps[num_heaps] = srv_uav_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
-        GpuDescriptorBlock sampler_desc_block;
+        D3D12DescriptorBlock sampler_desc_block;
         if (num_sampler_descs > 0)
         {
-            sampler_desc_block = gpu_system_->AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
-            heaps[num_heaps] = D3D12Imp(*sampler_desc_block.Heap()).DescriptorHeap();
+            sampler_desc_block = d3d12_system.AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
+            heaps[num_heaps] = sampler_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
         if (num_heaps > 0)
@@ -345,8 +349,8 @@ namespace AIHoloImager
             d3d12_cmd_list->SetDescriptorHeaps(num_heaps, heaps);
         }
 
-        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
-        const uint32_t sampler_desc_size = gpu_system_->SamplerDescSize();
+        const uint32_t srv_uav_desc_size = d3d12_system.CbvSrvUavDescSize();
+        const uint32_t sampler_desc_size = d3d12_system.SamplerDescSize();
 
         uint32_t srv_uav_heap_base = 0;
         uint32_t sampler_heap_base = 0;
@@ -361,8 +365,8 @@ namespace AIHoloImager
 
             if (!binding_slots.srvs.empty())
             {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
-                    ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
+                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size));
 
                 for (const auto& srv_name : binding_slots.srvs)
                 {
@@ -381,7 +385,7 @@ namespace AIHoloImager
 
                                     auto srv_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                    d3d12_srv.CopyTo(ToD3D12CpuDescriptorHandle(srv_cpu_handle));
+                                    d3d12_srv.CopyTo(srv_cpu_handle);
                                 }
                                 found = true;
                                 break;
@@ -402,8 +406,8 @@ namespace AIHoloImager
 
             if (!binding_slots.uavs.empty())
             {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
-                    ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
+                    root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size));
 
                 for (const auto& uav_name : binding_slots.uavs)
                 {
@@ -422,7 +426,7 @@ namespace AIHoloImager
 
                                     auto uav_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                    d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_cpu_handle));
+                                    d3d12_uav.CopyTo(uav_cpu_handle);
                                 }
                                 found = true;
                                 break;
@@ -443,8 +447,8 @@ namespace AIHoloImager
 
             if (!binding_slots.samplers.empty())
             {
-                d3d12_cmd_list->SetGraphicsRootDescriptorTable(root_index,
-                    ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size)));
+                d3d12_cmd_list->SetGraphicsRootDescriptorTable(
+                    root_index, OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size));
 
                 for (const auto& sampler_name : binding_slots.samplers)
                 {
@@ -460,7 +464,7 @@ namespace AIHoloImager
                                 {
                                     auto sampler_cpu_handle =
                                         OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                    D3D12Imp(*sampler).CopyTo(ToD3D12CpuDescriptorHandle(sampler_cpu_handle));
+                                    D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
                                 }
                                 found = true;
                                 break;
@@ -581,8 +585,8 @@ namespace AIHoloImager
             d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
         }
 
-        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
-        gpu_system_->DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
+        d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+        d3d12_system.DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
     }
 
     void D3D12CommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
@@ -622,21 +626,23 @@ namespace AIHoloImager
         const uint32_t num_srv_uav_descs = static_cast<uint32_t>(binding_slots.srvs.size() + binding_slots.uavs.size());
         const uint32_t num_sampler_descs = static_cast<uint32_t>(binding_slots.samplers.size());
 
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
+
         ID3D12DescriptorHeap* heaps[2] = {};
         uint32_t num_heaps = 0;
 
-        GpuDescriptorBlock srv_uav_desc_block;
+        D3D12DescriptorBlock srv_uav_desc_block;
         if (num_srv_uav_descs > 0)
         {
-            srv_uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
-            heaps[num_heaps] = D3D12Imp(*srv_uav_desc_block.Heap()).DescriptorHeap();
+            srv_uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
+            heaps[num_heaps] = srv_uav_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
-        GpuDescriptorBlock sampler_desc_block;
+        D3D12DescriptorBlock sampler_desc_block;
         if (num_sampler_descs > 0)
         {
-            sampler_desc_block = gpu_system_->AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
-            heaps[num_heaps] = D3D12Imp(*sampler_desc_block.Heap()).DescriptorHeap();
+            sampler_desc_block = d3d12_system.AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
+            heaps[num_heaps] = sampler_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
         if (num_heaps > 0)
@@ -644,8 +650,8 @@ namespace AIHoloImager
             d3d12_cmd_list->SetDescriptorHeaps(num_heaps, heaps);
         }
 
-        const uint32_t srv_uav_desc_size = gpu_system_->CbvSrvUavDescSize();
-        const uint32_t sampler_desc_size = gpu_system_->SamplerDescSize();
+        const uint32_t srv_uav_desc_size = d3d12_system.CbvSrvUavDescSize();
+        const uint32_t sampler_desc_size = d3d12_system.SamplerDescSize();
 
         uint32_t srv_uav_heap_base = 0;
         uint32_t sampler_heap_base = 0;
@@ -656,7 +662,7 @@ namespace AIHoloImager
         if (!binding_slots.srvs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size));
 
             for (const auto& srv_name : binding_slots.srvs)
             {
@@ -674,7 +680,7 @@ namespace AIHoloImager
                                 d3d12_srv.Transition(*this);
 
                                 auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                d3d12_srv.CopyTo(ToD3D12CpuDescriptorHandle(srv_cpu_handle));
+                                d3d12_srv.CopyTo(srv_cpu_handle);
                             }
                             found = true;
                             break;
@@ -696,7 +702,7 @@ namespace AIHoloImager
         if (!binding_slots.uavs.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size)));
+                root_index, OffsetHandle(srv_uav_desc_block.GpuHandle(), srv_uav_heap_base, srv_uav_desc_size));
 
             for (const auto& uav_name : binding_slots.uavs)
             {
@@ -714,7 +720,7 @@ namespace AIHoloImager
                                 d3d12_uav.Transition(*this);
 
                                 auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_cpu_handle));
+                                d3d12_uav.CopyTo(uav_cpu_handle);
                             }
                             found = true;
                             break;
@@ -735,7 +741,7 @@ namespace AIHoloImager
         if (!binding_slots.samplers.empty())
         {
             d3d12_cmd_list->SetComputeRootDescriptorTable(
-                root_index, ToD3D12GpuDescriptorHandle(OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size)));
+                root_index, OffsetHandle(sampler_desc_block.GpuHandle(), sampler_heap_base, sampler_desc_size));
 
             for (const auto& sampler_name : binding_slots.samplers)
             {
@@ -751,7 +757,7 @@ namespace AIHoloImager
                             {
                                 auto sampler_cpu_handle =
                                     OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                D3D12Imp(*sampler).CopyTo(ToD3D12CpuDescriptorHandle(sampler_cpu_handle));
+                                D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
                             }
                             found = true;
                             break;
@@ -802,8 +808,8 @@ namespace AIHoloImager
 
         dispatch_call();
 
-        gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
-        gpu_system_->DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
+        d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(srv_uav_desc_block));
+        d3d12_system.DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
     }
 
     void D3D12CommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)

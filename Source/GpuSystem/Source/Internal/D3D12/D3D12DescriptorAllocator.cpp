@@ -1,43 +1,44 @@
 // Copyright (c) 2024-2025 Minmin Gong
 //
 
-#include "Gpu/GpuDescriptorAllocator.hpp"
+#include "D3D12DescriptorAllocator.hpp"
 
 #include <cassert>
 
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 
+#include "D3D12System.hpp"
 #include "Internal/GpuSystemInternal.hpp"
 
 using namespace AIHoloImager;
 
 namespace
 {
-    uint32_t descriptor_size[NumGpuDescriptorHeapTypes]{};
+    uint32_t descriptor_size[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
 
-    constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 8 * 1024, 4 * 1024, 1 * 1024};
+    constexpr uint16_t DescriptorPageSize[] = {32 * 1024, 1 * 1024, 8 * 1024, 4 * 1024};
 
-    uint32_t& DescriptorSize(GpuDescriptorHeapType type)
+    uint32_t& DescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
     {
-        return descriptor_size[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type)];
+        return descriptor_size[type];
     }
 
-    void UpdateDescriptorSize(GpuSystem& gpu_system, GpuDescriptorHeapType type)
+    void UpdateDescriptorSize(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type)
     {
         auto& size = DescriptorSize(type);
         if (size == 0)
         {
-            size = gpu_system.Internal().DescriptorSize(type);
+            size = D3D12Imp(gpu_system).DescriptorSize(type);
         }
     }
 } // namespace
 
 namespace AIHoloImager
 {
-    GpuDescriptorPage::GpuDescriptorPage(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible, uint32_t size)
+    D3D12DescriptorPage::D3D12DescriptorPage(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shader_visible, uint32_t size)
     {
-        heap_ = std::make_unique<GpuDescriptorHeap>(gpu_system, size, type, shader_visible, "GpuDescriptorPage");
+        heap_ = std::make_unique<D3D12DescriptorHeap>(gpu_system, size, type, shader_visible, "GpuDescriptorPage");
         cpu_handle_ = heap_->CpuHandleStart();
         if (shader_visible)
         {
@@ -49,18 +50,18 @@ namespace AIHoloImager
         }
     }
 
-    GpuDescriptorPage::~GpuDescriptorPage() noexcept = default;
-    GpuDescriptorPage::GpuDescriptorPage(GpuDescriptorPage&& other) noexcept = default;
-    GpuDescriptorPage& GpuDescriptorPage::operator=(GpuDescriptorPage&& other) noexcept = default;
+    D3D12DescriptorPage::~D3D12DescriptorPage() noexcept = default;
+    D3D12DescriptorPage::D3D12DescriptorPage(D3D12DescriptorPage&& other) noexcept = default;
+    D3D12DescriptorPage& D3D12DescriptorPage::operator=(D3D12DescriptorPage&& other) noexcept = default;
 
 
-    GpuDescriptorBlock::GpuDescriptorBlock() noexcept = default;
-    GpuDescriptorBlock::~GpuDescriptorBlock() noexcept = default;
+    D3D12DescriptorBlock::D3D12DescriptorBlock() noexcept = default;
+    D3D12DescriptorBlock::~D3D12DescriptorBlock() noexcept = default;
 
-    GpuDescriptorBlock::GpuDescriptorBlock(GpuDescriptorBlock&& other) noexcept = default;
-    GpuDescriptorBlock& GpuDescriptorBlock::operator=(GpuDescriptorBlock&& other) noexcept = default;
+    D3D12DescriptorBlock::D3D12DescriptorBlock(D3D12DescriptorBlock&& other) noexcept = default;
+    D3D12DescriptorBlock& D3D12DescriptorBlock::operator=(D3D12DescriptorBlock&& other) noexcept = default;
 
-    void GpuDescriptorBlock::Reset() noexcept
+    void D3D12DescriptorBlock::Reset() noexcept
     {
         heap_ = nullptr;
         offset_ = 0;
@@ -69,7 +70,7 @@ namespace AIHoloImager
         gpu_handle_ = {};
     }
 
-    void GpuDescriptorBlock::Reset(const GpuDescriptorPage& page, uint32_t offset, uint32_t size) noexcept
+    void D3D12DescriptorBlock::Reset(const D3D12DescriptorPage& page, uint32_t offset, uint32_t size) noexcept
     {
         heap_ = &page.Heap();
         offset_ = offset;
@@ -80,20 +81,20 @@ namespace AIHoloImager
     }
 
 
-    GpuDescriptorAllocator::GpuDescriptorAllocator(GpuSystem& gpu_system, GpuDescriptorHeapType type, bool shader_visible) noexcept
+    D3D12DescriptorAllocator::D3D12DescriptorAllocator(GpuSystem& gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shader_visible) noexcept
         : gpu_system_(&gpu_system), type_(type), shader_visible_(shader_visible)
     {
     }
 
-    GpuDescriptorAllocator::~GpuDescriptorAllocator() = default;
+    D3D12DescriptorAllocator::~D3D12DescriptorAllocator() = default;
 
-    GpuDescriptorAllocator::GpuDescriptorAllocator(GpuDescriptorAllocator&& other) noexcept
+    D3D12DescriptorAllocator::D3D12DescriptorAllocator(D3D12DescriptorAllocator&& other) noexcept
         : gpu_system_(std::exchange(other.gpu_system_, {})), type_(other.type_), shader_visible_(other.shader_visible_),
           pages_(std::move(other.pages_))
     {
     }
 
-    GpuDescriptorAllocator& GpuDescriptorAllocator::operator=(GpuDescriptorAllocator&& other) noexcept
+    D3D12DescriptorAllocator& D3D12DescriptorAllocator::operator=(D3D12DescriptorAllocator&& other) noexcept
     {
         if (this != &other)
         {
@@ -106,23 +107,23 @@ namespace AIHoloImager
         return *this;
     }
 
-    uint32_t GpuDescriptorAllocator::DescriptorSize() const
+    uint32_t D3D12DescriptorAllocator::DescriptorSize() const
     {
         UpdateDescriptorSize(*gpu_system_, type_);
         return ::DescriptorSize(type_);
     }
 
-    GpuDescriptorBlock GpuDescriptorAllocator::Allocate(uint32_t size)
+    D3D12DescriptorBlock D3D12DescriptorAllocator::Allocate(uint32_t size)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
-        GpuDescriptorBlock desc_block;
+        D3D12DescriptorBlock desc_block;
         this->Allocate(lock, desc_block, size);
         return desc_block;
     }
 
-    void GpuDescriptorAllocator::Allocate(
-        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, GpuDescriptorBlock& desc_block, uint32_t size)
+    void D3D12DescriptorAllocator::Allocate(
+        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block, uint32_t size)
     {
         UpdateDescriptorSize(*gpu_system_, type_);
 
@@ -143,15 +144,15 @@ namespace AIHoloImager
             }
         }
 
-        const uint16_t default_page_size = DescriptorPageSize[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type_)];
+        const uint16_t default_page_size = DescriptorPageSize[type_];
         assert(size <= default_page_size);
 
-        GpuDescriptorPage new_page(*gpu_system_, type_, shader_visible_, default_page_size);
+        D3D12DescriptorPage new_page(*gpu_system_, type_, shader_visible_, default_page_size);
         desc_block.Reset(new_page, 0, size);
         pages_.emplace_back(PageInfo{std::move(new_page), {{static_cast<uint16_t>(size), default_page_size}}, {}});
     }
 
-    void GpuDescriptorAllocator::Deallocate(GpuDescriptorBlock&& desc_block, uint64_t fence_value)
+    void D3D12DescriptorAllocator::Deallocate(D3D12DescriptorBlock&& desc_block, uint64_t fence_value)
     {
         if (desc_block)
         {
@@ -160,12 +161,12 @@ namespace AIHoloImager
         }
     }
 
-    void GpuDescriptorAllocator::Deallocate(
-        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, GpuDescriptorBlock& desc_block, uint64_t fence_value)
+    void D3D12DescriptorAllocator::Deallocate(
+        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block, uint64_t fence_value)
     {
         assert(desc_block);
 
-        const uint16_t default_page_size = DescriptorPageSize[static_cast<std::underlying_type_t<GpuDescriptorHeapType>>(type_)];
+        const uint16_t default_page_size = DescriptorPageSize[type_];
 
         if (desc_block.Size() <= default_page_size)
         {
@@ -184,7 +185,7 @@ namespace AIHoloImager
         }
     }
 
-    void GpuDescriptorAllocator::Reallocate(GpuDescriptorBlock& desc_block, uint64_t fence_value, uint32_t size)
+    void D3D12DescriptorAllocator::Reallocate(D3D12DescriptorBlock& desc_block, uint64_t fence_value, uint32_t size)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -195,7 +196,7 @@ namespace AIHoloImager
         this->Allocate(lock, desc_block, size);
     }
 
-    void GpuDescriptorAllocator::ClearStallPages(uint64_t fence_value)
+    void D3D12DescriptorAllocator::ClearStallPages(uint64_t fence_value)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -262,7 +263,7 @@ namespace AIHoloImager
         }
     }
 
-    void GpuDescriptorAllocator::Clear()
+    void D3D12DescriptorAllocator::Clear()
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 

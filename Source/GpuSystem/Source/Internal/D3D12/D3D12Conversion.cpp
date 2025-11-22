@@ -304,60 +304,6 @@ namespace AIHoloImager
         }
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE ToD3D12CpuDescriptorHandle(GpuDescriptorCpuHandle handle) noexcept
-    {
-        return D3D12_CPU_DESCRIPTOR_HANDLE{handle.handle};
-    }
-
-    GpuDescriptorCpuHandle FromD3D12CpuDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) noexcept
-    {
-        return GpuDescriptorCpuHandle{handle.ptr};
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE ToD3D12GpuDescriptorHandle(GpuDescriptorGpuHandle handle) noexcept
-    {
-        return D3D12_GPU_DESCRIPTOR_HANDLE{handle.handle};
-    }
-
-    GpuDescriptorGpuHandle FromD3D12GpuDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) noexcept
-    {
-        return GpuDescriptorGpuHandle{handle.ptr};
-    }
-
-    D3D12_DESCRIPTOR_HEAP_TYPE ToD3D12DescriptorHeapType(GpuDescriptorHeapType type) noexcept
-    {
-        switch (type)
-        {
-        case GpuDescriptorHeapType::CbvSrvUav:
-            return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        case GpuDescriptorHeapType::Rtv:
-            return D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        case GpuDescriptorHeapType::Dsv:
-            return D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        case GpuDescriptorHeapType::Sampler:
-            return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-        default:
-            Unreachable("Invalid descriptor heap type");
-        }
-    }
-
-    GpuDescriptorHeapType FromD3D12DescriptorHeapType(D3D12_DESCRIPTOR_HEAP_TYPE type) noexcept
-    {
-        switch (type)
-        {
-        case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-            return GpuDescriptorHeapType::CbvSrvUav;
-        case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-            return GpuDescriptorHeapType::Rtv;
-        case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-            return GpuDescriptorHeapType::Dsv;
-        case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
-            return GpuDescriptorHeapType::Sampler;
-        default:
-            Unreachable("Invalid D3D12 descriptor heap type");
-        }
-    }
-
     D3D_PRIMITIVE_TOPOLOGY ToD3D12PrimitiveTopology(GpuRenderPipeline::PrimitiveTopology topology) noexcept
     {
         switch (topology)

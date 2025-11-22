@@ -54,7 +54,12 @@ namespace AIHoloImager
 
     D3D12System::D3D12System(
         GpuSystem& gpu_system, std::function<bool(GpuSystem::Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : gpu_system_(&gpu_system)
+        : gpu_system_(&gpu_system), rtv_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, false),
+          dsv_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, false),
+          cbv_srv_uav_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, false),
+          shader_visible_cbv_srv_uav_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true),
+          sampler_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, false),
+          shader_visible_sampler_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, true)
     {
         bool debug_dxgi = false;
         ComPtr<IDXGIFactory4> dxgi_factory;
@@ -189,6 +194,13 @@ namespace AIHoloImager
     D3D12System::~D3D12System()
     {
         this->CpuWait(GpuSystem::MaxFenceValue);
+
+        rtv_desc_allocator_.Clear();
+        shader_visible_sampler_desc_allocator_.Clear();
+        sampler_desc_allocator_.Clear();
+        shader_visible_cbv_srv_uav_desc_allocator_.Clear();
+        cbv_srv_uav_desc_allocator_.Clear();
+        dsv_desc_allocator_.Clear();
 
         stall_resources_.clear();
 
@@ -359,6 +371,13 @@ namespace AIHoloImager
 
     void D3D12System::HandleDeviceLost()
     {
+        rtv_desc_allocator_.Clear();
+        dsv_desc_allocator_.Clear();
+        cbv_srv_uav_desc_allocator_.Clear();
+        shader_visible_cbv_srv_uav_desc_allocator_.Clear();
+        sampler_desc_allocator_.Clear();
+        shader_visible_sampler_desc_allocator_.Clear();
+
         for (auto& cmd_queue : cmd_queues_)
         {
             cmd_queue.cmd_queue.Reset();
@@ -389,6 +408,13 @@ namespace AIHoloImager
                 ++iter;
             }
         }
+
+        rtv_desc_allocator_.ClearStallPages(completed_fence);
+        dsv_desc_allocator_.ClearStallPages(completed_fence);
+        cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
+        shader_visible_cbv_srv_uav_desc_allocator_.ClearStallPages(completed_fence);
+        sampler_desc_allocator_.ClearStallPages(completed_fence);
+        shader_visible_sampler_desc_allocator_.ClearStallPages(completed_fence);
     }
 
     D3D12System::CmdQueue& D3D12System::GetOrCreateCommandQueue(GpuSystem::CmdQueueType type)
@@ -488,6 +514,88 @@ namespace AIHoloImager
         return reflection;
     }
 
+    uint32_t D3D12System::RtvDescSize() const noexcept
+    {
+        return rtv_desc_allocator_.DescriptorSize();
+    }
+    uint32_t D3D12System::DsvDescSize() const noexcept
+    {
+        return dsv_desc_allocator_.DescriptorSize();
+    }
+    uint32_t D3D12System::CbvSrvUavDescSize() const noexcept
+    {
+        return cbv_srv_uav_desc_allocator_.DescriptorSize();
+    }
+    uint32_t D3D12System::SamplerDescSize() const noexcept
+    {
+        return sampler_desc_allocator_.DescriptorSize();
+    }
+
+    std::unique_ptr<D3D12DescriptorHeap> D3D12System::CreateDescriptorHeap(
+        uint32_t size, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shader_visible, std::string_view name) const
+    {
+        return std::make_unique<D3D12DescriptorHeap>(*gpu_system_, size, type, shader_visible, std::move(name));
+    }
+
+    uint32_t D3D12System::DescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+    {
+        return device_->GetDescriptorHandleIncrementSize(type);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocRtvDescBlock(uint32_t size)
+    {
+        return rtv_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocRtvDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return rtv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocDsvDescBlock(uint32_t size)
+    {
+        return dsv_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocDsvDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return dsv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocCbvSrvUavDescBlock(uint32_t size)
+    {
+        return cbv_srv_uav_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
+    {
+        return shader_visible_cbv_srv_uav_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocShaderVisibleCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocSamplerDescBlock(uint32_t size)
+    {
+        return sampler_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocSamplerDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
+    D3D12DescriptorBlock D3D12System::AllocShaderVisibleSamplerDescBlock(uint32_t size)
+    {
+        return shader_visible_sampler_desc_allocator_.Allocate(size);
+    }
+    void D3D12System::DeallocShaderVisibleSamplerDescBlock(D3D12DescriptorBlock&& desc_block)
+    {
+        return shader_visible_sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+    }
+
     std::unique_ptr<GpuBufferInternal> D3D12System::CreateBuffer(
         uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const
     {
@@ -526,17 +634,6 @@ namespace AIHoloImager
     std::unique_ptr<GpuVertexAttribsInternal> D3D12System::CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const
     {
         return std::make_unique<D3D12VertexAttribs>(std::move(attribs));
-    }
-
-    std::unique_ptr<GpuDescriptorHeapInternal> D3D12System::CreateDescriptorHeap(
-        uint32_t size, GpuDescriptorHeapType type, bool shader_visible, std::string_view name) const
-    {
-        return std::make_unique<D3D12DescriptorHeap>(*gpu_system_, size, type, shader_visible, std::move(name));
-    }
-
-    uint32_t D3D12System::DescriptorSize(GpuDescriptorHeapType type) const
-    {
-        return device_->GetDescriptorHandleIncrementSize(ToD3D12DescriptorHeapType(type));
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> D3D12System::CreateShaderResourceView(

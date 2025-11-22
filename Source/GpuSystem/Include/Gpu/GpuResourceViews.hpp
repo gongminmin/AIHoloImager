@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuDescriptorHeap.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/InternalDefine.hpp"

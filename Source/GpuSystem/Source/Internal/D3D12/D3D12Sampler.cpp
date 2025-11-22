@@ -154,8 +154,8 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
         : gpu_system_(&gpu_system), d3d12_device_(D3D12Imp(gpu_system).Device())
     {
-        desc_block_ = gpu_system.AllocSamplerDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        desc_block_ = D3D12Imp(gpu_system).AllocSamplerDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
 
         FillSamplerDesc(sampler_, filters, addr_modes);
         d3d12_device_->CreateSampler(&sampler_, cpu_handle_);
@@ -166,7 +166,7 @@ namespace AIHoloImager
         cpu_handle_ = {};
         if (desc_block_)
         {
-            gpu_system_->DeallocSamplerDescBlock(std::move(desc_block_));
+            D3D12Imp(*gpu_system_).DeallocSamplerDescBlock(std::move(desc_block_));
         }
     }
 

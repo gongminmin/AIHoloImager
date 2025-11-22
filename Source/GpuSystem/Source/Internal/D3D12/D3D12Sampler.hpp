@@ -7,10 +7,10 @@
 
 #include <directx/d3d12.h>
 
-#include "Gpu/GpuDescriptorAllocator.hpp"
 #include "Gpu/GpuSampler.hpp"
 
 #include "../GpuSamplerInternal.hpp"
+#include "D3D12DescriptorAllocator.hpp"
 #include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
@@ -57,7 +57,7 @@ namespace AIHoloImager
         GpuSystem* gpu_system_ = nullptr;
         ID3D12Device* d3d12_device_;
 
-        GpuDescriptorBlock desc_block_;
+        D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
 
         D3D12_SAMPLER_DESC sampler_{};

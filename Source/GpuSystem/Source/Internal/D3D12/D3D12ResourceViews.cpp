@@ -20,10 +20,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
@@ -54,10 +56,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture_array)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture_array).Resource();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
@@ -89,10 +93,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
@@ -122,10 +128,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&buffer)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
         const D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
@@ -146,10 +154,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
         : gpu_system_(&gpu_system), resource_(&buffer)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
         const D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
@@ -188,7 +198,7 @@ namespace AIHoloImager
         cpu_handle_ = {};
         if (desc_block_)
         {
-            gpu_system_->DeallocCbvSrvUavDescBlock(std::move(desc_block_));
+            D3D12Imp(*gpu_system_).DeallocCbvSrvUavDescBlock(std::move(desc_block_));
         }
     }
 
@@ -219,10 +229,12 @@ namespace AIHoloImager
     D3D12RenderTargetView::D3D12RenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocRtvDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocRtvDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         const D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{
@@ -258,7 +270,7 @@ namespace AIHoloImager
         cpu_handle_ = {};
         if (desc_block_)
         {
-            gpu_system_->DeallocRtvDescBlock(std::move(desc_block_));
+            D3D12Imp(*gpu_system_).DeallocRtvDescBlock(std::move(desc_block_));
         }
     }
 
@@ -289,10 +301,12 @@ namespace AIHoloImager
     D3D12DepthStencilView::D3D12DepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocDsvDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocDsvDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         const D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{
@@ -328,7 +342,7 @@ namespace AIHoloImager
         cpu_handle_ = {};
         if (desc_block_)
         {
-            gpu_system_->DeallocDsvDescBlock(std::move(desc_block_));
+            D3D12Imp(*gpu_system_).DeallocDsvDescBlock(std::move(desc_block_));
         }
     }
 
@@ -360,10 +374,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
@@ -379,10 +395,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture_array)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture_array).Resource();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
@@ -401,10 +419,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&texture)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_texture = D3D12Imp(texture).Resource();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
@@ -425,10 +445,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : gpu_system_(&gpu_system), resource_(&buffer)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
@@ -447,10 +469,12 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
         : gpu_system_(&gpu_system), resource_(&buffer)
     {
-        desc_block_ = gpu_system.AllocCbvSrvUavDescBlock(1);
-        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        cpu_handle_ = desc_block_.CpuHandle();
+
+        auto* d3d12_device = d3d12_system.Device();
         auto* d3d12_buff = D3D12Imp(buffer).Resource();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
@@ -486,7 +510,7 @@ namespace AIHoloImager
         cpu_handle_ = {};
         if (desc_block_)
         {
-            gpu_system_->DeallocCbvSrvUavDescBlock(std::move(desc_block_));
+            D3D12Imp(*gpu_system_).DeallocCbvSrvUavDescBlock(std::move(desc_block_));
         }
     }
 

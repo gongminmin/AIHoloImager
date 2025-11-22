@@ -7,8 +7,6 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuCommandAllocatorInfo.hpp
     Include/Gpu/GpuCommandList.hpp
     Include/Gpu/GpuConstantBuffer.hpp
-    Include/Gpu/GpuDescriptorAllocator.hpp
-    Include/Gpu/GpuDescriptorHeap.hpp
     Include/Gpu/GpuFormat.hpp
     Include/Gpu/GpuMemoryAllocator.hpp
     Include/Gpu/GpuMipmapper.hpp
@@ -28,6 +26,8 @@ set(aihi_gpu_system_files
     Source/Internal/D3D12/D3D12CommandList.hpp
     Source/Internal/D3D12/D3D12Conversion.cpp
     Source/Internal/D3D12/D3D12Conversion.hpp
+    Source/Internal/D3D12/D3D12DescriptorAllocator.cpp
+    Source/Internal/D3D12/D3D12DescriptorAllocator.hpp
     Source/Internal/D3D12/D3D12DescriptorHeap.cpp
     Source/Internal/D3D12/D3D12DescriptorHeap.hpp
     Source/Internal/D3D12/D3D12ImpDefine.hpp
@@ -53,8 +53,6 @@ set(aihi_gpu_system_files
     Source/Internal/GpuCommandAllocatorInfoInternal.hpp
     Source/Internal/GpuCommandListInternal.cpp
     Source/Internal/GpuCommandListInternal.hpp
-    Source/Internal/GpuDescriptorHeapInternal.cpp
-    Source/Internal/GpuDescriptorHeapInternal.hpp
     Source/Internal/GpuResourceInternal.cpp
     Source/Internal/GpuResourceInternal.hpp
     Source/Internal/GpuResourceViewsInternal.cpp
@@ -76,8 +74,6 @@ set(aihi_gpu_system_files
     Source/GpuCommandAllocatorInfo.cpp
     Source/GpuCommandList.cpp
     Source/GpuConstantBuffer.cpp
-    Source/GpuDescriptorAllocator.cpp
-    Source/GpuDescriptorHeap.cpp
     Source/GpuFormat.cpp
     Source/GpuMemoryAllocator.cpp
     Source/GpuMipmapper.cpp
