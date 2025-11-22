@@ -155,10 +155,10 @@ namespace AIHoloImager
         : gpu_system_(&gpu_system), d3d12_device_(D3D12Imp(gpu_system).Device())
     {
         desc_block_ = gpu_system.AllocSamplerDescBlock(1);
-        cpu_handle_ = desc_block_.CpuHandle();
+        cpu_handle_ = ToD3D12CpuDescriptorHandle(desc_block_.CpuHandle());
 
         FillSamplerDesc(sampler_, filters, addr_modes);
-        d3d12_device_->CreateSampler(&sampler_, ToD3D12CpuDescriptorHandle(cpu_handle_));
+        d3d12_device_->CreateSampler(&sampler_, cpu_handle_);
     }
 
     D3D12DynamicSampler::~D3D12DynamicSampler()
@@ -182,10 +182,9 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12DynamicSampler&&>(other));
     }
 
-    void D3D12DynamicSampler::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
+    void D3D12DynamicSampler::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
     {
-        d3d12_device_->CopyDescriptorsSimple(
-            1, ToD3D12CpuDescriptorHandle(dst_handle), ToD3D12CpuDescriptorHandle(cpu_handle_), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        d3d12_device_->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
     }
 
     const D3D12_SAMPLER_DESC& D3D12DynamicSampler::SamplerDesc() const noexcept

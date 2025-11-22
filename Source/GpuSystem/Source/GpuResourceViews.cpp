@@ -124,18 +124,6 @@ namespace AIHoloImager
         impl_->Transition(cmd_list);
     }
 
-    void GpuShaderResourceView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
-    {
-        assert(impl_);
-        impl_->CopyTo(dst_handle);
-    }
-
-    GpuDescriptorCpuHandle GpuShaderResourceView::CpuHandle() const noexcept
-    {
-        assert(impl_);
-        return impl_->CpuHandle();
-    }
-
 
     EMPTY_IMP(GpuRenderTargetView)
     IMP_INTERNAL(GpuRenderTargetView)
@@ -174,18 +162,6 @@ namespace AIHoloImager
         impl_->Transition(cmd_list);
     }
 
-    void GpuRenderTargetView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
-    {
-        assert(impl_);
-        impl_->CopyTo(dst_handle);
-    }
-
-    GpuDescriptorCpuHandle GpuRenderTargetView::CpuHandle() const noexcept
-    {
-        assert(impl_);
-        return impl_->CpuHandle();
-    }
-
 
     EMPTY_IMP(GpuDepthStencilView)
     IMP_INTERNAL(GpuDepthStencilView)
@@ -222,18 +198,6 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Transition(cmd_list);
-    }
-
-    void GpuDepthStencilView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
-    {
-        assert(impl_);
-        impl_->CopyTo(dst_handle);
-    }
-
-    GpuDescriptorCpuHandle GpuDepthStencilView::CpuHandle() const noexcept
-    {
-        assert(impl_);
-        return impl_->CpuHandle();
     }
 
 
@@ -342,18 +306,6 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Transition(cmd_list);
-    }
-
-    void GpuUnorderedAccessView::CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept
-    {
-        assert(impl_);
-        impl_->CopyTo(dst_handle);
-    }
-
-    GpuDescriptorCpuHandle GpuUnorderedAccessView::CpuHandle() const noexcept
-    {
-        assert(impl_);
-        return impl_->CpuHandle();
     }
 
     GpuResource* GpuUnorderedAccessView::Resource() noexcept

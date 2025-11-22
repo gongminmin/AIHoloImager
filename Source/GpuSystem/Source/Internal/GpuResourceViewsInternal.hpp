@@ -22,9 +22,6 @@ namespace AIHoloImager
         virtual void Reset() = 0;
 
         virtual void Transition(GpuCommandList& cmd_list) const = 0;
-
-        virtual void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept = 0;
-        virtual GpuDescriptorCpuHandle CpuHandle() const noexcept = 0;
     };
 
     class GpuRenderTargetViewInternal
@@ -43,9 +40,6 @@ namespace AIHoloImager
         virtual void Reset() = 0;
 
         virtual void Transition(GpuCommandList& cmd_list) const = 0;
-
-        virtual void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept = 0;
-        virtual GpuDescriptorCpuHandle CpuHandle() const noexcept = 0;
     };
 
     class GpuDepthStencilViewInternal
@@ -64,9 +58,6 @@ namespace AIHoloImager
         virtual void Reset() = 0;
 
         virtual void Transition(GpuCommandList& cmd_list) const = 0;
-
-        virtual void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept = 0;
-        virtual GpuDescriptorCpuHandle CpuHandle() const noexcept = 0;
     };
 
     class GpuUnorderedAccessViewInternal
@@ -83,9 +74,6 @@ namespace AIHoloImager
         virtual void Reset() = 0;
 
         virtual void Transition(GpuCommandList& cmd_list) const = 0;
-
-        virtual void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept = 0;
-        virtual GpuDescriptorCpuHandle CpuHandle() const noexcept = 0;
 
         virtual GpuResource* Resource() noexcept = 0;
     };

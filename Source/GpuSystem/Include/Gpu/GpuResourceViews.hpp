@@ -59,9 +59,6 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -89,9 +86,6 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept;
-
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -118,9 +112,6 @@ namespace AIHoloImager
         void Reset();
 
         void Transition(GpuCommandList& cmd_list) const;
-
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
     private:
         class Impl;
@@ -163,9 +154,6 @@ namespace AIHoloImager
         void Reset();
 
         void Transition(GpuCommandList& cmd_list) const;
-
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept;
 
         GpuResource* Resource() noexcept;
         const GpuResource* Resource() const noexcept;

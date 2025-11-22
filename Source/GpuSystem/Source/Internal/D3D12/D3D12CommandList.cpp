@@ -156,8 +156,9 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(rtv).Transition(*this);
-        d3d12_cmd_list->ClearRenderTargetView(ToD3D12CpuDescriptorHandle(rtv.CpuHandle()), color, 0, nullptr);
+        auto& d3d12_rtv = D3D12Imp(rtv);
+        d3d12_rtv.Transition(*this);
+        d3d12_cmd_list->ClearRenderTargetView(d3d12_rtv.CpuHandle(), color, 0, nullptr);
     }
 
     void D3D12CommandList::Clear(GpuUnorderedAccessView& uav, const float color[4])
@@ -176,16 +177,17 @@ namespace AIHoloImager
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(uav).Transition(*this);
+        auto& d3d12_uav = D3D12Imp(uav);
+        d3d12_uav.Transition(*this);
 
         GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
-        uav.CopyTo(uav_desc_block.CpuHandle());
+        d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_desc_block.CpuHandle()));
 
         ID3D12DescriptorHeap* heaps[] = {D3D12Imp(*uav_desc_block.Heap()).DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewFloat(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
-            ToD3D12CpuDescriptorHandle(uav.CpuHandle()), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewFloat(
+            ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
@@ -206,16 +208,17 @@ namespace AIHoloImager
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(uav).Transition(*this);
+        auto& d3d12_uav = D3D12Imp(uav);
+        d3d12_uav.Transition(*this);
 
         GpuDescriptorBlock uav_desc_block = gpu_system_->AllocShaderVisibleCbvSrvUavDescBlock(1);
-        uav.CopyTo(uav_desc_block.CpuHandle());
+        d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_desc_block.CpuHandle()));
 
         ID3D12DescriptorHeap* heaps[] = {D3D12Imp(*uav_desc_block.Heap()).DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewUint(ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()),
-            ToD3D12CpuDescriptorHandle(uav.CpuHandle()), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewUint(
+            ToD3D12GpuDescriptorHandle(uav_desc_block.GpuHandle()), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
 
         gpu_system_->DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
@@ -224,26 +227,28 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(dsv).Transition(*this);
-        d3d12_cmd_list->ClearDepthStencilView(ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
+        auto& d3d12_dsv = D3D12Imp(dsv);
+        d3d12_dsv.Transition(*this);
+        d3d12_cmd_list->ClearDepthStencilView(d3d12_dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
     }
 
     void D3D12CommandList::ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(dsv).Transition(*this);
-        d3d12_cmd_list->ClearDepthStencilView(
-            ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_STENCIL, 0, stencil, 0, nullptr);
+        auto& d3d12_dsv = D3D12Imp(dsv);
+        d3d12_dsv.Transition(*this);
+        d3d12_cmd_list->ClearDepthStencilView(d3d12_dsv.CpuHandle(), D3D12_CLEAR_FLAG_STENCIL, 0, stencil, 0, nullptr);
     }
 
     void D3D12CommandList::ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(dsv).Transition(*this);
+        auto& d3d12_dsv = D3D12Imp(dsv);
+        d3d12_dsv.Transition(*this);
         d3d12_cmd_list->ClearDepthStencilView(
-            ToD3D12CpuDescriptorHandle(dsv.CpuHandle()), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+            d3d12_dsv.CpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
     }
 
     void D3D12CommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
@@ -371,11 +376,12 @@ namespace AIHoloImager
                                 const auto* srv = std::get<1>(binding_srv);
                                 if (srv != nullptr)
                                 {
-                                    D3D12Imp(*srv).Transition(*this);
+                                    auto& d3d12_srv = D3D12Imp(*srv);
+                                    d3d12_srv.Transition(*this);
 
                                     auto srv_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                    srv->CopyTo(srv_cpu_handle);
+                                    d3d12_srv.CopyTo(ToD3D12CpuDescriptorHandle(srv_cpu_handle));
                                 }
                                 found = true;
                                 break;
@@ -411,11 +417,12 @@ namespace AIHoloImager
                                 auto* uav = std::get<1>(binding_uav);
                                 if (uav != nullptr)
                                 {
-                                    D3D12Imp(*uav).Transition(*this);
+                                    auto& d3d12_uav = D3D12Imp(*uav);
+                                    d3d12_uav.Transition(*this);
 
                                     auto uav_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                    uav->CopyTo(uav_cpu_handle);
+                                    d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_cpu_handle));
                                 }
                                 found = true;
                                 break;
@@ -453,7 +460,7 @@ namespace AIHoloImager
                                 {
                                     auto sampler_cpu_handle =
                                         OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                    D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                                    D3D12Imp(*sampler).CopyTo(ToD3D12CpuDescriptorHandle(sampler_cpu_handle));
                                 }
                                 found = true;
                                 break;
@@ -511,7 +518,8 @@ namespace AIHoloImager
             {
                 if (rtvs[i] != nullptr)
                 {
-                    rt_views[i] = ToD3D12CpuDescriptorHandle(rtvs[i]->CpuHandle());
+                    auto& d3d12_rtv = D3D12Imp(*rtvs[i]);
+                    rt_views[i] = d3d12_rtv.CpuHandle();
                 }
                 else
                 {
@@ -522,7 +530,8 @@ namespace AIHoloImager
         D3D12_CPU_DESCRIPTOR_HANDLE ds_view;
         if (dsv != nullptr)
         {
-            ds_view = ToD3D12CpuDescriptorHandle(dsv->CpuHandle());
+            auto& d3d12_dsv = D3D12Imp(*dsv);
+            ds_view = d3d12_dsv.CpuHandle();
         }
         d3d12_cmd_list->OMSetRenderTargets(static_cast<uint32_t>(rtvs.size()), rt_views.get(), false, dsv != nullptr ? &ds_view : nullptr);
 
@@ -661,10 +670,11 @@ namespace AIHoloImager
                             const auto* srv = std::get<1>(binding_srv);
                             if (srv != nullptr)
                             {
-                                D3D12Imp(*srv).Transition(*this);
+                                auto& d3d12_srv = D3D12Imp(*srv);
+                                d3d12_srv.Transition(*this);
 
                                 auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                srv->CopyTo(srv_cpu_handle);
+                                d3d12_srv.CopyTo(ToD3D12CpuDescriptorHandle(srv_cpu_handle));
                             }
                             found = true;
                             break;
@@ -700,10 +710,11 @@ namespace AIHoloImager
                             const auto* uav = std::get<1>(binding_uav);
                             if (uav != nullptr)
                             {
-                                D3D12Imp(*uav).Transition(*this);
+                                auto& d3d12_uav = D3D12Imp(*uav);
+                                d3d12_uav.Transition(*this);
 
                                 auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
-                                uav->CopyTo(uav_cpu_handle);
+                                d3d12_uav.CopyTo(ToD3D12CpuDescriptorHandle(uav_cpu_handle));
                             }
                             found = true;
                             break;
@@ -740,7 +751,7 @@ namespace AIHoloImager
                             {
                                 auto sampler_cpu_handle =
                                     OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                                D3D12Imp(*sampler).CopyTo(ToD3D12CpuDescriptorHandle(sampler_cpu_handle));
                             }
                             found = true;
                             break;

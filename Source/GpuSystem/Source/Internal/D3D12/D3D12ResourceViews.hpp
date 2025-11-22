@@ -36,14 +36,14 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept override;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
         const GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
     D3D12_DEFINE_IMP(ShaderResourceView)
@@ -66,14 +66,14 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept override;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
     D3D12_DEFINE_IMP(RenderTargetView)
@@ -96,14 +96,14 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept override;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
     D3D12_DEFINE_IMP(DepthStencilView)
@@ -132,8 +132,8 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
 
-        void CopyTo(GpuDescriptorCpuHandle dst_handle) const noexcept override;
-        GpuDescriptorCpuHandle CpuHandle() const noexcept override;
+        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
         GpuResource* Resource() noexcept override;
 
@@ -141,7 +141,7 @@ namespace AIHoloImager
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
         GpuDescriptorBlock desc_block_;
-        GpuDescriptorCpuHandle cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
 
     D3D12_DEFINE_IMP(UnorderedAccessView)
