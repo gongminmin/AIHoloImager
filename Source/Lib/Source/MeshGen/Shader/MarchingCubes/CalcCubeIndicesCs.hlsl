@@ -13,7 +13,7 @@ cbuffer param_cb
     float isovalue;
 };
 
-Buffer<uint16_t> edge_table;
+Buffer<uint32_t> edge_table;
 Texture3D<float4> scalar_deformation;
 
 RWBuffer<uint32_t> cube_offsets;

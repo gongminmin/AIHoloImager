@@ -10,9 +10,9 @@ cbuffer param_cb
 };
 
 Texture3D<uint32_t> index_volume;
-Buffer<float16_t> density_features;
-Buffer<float16_t> deformation_features;
-Buffer<float16_t> color_features;
+Buffer<float> density_features;
+Buffer<float> deformation_features;
+Buffer<float> color_features;
 
 RWTexture3D<float4> density_deformation_volume;
 RWTexture3D<unorm float4> color_volume;

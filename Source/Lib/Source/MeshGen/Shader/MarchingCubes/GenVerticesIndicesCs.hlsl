@@ -13,8 +13,8 @@ cbuffer param_cb
     float scale;
 };
 
-Buffer<uint16_t> edge_table;
-Buffer<uint16_t> triangle_table;
+Buffer<uint32_t> edge_table;
+Buffer<uint32_t> triangle_table;
 Texture3D<float4> scalar_deformation;
 Buffer<uint32_t> non_empty_cube_ids;
 Buffer<uint32_t> non_empty_cube_indices;
