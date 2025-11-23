@@ -5,6 +5,7 @@
 
 #include <cassert>
 
+#include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
@@ -93,6 +94,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
     {
+        Verify((buffer.Flags() & GpuResourceFlag::Structured) == GpuResourceFlag::None);
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size)
@@ -105,6 +107,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(
               gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, element_size).release()))
     {
+        Verify((buffer.Flags() & GpuResourceFlag::Structured) != GpuResourceFlag::None);
     }
 
     GpuShaderResourceView::~GpuShaderResourceView() = default;
@@ -277,6 +280,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, format).release()))
     {
+        Verify((buffer.Flags() & GpuResourceFlag::Structured) == GpuResourceFlag::None);
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)
@@ -289,6 +293,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(
               gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, element_size).release()))
     {
+        Verify((buffer.Flags() & GpuResourceFlag::Structured) != GpuResourceFlag::None);
     }
 
     GpuUnorderedAccessView::~GpuUnorderedAccessView() = default;

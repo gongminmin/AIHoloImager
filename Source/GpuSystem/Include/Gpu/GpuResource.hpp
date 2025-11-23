@@ -25,6 +25,7 @@ namespace AIHoloImager
         DepthStencil = 1U << 1,
         UnorderedAccess = 1U << 2,
         Shareable = 1U << 3,
+        Structured = 1U << 4,
     };
     ENUM_CLASS_BITWISE_OPERATORS(GpuResourceFlag);
 
