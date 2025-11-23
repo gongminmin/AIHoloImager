@@ -66,7 +66,8 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuDynamicSamplerInternal> CreateDynamicSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const = 0;
 
-        virtual std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const = 0;
+        virtual std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(
+            std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const = 0;
 
         virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const = 0;

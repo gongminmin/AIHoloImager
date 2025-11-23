@@ -33,7 +33,7 @@ namespace AIHoloImager
 
     public:
         GpuVertexAttribs() noexcept;
-        GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs);
+        GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
         ~GpuVertexAttribs() noexcept;
 
         GpuVertexAttribs(const GpuVertexAttribs& other);

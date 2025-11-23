@@ -27,12 +27,6 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), gpu_system_(aihi.GpuSystemInstance())
         {
-            const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
-                                                                   {"POSITION", 0, GpuFormat::RGB32_Float},
-                                                                   {"NORMAL", 0, GpuFormat::RGB32_Float},
-                                                                   {"TEXCOORD", 0, GpuFormat::RG32_Float},
-                                                               }));
-
             {
                 const ShaderInfo shaders[] = {
                     {DEFINE_SHADER(FlattenVs)},
@@ -40,6 +34,12 @@ namespace AIHoloImager
                 };
 
                 const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
+
+                const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
+                                                                       {"POSITION", 0, GpuFormat::RGB32_Float},
+                                                                       {"NORMAL", 0, GpuFormat::RGB32_Float},
+                                                                       {"TEXCOORD", 0, GpuFormat::RG32_Float},
+                                                                   }));
 
                 GpuRenderPipeline::States states;
                 states.cull_mode = GpuRenderPipeline::CullMode::None;
@@ -54,6 +54,15 @@ namespace AIHoloImager
                 const ShaderInfo shaders[] = {
                     {DEFINE_SHADER(GenShadowMapVs)},
                 };
+
+                const GpuVertexAttribs vertex_attribs(gpu_system_,
+                    std::span<const GpuVertexAttrib>({
+                        {"POSITION", 0, GpuFormat::RGB32_Float},
+                    }),
+                    // Although the shader only uses position, the VB contains full data. Specify the stride here.
+                    std::span<const uint32_t>({
+                        8 * sizeof(float),
+                    }));
 
                 GpuRenderPipeline::States states;
                 states.cull_mode = GpuRenderPipeline::CullMode::None;
@@ -84,8 +93,6 @@ namespace AIHoloImager
         TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
             const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
-            const uint32_t vertex_stride = mesh.MeshVertexDesc().Stride();
-
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = aihi_.TmpDir() / "Texture";
             std::filesystem::create_directories(output_dir);
@@ -103,7 +110,7 @@ namespace AIHoloImager
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
-            this->FlattenMesh(cmd_list, mesh_vb, vertex_stride, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
+            this->FlattenMesh(cmd_list, mesh_vb, mesh_ib, model_mtx, texture_size, flatten_pos_tex, flatten_normal_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -125,8 +132,8 @@ namespace AIHoloImager
 #endif
 
             TextureReconstruction::Result result;
-            result.color_tex = this->GenTextureFromPhotos(cmd_list, mesh_vb, vertex_stride, mesh_ib, model_mtx, world_obb, flatten_pos_tex,
-                flatten_normal_tex, sfm_input, texture_size);
+            result.color_tex = this->GenTextureFromPhotos(
+                cmd_list, mesh_vb, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -148,8 +155,8 @@ namespace AIHoloImager
         }
 
     private:
-        void FlattenMesh(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, uint32_t vertex_stride, const GpuBuffer& mesh_ib,
-            const glm::mat4x4& model_mtx, uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
+        void FlattenMesh(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx,
+            uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -170,7 +177,7 @@ namespace AIHoloImager
             cmd_list.Clear(pos_rtv, clear_clr);
             cmd_list.Clear(normal_rtv, clear_clr);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&mesh_vb, 0, vertex_stride}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&mesh_vb, 0}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&mesh_ib, 0, GpuFormat::R32_Uint};
 
             std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
@@ -190,9 +197,9 @@ namespace AIHoloImager
                 flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
         }
 
-        GpuTexture2D GenTextureFromPhotos(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, uint32_t vertex_stride,
-            const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex,
-            const GpuTexture2D& flatten_normal_tex, const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
+        GpuTexture2D GenTextureFromPhotos(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
+            const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
+            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -228,7 +235,7 @@ namespace AIHoloImager
                 const glm::mat4x4 mvp_mtx = proj_mtx * view_mtx * model_mtx;
                 const glm::vec2 vp_offset = CalcViewportOffset(intrinsic);
 
-                this->GenShadowMap(cmd_list, mesh_vb, vertex_stride, mesh_ib, num_indices, mvp_mtx, vp_offset, intrinsic, shadow_map_dsv);
+                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, mvp_mtx, vp_offset, intrinsic, shadow_map_dsv);
 
                 this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, vp_offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
                     photo_srv, view.delighted_offset, glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0)), shadow_map_srv,
@@ -249,7 +256,7 @@ namespace AIHoloImager
             return this->ResolveTexture(cmd_list, texture_size, accum_color_tex);
         }
 
-        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, const GpuBuffer& ib, uint32_t num_indices,
+        void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices,
             const glm::mat4x4& mvp_mtx, const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic,
             GpuDepthStencilView& shadow_map_dsv)
         {
@@ -259,7 +266,7 @@ namespace AIHoloImager
 
             cmd_list.ClearDepth(shadow_map_dsv, 1);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {

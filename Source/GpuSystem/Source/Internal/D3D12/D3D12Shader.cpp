@@ -224,7 +224,12 @@ namespace AIHoloImager
             }
         }
 
-        const auto input_elems = D3D12Imp(vertex_attribs).InputElementDescs();
+        auto& d3d12_vertex_attribs = D3D12Imp(vertex_attribs);
+
+        const auto vb_slot_strides = d3d12_vertex_attribs.SlotStrides();
+        vb_slot_strides_ = std::vector(vb_slot_strides.begin(), vb_slot_strides.end());
+
+        const auto input_elems = d3d12_vertex_attribs.InputElementDescs();
         D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
         if (!input_elems.empty())
         {
@@ -385,6 +390,11 @@ namespace AIHoloImager
     const std::string& D3D12RenderPipeline::ShaderName(GpuRenderPipeline::ShaderStage stage) const noexcept
     {
         return shader_names_[static_cast<uint32_t>(stage)];
+    }
+
+    std::span<const uint32_t> D3D12RenderPipeline::VertexBufferSlotStrides() const noexcept
+    {
+        return std::span(vb_slot_strides_);
     }
 
 

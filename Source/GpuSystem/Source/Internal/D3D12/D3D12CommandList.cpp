@@ -258,10 +258,12 @@ namespace AIHoloImager
         std::span<const GpuRenderTargetView*> rtvs, const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
+        auto& d3d12_pipeline = D3D12Imp(pipeline);
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         if (!vbs.empty())
         {
+            auto slot_strides = d3d12_pipeline.VertexBufferSlotStrides();
             auto vbvs = std::make_unique<D3D12_VERTEX_BUFFER_VIEW[]>(vbs.size());
             for (uint32_t i = 0; i < static_cast<uint32_t>(vbs.size()); ++i)
             {
@@ -274,7 +276,7 @@ namespace AIHoloImager
                 vbv = {
                     .BufferLocation = D3D12Imp(*vb_binding.vb).GpuVirtualAddress() + vb_binding.offset,
                     .SizeInBytes = vb_binding.vb->Size(),
-                    .StrideInBytes = vb_binding.stride,
+                    .StrideInBytes = slot_strides[i],
                 };
             }
             d3d12_cmd_list->IASetVertexBuffers(0, static_cast<uint32_t>(vbs.size()), vbvs.get());
@@ -312,7 +314,6 @@ namespace AIHoloImager
             D3D12Imp(*dsv).Transition(*this);
         }
 
-        auto& d3d12_pipeline = D3D12Imp(pipeline);
         d3d12_pipeline.Bind(*this);
 
         uint32_t num_srv_uav_descs = 0;

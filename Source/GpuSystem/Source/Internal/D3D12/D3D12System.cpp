@@ -631,9 +631,10 @@ namespace AIHoloImager
         return std::make_unique<D3D12DynamicSampler>(*gpu_system_, filters, addr_modes);
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> D3D12System::CreateVertexAttribs(std::span<const GpuVertexAttrib> attribs) const
+    std::unique_ptr<GpuVertexAttribsInternal> D3D12System::CreateVertexAttribs(
+        std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const
     {
-        return std::make_unique<D3D12VertexAttribs>(std::move(attribs));
+        return std::make_unique<D3D12VertexAttribs>(std::move(attribs), std::move(slot_strides));
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> D3D12System::CreateShaderResourceView(

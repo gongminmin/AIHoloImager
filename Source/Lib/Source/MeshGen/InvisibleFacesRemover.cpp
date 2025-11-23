@@ -137,7 +137,6 @@ namespace AIHoloImager
         Mesh Process(const Mesh& mesh)
         {
             const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t vertex_stride = vertex_desc.Stride();
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
                 GpuResourceFlag::None, "vb");
@@ -172,7 +171,7 @@ namespace AIHoloImager
             {
                 const glm::vec2 angle = SphereHammersleySequence(i, NumViews);
 
-                RenderFaceId(cmd_list, vb, vertex_stride, ib, num_indices, angle.x, angle.y, CameraDist);
+                RenderFaceId(cmd_list, vb, ib, num_indices, angle.x, angle.y, CameraDist);
                 AccumulateFaces(cmd_list, num_faces);
 
                 gpu_system_.ExecuteAndReset(cmd_list);
@@ -199,8 +198,8 @@ namespace AIHoloImager
         }
 
     private:
-        void RenderFaceId(GpuCommandList& cmd_list, const GpuBuffer& vb, uint32_t vertex_stride, const GpuBuffer& ib, uint32_t num_indices,
-            float camera_azimuth, float camera_elevation, float camera_dist)
+        void RenderFaceId(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices, float camera_azimuth,
+            float camera_elevation, float camera_dist)
         {
             const glm::vec3 camera_pos = SphericalCameraPose(camera_azimuth, camera_elevation, camera_dist);
             const glm::vec3 camera_dir = -glm::normalize(camera_pos);
@@ -224,7 +223,7 @@ namespace AIHoloImager
             cmd_list.Clear(face_id_rtv_, clear_clr);
             cmd_list.ClearDepth(dsv_, 1);
 
-            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0, vertex_stride}};
+            const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
             std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {

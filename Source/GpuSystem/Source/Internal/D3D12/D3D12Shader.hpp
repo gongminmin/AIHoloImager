@@ -48,6 +48,7 @@ namespace AIHoloImager
 
         const D3D12BindingSlots& BindingSlots(GpuRenderPipeline::ShaderStage stage) const noexcept;
         const std::string& ShaderName(GpuRenderPipeline::ShaderStage stage) const noexcept;
+        std::span<const uint32_t> VertexBufferSlotStrides() const noexcept;
 
     private:
         D3D12RecyclableObject<ComPtr<ID3D12RootSignature>> root_sig_;
@@ -56,6 +57,7 @@ namespace AIHoloImager
 
         D3D12BindingSlots binding_slots_[static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num)];
         std::string shader_names_[static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num)];
+        std::vector<uint32_t> vb_slot_strides_;
     };
 
     D3D12_DEFINE_IMP(RenderPipeline)

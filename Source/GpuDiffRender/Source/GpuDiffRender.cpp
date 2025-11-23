@@ -223,7 +223,7 @@ namespace AIHoloImager
             cmd_list.Clear(derivative_barycentric_rtv, clear_clr);
         }
 
-        const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&positions, 0, sizeof(glm::vec4)}};
+        const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&positions, 0}};
         const GpuCommandList::IndexBufferBinding ib_binding = {&indices, 0, GpuFormat::R32_Uint};
 
         if (needs_derivative_barycentric)

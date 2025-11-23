@@ -20,7 +20,7 @@ namespace AIHoloImager
     class D3D12VertexAttribs : public GpuVertexAttribsInternal
     {
     public:
-        explicit D3D12VertexAttribs(std::span<const GpuVertexAttrib> attribs);
+        explicit D3D12VertexAttribs(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
         ~D3D12VertexAttribs() override;
 
         D3D12VertexAttribs(const D3D12VertexAttribs& other);
@@ -37,7 +37,8 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuVertexAttribsInternal> Clone() const override;
 
-        std::span<const D3D12_INPUT_ELEMENT_DESC> InputElementDescs() const;
+        std::span<const D3D12_INPUT_ELEMENT_DESC> InputElementDescs() const noexcept;
+        std::span<const uint32_t> SlotStrides() const noexcept;
 
     private:
         void UpdateSemantics();
@@ -45,6 +46,7 @@ namespace AIHoloImager
     private:
         std::vector<D3D12_INPUT_ELEMENT_DESC> input_elems_;
         std::vector<std::string> semantics_;
+        std::vector<uint32_t> slot_strides_;
     };
 
     D3D12_DEFINE_IMP(VertexAttribs)
