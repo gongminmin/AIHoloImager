@@ -14,11 +14,11 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 
-#include "CompiledShader/TextureRecon/Dxil/FlattenPs.h"
-#include "CompiledShader/TextureRecon/Dxil/FlattenVs.h"
-#include "CompiledShader/TextureRecon/Dxil/GenShadowMapVs.h"
-#include "CompiledShader/TextureRecon/Dxil/ProjectTextureCs.h"
-#include "CompiledShader/TextureRecon/Dxil/ResolveTextureCs.h"
+#include "CompiledShader/TextureRecon/FlattenPs.h"
+#include "CompiledShader/TextureRecon/FlattenVs.h"
+#include "CompiledShader/TextureRecon/GenShadowMapVs.h"
+#include "CompiledShader/TextureRecon/ProjectTextureCs.h"
+#include "CompiledShader/TextureRecon/ResolveTextureCs.h"
 
 namespace AIHoloImager
 {

@@ -9,8 +9,8 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
 
-#include "CompiledShader/Torch/Dxil/BuildCoordHashCs.h"
-#include "CompiledShader/Torch/Dxil/FindAvailableNeighborsCs.h"
+#include "CompiledShader/Torch/BuildCoordHashCs.h"
+#include "CompiledShader/Torch/FindAvailableNeighborsCs.h"
 
 namespace AIHoloImager
 {

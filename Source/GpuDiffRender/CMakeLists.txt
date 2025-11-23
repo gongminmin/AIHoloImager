@@ -68,6 +68,7 @@ target_include_directories(AIHoloImagerGpuDiffRender
         ${torch_dir}/include
         ${torch_dir}/include/torch/csrc/api/include
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
+        ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 

@@ -7,7 +7,7 @@
 
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/Delighter/Dxil/MergeMaskCs.h"
+#include "CompiledShader/Delighter/MergeMaskCs.h"
 
 namespace AIHoloImager
 {

@@ -43,16 +43,16 @@
 #include "Util/BoundingBox.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/MeshGen/Dxil/ApplyVertexColorCs.h"
-#include "CompiledShader/MeshGen/Dxil/Dilate3DCs.h"
-#include "CompiledShader/MeshGen/Dxil/DilateCs.h"
-#include "CompiledShader/MeshGen/Dxil/ExtractMaskCs.h"
-#include "CompiledShader/MeshGen/Dxil/GatherVolumeCs.h"
-#include "CompiledShader/MeshGen/Dxil/MergeTextureCs.h"
-#include "CompiledShader/MeshGen/Dxil/ResizeCs.h"
-#include "CompiledShader/MeshGen/Dxil/RotatePs.h"
-#include "CompiledShader/MeshGen/Dxil/RotateVs.h"
-#include "CompiledShader/MeshGen/Dxil/ScatterIndexCs.h"
+#include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
+#include "CompiledShader/MeshGen/Dilate3DCs.h"
+#include "CompiledShader/MeshGen/DilateCs.h"
+#include "CompiledShader/MeshGen/ExtractMaskCs.h"
+#include "CompiledShader/MeshGen/GatherVolumeCs.h"
+#include "CompiledShader/MeshGen/MergeTextureCs.h"
+#include "CompiledShader/MeshGen/ResizeCs.h"
+#include "CompiledShader/MeshGen/RotatePs.h"
+#include "CompiledShader/MeshGen/RotateVs.h"
+#include "CompiledShader/MeshGen/ScatterIndexCs.h"
 
 namespace AIHoloImager
 {

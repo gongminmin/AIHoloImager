@@ -193,6 +193,7 @@ target_include_directories(AIHoloImagerLib
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
         ${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/software/SfM/export
+        ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 

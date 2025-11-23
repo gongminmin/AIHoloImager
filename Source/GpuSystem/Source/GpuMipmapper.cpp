@@ -9,7 +9,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "CompiledShader/Dxil/GenMipmapCs.h"
+#include "CompiledShader/GenMipmapCs.h"
 
 namespace AIHoloImager
 {

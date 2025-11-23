@@ -17,15 +17,15 @@
 #include "Gpu/GpuTexture.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/MaskGen/Dxil/CalcBBoxCs.h"
-#include "CompiledShader/MaskGen/Dxil/DownsampleCs.h"
-#include "CompiledShader/MaskGen/Dxil/ErosionDilationCs.h"
-#include "CompiledShader/MaskGen/Dxil/GaussianBlurCs.h"
-#include "CompiledShader/MaskGen/Dxil/MergeMaskCs.h"
-#include "CompiledShader/MaskGen/Dxil/NormalizeImageCs.h"
-#include "CompiledShader/MaskGen/Dxil/StatImageCs.h"
-#include "CompiledShader/MaskGen/Dxil/StatPredCs.h"
-#include "CompiledShader/MaskGen/Dxil/UpsampleCs.h"
+#include "CompiledShader/MaskGen/CalcBBoxCs.h"
+#include "CompiledShader/MaskGen/DownsampleCs.h"
+#include "CompiledShader/MaskGen/ErosionDilationCs.h"
+#include "CompiledShader/MaskGen/GaussianBlurCs.h"
+#include "CompiledShader/MaskGen/MergeMaskCs.h"
+#include "CompiledShader/MaskGen/NormalizeImageCs.h"
+#include "CompiledShader/MaskGen/StatImageCs.h"
+#include "CompiledShader/MaskGen/StatPredCs.h"
+#include "CompiledShader/MaskGen/UpsampleCs.h"
 
 namespace AIHoloImager
 {

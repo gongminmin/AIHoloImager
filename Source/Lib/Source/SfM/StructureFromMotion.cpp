@@ -67,7 +67,7 @@
     #include "AIHoloImager/Mesh.hpp"
 #endif
 
-#include "CompiledShader/SfM/Dxil/UndistortCs.h"
+#include "CompiledShader/SfM/UndistortCs.h"
 
 using namespace openMVG;
 using namespace openMVG::cameras;

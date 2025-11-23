@@ -19,11 +19,11 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/AccumFacesCs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FaceIdPs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FaceIdVs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/FilterFacesCs.h"
-#include "CompiledShader/MeshGen/InvisibleFacesRemover/Dxil/MarkFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/AccumFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/FaceIdPs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/FaceIdVs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/FilterFacesCs.h"
+#include "CompiledShader/MeshGen/InvisibleFacesRemover/MarkFacesCs.h"
 
 using namespace AIHoloImager;
 

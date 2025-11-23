@@ -101,6 +101,7 @@ target_include_directories(AIHoloImagerGpuSystem
 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source
+        ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
