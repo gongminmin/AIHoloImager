@@ -1,8 +1,11 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
+if(ai_holo_imager_platform_windows AND AIHI_ENABLE_D3D12)
+    set(enable_d3d12 TRUE)
+endif()
+
 set(aihi_gpu_system_files
-    Include/Gpu/D3D12/D3D12Traits.hpp
     Include/Gpu/GpuBuffer.hpp
     Include/Gpu/GpuCommandAllocatorInfo.hpp
     Include/Gpu/GpuCommandList.hpp
@@ -18,35 +21,6 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuVertexAttrib.hpp
     Include/Gpu/InternalDefine.hpp
-    Source/Internal/D3D12/D3D12Buffer.cpp
-    Source/Internal/D3D12/D3D12Buffer.hpp
-    Source/Internal/D3D12/D3D12CommandAllocatorInfo.cpp
-    Source/Internal/D3D12/D3D12CommandAllocatorInfo.hpp
-    Source/Internal/D3D12/D3D12CommandList.cpp
-    Source/Internal/D3D12/D3D12CommandList.hpp
-    Source/Internal/D3D12/D3D12Conversion.cpp
-    Source/Internal/D3D12/D3D12Conversion.hpp
-    Source/Internal/D3D12/D3D12DescriptorAllocator.cpp
-    Source/Internal/D3D12/D3D12DescriptorAllocator.hpp
-    Source/Internal/D3D12/D3D12DescriptorHeap.cpp
-    Source/Internal/D3D12/D3D12DescriptorHeap.hpp
-    Source/Internal/D3D12/D3D12ImpDefine.hpp
-    Source/Internal/D3D12/D3D12Resource.cpp
-    Source/Internal/D3D12/D3D12Resource.hpp
-    Source/Internal/D3D12/D3D12ResourceViews.cpp
-    Source/Internal/D3D12/D3D12ResourceViews.hpp
-    Source/Internal/D3D12/D3D12Sampler.cpp
-    Source/Internal/D3D12/D3D12Sampler.hpp
-    Source/Internal/D3D12/D3D12Shader.cpp
-    Source/Internal/D3D12/D3D12Shader.hpp
-    Source/Internal/D3D12/D3D12System.cpp
-    Source/Internal/D3D12/D3D12System.hpp
-    Source/Internal/D3D12/D3D12Texture.cpp
-    Source/Internal/D3D12/D3D12Texture.hpp
-    Source/Internal/D3D12/D3D12Util.cpp
-    Source/Internal/D3D12/D3D12Util.hpp
-    Source/Internal/D3D12/D3D12VertexAttrib.cpp
-    Source/Internal/D3D12/D3D12VertexAttrib.hpp
     Source/Internal/GpuBufferInternal.cpp
     Source/Internal/GpuBufferInternal.hpp
     Source/Internal/GpuCommandAllocatorInfoInternal.cpp
@@ -88,6 +62,40 @@ set(aihi_gpu_system_files
     Source/InternalImp.hpp
     Source/pch.hpp
 )
+if(enable_d3d12)
+    set(aihi_gpu_system_files ${aihi_gpu_system_files}
+        Include/Gpu/D3D12/D3D12Traits.hpp
+        Source/Internal/D3D12/D3D12Buffer.cpp
+        Source/Internal/D3D12/D3D12Buffer.hpp
+        Source/Internal/D3D12/D3D12CommandAllocatorInfo.cpp
+        Source/Internal/D3D12/D3D12CommandAllocatorInfo.hpp
+        Source/Internal/D3D12/D3D12CommandList.cpp
+        Source/Internal/D3D12/D3D12CommandList.hpp
+        Source/Internal/D3D12/D3D12Conversion.cpp
+        Source/Internal/D3D12/D3D12Conversion.hpp
+        Source/Internal/D3D12/D3D12DescriptorAllocator.cpp
+        Source/Internal/D3D12/D3D12DescriptorAllocator.hpp
+        Source/Internal/D3D12/D3D12DescriptorHeap.cpp
+        Source/Internal/D3D12/D3D12DescriptorHeap.hpp
+        Source/Internal/D3D12/D3D12ImpDefine.hpp
+        Source/Internal/D3D12/D3D12Resource.cpp
+        Source/Internal/D3D12/D3D12Resource.hpp
+        Source/Internal/D3D12/D3D12ResourceViews.cpp
+        Source/Internal/D3D12/D3D12ResourceViews.hpp
+        Source/Internal/D3D12/D3D12Sampler.cpp
+        Source/Internal/D3D12/D3D12Sampler.hpp
+        Source/Internal/D3D12/D3D12Shader.cpp
+        Source/Internal/D3D12/D3D12Shader.hpp
+        Source/Internal/D3D12/D3D12System.cpp
+        Source/Internal/D3D12/D3D12System.hpp
+        Source/Internal/D3D12/D3D12Texture.cpp
+        Source/Internal/D3D12/D3D12Texture.hpp
+        Source/Internal/D3D12/D3D12Util.cpp
+        Source/Internal/D3D12/D3D12Util.hpp
+        Source/Internal/D3D12/D3D12VertexAttrib.cpp
+        Source/Internal/D3D12/D3D12VertexAttrib.hpp
+    )
+endif()
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})
 
 AddShaderFile(Source/Shader/GenMipmapCs.hlsl "cs" "main")
@@ -95,6 +103,13 @@ AddShaderFile(Source/Shader/GenMipmapCs.hlsl "cs" "main")
 add_library(AIHoloImagerGpuSystem STATIC
     ${aihi_gpu_system_files}
 )
+
+if(enable_d3d12)
+    target_compile_definitions(AIHoloImagerGpuSystem
+        PRIVATE
+            AIHI_ENABLE_D3D12
+    )
+endif()
 
 target_include_directories(AIHoloImagerGpuSystem
     PUBLIC
@@ -112,13 +127,18 @@ target_precompile_headers(AIHoloImagerGpuSystem
 )
 
 target_link_libraries(AIHoloImagerGpuSystem
-    PUBLIC
-        DirectX-Headers
-
     PRIVATE
-        d3d12
-        dxgi
-        dxguid
-        dxcompiler
         AIHoloImagerBase
 )
+if(enable_d3d12)
+    target_link_libraries(AIHoloImagerGpuSystem
+        PUBLIC
+            DirectX-Headers
+
+        PRIVATE
+            d3d12
+            dxgi
+            dxguid
+            dxcompiler
+    )
+endif()

@@ -5,7 +5,6 @@
 
 #include <cassert>
 #include <format>
-#include <iterator>
 #include <mutex>
 
 #include "Gpu/GpuCommandList.hpp"
@@ -39,7 +38,10 @@ namespace AIHoloImager
 
         static Api SelectApi(Api api)
         {
-            const Api available_apis[] = {Api::D3D12};
+            std::vector<Api> available_apis;
+#ifdef AIHI_ENABLE_D3D12
+            available_apis.push_back(Api::D3D12);
+#endif
 
             if (api == Api::Auto)
             {
@@ -47,7 +49,7 @@ namespace AIHoloImager
             }
             else
             {
-                if (std::find(std::begin(available_apis), std::end(available_apis), api) != std::end(available_apis))
+                if (std::find(available_apis.begin(), available_apis.end(), api) != available_apis.end())
                 {
                     return api;
                 }

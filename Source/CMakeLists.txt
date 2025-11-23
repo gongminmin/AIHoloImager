@@ -13,8 +13,10 @@ if(MSVC)
     endif()
 endif()
 
-set(shader_targets "dxil")
-set(shader_compile_options "-DD3D12_SHADER")
+if(ai_holo_imager_platform_windows AND AIHI_ENABLE_D3D12)
+    set(shader_targets "dxil")
+    set(shader_compile_options "-DD3D12_SHADER")
+endif()
 
 macro(AddShaderFile file_name shader_type entry_point)
     get_filename_component(file_base_name ${file_name} NAME_WE)
