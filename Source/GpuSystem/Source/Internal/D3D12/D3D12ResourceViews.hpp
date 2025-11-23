@@ -43,6 +43,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         const GpuResource* resource_ = nullptr;
+        uint32_t sub_resource_;
         D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
@@ -73,6 +74,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
+        uint32_t sub_resource_;
         D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
@@ -103,6 +105,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
+        uint32_t sub_resource_;
         D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };
@@ -141,6 +144,7 @@ namespace AIHoloImager
     private:
         GpuSystem* gpu_system_ = nullptr;
         GpuResource* resource_ = nullptr;
+        uint32_t sub_resource_;
         D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
     };

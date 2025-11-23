@@ -18,7 +18,7 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -54,7 +54,7 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture_array)
+        : gpu_system_(&gpu_system), resource_(&texture_array), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -91,7 +91,7 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -126,7 +126,7 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -152,7 +152,7 @@ namespace AIHoloImager
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : gpu_system_(&gpu_system), resource_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -204,12 +204,12 @@ namespace AIHoloImager
 
     void D3D12ShaderResourceView::Transition(GpuCommandList& cmd_list) const
     {
-        resource_->Transition(cmd_list, GpuResourceState::Common);
+        this->Transition(D3D12Imp(cmd_list));
     }
 
     void D3D12ShaderResourceView::Transition(D3D12CommandList& cmd_list) const
     {
-        D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::Common);
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
     void D3D12ShaderResourceView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
@@ -227,7 +227,7 @@ namespace AIHoloImager
     D3D12_IMP_IMP(RenderTargetView)
 
     D3D12RenderTargetView::D3D12RenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -276,12 +276,12 @@ namespace AIHoloImager
 
     void D3D12RenderTargetView::Transition(GpuCommandList& cmd_list) const
     {
-        resource_->Transition(cmd_list, GpuResourceState::ColorWrite);
+        this->Transition(D3D12Imp(cmd_list));
     }
 
     void D3D12RenderTargetView::Transition(D3D12CommandList& cmd_list) const
     {
-        D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::ColorWrite);
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::ColorWrite);
     }
 
     void D3D12RenderTargetView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
@@ -299,7 +299,7 @@ namespace AIHoloImager
     D3D12_IMP_IMP(DepthStencilView)
 
     D3D12DepthStencilView::D3D12DepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -348,12 +348,12 @@ namespace AIHoloImager
 
     void D3D12DepthStencilView::Transition(GpuCommandList& cmd_list) const
     {
-        resource_->Transition(cmd_list, GpuResourceState::DepthWrite);
+        this->Transition(D3D12Imp(cmd_list));
     }
 
     void D3D12DepthStencilView::Transition(D3D12CommandList& cmd_list) const
     {
-        D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::DepthWrite);
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::DepthWrite);
     }
 
     void D3D12DepthStencilView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
@@ -372,7 +372,7 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -393,7 +393,7 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture_array)
+        : gpu_system_(&gpu_system), resource_(&texture_array), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -417,7 +417,7 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&texture)
+        : gpu_system_(&gpu_system), resource_(&texture), sub_resource_(sub_resource)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -443,7 +443,7 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : gpu_system_(&gpu_system), resource_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -467,7 +467,7 @@ namespace AIHoloImager
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : gpu_system_(&gpu_system), resource_(&buffer)
+        : gpu_system_(&gpu_system), resource_(&buffer), sub_resource_(0)
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
@@ -516,12 +516,12 @@ namespace AIHoloImager
 
     void D3D12UnorderedAccessView::Transition(GpuCommandList& cmd_list) const
     {
-        resource_->Transition(cmd_list, GpuResourceState::UnorderedAccess);
+        this->Transition(D3D12Imp(cmd_list));
     }
 
     void D3D12UnorderedAccessView::Transition(D3D12CommandList& cmd_list) const
     {
-        D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::UnorderedAccess);
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::UnorderedAccess);
     }
 
     void D3D12UnorderedAccessView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
