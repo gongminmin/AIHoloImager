@@ -142,6 +142,11 @@ namespace AIHoloImager
                     copy_buff = &buff;
                 }
 
+                copy_buff->Transition(cmd_list, GpuResourceState::CopyDst);
+
+                uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
+                this->WaitExternalSemaphore(fence_val);
+
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(*copy_buff);
 
                 MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
@@ -158,7 +163,7 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.Free(ext_mem_ptr));
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
-                const uint64_t fence_val = gpu_system_.FenceValue() + 1;
+                ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
                 gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
 
@@ -198,6 +203,11 @@ namespace AIHoloImager
 
             if (uses_cuda_copy)
             {
+                tex.Transition(cmd_list, GpuResourceState::CopyDst);
+
+                uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
+                this->WaitExternalSemaphore(fence_val);
+
                 torch::Tensor tensor = input_tensor.contiguous();
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
@@ -227,7 +237,7 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.FreeMipmappedArray(cu_mip_array));
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
-                const uint64_t fence_val = gpu_system_.FenceValue() + 1;
+                ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
                 gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
             }
@@ -244,6 +254,8 @@ namespace AIHoloImager
             torch::Tensor tensor;
             if (cuda_copy_enabled_)
             {
+                buff.Transition(cmd_list, GpuResourceState::CopySrc);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
                 this->WaitExternalSemaphore(fence_val);
 
@@ -317,6 +329,8 @@ namespace AIHoloImager
             torch::Tensor tensor;
             if (cuda_copy_enabled_)
             {
+                tex.Transition(cmd_list, GpuResourceState::CopySrc);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
                 this->WaitExternalSemaphore(fence_val);
 
