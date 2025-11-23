@@ -25,6 +25,8 @@ namespace AIHoloImager
         enum class Api
         {
             D3D12,
+
+            Auto,
         };
 
         static constexpr uint64_t MaxFenceValue = ~0ull;

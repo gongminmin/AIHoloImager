@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <format>
+#include <iterator>
 #include <mutex>
 
 #include "Gpu/GpuCommandList.hpp"
@@ -18,8 +19,8 @@ namespace AIHoloImager
     {
     public:
         Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-            : host_(host), api_(api),
-              system_internal_(CreateGpuSystemInternal(api, host, std::move(confirm_device), enable_sharing, enable_debug)),
+            : host_(host), api_(SelectApi(api)),
+              system_internal_(CreateGpuSystemInternal(api_, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false)
         {
         }
@@ -34,6 +35,27 @@ namespace AIHoloImager
             upload_mem_allocator_.Clear();
 
             system_internal_.reset();
+        }
+
+        static Api SelectApi(Api api)
+        {
+            const Api available_apis[] = {Api::D3D12};
+
+            if (api == Api::Auto)
+            {
+                return available_apis[0];
+            }
+            else
+            {
+                if (std::find(std::begin(available_apis), std::end(available_apis), api) != std::end(available_apis))
+                {
+                    return api;
+                }
+                else
+                {
+                    return available_apis[0];
+                }
+            }
         }
 
         GpuSystemInternal& Internal() noexcept
