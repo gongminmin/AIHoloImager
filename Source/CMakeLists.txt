@@ -13,9 +13,15 @@ if(MSVC)
     endif()
 endif()
 
+set(shader_targets )
+set(shader_compile_options )
 if(ai_holo_imager_platform_windows AND AIHI_ENABLE_D3D12)
-    set(shader_targets "dxil")
-    set(shader_compile_options "-DD3D12_SHADER")
+    list(APPEND shader_targets "dxil")
+    list(APPEND shader_compile_options "-DD3D12_SHADER")
+endif()
+list(LENGTH shader_targets num_shader_targets)
+if(num_shader_targets EQUAL 0)
+    message(FATAL_ERROR "At least one GPU API must be enabled.")
 endif()
 
 macro(AddShaderFile file_name shader_type entry_point)
@@ -30,8 +36,7 @@ macro(AddShaderFile file_name shader_type entry_point)
     set(debug_option "-Zi;-Od;-Qembed_debug")
     set(release_option "-O2")
 
-    list(LENGTH shader_targets num_targets)
-    math(EXPR max_range "${num_targets}-1")
+    math(EXPR max_range "${num_shader_targets}-1")
 
     set(shader_output_names )
     foreach(i RANGE ${max_range})
@@ -58,7 +63,14 @@ macro(AddShaderFile file_name shader_type entry_point)
             set(append_str "APPEND")
         endif()
         add_custom_command(OUTPUT ${shader_output_names}
-            COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source/Util/Shader/" -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader" ${curr_compile_option}
+            COMMAND "${AIHI_DXC_CMD}"
+                "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>"
+                -HV 2021 -enable-16bit-types
+                -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo
+                "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}"
+                -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source/Util/Shader/"
+                -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader"
+                ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
             DEPENDS ${file_name} ${common_header}

@@ -34,7 +34,9 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 option(AIHI_KEEP_INTERMEDIATES "Keep intermediate results" OFF)
-option(AIHI_ENABLE_D3D12 "Enable D3D12" ON)
+if(ai_holo_imager_platform_windows)
+    option(AIHI_ENABLE_D3D12 "Enable D3D12" ON)
+endif()
 
 # 3.13.4 has issues with lib name. See https://github.com/python/cpython/issues/135151
 find_package(Python3 3.11...<3.13.4 COMPONENTS Interpreter Development.Embed REQUIRED)
