@@ -56,7 +56,7 @@ macro(AddShaderFile file_name shader_type entry_point)
             set(append_str "APPEND")
         endif()
         add_custom_command(OUTPUT ${shader_output_names}
-            COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${CMAKE_CURRENT_SOURCE_DIR}/Source/Util/Shader/" ${curr_compile_option}
+            COMMAND dxc "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>" -HV 2021 -enable-16bit-types -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}" -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source/Util/Shader/" -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader" ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
             DEPENDS ${file_name} ${common_header}

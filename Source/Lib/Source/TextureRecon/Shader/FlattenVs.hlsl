@@ -1,6 +1,8 @@
 // Copyright (c) 2024-2025 Minmin Gong
 //
 
+#include "Platform.hlslh"
+
 cbuffer param_cb
 {
     float4x4 model_mtx;
@@ -17,4 +19,6 @@ void main(float3 pos : POSITION,
     out_pos = float4(tc.xy * 2 - 1, 0, 1);
     out_pos_ws = mul(float4(pos, 1), model_mtx).xyz;
     out_normal_ws = mul(normal, (float3x3)model_it_mtx);
+
+    AdjustYDir(out_pos);
 }

@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "Platform.hlslh"
+
 void AtomicAdd(RWBuffer<uint32_t> buff, uint addr, float value)
 {
     uint32_t cmp_val = buff[addr];
-    [allow_uav_condition]
+    ALLOW_UAV_CONDITION
     for (;;)
     {
         uint32_t new_val = asuint(asfloat(cmp_val) + value);

@@ -70,6 +70,7 @@ set(aihi_gpu_system_files
     Source/Internal/GpuVertexAttribInternal.cpp
     Source/Internal/GpuVertexAttribInternal.hpp
     Source/Shader/GenMipmapCs.hlsl
+    Source/Shader/Platform.hlslh
     Source/GpuBuffer.cpp
     Source/GpuCommandAllocatorInfo.cpp
     Source/GpuCommandList.cpp

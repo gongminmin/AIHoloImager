@@ -2,6 +2,7 @@
 //
 
 #include "Common.hlslh"
+#include "Platform.hlslh"
 
 static const uint32_t BlockDim = 256;
 static const uint32_t MaxProbeTime = 256;
@@ -37,7 +38,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     uint32_t slot = HashFunc(edge) % hash_size;
     const uint32_t this_vertex = indices_buff[face_id * 3 + index];
 
-    [allow_uav_condition]
+    ALLOW_UAV_CONDITION
     for (uint32_t t = 0; t < MaxProbeTime; ++t)
     {
         uint32_t ori_val;

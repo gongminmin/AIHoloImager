@@ -1,0 +1,10 @@
+// Copyright (c) 2025 Minmin Gong
+//
+
+#pragma once
+
+#define ALLOW_UAV_CONDITION [allow_uav_condition]
+
+void AdjustYDir(inout float4 out_pos)
+{
+}

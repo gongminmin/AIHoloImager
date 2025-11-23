@@ -1,6 +1,8 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
+#include "Platform.hlslh"
+
 cbuffer param_cb
 {
     float4x4 rotation_mtx;
@@ -21,4 +23,6 @@ void main(uint32_t vertex_id : SV_VertexId,
     float2 pos = Quad[vertex_id];
     out_pos = mul(float4(pos, 0, 1), rotation_mtx);
     out_texcoord = select(pos < 0, tc_bounding_box.xw, tc_bounding_box.zy);
+
+    AdjustYDir(out_pos);
 }
