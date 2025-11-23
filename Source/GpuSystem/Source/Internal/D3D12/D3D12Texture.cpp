@@ -7,8 +7,6 @@
 
 #include <directx/d3d12.h>
 
-#include "Base/Util.hpp"
-
 #include "D3D12CommandList.hpp"
 #include "D3D12Conversion.hpp"
 
@@ -20,10 +18,7 @@ namespace AIHoloImager
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : D3D12Resource(gpu_system), format_(format)
     {
-        if (mip_levels == 0)
-        {
-            mip_levels = LogNextPowerOf2(std::max({width, height, depth}));
-        }
+        assert(mip_levels != 0);
 
         curr_states_.resize(array_size * mip_levels * NumPlanes(format), GpuResourceState::Common);
 

@@ -5,6 +5,7 @@
 
 #include <cassert>
 
+#include "Base/Util.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -30,6 +31,15 @@ namespace AIHoloImager
         return (plane_slice * array_size + array_slice) * num_mip_levels + mip_slice;
     }
 
+    uint32_t ResolveMipLevels(uint32_t mip_levels, uint32_t width, uint32_t height, uint32_t depth) noexcept
+    {
+        if (mip_levels == 0)
+        {
+            mip_levels = LogNextPowerOf2(std::max({width, height, depth}));
+        }
+        return mip_levels;
+    }
+
 
     EMPTY_IMP(GpuTexture)
     IMP_INTERNAL2(GpuTexture, GpuResource)
@@ -39,7 +49,8 @@ namespace AIHoloImager
     GpuTexture::GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : impl_(static_cast<Impl*>(gpu_system.Internal()
-                                       .CreateTexture(type, width, height, depth, array_size, mip_levels, format, flags, std::move(name))
+                                       .CreateTexture(type, width, height, depth, array_size,
+                                           ResolveMipLevels(mip_levels, width, height, depth), format, flags, std::move(name))
                                        .release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuTextureInternal));
