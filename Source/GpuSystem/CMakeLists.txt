@@ -4,6 +4,9 @@
 if(ai_holo_imager_platform_windows AND AIHI_ENABLE_D3D12)
     set(enable_d3d12 TRUE)
 endif()
+if(AIHI_ENABLE_VULKAN)
+    set(enable_vulkan TRUE)
+endif()
 
 set(aihi_gpu_system_files
     Include/Gpu/GpuBuffer.hpp
@@ -96,6 +99,39 @@ if(enable_d3d12)
         Source/Internal/D3D12/D3D12VertexAttrib.hpp
     )
 endif()
+if(enable_vulkan)
+    set(aihi_gpu_system_files ${aihi_gpu_system_files}
+        Include/Gpu/Vulkan/VulkanTraits.hpp
+        Source/Internal/Vulkan/VulkanBuffer.cpp
+        Source/Internal/Vulkan/VulkanBuffer.hpp
+        Source/Internal/Vulkan/VulkanCommandAllocatorInfo.cpp
+        Source/Internal/Vulkan/VulkanCommandAllocatorInfo.hpp
+        Source/Internal/Vulkan/VulkanCommandList.cpp
+        Source/Internal/Vulkan/VulkanCommandList.hpp
+        Source/Internal/Vulkan/VulkanConversion.cpp
+        Source/Internal/Vulkan/VulkanConversion.hpp
+        Source/Internal/Vulkan/VulkanDescriptorAllocator.cpp
+        Source/Internal/Vulkan/VulkanDescriptorAllocator.hpp
+        Source/Internal/Vulkan/VulkanErrorHandling.hpp
+        Source/Internal/Vulkan/VulkanImpDefine.hpp
+        Source/Internal/Vulkan/VulkanResource.cpp
+        Source/Internal/Vulkan/VulkanResource.hpp
+        Source/Internal/Vulkan/VulkanResourceViews.cpp
+        Source/Internal/Vulkan/VulkanResourceViews.hpp
+        Source/Internal/Vulkan/VulkanSampler.cpp
+        Source/Internal/Vulkan/VulkanSampler.hpp
+        Source/Internal/Vulkan/VulkanShader.cpp
+        Source/Internal/Vulkan/VulkanShader.hpp
+        Source/Internal/Vulkan/VulkanSystem.cpp
+        Source/Internal/Vulkan/VulkanSystem.hpp
+        Source/Internal/Vulkan/VulkanTexture.cpp
+        Source/Internal/Vulkan/VulkanTexture.hpp
+        Source/Internal/Vulkan/VulkanUtil.cpp
+        Source/Internal/Vulkan/VulkanUtil.hpp
+        Source/Internal/Vulkan/VulkanVertexAttrib.cpp
+        Source/Internal/Vulkan/VulkanVertexAttrib.hpp
+    )
+endif()
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})
 
 AddShaderFile(Source/Shader/GenMipmapCs.hlsl "cs" "main")
@@ -108,6 +144,12 @@ if(enable_d3d12)
     target_compile_definitions(AIHoloImagerGpuSystem
         PUBLIC
             AIHI_ENABLE_D3D12
+    )
+endif()
+if(enable_vulkan)
+    target_compile_definitions(AIHoloImagerGpuSystem
+        PUBLIC
+            AIHI_ENABLE_VULKAN
     )
 endif()
 
@@ -140,5 +182,15 @@ if(enable_d3d12)
             dxgi
             dxguid
             dxcompiler
+    )
+endif()
+if(enable_vulkan)
+    target_link_libraries(AIHoloImagerGpuSystem
+        PUBLIC
+            Vulkan-Headers
+            volk
+
+        PRIVATE
+            spirv-reflect-static
     )
 endif()

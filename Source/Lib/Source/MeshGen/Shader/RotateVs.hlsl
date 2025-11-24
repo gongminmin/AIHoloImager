@@ -3,6 +3,9 @@
 
 #include "Platform.hlslh"
 
+#ifdef __spirv__
+[[vk::binding(0)]]
+#endif
 cbuffer param_cb
 {
     float4x4 rotation_mtx;

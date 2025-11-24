@@ -13,7 +13,13 @@ cbuffer param_cb
     float isovalue;
 };
 
+#ifdef __spirv__
+[[vk::image_format("r16ui")]]
+#endif
 Buffer<uint32_t> edge_table;
+#ifdef __spirv__
+[[vk::image_format("r16ui")]]
+#endif
 Buffer<uint32_t> triangle_table;
 Buffer<uint32_t> cube_offsets;
 Texture3D<float4> scalar_deformation;

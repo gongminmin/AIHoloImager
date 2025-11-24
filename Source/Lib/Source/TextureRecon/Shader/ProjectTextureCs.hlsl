@@ -22,6 +22,9 @@ Texture2D<float> depth_tex;
 SamplerState point_sampler;
 SamplerState bilinear_sampler;
 
+#ifdef __spirv__
+[[vk::image_format("rgba8")]]
+#endif
 RWTexture2D<unorm float4> accum_color_tex;
 
 float Sqr(float x)

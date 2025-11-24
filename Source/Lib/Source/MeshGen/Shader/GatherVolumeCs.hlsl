@@ -10,11 +10,26 @@ cbuffer param_cb
 };
 
 Texture3D<uint32_t> index_volume;
+#ifdef __spirv__
+[[vk::image_format("r16f")]]
+#endif
 Buffer<float> density_features;
+#ifdef __spirv__
+[[vk::image_format("r16f")]]
+#endif
 Buffer<float> deformation_features;
+#ifdef __spirv__
+[[vk::image_format("r16f")]]
+#endif
 Buffer<float> color_features;
 
+#ifdef __spirv__
+[[vk::image_format("rgba16f")]]
+#endif
 RWTexture3D<float4> density_deformation_volume;
+#ifdef __spirv__
+[[vk::image_format("rgba8")]]
+#endif
 RWTexture3D<unorm float4> color_volume;
 
 float3 Sigmoid(float3 v)

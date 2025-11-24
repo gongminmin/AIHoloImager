@@ -15,11 +15,32 @@
 #include "Gpu/GpuVertexAttrib.hpp"
 #include "Gpu/InternalDefine.hpp"
 
-#define DEFINE_SHADER(name) \
-    {                       \
-        name##_dxil,        \
-    },                      \
-        #name,
+#ifdef AIHI_ENABLE_D3D12
+    #ifdef AIHI_ENABLE_VULKAN
+        #define DEFINE_SHADER(name) \
+            {                       \
+                name##_dxil,        \
+                name##_spv,         \
+            },                      \
+                #name,
+    #else
+        #define DEFINE_SHADER(name) \
+            {                       \
+                name##_dxil,        \
+                {},                 \
+            },                      \
+                #name,
+    #endif
+#else
+    #ifdef AIHI_ENABLE_VULKAN
+        #define DEFINE_SHADER(name) \
+            {                       \
+                {},                 \
+                name##_spv,         \
+            },                      \
+                #name,
+    #endif
+#endif
 
 namespace AIHoloImager
 {
@@ -28,6 +49,7 @@ namespace AIHoloImager
         enum class BytecodeFormat
         {
             Dxil = 0,
+            Spv,
 
             Num,
         };

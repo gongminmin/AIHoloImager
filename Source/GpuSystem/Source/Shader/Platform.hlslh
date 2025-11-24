@@ -3,8 +3,15 @@
 
 #pragma once
 
+#ifdef __spirv__
+#define ALLOW_UAV_CONDITION
+#else
 #define ALLOW_UAV_CONDITION [allow_uav_condition]
+#endif
 
 void AdjustYDir(inout float4 out_pos)
 {
+#ifdef VULKAN_SHADER
+    out_pos.y *= -1;
+#endif
 }

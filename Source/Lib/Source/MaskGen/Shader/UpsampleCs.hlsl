@@ -17,6 +17,9 @@ cbuffer param_cb
 Texture2D<float> input_tex;
 Texture2D<uint32_t> min_max_tex;
 
+#ifdef __spirv__
+[[vk::image_format("r8")]]
+#endif
 RWTexture2D<unorm float> output_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]

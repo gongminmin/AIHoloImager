@@ -25,6 +25,7 @@ namespace AIHoloImager
         enum class Api
         {
             D3D12,
+            Vulkan,
 
             Auto,
         };

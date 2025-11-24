@@ -10,6 +10,9 @@ cbuffer param_cb
 
 Texture2D input_tex;
 
+#ifdef __spirv__
+[[vk::image_format("r8")]]
+#endif
 RWTexture2D<unorm float> mask_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]

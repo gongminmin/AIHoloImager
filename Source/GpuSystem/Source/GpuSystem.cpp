@@ -42,6 +42,9 @@ namespace AIHoloImager
 #ifdef AIHI_ENABLE_D3D12
             available_apis.push_back(Api::D3D12);
 #endif
+#ifdef AIHI_ENABLE_VULKAN
+            available_apis.push_back(Api::Vulkan);
+#endif
 
             if (api == Api::Auto)
             {

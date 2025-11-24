@@ -10,8 +10,11 @@ nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 openMVS/OpenMVS_*
 PythonVenv/PythonVenv/
+SPIRV-Reflect/SPIRV-Reflect/
 TRELLIS/TRELLIS-image-large/
 stb/stb/
 U-2-Net/U2NetModels/
+volk/volk/
+Vulkan-Headers/Vulkan-Headers/
 xatlas/xatlas/
 zlib/zlib/

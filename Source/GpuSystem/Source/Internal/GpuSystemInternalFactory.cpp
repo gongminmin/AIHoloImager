@@ -8,6 +8,9 @@
 #ifdef AIHI_ENABLE_D3D12
     #include "D3D12/D3D12System.hpp"
 #endif
+#ifdef AIHI_ENABLE_VULKAN
+    #include "Vulkan/VulkanSystem.hpp"
+#endif
 
 namespace AIHoloImager
 {
@@ -19,6 +22,10 @@ namespace AIHoloImager
 #ifdef AIHI_ENABLE_D3D12
         case GpuSystem::Api::D3D12:
             return std::make_unique<D3D12System>(gpu_system, std::move(confirm_device), enable_sharing, enable_debug);
+#endif
+#ifdef AIHI_ENABLE_VULKAN
+        case GpuSystem::Api::Vulkan:
+            return std::make_unique<VulkanSystem>(gpu_system, std::move(confirm_device), enable_sharing, enable_debug);
 #endif
 
         default:

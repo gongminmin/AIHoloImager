@@ -12,6 +12,9 @@
 
     #include <directx/d3d12.h>
 #endif
+#ifdef AIHI_ENABLE_VULKAN
+    #include <volk.h>
+#endif
 
 #include "AIHoloImagerInternal.hpp"
 #include "Base/ErrorHandling.hpp"
@@ -49,6 +52,10 @@ namespace AIHoloImager
             case AIHoloImager::Api::D3D12:
                 return GpuSystem::Api::D3D12;
 #endif
+#ifdef AIHI_ENABLE_VULKAN
+            case AIHoloImager::Api::Vulkan:
+                return GpuSystem::Api::Vulkan;
+#endif
 
             case AIHoloImager::Api::Auto:
                 return GpuSystem::Api::Auto;
@@ -68,6 +75,29 @@ namespace AIHoloImager
                 D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
                 reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
                 if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
+                {
+                    return false;
+                }
+
+                return true;
+            }
+#endif
+#ifdef AIHI_ENABLE_VULKAN
+            case GpuSystem::Api::Vulkan:
+            {
+                VkPhysicalDeviceSubgroupProperties subgroup_properties{
+                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+                };
+
+                VkPhysicalDeviceProperties2 device_properties{
+                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                    .pNext = &subgroup_properties,
+                };
+
+                vkGetPhysicalDeviceProperties2(reinterpret_cast<VkPhysicalDevice>(device), &device_properties);
+
+                if (((subgroup_properties.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0) ||
+                    (subgroup_properties.subgroupSize < 16))
                 {
                     return false;
                 }

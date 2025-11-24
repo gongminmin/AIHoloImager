@@ -16,6 +16,9 @@ Texture2D pos_tex;
 
 SamplerState trilinear_sampler;
 
+#ifdef __spirv__
+[[vk::image_format("rgba8")]]
+#endif
 RWTexture2D<unorm float4> merged_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]

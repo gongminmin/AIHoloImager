@@ -13,7 +13,13 @@ cbuffer param_cb
     float scale;
 };
 
+#ifdef __spirv__
+[[vk::image_format("r16ui")]]
+#endif
 Buffer<uint32_t> edge_table;
+#ifdef __spirv__
+[[vk::image_format("r16ui")]]
+#endif
 Buffer<uint32_t> triangle_table;
 Texture3D<float4> scalar_deformation;
 Buffer<uint32_t> non_empty_cube_ids;

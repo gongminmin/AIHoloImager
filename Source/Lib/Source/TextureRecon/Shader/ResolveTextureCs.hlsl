@@ -10,6 +10,9 @@ cbuffer param_cb
 
 Texture2D accum_color_tex;
 
+#ifdef __spirv__
+[[vk::image_format("rgba8")]]
+#endif
 RWTexture2D<unorm float4> color_tex;
 
 [numthreads(BlockDim, BlockDim, 1)]

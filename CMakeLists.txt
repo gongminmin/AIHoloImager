@@ -37,6 +37,7 @@ option(AIHI_KEEP_INTERMEDIATES "Keep intermediate results" OFF)
 if(ai_holo_imager_platform_windows)
     option(AIHI_ENABLE_D3D12 "Enable D3D12" ON)
 endif()
+option(AIHI_ENABLE_VULKAN "Enable Vulkan" ON)
 
 # 3.13.4 has issues with lib name. See https://github.com/python/cpython/issues/135151
 find_package(Python3 3.11...<3.13.4 COMPONENTS Interpreter Development.Embed REQUIRED)

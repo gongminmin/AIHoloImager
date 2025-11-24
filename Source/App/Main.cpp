@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
         ("D,device", "The computation device for inferencing (cuda or cpu; cuda by default).", cxxopts::value<std::string>())
         ("no-delight", "Disable image delighting.")
         ("gpu-debug", "Enable GPU system debugging information.")
-        ("api", "Select which API to use (auto or d3d12; auto by default).", cxxopts::value<std::string>())
+        ("api", "Select which API to use (auto, d3d12, or vulkan; auto by default).", cxxopts::value<std::string>())
         ("v,version", "Version.");
     // clang-format on
 
@@ -109,6 +109,10 @@ int main(int argc, char* argv[])
         if (api_name == "d3d12")
         {
             api = AIHoloImager::AIHoloImager::Api::D3D12;
+        }
+        else if (api_name == "vulkan")
+        {
+            api = AIHoloImager::AIHoloImager::Api::Vulkan;
         }
         else if (api_name == "auto")
         {

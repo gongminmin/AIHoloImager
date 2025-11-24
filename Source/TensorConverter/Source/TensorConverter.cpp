@@ -74,6 +74,9 @@ namespace AIHoloImager
                 case GpuSystem::Api::D3D12:
                     ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
                     break;
+                case GpuSystem::Api::Vulkan:
+                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::TimelineSemaphoreWin32;
+                    break;
 
                 default:
                     Unreachable("Invalid API");
@@ -418,6 +421,9 @@ namespace AIHoloImager
             case GpuSystem::Api::D3D12:
                 ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::D3D12Resource;
                 ext_mem_handle_desc.flags = MiniCudaRt::ExternalMemoryDedicated;
+                break;
+            case GpuSystem::Api::Vulkan:
+                ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::OpaqueWin32;
                 break;
 
             default:
