@@ -65,4 +65,7 @@ namespace AIHoloImager
     uint32_t FormatChannels(GpuFormat fmt);
     uint32_t FormatChannelSize(GpuFormat fmt);
     uint32_t NumPlanes(GpuFormat fmt) noexcept;
+
+    bool IsDepthStencilFormat(GpuFormat fmt) noexcept;
+    bool IsStencilFormat(GpuFormat fmt) noexcept;
 } // namespace AIHoloImager

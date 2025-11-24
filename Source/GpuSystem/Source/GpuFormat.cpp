@@ -188,4 +188,15 @@ namespace AIHoloImager
             return 1;
         }
     }
+
+    bool IsDepthStencilFormat(GpuFormat fmt) noexcept
+    {
+        return (fmt == GpuFormat::D16_UNorm) || (fmt == GpuFormat::D24_UNorm_S8_Uint) || (fmt == GpuFormat::D32_Float) ||
+               (fmt == GpuFormat::D32_Float_S8X24_Uint);
+    }
+
+    bool IsStencilFormat(GpuFormat fmt) noexcept
+    {
+        return (fmt == GpuFormat::D24_UNorm_S8_Uint) || (fmt == GpuFormat::D32_Float_S8X24_Uint);
+    }
 } // namespace AIHoloImager

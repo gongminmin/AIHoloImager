@@ -18,9 +18,15 @@ namespace AIHoloImager
             Cpu,
             Cuda,
         };
+        enum class Api
+        {
+            D3D12,
+
+            Auto,
+        };
 
     public:
-        AIHoloImager(DeviceType device, const std::filesystem::path& tmp_dir, bool gpu_debug = false);
+        AIHoloImager(DeviceType device, Api api, const std::filesystem::path& tmp_dir, bool gpu_debug = false);
         AIHoloImager(const AIHoloImager& rhs) = delete;
         AIHoloImager(AIHoloImager&& rhs) noexcept;
         ~AIHoloImager() noexcept;

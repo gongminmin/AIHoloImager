@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
         ("D,device", "The computation device for inferencing (cuda or cpu; cuda by default).", cxxopts::value<std::string>())
         ("no-delight", "Disable image delighting.")
         ("gpu-debug", "Enable GPU system debugging information.")
+        ("api", "Select which API to use (auto or d3d12; auto by default).", cxxopts::value<std::string>())
         ("v,version", "Version.");
     // clang-format on
 
@@ -99,6 +100,27 @@ int main(int argc, char* argv[])
     const bool no_delight = (vm.count("no-delight") > 0);
     const bool gpu_debug = (vm.count("gpu-debug") > 0);
 
+    auto api = AIHoloImager::AIHoloImager::Api::Auto;
+    if (vm.count("api") > 0)
+    {
+        std::string api_name = vm["api"].as<std::string>();
+        std::transform(api_name.begin(), api_name.end(), api_name.begin(), [](char c) { return static_cast<char>(std::tolower(c)); });
+
+        if (api_name == "d3d12")
+        {
+            api = AIHoloImager::AIHoloImager::Api::D3D12;
+        }
+        else if (api_name == "auto")
+        {
+            api = AIHoloImager::AIHoloImager::Api::Auto;
+        }
+        else
+        {
+            std::cerr << std::format("ERROR: Unsupported API {}. Use auto or d3d12.\n", api_name);
+            return 1;
+        }
+    }
+
     std::filesystem::create_directories(output_path.parent_path());
 
     const auto tmp_dir = output_path.parent_path() / "Tmp";
@@ -108,7 +130,7 @@ int main(int argc, char* argv[])
 
     try
     {
-        AIHoloImager::AIHoloImager imager(device, tmp_dir, gpu_debug);
+        AIHoloImager::AIHoloImager imager(device, api, tmp_dir, gpu_debug);
         const AIHoloImager::Mesh mesh = imager.Generate(input_path, 2048, no_delight);
         AIHoloImager::SaveMesh(mesh, output_path);
 

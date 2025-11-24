@@ -106,7 +106,7 @@ add_library(AIHoloImagerGpuSystem STATIC
 
 if(enable_d3d12)
     target_compile_definitions(AIHoloImagerGpuSystem
-        PRIVATE
+        PUBLIC
             AIHI_ENABLE_D3D12
     )
 endif()

@@ -24,8 +24,6 @@ namespace AIHoloImager
         using BufferType = ID3D12Resource*;
         using TextureType = ID3D12Resource*;
 
-        using DescriptorHeapType = ID3D12DescriptorHeap*;
-
         using SharedHandleType = HANDLE;
     };
 } // namespace AIHoloImager

@@ -3,7 +3,11 @@
 
 #include "GpuSystemInternalFactory.hpp"
 
-#include "D3D12/D3D12System.hpp"
+#include "Base/ErrorHandling.hpp"
+
+#ifdef AIHI_ENABLE_D3D12
+    #include "D3D12/D3D12System.hpp"
+#endif
 
 namespace AIHoloImager
 {
@@ -12,8 +16,10 @@ namespace AIHoloImager
     {
         switch (api)
         {
+#ifdef AIHI_ENABLE_D3D12
         case GpuSystem::Api::D3D12:
             return std::make_unique<D3D12System>(gpu_system, std::move(confirm_device), enable_sharing, enable_debug);
+#endif
 
         default:
             Unreachable("Invalid API");
