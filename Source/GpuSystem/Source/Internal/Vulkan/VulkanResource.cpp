@@ -21,7 +21,6 @@ namespace AIHoloImager
     }
 
     VulkanResource::VulkanResource(VulkanResource&& other) noexcept = default;
-
     VulkanResource& VulkanResource::operator=(VulkanResource&& other) noexcept = default;
 
     void VulkanResource::CreateMemory(GpuResourceType type, const VkMemoryRequirements& requirements, GpuHeap heap, GpuResourceFlag flags)
@@ -39,18 +38,10 @@ namespace AIHoloImager
         };
 
         VkExportMemoryAllocateInfo export_mem_alloc_info;
-        VkExportMemoryWin32HandleInfoKHR export_mem_win32_handle_info;
         if (EnumHasAny(flags, GpuResourceFlag::Shareable))
         {
-            export_mem_win32_handle_info = {
-                .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR,
-                .pAttributes = nullptr,
-                .dwAccess = GENERIC_ALL,
-                .name = nullptr,
-            };
             export_mem_alloc_info = {
                 .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
-                .pNext = &export_mem_win32_handle_info,
                 .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT,
             };
 

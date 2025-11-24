@@ -17,7 +17,6 @@ namespace AIHoloImager
     {
     public:
         D3D12Buffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name);
-        D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name);
         ~D3D12Buffer() override;
 
         D3D12Buffer(D3D12Buffer&& other) noexcept;

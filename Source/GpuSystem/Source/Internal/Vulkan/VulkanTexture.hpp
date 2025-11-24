@@ -21,7 +21,6 @@ namespace AIHoloImager
     public:
         VulkanTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
             uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name);
-        VulkanTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name);
         ~VulkanTexture() noexcept;
 
         VulkanTexture(VulkanTexture&& other) noexcept;

@@ -44,12 +44,12 @@ namespace AIHoloImager
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        vkAllocateCommandBuffers(vulkan_device, &command_buff_allocate_info, &cmd_buff_);
+        TIFVK(vkAllocateCommandBuffers(vulkan_device, &command_buff_allocate_info, &cmd_buff_));
 
         const VkCommandBufferBeginInfo cmd_buff_begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         };
-        vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info);
+        TIFVK(vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info));
 
         vulkan_cmd_alloc_info.RegisterAllocatedCommandBuffer(cmd_buff_);
     }
@@ -857,12 +857,12 @@ namespace AIHoloImager
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
-        vkAllocateCommandBuffers(vulkan_device, &command_buff_allocate_info, &cmd_buff_);
+        TIFVK(vkAllocateCommandBuffers(vulkan_device, &command_buff_allocate_info, &cmd_buff_));
 
         const VkCommandBufferBeginInfo cmd_buff_begin_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         };
-        vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info);
+        TIFVK(vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info));
 
         vulkan_cmd_alloc_info.RegisterAllocatedCommandBuffer(cmd_buff_);
         closed_ = false;

@@ -64,39 +64,6 @@ namespace AIHoloImager
         this->Name(std::move(name));
     }
 
-    VulkanTexture::VulkanTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
-        : VulkanResource(gpu_system), texture_(VulkanImp(gpu_system), reinterpret_cast<VkImage>(native_resource))
-    {
-        if (texture_.Object() != VK_NULL_HANDLE)
-        {
-            // desc_ = resource_->GetDesc();
-            this->Name(std::move(name));
-
-            /*switch (desc_.Dimension)
-            {
-            case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-                if (desc_.DepthOrArraySize > 1)
-                {
-                    type_ = GpuResourceType::Texture2DArray;
-                }
-                else
-                {
-                    type_ = GpuResourceType::Texture2D;
-                }
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-                type_ = GpuResourceType::Texture3D;
-                break;
-            default:
-                Unreachable("Invalid resource dimension");
-            }*/
-
-            curr_layouts_.assign(this->MipLevels() * this->Planes(), ToVulkanImageLayout(curr_state));
-            format_ = this->Format();
-            flags_ = this->Flags();
-        }
-    }
-
     VulkanTexture::~VulkanTexture() = default;
 
     VulkanTexture::VulkanTexture(VulkanTexture&& other) noexcept = default;

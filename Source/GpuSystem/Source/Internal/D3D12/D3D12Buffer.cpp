@@ -28,16 +28,6 @@ namespace AIHoloImager
     {
         this->CreateResource(GpuResourceType::Buffer, size, 1, 1, 1, 1, GpuFormat::Unknown, heap_, flags, curr_state_, std::move(name));
     }
-    D3D12Buffer::D3D12Buffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
-        : D3D12Resource(gpu_system, native_resource, std::move(name)), curr_state_(curr_state)
-    {
-        if (native_resource != nullptr)
-        {
-            D3D12_HEAP_PROPERTIES heap_prop;
-            this->Resource()->GetHeapProperties(&heap_prop, nullptr);
-            heap_ = FromD3D12HeapType(heap_prop.Type);
-        }
-    }
 
     D3D12Buffer::~D3D12Buffer() = default;
 

@@ -543,12 +543,14 @@ namespace AIHoloImager
         auto d3d12_viewports = std::make_unique<D3D12_VIEWPORT[]>(viewports.size());
         for (size_t i = 0; i < viewports.size(); ++i)
         {
-            d3d12_viewports[i].TopLeftX = viewports[i].left;
-            d3d12_viewports[i].TopLeftY = viewports[i].top;
-            d3d12_viewports[i].Width = viewports[i].width;
-            d3d12_viewports[i].Height = viewports[i].height;
-            d3d12_viewports[i].MinDepth = viewports[i].min_depth;
-            d3d12_viewports[i].MaxDepth = viewports[i].max_depth;
+            d3d12_viewports[i] = D3D12_VIEWPORT{
+                .TopLeftX = viewports[i].left,
+                .TopLeftY = viewports[i].top,
+                .Width = viewports[i].width,
+                .Height = viewports[i].height,
+                .MinDepth = viewports[i].min_depth,
+                .MaxDepth = viewports[i].max_depth,
+            };
         }
         d3d12_cmd_list->RSSetViewports(static_cast<uint32_t>(viewports.size()), d3d12_viewports.get());
 

@@ -68,7 +68,6 @@ namespace AIHoloImager
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
             uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
-        GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
 
     private:
         class Impl;
@@ -83,7 +82,6 @@ namespace AIHoloImager
         GpuTexture2D() noexcept;
         GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags,
             std::string_view name = "");
-        GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture2D() override;
 
         GpuTexture2D(GpuTexture2D&& other) noexcept;
@@ -98,7 +96,6 @@ namespace AIHoloImager
         GpuTexture2DArray() noexcept;
         GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
             GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
-        GpuTexture2DArray(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture2DArray() override;
 
         GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
@@ -113,7 +110,6 @@ namespace AIHoloImager
         GpuTexture3D() noexcept;
         GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, GpuFormat format,
             GpuResourceFlag flags, std::string_view name = "");
-        GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name = "") noexcept;
         ~GpuTexture3D() override;
 
         GpuTexture3D(GpuTexture3D&& other) noexcept;

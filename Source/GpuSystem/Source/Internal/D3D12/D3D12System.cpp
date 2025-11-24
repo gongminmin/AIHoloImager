@@ -601,22 +601,12 @@ namespace AIHoloImager
     {
         return std::make_unique<D3D12Buffer>(*gpu_system_, size, heap, flags, std::move(name));
     }
-    std::unique_ptr<GpuBufferInternal> D3D12System::CreateBuffer(
-        void* native_resource, GpuResourceState curr_state, std::string_view name) const
-    {
-        return std::make_unique<D3D12Buffer>(*gpu_system_, native_resource, curr_state, std::move(name));
-    }
 
     std::unique_ptr<GpuTextureInternal> D3D12System::CreateTexture(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name) const
     {
         return std::make_unique<D3D12Texture>(
             *gpu_system_, type, width, height, depth, array_size, mip_levels, format, flags, std::move(name));
-    }
-    std::unique_ptr<GpuTextureInternal> D3D12System::CreateTexture(
-        void* native_resource, GpuResourceState curr_state, std::string_view name) const
-    {
-        return std::make_unique<D3D12Texture>(*gpu_system_, native_resource, curr_state, std::move(name));
     }
 
     std::unique_ptr<GpuStaticSamplerInternal> D3D12System::CreateStaticSampler(

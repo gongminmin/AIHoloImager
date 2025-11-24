@@ -39,16 +39,6 @@ namespace AIHoloImager
             type, width, height, depth, array_size, mip_levels, format, GpuHeap::Default, flags, curr_states_[0], std::move(name));
     }
 
-    D3D12Texture::D3D12Texture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
-        : D3D12Resource(gpu_system, native_resource, std::move(name))
-    {
-        if (this->NativeResource() != nullptr)
-        {
-            curr_states_.assign(this->MipLevels() * this->Planes(), curr_state);
-            format_ = this->D3D12Resource::Format();
-        }
-    }
-
     D3D12Texture::~D3D12Texture() = default;
 
     D3D12Texture::D3D12Texture(D3D12Texture&& other) noexcept = default;

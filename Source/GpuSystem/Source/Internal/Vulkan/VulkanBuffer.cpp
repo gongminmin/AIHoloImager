@@ -78,18 +78,6 @@ namespace AIHoloImager
 
         this->Name(std::move(name));
     }
-    VulkanBuffer::VulkanBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
-        : VulkanResource(gpu_system), buff_(VulkanImp(gpu_system), reinterpret_cast<VkBuffer>(native_resource)), curr_state_(curr_state)
-    {
-        if (buff_.Object() != VK_NULL_HANDLE)
-        {
-            this->Name(std::move(name));
-
-            /*D3D12_HEAP_PROPERTIES heap_prop;
-            static_cast<ID3D12Resource*>(native_resource)->GetHeapProperties(&heap_prop, nullptr);
-            heap_ = FromD3D12HeapType(heap_prop.Type);*/
-        }
-    }
 
     VulkanBuffer::~VulkanBuffer() = default;
 

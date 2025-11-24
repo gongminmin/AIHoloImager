@@ -25,11 +25,6 @@ namespace AIHoloImager
         static_assert(sizeof(Impl) == sizeof(GpuBufferInternal));
     }
 
-    GpuBuffer::GpuBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name)
-        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateBuffer(native_resource, curr_state, std::move(name)).release()))
-    {
-    }
-
     GpuBuffer::~GpuBuffer() = default;
 
     GpuBuffer::GpuBuffer(GpuBuffer&& other) noexcept = default;

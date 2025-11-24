@@ -20,7 +20,6 @@ namespace AIHoloImager
     {
     public:
         VulkanBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name);
-        VulkanBuffer(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name);
         ~VulkanBuffer() override;
 
         VulkanBuffer(VulkanBuffer&& other) noexcept;

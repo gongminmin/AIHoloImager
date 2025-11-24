@@ -243,7 +243,12 @@ namespace AIHoloImager
         }
 
         const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
-            num_root_params, root_params.get(), static_cast<uint32_t>(static_samplers.size()), d3d12_static_samplers.get(), flags};
+            .NumParameters = num_root_params,
+            .pParameters = root_params.get(),
+            .NumStaticSamplers = static_cast<uint32_t>(static_samplers.size()),
+            .pStaticSamplers = d3d12_static_samplers.get(),
+            .Flags = flags,
+        };
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;
@@ -532,8 +537,13 @@ namespace AIHoloImager
             d3d12_static_samplers[i] = D3D12Imp(static_samplers[i]).SamplerDesc(i);
         }
 
-        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {num_root_params, root_params.get(),
-            static_cast<uint32_t>(static_samplers.size()), d3d12_static_samplers.get(), D3D12_ROOT_SIGNATURE_FLAG_NONE};
+        const D3D12_ROOT_SIGNATURE_DESC root_signature_desc = {
+            .NumParameters = num_root_params,
+            .pParameters = root_params.get(),
+            .NumStaticSamplers = static_cast<uint32_t>(static_samplers.size()),
+            .pStaticSamplers = d3d12_static_samplers.get(),
+            .Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE,
+        };
 
         ComPtr<ID3DBlob> blob;
         ComPtr<ID3DBlob> error;

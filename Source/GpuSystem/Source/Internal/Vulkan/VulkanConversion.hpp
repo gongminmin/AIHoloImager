@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <tuple>
+
 #include <volk.h>
 
 #include "Gpu/GpuFormat.hpp"

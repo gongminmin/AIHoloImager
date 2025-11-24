@@ -56,11 +56,6 @@ namespace AIHoloImager
         static_assert(sizeof(Impl) == sizeof(GpuTextureInternal));
     }
 
-    GpuTexture::GpuTexture(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
-        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateTexture(native_resource, curr_state, std::move(name)).release()))
-    {
-    }
-
     GpuTexture::~GpuTexture() = default;
 
     GpuTexture::GpuTexture(GpuTexture&& other) noexcept = default;
@@ -176,11 +171,6 @@ namespace AIHoloImager
     {
     }
 
-    GpuTexture2D::GpuTexture2D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
-        : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
-    {
-    }
-
     GpuTexture2D::~GpuTexture2D() = default;
 
     GpuTexture2D::GpuTexture2D(GpuTexture2D&& other) noexcept = default;
@@ -195,12 +185,6 @@ namespace AIHoloImager
     {
     }
 
-    GpuTexture2DArray::GpuTexture2DArray(
-        GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
-        : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
-    {
-    }
-
     GpuTexture2DArray::~GpuTexture2DArray() = default;
 
     GpuTexture2DArray::GpuTexture2DArray(GpuTexture2DArray&& other) noexcept = default;
@@ -212,11 +196,6 @@ namespace AIHoloImager
     GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels,
         GpuFormat format, GpuResourceFlag flags, std::string_view name)
         : GpuTexture(gpu_system, GpuResourceType::Texture3D, width, height, depth, 1, mip_levels, format, flags, std::move(name))
-    {
-    }
-
-    GpuTexture3D::GpuTexture3D(GpuSystem& gpu_system, void* native_resource, GpuResourceState curr_state, std::string_view name) noexcept
-        : GpuTexture(gpu_system, native_resource, curr_state, std::move(name))
     {
     }
 

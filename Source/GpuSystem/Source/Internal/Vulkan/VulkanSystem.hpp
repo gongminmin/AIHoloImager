@@ -84,8 +84,6 @@ namespace AIHoloImager
         void Recycle(VkDeviceMemory memory);
         void Recycle(VkRenderPass render_pass);
 
-        // ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
-
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
 
         VkDescriptorSet AllocDescSet(VkDescriptorSetLayout layout);
@@ -93,13 +91,9 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
             uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const override;
-        std::unique_ptr<GpuBufferInternal> CreateBuffer(
-            void* native_resource, GpuResourceState curr_state, std::string_view name) const override;
 
         std::unique_ptr<GpuTextureInternal> CreateTexture(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
             uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name) const override;
-        std::unique_ptr<GpuTextureInternal> CreateTexture(
-            void* native_resource, GpuResourceState curr_state, std::string_view name) const override;
 
         std::unique_ptr<GpuStaticSamplerInternal> CreateStaticSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;

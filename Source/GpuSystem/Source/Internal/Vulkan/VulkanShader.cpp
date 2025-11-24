@@ -371,7 +371,7 @@ namespace AIHoloImager
 
     void VulkanRenderPipeline::Bind(VulkanCommandList& cmd_list) const
     {
-        VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
+        const VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
         vkCmdBindPipeline(cmd_buff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.Object());
     }
 
@@ -563,7 +563,7 @@ namespace AIHoloImager
 
     void VulkanComputePipeline::Bind(VulkanCommandList& cmd_list) const
     {
-        VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
+        const VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
         vkCmdBindPipeline(cmd_buff, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_.Object());
     }
 
