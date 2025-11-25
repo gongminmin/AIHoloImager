@@ -21,7 +21,7 @@ namespace AIHoloImager
     class D3D12CommandList : public GpuCommandListInternal
     {
     public:
-        D3D12CommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type);
+        D3D12CommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type);
         ~D3D12CommandList() override;
 
         D3D12CommandList(D3D12CommandList&& other) noexcept;
@@ -81,11 +81,11 @@ namespace AIHoloImager
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
 
         void Close() override;
-        void Reset(GpuCommandAllocatorInfo& cmd_alloc_info) override;
+        void Reset(GpuCommandPool& cmd_pool) override;
 
-        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept override
+        GpuCommandPool* CommandPool() noexcept
         {
-            return cmd_alloc_info_;
+            return cmd_pool_;
         }
 
     private:
@@ -94,7 +94,7 @@ namespace AIHoloImager
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        GpuCommandAllocatorInfo* cmd_alloc_info_ = nullptr;
+        GpuCommandPool* cmd_pool_ = nullptr;
 
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         ComPtr<ID3D12CommandList> cmd_list_;

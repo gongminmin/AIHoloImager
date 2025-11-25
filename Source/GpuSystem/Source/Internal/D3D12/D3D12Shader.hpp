@@ -34,7 +34,7 @@ namespace AIHoloImager
     {
     public:
         D3D12RenderPipeline(GpuSystem& gpu_system, GpuRenderPipeline::PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
-            const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+            const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
             const GpuRenderPipeline::States& states);
         ~D3D12RenderPipeline() override;
 

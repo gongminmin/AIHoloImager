@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
-#include "VulkanVertexAttrib.hpp"
+#include "VulkanVertexLayout.hpp"
 
 #include <map>
 
@@ -11,9 +11,9 @@
 
 namespace AIHoloImager
 {
-    VULKAN_IMP_IMP(VertexAttribs)
+    VULKAN_IMP_IMP(VertexLayout)
 
-    VulkanVertexAttribs::VulkanVertexAttribs(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
+    VulkanVertexLayout::VulkanVertexLayout(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
         : input_attribs_(attribs.size())
     {
         std::map<uint32_t, uint32_t> slot_size;
@@ -78,44 +78,44 @@ namespace AIHoloImager
         }
     }
 
-    VulkanVertexAttribs::~VulkanVertexAttribs() = default;
+    VulkanVertexLayout::~VulkanVertexLayout() = default;
 
-    VulkanVertexAttribs::VulkanVertexAttribs(const VulkanVertexAttribs& other) = default;
-    VulkanVertexAttribs::VulkanVertexAttribs(const GpuVertexAttribsInternal& other)
-        : VulkanVertexAttribs(static_cast<const VulkanVertexAttribs&>(other))
+    VulkanVertexLayout::VulkanVertexLayout(const VulkanVertexLayout& other) = default;
+    VulkanVertexLayout::VulkanVertexLayout(const GpuVertexLayoutInternal& other)
+        : VulkanVertexLayout(static_cast<const VulkanVertexLayout&>(other))
     {
     }
 
-    VulkanVertexAttribs& VulkanVertexAttribs::operator=(const VulkanVertexAttribs& other) = default;
-    GpuVertexAttribsInternal& VulkanVertexAttribs::operator=(const GpuVertexAttribsInternal& other)
+    VulkanVertexLayout& VulkanVertexLayout::operator=(const VulkanVertexLayout& other) = default;
+    GpuVertexLayoutInternal& VulkanVertexLayout::operator=(const GpuVertexLayoutInternal& other)
     {
-        return this->operator=(static_cast<const VulkanVertexAttribs&>(other));
+        return this->operator=(static_cast<const VulkanVertexLayout&>(other));
     }
 
-    VulkanVertexAttribs::VulkanVertexAttribs(VulkanVertexAttribs&& other) noexcept = default;
-    VulkanVertexAttribs::VulkanVertexAttribs(GpuVertexAttribsInternal&& other) noexcept
-        : VulkanVertexAttribs(static_cast<VulkanVertexAttribs&&>(other))
+    VulkanVertexLayout::VulkanVertexLayout(VulkanVertexLayout&& other) noexcept = default;
+    VulkanVertexLayout::VulkanVertexLayout(GpuVertexLayoutInternal&& other) noexcept
+        : VulkanVertexLayout(static_cast<VulkanVertexLayout&&>(other))
     {
     }
 
-    VulkanVertexAttribs& VulkanVertexAttribs::operator=(VulkanVertexAttribs&& other) noexcept = default;
-    GpuVertexAttribsInternal& VulkanVertexAttribs::operator=(GpuVertexAttribsInternal&& other) noexcept
+    VulkanVertexLayout& VulkanVertexLayout::operator=(VulkanVertexLayout&& other) noexcept = default;
+    GpuVertexLayoutInternal& VulkanVertexLayout::operator=(GpuVertexLayoutInternal&& other) noexcept
     {
-        return this->operator=(static_cast<VulkanVertexAttribs&&>(other));
+        return this->operator=(static_cast<VulkanVertexLayout&&>(other));
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> VulkanVertexAttribs::Clone() const
+    std::unique_ptr<GpuVertexLayoutInternal> VulkanVertexLayout::Clone() const
     {
-        return std::make_unique<VulkanVertexAttribs>(*this);
+        return std::make_unique<VulkanVertexLayout>(*this);
     }
 
-    std::span<const VkVertexInputBindingDescription> VulkanVertexAttribs::InputBindings() const
+    std::span<const VkVertexInputBindingDescription> VulkanVertexLayout::InputBindings() const
     {
-        return std::span(input_bindings_);
+        return input_bindings_;
     }
 
-    std::span<const VkVertexInputAttributeDescription> VulkanVertexAttribs::InputAttribs() const
+    std::span<const VkVertexInputAttributeDescription> VulkanVertexLayout::InputAttribs() const
     {
-        return std::span(input_attribs_);
+        return input_attribs_;
     }
 } // namespace AIHoloImager

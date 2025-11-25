@@ -16,8 +16,8 @@
 #include "Gpu/GpuCommandList.hpp"
 
 #include "D3D12Buffer.hpp"
-#include "D3D12CommandAllocatorInfo.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12CommandPool.hpp"
 #include "D3D12Conversion.hpp"
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12ImpDefine.hpp"
@@ -26,7 +26,7 @@
 #include "D3D12Shader.hpp"
 #include "D3D12Texture.hpp"
 #include "D3D12Util.hpp"
-#include "D3D12VertexAttrib.hpp"
+#include "D3D12VertexLayout.hpp"
 
 DEFINE_UUID_OF(IDXGIAdapter1);
 DEFINE_UUID_OF(IDXGIFactory4);
@@ -210,7 +210,7 @@ namespace AIHoloImager
         for (auto& cmd_queue : cmd_queues_)
         {
             cmd_queue.free_cmd_lists.clear();
-            cmd_queue.cmd_allocator_infos.clear();
+            cmd_queue.cmd_pools.clear();
             cmd_queue.cmd_queue = nullptr;
         }
 
@@ -265,17 +265,17 @@ namespace AIHoloImager
     GpuCommandList D3D12System::CreateCommandList(GpuSystem::CmdQueueType type)
     {
         GpuCommandList cmd_list;
-        auto& alloc_info = this->CurrentCommandAllocator(type);
+        auto& cmd_pool = this->CurrentCommandPool(type);
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         if (cmd_queue.free_cmd_lists.empty())
         {
-            cmd_list = GpuCommandList(*gpu_system_, alloc_info, type);
+            cmd_list = GpuCommandList(*gpu_system_, cmd_pool, type);
         }
         else
         {
             cmd_list = std::move(cmd_queue.free_cmd_lists.front());
             cmd_queue.free_cmd_lists.pop_front();
-            cmd_list.Reset(alloc_info);
+            cmd_list.Reset(cmd_pool);
         }
         return cmd_list;
     }
@@ -295,7 +295,7 @@ namespace AIHoloImager
     uint64_t D3D12System::ExecuteAndReset(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
-        cmd_list.Reset(this->CurrentCommandAllocator(cmd_list.Type()));
+        cmd_list.Reset(this->CurrentCommandPool(cmd_list.Type()));
         return new_fence_value;
     }
 
@@ -381,7 +381,7 @@ namespace AIHoloImager
         for (auto& cmd_queue : cmd_queues_)
         {
             cmd_queue.cmd_queue.Reset();
-            cmd_queue.cmd_allocator_infos.clear();
+            cmd_queue.cmd_pools.clear();
             cmd_queue.free_cmd_lists.clear();
         }
 
@@ -453,26 +453,26 @@ namespace AIHoloImager
         return cmd_queue;
     }
 
-    GpuCommandAllocatorInfo& D3D12System::CurrentCommandAllocator(GpuSystem::CmdQueueType type)
+    GpuCommandPool& D3D12System::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         const uint64_t completed_fence = fence_->GetCompletedValue();
-        for (auto& alloc : cmd_queue.cmd_allocator_infos)
+        for (auto& pool : cmd_queue.cmd_pools)
         {
-            auto& d3d12_alloc = D3D12Imp(*alloc);
-            if (d3d12_alloc.EmptyAllocatedCommandLists() && (d3d12_alloc.FenceValue() <= completed_fence))
+            auto& d3d12_pool = D3D12Imp(*pool);
+            if (d3d12_pool.EmptyAllocatedCommandLists() && (d3d12_pool.FenceValue() <= completed_fence))
             {
-                d3d12_alloc.CmdAllocator()->Reset();
-                return *alloc;
+                d3d12_pool.CmdAllocator()->Reset();
+                return *pool;
             }
         }
 
-        return *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*gpu_system_, type));
+        return *cmd_queue.cmd_pools.emplace_back(std::make_unique<GpuCommandPool>(*gpu_system_, type));
     }
 
     uint64_t D3D12System::ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value)
     {
-        auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
+        auto& cmd_pool = *cmd_list.CommandPool();
         cmd_list.Close();
 
         ID3D12CommandQueue* cmd_queue = this->GetOrCreateCommandQueue(cmd_list.Type()).cmd_queue.Get();
@@ -489,7 +489,7 @@ namespace AIHoloImager
         TIFHR(cmd_queue->Signal(fence_.Get(), curr_fence_value));
         fence_val_ = curr_fence_value + 1;
 
-        D3D12Imp(cmd_alloc_info).FenceValue(fence_val_);
+        D3D12Imp(cmd_pool).FenceValue(fence_val_);
 
         this->ClearStallResources();
 
@@ -621,10 +621,10 @@ namespace AIHoloImager
         return std::make_unique<D3D12DynamicSampler>(*gpu_system_, filters, addr_modes);
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> D3D12System::CreateVertexAttribs(
+    std::unique_ptr<GpuVertexLayoutInternal> D3D12System::CreateVertexLayout(
         std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const
     {
-        return std::make_unique<D3D12VertexAttribs>(std::move(attribs), std::move(slot_strides));
+        return std::make_unique<D3D12VertexLayout>(std::move(attribs), std::move(slot_strides));
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> D3D12System::CreateShaderResourceView(
@@ -698,11 +698,11 @@ namespace AIHoloImager
     }
 
     std::unique_ptr<GpuRenderPipelineInternal> D3D12System::CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
-        std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+        std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states) const
     {
         return std::make_unique<D3D12RenderPipeline>(
-            *gpu_system_, topology, std::move(shaders), vertex_attribs, std::move(static_samplers), states);
+            *gpu_system_, topology, std::move(shaders), vertex_layout, std::move(static_samplers), states);
     }
 
     std::unique_ptr<GpuComputePipelineInternal> D3D12System::CreateComputePipeline(
@@ -711,15 +711,14 @@ namespace AIHoloImager
         return std::make_unique<D3D12ComputePipeline>(*gpu_system_, shader, std::move(static_samplers));
     }
 
-    std::unique_ptr<GpuCommandAllocatorInfoInternal> D3D12System::CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const
+    std::unique_ptr<GpuCommandPoolInternal> D3D12System::CreateCommandPool(GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<D3D12CommandAllocatorInfo>(*gpu_system_, type);
+        return std::make_unique<D3D12CommandPool>(*gpu_system_, type);
     }
 
-    std::unique_ptr<GpuCommandListInternal> D3D12System::CreateCommandList(
-        GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const
+    std::unique_ptr<GpuCommandListInternal> D3D12System::CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_alloc_info, type);
+        return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_pool, type);
     }
 
     void D3D12System::DebugMessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id,

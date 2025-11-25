@@ -15,8 +15,8 @@ namespace AIHoloImager
     class GpuCommandList::Impl
     {
     public:
-        Impl(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
-            : gpu_system_(gpu_system), cmd_list_internal_(gpu_system.Internal().CreateCommandList(cmd_alloc_info, type))
+        Impl(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
+            : gpu_system_(gpu_system), cmd_list_internal_(gpu_system.Internal().CreateCommandList(cmd_pool, type))
         {
         }
 
@@ -37,8 +37,8 @@ namespace AIHoloImager
 
     GpuCommandList::GpuCommandList() noexcept = default;
 
-    GpuCommandList::GpuCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
-        : impl_(std::make_unique<Impl>(gpu_system, cmd_alloc_info, type))
+    GpuCommandList::GpuCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
+        : impl_(std::make_unique<Impl>(gpu_system, cmd_pool, type))
     {
     }
 
@@ -244,16 +244,10 @@ namespace AIHoloImager
         impl_->Internal().Close();
     }
 
-    void GpuCommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
+    void GpuCommandList::Reset(GpuCommandPool& cmd_pool)
     {
         assert(impl_);
-        impl_->Internal().Reset(cmd_alloc_info);
-    }
-
-    GpuCommandAllocatorInfo* GpuCommandList::CommandAllocatorInfo() noexcept
-    {
-        assert(impl_);
-        return impl_->Internal().CommandAllocatorInfo();
+        impl_->Internal().Reset(cmd_pool);
     }
 
     GpuCommandListInternal& GpuCommandList::Internal() noexcept

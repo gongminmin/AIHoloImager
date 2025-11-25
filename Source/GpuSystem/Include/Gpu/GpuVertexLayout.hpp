@@ -25,22 +25,22 @@ namespace AIHoloImager
     };
 
     class GpuSystem;
-    class GpuVertexAttribsInternal;
+    class GpuVertexLayoutInternal;
 
-    class GpuVertexAttribs
+    class GpuVertexLayout
     {
-        DEFINE_INTERNAL(GpuVertexAttribs)
+        DEFINE_INTERNAL(GpuVertexLayout)
 
     public:
-        GpuVertexAttribs() noexcept;
-        GpuVertexAttribs(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
-        ~GpuVertexAttribs() noexcept;
+        GpuVertexLayout() noexcept;
+        GpuVertexLayout(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
+        ~GpuVertexLayout() noexcept;
 
-        GpuVertexAttribs(const GpuVertexAttribs& other);
-        GpuVertexAttribs& operator=(const GpuVertexAttribs& other);
+        GpuVertexLayout(const GpuVertexLayout& other);
+        GpuVertexLayout& operator=(const GpuVertexLayout& other);
 
-        GpuVertexAttribs(GpuVertexAttribs&& other) noexcept;
-        GpuVertexAttribs& operator=(GpuVertexAttribs&& other) noexcept;
+        GpuVertexLayout(GpuVertexLayout&& other) noexcept;
+        GpuVertexLayout& operator=(GpuVertexLayout&& other) noexcept;
 
     private:
         class Impl;

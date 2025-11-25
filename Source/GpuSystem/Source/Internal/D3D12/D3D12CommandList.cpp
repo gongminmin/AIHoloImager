@@ -17,7 +17,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "D3D12Buffer.hpp"
-#include "D3D12CommandAllocatorInfo.hpp"
+#include "D3D12CommandPool.hpp"
 #include "D3D12Conversion.hpp"
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12Resource.hpp"
@@ -40,12 +40,12 @@ namespace AIHoloImager
 {
     D3D12_IMP_IMP(CommandList)
 
-    D3D12CommandList::D3D12CommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
-        : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
+    D3D12CommandList::D3D12CommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
+        : gpu_system_(&gpu_system), cmd_pool_(&cmd_pool), type_(type)
     {
         ID3D12Device* d3d12_device = D3D12Imp(*gpu_system_).Device();
-        auto& d3d12_cmd_alloc_info = D3D12Imp(cmd_alloc_info);
-        auto* cmd_allocator = d3d12_cmd_alloc_info.CmdAllocator();
+        auto& d3d12_cmd_pool = D3D12Imp(cmd_pool);
+        auto* cmd_allocator = d3d12_cmd_pool.CmdAllocator();
         switch (type)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -67,7 +67,7 @@ namespace AIHoloImager
             Unreachable("Invalid command queue type");
         }
 
-        d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
+        d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
     }
 
     D3D12CommandList::~D3D12CommandList()
@@ -374,11 +374,10 @@ namespace AIHoloImager
                     if (!srv_name.empty())
                     {
                         bool found = false;
-                        for (const auto& binding_srv : shader_binding.srvs)
+                        for (const auto& [binding_name, srv] : shader_binding.srvs)
                         {
-                            if (std::get<0>(binding_srv) == srv_name)
+                            if (binding_name == srv_name)
                             {
-                                const auto* srv = std::get<1>(binding_srv);
                                 if (srv != nullptr)
                                 {
                                     auto& d3d12_srv = D3D12Imp(*srv);
@@ -415,11 +414,10 @@ namespace AIHoloImager
                     if (!uav_name.empty())
                     {
                         bool found = false;
-                        for (const auto& binding_uav : shader_binding.uavs)
+                        for (const auto& [binding_name, uav] : shader_binding.uavs)
                         {
-                            if (std::get<0>(binding_uav) == uav_name)
+                            if (binding_name == uav_name)
                             {
-                                auto* uav = std::get<1>(binding_uav);
                                 if (uav != nullptr)
                                 {
                                     auto& d3d12_uav = D3D12Imp(*uav);
@@ -456,11 +454,10 @@ namespace AIHoloImager
                     if (!sampler_name.empty())
                     {
                         bool found = false;
-                        for (const auto& binding_sampler : shader_binding.samplers)
+                        for (const auto& [binding_name, sampler] : shader_binding.samplers)
                         {
-                            if (std::get<0>(binding_sampler) == sampler_name)
+                            if (binding_name == sampler_name)
                             {
-                                auto* sampler = std::get<1>(binding_sampler);
                                 if (sampler != nullptr)
                                 {
                                     auto sampler_cpu_handle =
@@ -489,11 +486,10 @@ namespace AIHoloImager
                 if (!cb_name.empty())
                 {
                     bool found = false;
-                    for (const auto& binding_cb : shader_binding.cbs)
+                    for (const auto& [binding_name, cb] : shader_binding.cbs)
                     {
-                        if (std::get<0>(binding_cb) == cb_name)
+                        if (binding_name == cb_name)
                         {
-                            auto* cb = std::get<1>(binding_cb);
                             if (cb != nullptr)
                             {
                                 const auto& mem_block = cb->MemBlock();
@@ -672,11 +668,10 @@ namespace AIHoloImager
                 if (!srv_name.empty())
                 {
                     bool found = false;
-                    for (const auto& binding_srv : shader_binding.srvs)
+                    for (const auto& [binding_name, srv] : shader_binding.srvs)
                     {
-                        if (std::get<0>(binding_srv) == srv_name)
+                        if (binding_name == srv_name)
                         {
-                            const auto* srv = std::get<1>(binding_srv);
                             if (srv != nullptr)
                             {
                                 auto& d3d12_srv = D3D12Imp(*srv);
@@ -712,11 +707,10 @@ namespace AIHoloImager
                 if (!uav_name.empty())
                 {
                     bool found = false;
-                    for (const auto& binding_uav : shader_binding.uavs)
+                    for (const auto& [binding_name, uav] : shader_binding.uavs)
                     {
-                        if (std::get<0>(binding_uav) == uav_name)
+                        if (binding_name == uav_name)
                         {
-                            const auto* uav = std::get<1>(binding_uav);
                             if (uav != nullptr)
                             {
                                 auto& d3d12_uav = D3D12Imp(*uav);
@@ -751,11 +745,10 @@ namespace AIHoloImager
                 if (!sampler_name.empty())
                 {
                     bool found = false;
-                    for (const auto& binding_sampler : shader_binding.samplers)
+                    for (const auto& [binding_name, sampler] : shader_binding.samplers)
                     {
-                        if (std::get<0>(binding_sampler) == sampler_name)
+                        if (binding_name == sampler_name)
                         {
-                            const auto* sampler = std::get<1>(binding_sampler);
                             if (sampler != nullptr)
                             {
                                 auto sampler_cpu_handle =
@@ -784,11 +777,10 @@ namespace AIHoloImager
             if (!cb_name.empty())
             {
                 bool found = false;
-                for (const auto& binding_cb : shader_binding.cbs)
+                for (const auto& [binding_name, cb] : shader_binding.cbs)
                 {
-                    if (std::get<0>(binding_cb) == cb_name)
+                    if (binding_name == cb_name)
                     {
-                        auto* cb = std::get<1>(binding_cb);
                         if (cb != nullptr)
                         {
                             const auto& mem_block = cb->MemBlock();
@@ -1088,16 +1080,16 @@ namespace AIHoloImager
         default:
             Unreachable("Invalid command queue type");
         }
-        D3D12Imp(*cmd_alloc_info_).UnregisterAllocatedCommandList(cmd_list_.Get());
+        D3D12Imp(*cmd_pool_).UnregisterAllocatedCommandList(cmd_list_.Get());
         closed_ = true;
-        cmd_alloc_info_ = nullptr;
+        cmd_pool_ = nullptr;
     }
 
-    void D3D12CommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
+    void D3D12CommandList::Reset(GpuCommandPool& cmd_pool)
     {
-        cmd_alloc_info_ = &cmd_alloc_info;
-        auto& d3d12_cmd_alloc_info = D3D12Imp(cmd_alloc_info);
-        auto* d3d12_cmd_alloc = d3d12_cmd_alloc_info.CmdAllocator();
+        cmd_pool_ = &cmd_pool;
+        auto& d3d12_cmd_pool = D3D12Imp(cmd_pool);
+        auto* d3d12_cmd_alloc = d3d12_cmd_pool.CmdAllocator();
         switch (type_)
         {
         case GpuSystem::CmdQueueType::Render:
@@ -1112,7 +1104,7 @@ namespace AIHoloImager
         default:
             Unreachable("Invalid command queue type");
         }
-        d3d12_cmd_alloc_info.RegisterAllocatedCommandList(cmd_list_.Get());
+        d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
         closed_ = false;
     }
 } // namespace AIHoloImager

@@ -14,7 +14,6 @@
 namespace AIHoloImager
 {
     class GpuSystemInternal;
-    class GpuSystemInternalFactory;
 
     class GpuSystem final
     {

@@ -47,11 +47,10 @@ macro(AddShaderFile file_name shader_type entry_point)
         list(GET shader_targets ${i} curr_target)
 
         set(output_name "${output_dir}/${curr_target}/${file_base_name}.h")
-        set(include_str "#include \"CompiledShader/${rel_dir}/${curr_target}/${file_base_name}.h\"\n")
         if(i EQUAL 0)
             file(WRITE ${common_header} "#pragma once\n")
         endif()
-        file(APPEND ${common_header} ${include_str})
+        file(APPEND ${common_header} "#include \"CompiledShader/${rel_dir}/${curr_target}/${file_base_name}.h\"\n")
         list(APPEND shader_output_names ${output_name})
     endforeach()
 
@@ -62,9 +61,11 @@ macro(AddShaderFile file_name shader_type entry_point)
 
         set(output_name "${output_dir}/${curr_target}/${file_base_name}.h")
         set(variable_name ${file_base_name}_${curr_target})
-        set(append_str )
-        if(i GREATER 0)
-            set(append_str "APPEND")
+        set(extra_opts )
+        if(i EQUAL 0)
+            set(extra_opts VERBATIM COMMAND_EXPAND_LISTS)
+        else()
+            set(extra_opts APPEND)
         endif()
         add_custom_command(OUTPUT ${shader_output_names}
             COMMAND "${AIHI_DXC_CMD}"
@@ -78,8 +79,7 @@ macro(AddShaderFile file_name shader_type entry_point)
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
             DEPENDS ${file_name} ${common_header}
-            VERBATIM COMMAND_EXPAND_LISTS
-            ${append_str}
+            ${extra_opts}
         )
     endforeach()
 endmacro()

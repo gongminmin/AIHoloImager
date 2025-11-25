@@ -110,7 +110,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuDynamicSamplerInternal> CreateDynamicSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;
 
-        std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(
+        std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
             std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const override;
 
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
@@ -140,27 +140,26 @@ namespace AIHoloImager
             GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const override;
 
         std::unique_ptr<GpuRenderPipelineInternal> CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
-            std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+            std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
             const GpuRenderPipeline::States& states) const override;
         std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const override;
 
-        std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const override;
+        std::unique_ptr<GpuCommandPoolInternal> CreateCommandPool(GpuSystem::CmdQueueType type) const override;
 
-        std::unique_ptr<GpuCommandListInternal> CreateCommandList(
-            GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const override;
+        std::unique_ptr<GpuCommandListInternal> CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const override;
 
     private:
         struct CmdQueue
         {
             ComPtr<ID3D12CommandQueue> cmd_queue;
-            std::vector<std::unique_ptr<GpuCommandAllocatorInfo>> cmd_allocator_infos;
+            std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
         };
 
     private:
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
-        GpuCommandAllocatorInfo& CurrentCommandAllocator(GpuSystem::CmdQueueType type);
+        GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
         static void DebugMessageCallback(
             D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context);

@@ -7,25 +7,25 @@
 
 #include <volk.h>
 
-#include "Gpu/GpuCommandAllocatorInfo.hpp"
+#include "Gpu/GpuCommandPool.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "../GpuCommandAllocatorInfoInternal.hpp"
+#include "../GpuCommandPoolInternal.hpp"
 #include "VulkanImpDefine.hpp"
 #include "VulkanUtil.hpp"
 
 namespace AIHoloImager
 {
-    class VulkanCommandAllocatorInfo : public GpuCommandAllocatorInfoInternal
+    class VulkanCommandPool : public GpuCommandPoolInternal
     {
     public:
-        VulkanCommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
-        ~VulkanCommandAllocatorInfo() noexcept override;
+        VulkanCommandPool(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
+        ~VulkanCommandPool() noexcept override;
 
-        VulkanCommandAllocatorInfo(VulkanCommandAllocatorInfo&& other) noexcept;
-        explicit VulkanCommandAllocatorInfo(GpuCommandAllocatorInfoInternal&& other) noexcept;
-        VulkanCommandAllocatorInfo& operator=(VulkanCommandAllocatorInfo&& other) noexcept;
-        GpuCommandAllocatorInfoInternal& operator=(GpuCommandAllocatorInfoInternal&& other) noexcept override;
+        VulkanCommandPool(VulkanCommandPool&& other) noexcept;
+        explicit VulkanCommandPool(GpuCommandPoolInternal&& other) noexcept;
+        VulkanCommandPool& operator=(VulkanCommandPool&& other) noexcept;
+        GpuCommandPoolInternal& operator=(GpuCommandPoolInternal&& other) noexcept override;
 
         VkCommandPool CmdAllocator() const noexcept;
 
@@ -43,5 +43,5 @@ namespace AIHoloImager
         std::list<VkCommandBuffer> allocated_cmd_buffs_;
     };
 
-    VULKAN_DEFINE_IMP(CommandAllocatorInfo)
+    VULKAN_DEFINE_IMP(CommandPool)
 } // namespace AIHoloImager

@@ -10,8 +10,8 @@ endif()
 
 set(aihi_gpu_system_files
     Include/Gpu/GpuBuffer.hpp
-    Include/Gpu/GpuCommandAllocatorInfo.hpp
     Include/Gpu/GpuCommandList.hpp
+    Include/Gpu/GpuCommandPool.hpp
     Include/Gpu/GpuConstantBuffer.hpp
     Include/Gpu/GpuFormat.hpp
     Include/Gpu/GpuMemoryAllocator.hpp
@@ -22,14 +22,14 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuShader.hpp
     Include/Gpu/GpuSystem.hpp
     Include/Gpu/GpuTexture.hpp
-    Include/Gpu/GpuVertexAttrib.hpp
+    Include/Gpu/GpuVertexLayout.hpp
     Include/Gpu/InternalDefine.hpp
     Source/Internal/GpuBufferInternal.cpp
     Source/Internal/GpuBufferInternal.hpp
-    Source/Internal/GpuCommandAllocatorInfoInternal.cpp
-    Source/Internal/GpuCommandAllocatorInfoInternal.hpp
     Source/Internal/GpuCommandListInternal.cpp
     Source/Internal/GpuCommandListInternal.hpp
+    Source/Internal/GpuCommandPoolInternal.cpp
+    Source/Internal/GpuCommandPoolInternal.hpp
     Source/Internal/GpuResourceInternal.cpp
     Source/Internal/GpuResourceInternal.hpp
     Source/Internal/GpuResourceViewsInternal.cpp
@@ -44,13 +44,13 @@ set(aihi_gpu_system_files
     Source/Internal/GpuSystemInternalFactory.hpp
     Source/Internal/GpuTextureInternal.cpp
     Source/Internal/GpuTextureInternal.hpp
-    Source/Internal/GpuVertexAttribInternal.cpp
-    Source/Internal/GpuVertexAttribInternal.hpp
+    Source/Internal/GpuVertexLayoutInternal.cpp
+    Source/Internal/GpuVertexLayoutInternal.hpp
     Source/Shader/GenMipmapCs.hlsl
     Source/Shader/Platform.hlslh
     Source/GpuBuffer.cpp
-    Source/GpuCommandAllocatorInfo.cpp
     Source/GpuCommandList.cpp
+    Source/GpuCommandPool.cpp
     Source/GpuConstantBuffer.cpp
     Source/GpuFormat.cpp
     Source/GpuMemoryAllocator.cpp
@@ -61,7 +61,7 @@ set(aihi_gpu_system_files
     Source/GpuShader.cpp
     Source/GpuSystem.cpp
     Source/GpuTexture.cpp
-    Source/GpuVertexAttrib.cpp
+    Source/GpuVertexLayout.cpp
     Source/InternalImp.hpp
     Source/pch.hpp
 )
@@ -70,10 +70,10 @@ if(enable_d3d12)
         Include/Gpu/D3D12/D3D12Traits.hpp
         Source/Internal/D3D12/D3D12Buffer.cpp
         Source/Internal/D3D12/D3D12Buffer.hpp
-        Source/Internal/D3D12/D3D12CommandAllocatorInfo.cpp
-        Source/Internal/D3D12/D3D12CommandAllocatorInfo.hpp
         Source/Internal/D3D12/D3D12CommandList.cpp
         Source/Internal/D3D12/D3D12CommandList.hpp
+        Source/Internal/D3D12/D3D12CommandPool.cpp
+        Source/Internal/D3D12/D3D12CommandPool.hpp
         Source/Internal/D3D12/D3D12Conversion.cpp
         Source/Internal/D3D12/D3D12Conversion.hpp
         Source/Internal/D3D12/D3D12DescriptorAllocator.cpp
@@ -95,8 +95,8 @@ if(enable_d3d12)
         Source/Internal/D3D12/D3D12Texture.hpp
         Source/Internal/D3D12/D3D12Util.cpp
         Source/Internal/D3D12/D3D12Util.hpp
-        Source/Internal/D3D12/D3D12VertexAttrib.cpp
-        Source/Internal/D3D12/D3D12VertexAttrib.hpp
+        Source/Internal/D3D12/D3D12VertexLayout.cpp
+        Source/Internal/D3D12/D3D12VertexLayout.hpp
     )
 endif()
 if(enable_vulkan)
@@ -104,10 +104,10 @@ if(enable_vulkan)
         Include/Gpu/Vulkan/VulkanTraits.hpp
         Source/Internal/Vulkan/VulkanBuffer.cpp
         Source/Internal/Vulkan/VulkanBuffer.hpp
-        Source/Internal/Vulkan/VulkanCommandAllocatorInfo.cpp
-        Source/Internal/Vulkan/VulkanCommandAllocatorInfo.hpp
         Source/Internal/Vulkan/VulkanCommandList.cpp
         Source/Internal/Vulkan/VulkanCommandList.hpp
+        Source/Internal/Vulkan/VulkanCommandPool.cpp
+        Source/Internal/Vulkan/VulkanCommandPool.hpp
         Source/Internal/Vulkan/VulkanConversion.cpp
         Source/Internal/Vulkan/VulkanConversion.hpp
         Source/Internal/Vulkan/VulkanDescriptorAllocator.cpp
@@ -128,8 +128,8 @@ if(enable_vulkan)
         Source/Internal/Vulkan/VulkanTexture.hpp
         Source/Internal/Vulkan/VulkanUtil.cpp
         Source/Internal/Vulkan/VulkanUtil.hpp
-        Source/Internal/Vulkan/VulkanVertexAttrib.cpp
-        Source/Internal/Vulkan/VulkanVertexAttrib.hpp
+        Source/Internal/Vulkan/VulkanVertexLayout.cpp
+        Source/Internal/Vulkan/VulkanVertexLayout.hpp
     )
 endif()
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})

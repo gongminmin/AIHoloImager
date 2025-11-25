@@ -55,8 +55,6 @@ namespace AIHoloImager
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) = 0;
 
         virtual void Close() = 0;
-        virtual void Reset(GpuCommandAllocatorInfo& cmd_alloc_info) = 0;
-
-        virtual GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept = 0;
+        virtual void Reset(GpuCommandPool& cmd_pool) = 0;
     };
 } // namespace AIHoloImager

@@ -12,14 +12,14 @@
 #include "Base/ErrorHandling.hpp"
 
 #include "VulkanBuffer.hpp"
-#include "VulkanCommandAllocatorInfo.hpp"
 #include "VulkanCommandList.hpp"
+#include "VulkanCommandPool.hpp"
 #include "VulkanErrorhandling.hpp"
 #include "VulkanResourceViews.hpp"
 #include "VulkanSampler.hpp"
 #include "VulkanShader.hpp"
 #include "VulkanTexture.hpp"
-#include "VulkanVertexAttrib.hpp"
+#include "VulkanVertexLayout.hpp"
 
 namespace AIHoloImager
 {
@@ -362,7 +362,7 @@ namespace AIHoloImager
             if (cmd_queue.cmd_queue != VK_NULL_HANDLE)
             {
                 cmd_queue.free_cmd_lists.clear();
-                cmd_queue.cmd_allocator_infos.clear();
+                cmd_queue.cmd_pools.clear();
                 cmd_queue.cmd_queue = VK_NULL_HANDLE;
             }
         }
@@ -458,17 +458,17 @@ namespace AIHoloImager
     GpuCommandList VulkanSystem::CreateCommandList(GpuSystem::CmdQueueType type)
     {
         GpuCommandList cmd_list;
-        auto& alloc_info = this->CurrentCommandAllocator(type);
+        auto& cmd_pool = this->CurrentCommandPool(type);
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         if (cmd_queue.free_cmd_lists.empty())
         {
-            cmd_list = GpuCommandList(*gpu_system_, alloc_info, type);
+            cmd_list = GpuCommandList(*gpu_system_, cmd_pool, type);
         }
         else
         {
             cmd_list = std::move(cmd_queue.free_cmd_lists.front());
             cmd_queue.free_cmd_lists.pop_front();
-            cmd_list.Reset(alloc_info);
+            cmd_list.Reset(cmd_pool);
         }
         return cmd_list;
     }
@@ -488,7 +488,7 @@ namespace AIHoloImager
     uint64_t VulkanSystem::ExecuteAndReset(VulkanCommandList& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fence_value);
-        cmd_list.Reset(this->CurrentCommandAllocator(cmd_list.Type()));
+        cmd_list.Reset(this->CurrentCommandPool(cmd_list.Type()));
         return new_fence_value;
     }
 
@@ -628,7 +628,7 @@ namespace AIHoloImager
         for (auto& cmd_queue : cmd_queues_)
         {
             cmd_queue.cmd_queue = VK_NULL_HANDLE;
-            cmd_queue.cmd_allocator_infos.clear();
+            cmd_queue.cmd_pools.clear();
             cmd_queue.free_cmd_lists.clear();
         }
 
@@ -724,27 +724,27 @@ namespace AIHoloImager
         return cmd_queue;
     }
 
-    GpuCommandAllocatorInfo& VulkanSystem::CurrentCommandAllocator(GpuSystem::CmdQueueType type)
+    GpuCommandPool& VulkanSystem::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
         uint64_t completed_fence;
         TIFVK(vkGetSemaphoreCounterValue(device_, timeline_semaphore_, &completed_fence));
-        for (auto& alloc : cmd_queue.cmd_allocator_infos)
+        for (auto& pool : cmd_queue.cmd_pools)
         {
-            auto& vulkan_alloc = VulkanImp(*alloc);
-            if (vulkan_alloc.EmptyAllocatedCommandBuffers() && (vulkan_alloc.FenceValue() <= completed_fence))
+            auto& vulkan_pool = VulkanImp(*pool);
+            if (vulkan_pool.EmptyAllocatedCommandBuffers() && (vulkan_pool.FenceValue() <= completed_fence))
             {
-                TIFVK(vkResetCommandPool(device_, vulkan_alloc.CmdAllocator(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
-                return *alloc;
+                TIFVK(vkResetCommandPool(device_, vulkan_pool.CmdAllocator(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+                return *pool;
             }
         }
 
-        return *cmd_queue.cmd_allocator_infos.emplace_back(std::make_unique<GpuCommandAllocatorInfo>(*gpu_system_, type));
+        return *cmd_queue.cmd_pools.emplace_back(std::make_unique<GpuCommandPool>(*gpu_system_, type));
     }
 
     uint64_t VulkanSystem::ExecuteOnly(VulkanCommandList& cmd_list, uint64_t wait_fence_value)
     {
-        auto& cmd_alloc_info = *cmd_list.CommandAllocatorInfo();
+        auto& cmd_pool = *cmd_list.CommandPool();
         cmd_list.Close();
 
         const GpuSystem::CmdQueueType type = cmd_list.Type();
@@ -796,7 +796,7 @@ namespace AIHoloImager
 
         TIFVK(vkQueueSubmit(cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
 
-        VulkanImp(cmd_alloc_info).FenceValue(fence_val_);
+        VulkanImp(cmd_pool).FenceValue(fence_val_);
 
         this->ClearStallResources();
 
@@ -828,10 +828,10 @@ namespace AIHoloImager
         return std::make_unique<VulkanDynamicSampler>(*gpu_system_, filters, addr_modes);
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> VulkanSystem::CreateVertexAttribs(
+    std::unique_ptr<GpuVertexLayoutInternal> VulkanSystem::CreateVertexLayout(
         std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const
     {
-        return std::make_unique<VulkanVertexAttribs>(std::move(attribs), std::move(slot_strides));
+        return std::make_unique<VulkanVertexLayout>(std::move(attribs), std::move(slot_strides));
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
@@ -905,11 +905,11 @@ namespace AIHoloImager
     }
 
     std::unique_ptr<GpuRenderPipelineInternal> VulkanSystem::CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
-        std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+        std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states) const
     {
         return std::make_unique<VulkanRenderPipeline>(
-            *gpu_system_, topology, std::move(shaders), vertex_attribs, std::move(static_samplers), states);
+            *gpu_system_, topology, std::move(shaders), vertex_layout, std::move(static_samplers), states);
     }
 
     std::unique_ptr<GpuComputePipelineInternal> VulkanSystem::CreateComputePipeline(
@@ -918,15 +918,14 @@ namespace AIHoloImager
         return std::make_unique<VulkanComputePipeline>(*gpu_system_, shader, std::move(static_samplers));
     }
 
-    std::unique_ptr<GpuCommandAllocatorInfoInternal> VulkanSystem::CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const
+    std::unique_ptr<GpuCommandPoolInternal> VulkanSystem::CreateCommandPool(GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<VulkanCommandAllocatorInfo>(*gpu_system_, type);
+        return std::make_unique<VulkanCommandPool>(*gpu_system_, type);
     }
 
-    std::unique_ptr<GpuCommandListInternal> VulkanSystem::CreateCommandList(
-        GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const
+    std::unique_ptr<GpuCommandListInternal> VulkanSystem::CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<VulkanCommandList>(*gpu_system_, cmd_alloc_info, type);
+        return std::make_unique<VulkanCommandList>(*gpu_system_, cmd_pool, type);
     }
 
     VkBool32 VulkanSystem::DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

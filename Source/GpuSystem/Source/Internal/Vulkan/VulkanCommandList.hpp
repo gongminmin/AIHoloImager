@@ -20,7 +20,7 @@ namespace AIHoloImager
     class VulkanCommandList : public GpuCommandListInternal
     {
     public:
-        VulkanCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type);
+        VulkanCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type);
         ~VulkanCommandList() override;
 
         VulkanCommandList(VulkanCommandList&& other) noexcept;
@@ -74,11 +74,11 @@ namespace AIHoloImager
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) override;
 
         void Close() override;
-        void Reset(GpuCommandAllocatorInfo& cmd_alloc_info) override;
+        void Reset(GpuCommandPool& cmd_pool) override;
 
-        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept override
+        GpuCommandPool* CommandPool() noexcept
         {
-            return cmd_alloc_info_;
+            return cmd_pool_;
         }
 
     private:
@@ -90,7 +90,7 @@ namespace AIHoloImager
 
     private:
         GpuSystem* gpu_system_ = nullptr;
-        GpuCommandAllocatorInfo* cmd_alloc_info_ = nullptr;
+        GpuCommandPool* cmd_pool_ = nullptr;
 
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         VkCommandBuffer cmd_buff_;

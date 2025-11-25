@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Minmin Gong
 //
 
-#include "D3D12VertexAttrib.hpp"
+#include "D3D12VertexLayout.hpp"
 
 #include <map>
 
@@ -15,9 +15,9 @@
 
 namespace AIHoloImager
 {
-    D3D12_IMP_IMP(VertexAttribs)
+    D3D12_IMP_IMP(VertexLayout)
 
-    D3D12VertexAttribs::D3D12VertexAttribs(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
+    D3D12VertexLayout::D3D12VertexLayout(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
         : input_elems_(attribs.size()), semantics_(attribs.size())
     {
         uint32_t max_slot = 0;
@@ -66,18 +66,18 @@ namespace AIHoloImager
         this->UpdateSemantics();
     }
 
-    D3D12VertexAttribs::~D3D12VertexAttribs() = default;
+    D3D12VertexLayout::~D3D12VertexLayout() = default;
 
-    D3D12VertexAttribs::D3D12VertexAttribs(const D3D12VertexAttribs& other) : input_elems_(other.input_elems_), semantics_(other.semantics_)
+    D3D12VertexLayout::D3D12VertexLayout(const D3D12VertexLayout& other) : input_elems_(other.input_elems_), semantics_(other.semantics_)
     {
         this->UpdateSemantics();
     }
-    D3D12VertexAttribs::D3D12VertexAttribs(const GpuVertexAttribsInternal& other)
-        : D3D12VertexAttribs(static_cast<const D3D12VertexAttribs&>(other))
+    D3D12VertexLayout::D3D12VertexLayout(const GpuVertexLayoutInternal& other)
+        : D3D12VertexLayout(static_cast<const D3D12VertexLayout&>(other))
     {
     }
 
-    D3D12VertexAttribs& D3D12VertexAttribs::operator=(const D3D12VertexAttribs& other)
+    D3D12VertexLayout& D3D12VertexLayout::operator=(const D3D12VertexLayout& other)
     {
         if (this != &other)
         {
@@ -88,22 +88,22 @@ namespace AIHoloImager
         }
         return *this;
     }
-    GpuVertexAttribsInternal& D3D12VertexAttribs::operator=(const GpuVertexAttribsInternal& other)
+    GpuVertexLayoutInternal& D3D12VertexLayout::operator=(const GpuVertexLayoutInternal& other)
     {
-        return this->operator=(static_cast<const D3D12VertexAttribs&>(other));
+        return this->operator=(static_cast<const D3D12VertexLayout&>(other));
     }
 
-    D3D12VertexAttribs::D3D12VertexAttribs(D3D12VertexAttribs&& other) noexcept
+    D3D12VertexLayout::D3D12VertexLayout(D3D12VertexLayout&& other) noexcept
         : input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_))
     {
         this->UpdateSemantics();
     }
-    D3D12VertexAttribs::D3D12VertexAttribs(GpuVertexAttribsInternal&& other) noexcept
-        : D3D12VertexAttribs(static_cast<D3D12VertexAttribs&&>(other))
+    D3D12VertexLayout::D3D12VertexLayout(GpuVertexLayoutInternal&& other) noexcept
+        : D3D12VertexLayout(static_cast<D3D12VertexLayout&&>(other))
     {
     }
 
-    D3D12VertexAttribs& D3D12VertexAttribs::operator=(D3D12VertexAttribs&& other) noexcept
+    D3D12VertexLayout& D3D12VertexLayout::operator=(D3D12VertexLayout&& other) noexcept
     {
         if (this != &other)
         {
@@ -114,27 +114,27 @@ namespace AIHoloImager
         }
         return *this;
     }
-    GpuVertexAttribsInternal& D3D12VertexAttribs::operator=(GpuVertexAttribsInternal&& other) noexcept
+    GpuVertexLayoutInternal& D3D12VertexLayout::operator=(GpuVertexLayoutInternal&& other) noexcept
     {
-        return this->operator=(static_cast<D3D12VertexAttribs&&>(other));
+        return this->operator=(static_cast<D3D12VertexLayout&&>(other));
     }
 
-    std::unique_ptr<GpuVertexAttribsInternal> D3D12VertexAttribs::Clone() const
+    std::unique_ptr<GpuVertexLayoutInternal> D3D12VertexLayout::Clone() const
     {
-        return std::make_unique<D3D12VertexAttribs>(*this);
+        return std::make_unique<D3D12VertexLayout>(*this);
     }
 
-    std::span<const D3D12_INPUT_ELEMENT_DESC> D3D12VertexAttribs::InputElementDescs() const noexcept
+    std::span<const D3D12_INPUT_ELEMENT_DESC> D3D12VertexLayout::InputElementDescs() const noexcept
     {
-        return std::span<const D3D12_INPUT_ELEMENT_DESC>(input_elems_);
+        return input_elems_;
     }
 
-    std::span<const uint32_t> D3D12VertexAttribs::SlotStrides() const noexcept
+    std::span<const uint32_t> D3D12VertexLayout::SlotStrides() const noexcept
     {
-        return std::span<const uint32_t>(slot_strides_);
+        return slot_strides_;
     }
 
-    void D3D12VertexAttribs::UpdateSemantics()
+    void D3D12VertexLayout::UpdateSemantics()
     {
         for (size_t i = 0; i < input_elems_.size(); ++i)
         {

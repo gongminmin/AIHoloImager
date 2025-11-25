@@ -100,8 +100,8 @@ namespace AIHoloImager
         std::unique_ptr<GpuDynamicSamplerInternal> CreateDynamicSampler(
             const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const override;
 
-        std::unique_ptr<GpuVertexAttribsInternal> CreateVertexAttribs(
-            std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const override;
+        std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
+            std::span<const GpuVertexAttrib> layout, std::span<const uint32_t> slot_strides) const override;
 
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
@@ -130,27 +130,26 @@ namespace AIHoloImager
             GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const override;
 
         std::unique_ptr<GpuRenderPipelineInternal> CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
-            std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+            std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
             const GpuRenderPipeline::States& states) const override;
         std::unique_ptr<GpuComputePipelineInternal> CreateComputePipeline(
             const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const override;
 
-        std::unique_ptr<GpuCommandAllocatorInfoInternal> CreateCommandAllocatorInfo(GpuSystem::CmdQueueType type) const override;
+        std::unique_ptr<GpuCommandPoolInternal> CreateCommandPool(GpuSystem::CmdQueueType type) const override;
 
-        std::unique_ptr<GpuCommandListInternal> CreateCommandList(
-            GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type) const override;
+        std::unique_ptr<GpuCommandListInternal> CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const override;
 
     private:
         struct CmdQueue
         {
             VkQueue cmd_queue = VK_NULL_HANDLE;
-            std::vector<std::unique_ptr<GpuCommandAllocatorInfo>> cmd_allocator_infos;
+            std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
         };
 
     private:
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
-        GpuCommandAllocatorInfo& CurrentCommandAllocator(GpuSystem::CmdQueueType type);
+        GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(VulkanCommandList& cmd_list, uint64_t wait_fence_value);
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
             VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);

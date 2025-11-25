@@ -18,10 +18,10 @@ namespace AIHoloImager
 
     GpuRenderPipeline::GpuRenderPipeline() noexcept = default;
     GpuRenderPipeline::GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
-        const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers, const States& states)
+        const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers, const States& states)
         : impl_(
               static_cast<Impl*>(gpu_system.Internal()
-                                     .CreateRenderPipeline(topology, std::move(shaders), vertex_attribs, std::move(static_samplers), states)
+                                     .CreateRenderPipeline(topology, std::move(shaders), vertex_layout, std::move(static_samplers), states)
                                      .release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuRenderPipelineInternal));

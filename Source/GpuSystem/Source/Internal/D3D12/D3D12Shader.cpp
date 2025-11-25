@@ -11,7 +11,7 @@
 #include "D3D12Conversion.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12System.hpp"
-#include "D3D12VertexAttrib.hpp"
+#include "D3D12VertexLayout.hpp"
 
 namespace
 {
@@ -57,7 +57,7 @@ namespace AIHoloImager
     D3D12_IMP_IMP(RenderPipeline)
 
     D3D12RenderPipeline::D3D12RenderPipeline(GpuSystem& gpu_system, GpuRenderPipeline::PrimitiveTopology topology,
-        std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+        std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states)
         : root_sig_(D3D12Imp(gpu_system), nullptr), pso_(D3D12Imp(gpu_system), nullptr), topology_(topology)
     {
@@ -224,12 +224,12 @@ namespace AIHoloImager
             }
         }
 
-        auto& d3d12_vertex_attribs = D3D12Imp(vertex_attribs);
+        auto& d3d12_vertex_layout = D3D12Imp(vertex_layout);
 
-        const auto vb_slot_strides = d3d12_vertex_attribs.SlotStrides();
+        const auto vb_slot_strides = d3d12_vertex_layout.SlotStrides();
         vb_slot_strides_ = std::vector(vb_slot_strides.begin(), vb_slot_strides.end());
 
-        const auto input_elems = d3d12_vertex_attribs.InputElementDescs();
+        const auto input_elems = d3d12_vertex_layout.InputElementDescs();
         D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
         if (!input_elems.empty())
         {

@@ -10,25 +10,24 @@
 #include <directx/d3d12.h>
 
 #include "Base/ComPtr.hpp"
-#include "Gpu/GpuCommandAllocatorInfo.hpp"
+#include "Gpu/GpuCommandPool.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "../GpuCommandAllocatorInfoInternal.hpp"
-#include "D3D12CommandList.hpp"
+#include "../GpuCommandPoolInternal.hpp"
 #include "D3D12ImpDefine.hpp"
 
 namespace AIHoloImager
 {
-    class D3D12CommandAllocatorInfo : public GpuCommandAllocatorInfoInternal
+    class D3D12CommandPool : public GpuCommandPoolInternal
     {
     public:
-        D3D12CommandAllocatorInfo(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
-        ~D3D12CommandAllocatorInfo() noexcept override;
+        D3D12CommandPool(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
+        ~D3D12CommandPool() noexcept override;
 
-        D3D12CommandAllocatorInfo(D3D12CommandAllocatorInfo&& other) noexcept;
-        explicit D3D12CommandAllocatorInfo(GpuCommandAllocatorInfoInternal&& other) noexcept;
-        D3D12CommandAllocatorInfo& operator=(D3D12CommandAllocatorInfo&& other) noexcept;
-        GpuCommandAllocatorInfoInternal& operator=(GpuCommandAllocatorInfoInternal&& other) noexcept override;
+        D3D12CommandPool(D3D12CommandPool&& other) noexcept;
+        explicit D3D12CommandPool(GpuCommandPoolInternal&& other) noexcept;
+        D3D12CommandPool& operator=(D3D12CommandPool&& other) noexcept;
+        GpuCommandPoolInternal& operator=(GpuCommandPoolInternal&& other) noexcept override;
 
         ID3D12CommandAllocator* CmdAllocator() const noexcept;
 
@@ -46,5 +45,5 @@ namespace AIHoloImager
         std::list<ID3D12CommandList*> allocated_cmd_lists_;
     };
 
-    D3D12_DEFINE_IMP(CommandAllocatorInfo)
+    D3D12_DEFINE_IMP(CommandPool)
 } // namespace AIHoloImager

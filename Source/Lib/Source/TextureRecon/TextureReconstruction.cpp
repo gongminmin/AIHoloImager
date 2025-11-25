@@ -35,11 +35,11 @@ namespace AIHoloImager
 
                 const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
 
-                const GpuVertexAttribs vertex_attribs(gpu_system_, std::span<const GpuVertexAttrib>({
-                                                                       {"POSITION", 0, GpuFormat::RGB32_Float},
-                                                                       {"NORMAL", 0, GpuFormat::RGB32_Float},
-                                                                       {"TEXCOORD", 0, GpuFormat::RG32_Float},
-                                                                   }));
+                const GpuVertexLayout vertex_layout(gpu_system_, std::span<const GpuVertexAttrib>({
+                                                                     {"POSITION", 0, GpuFormat::RGB32_Float},
+                                                                     {"NORMAL", 0, GpuFormat::RGB32_Float},
+                                                                     {"TEXCOORD", 0, GpuFormat::RG32_Float},
+                                                                 }));
 
                 GpuRenderPipeline::States states;
                 states.cull_mode = GpuRenderPipeline::CullMode::None;
@@ -48,14 +48,14 @@ namespace AIHoloImager
                 states.rtv_formats = rtv_formats;
 
                 flatten_pipeline_ =
-                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_layout, {}, states);
             }
             {
                 const ShaderInfo shaders[] = {
                     {DEFINE_SHADER(GenShadowMapVs)},
                 };
 
-                const GpuVertexAttribs vertex_attribs(gpu_system_,
+                const GpuVertexLayout vertex_layout(gpu_system_,
                     std::span<const GpuVertexAttrib>({
                         {"POSITION", 0, GpuFormat::RGB32_Float},
                     }),
@@ -71,7 +71,7 @@ namespace AIHoloImager
                 states.dsv_format = DepthFmt;
 
                 gen_shadow_map_pipeline_ =
-                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_attribs, {}, states);
+                    GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_layout, {}, states);
             }
             {
                 const GpuStaticSampler samplers[] = {

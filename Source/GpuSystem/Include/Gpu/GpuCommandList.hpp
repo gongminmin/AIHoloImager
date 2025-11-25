@@ -10,7 +10,7 @@
 #include <tuple>
 
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuCommandAllocatorInfo.hpp"
+#include "Gpu/GpuCommandPool.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
@@ -80,7 +80,7 @@ namespace AIHoloImager
 
     public:
         GpuCommandList() noexcept;
-        GpuCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type);
+        GpuCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type);
         ~GpuCommandList();
 
         GpuCommandList(GpuCommandList&& other) noexcept;
@@ -128,11 +128,9 @@ namespace AIHoloImager
         [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size);
 
         void Close();
-        void Reset(GpuCommandAllocatorInfo& cmd_alloc_info);
+        void Reset(GpuCommandPool& cmd_pool);
 
         void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
-
-        GpuCommandAllocatorInfo* CommandAllocatorInfo() noexcept;
 
     private:
         class Impl;

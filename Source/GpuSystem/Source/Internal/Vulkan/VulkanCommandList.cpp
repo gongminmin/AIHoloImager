@@ -13,7 +13,7 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "VulkanBuffer.hpp"
-#include "VulkanCommandAllocatorInfo.hpp"
+#include "VulkanCommandPool.hpp"
 #include "VulkanErrorhandling.hpp"
 #include "VulkanResource.hpp"
 #include "VulkanResourceViews.hpp"
@@ -32,26 +32,10 @@ namespace AIHoloImager
 {
     VULKAN_IMP_IMP(CommandList)
 
-    VulkanCommandList::VulkanCommandList(GpuSystem& gpu_system, GpuCommandAllocatorInfo& cmd_alloc_info, GpuSystem::CmdQueueType type)
-        : gpu_system_(&gpu_system), cmd_alloc_info_(&cmd_alloc_info), type_(type)
+    VulkanCommandList::VulkanCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
+        : gpu_system_(&gpu_system), type_(type)
     {
-        const VkDevice vulkan_device = VulkanImp(*gpu_system_).Device();
-        auto& vulkan_cmd_alloc_info = VulkanImp(cmd_alloc_info);
-
-        const VkCommandBufferAllocateInfo command_buff_allocate_info{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = vulkan_cmd_alloc_info.CmdAllocator(),
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
-        TIFVK(vkAllocateCommandBuffers(vulkan_device, &command_buff_allocate_info, &cmd_buff_));
-
-        const VkCommandBufferBeginInfo cmd_buff_begin_info{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        };
-        TIFVK(vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info));
-
-        vulkan_cmd_alloc_info.RegisterAllocatedCommandBuffer(cmd_buff_);
+        this->Reset(cmd_pool);
     }
 
     VulkanCommandList::~VulkanCommandList()
@@ -115,11 +99,10 @@ namespace AIHoloImager
         auto& vulkan_resource = VulkanImp(*vulkan_uav.Resource());
         if (vulkan_uav.BufferView() != VK_NULL_HANDLE)
         {
-            const auto& buff_range = vulkan_uav.BufferRange();
+            const auto& [buff_offset, buffer_size] = vulkan_uav.BufferRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdFillBuffer(
-                cmd_buff_, vulkan_uav.Buffer(), std::get<0>(buff_range), std::get<1>(buff_range), std::bit_cast<uint32_t>(color[0]));
+            vkCmdFillBuffer(cmd_buff_, vulkan_uav.Buffer(), buff_offset, buffer_size, std::bit_cast<uint32_t>(color[0]));
         }
         else
         {
@@ -139,10 +122,10 @@ namespace AIHoloImager
         auto& vulkan_resource = VulkanImp(*vulkan_uav.Resource());
         if (vulkan_uav.BufferView() != VK_NULL_HANDLE)
         {
-            const auto& buff_range = vulkan_uav.BufferRange();
+            const auto& [buff_offset, buffer_size] = vulkan_uav.BufferRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdFillBuffer(cmd_buff_, vulkan_uav.Buffer(), std::get<0>(buff_range), std::get<1>(buff_range), color[0]);
+            vkCmdFillBuffer(cmd_buff_, vulkan_uav.Buffer(), buff_offset, buffer_size, color[0]);
         }
         else
         {
@@ -839,21 +822,21 @@ namespace AIHoloImager
     {
         TIFVK(vkEndCommandBuffer(cmd_buff_));
 
-        VulkanImp(*cmd_alloc_info_).UnregisterAllocatedCommandBuffer(cmd_buff_);
+        VulkanImp(*cmd_pool_).UnregisterAllocatedCommandBuffer(cmd_buff_);
         closed_ = true;
-        cmd_alloc_info_ = nullptr;
+        cmd_pool_ = nullptr;
     }
 
-    void VulkanCommandList::Reset(GpuCommandAllocatorInfo& cmd_alloc_info)
+    void VulkanCommandList::Reset(GpuCommandPool& cmd_pool)
     {
-        cmd_alloc_info_ = &cmd_alloc_info;
+        cmd_pool_ = &cmd_pool;
 
         const VkDevice vulkan_device = VulkanImp(*gpu_system_).Device();
-        auto& vulkan_cmd_alloc_info = VulkanImp(cmd_alloc_info);
+        auto& vulkan_cmd_pool = VulkanImp(cmd_pool);
 
         const VkCommandBufferAllocateInfo command_buff_allocate_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = vulkan_cmd_alloc_info.CmdAllocator(),
+            .commandPool = vulkan_cmd_pool.CmdAllocator(),
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
@@ -864,7 +847,7 @@ namespace AIHoloImager
         };
         TIFVK(vkBeginCommandBuffer(cmd_buff_, &cmd_buff_begin_info));
 
-        vulkan_cmd_alloc_info.RegisterAllocatedCommandBuffer(cmd_buff_);
+        vulkan_cmd_pool.RegisterAllocatedCommandBuffer(cmd_buff_);
         closed_ = false;
     }
 

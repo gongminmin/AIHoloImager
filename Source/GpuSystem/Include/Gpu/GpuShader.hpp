@@ -12,7 +12,7 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuSystem.hpp"
-#include "Gpu/GpuVertexAttrib.hpp"
+#include "Gpu/GpuVertexLayout.hpp"
 #include "Gpu/InternalDefine.hpp"
 
 #ifdef AIHI_ENABLE_D3D12
@@ -103,7 +103,7 @@ namespace AIHoloImager
     public:
         GpuRenderPipeline() noexcept;
         GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
-            const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers, const States& states);
+            const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers, const States& states);
         ~GpuRenderPipeline();
 
         GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;

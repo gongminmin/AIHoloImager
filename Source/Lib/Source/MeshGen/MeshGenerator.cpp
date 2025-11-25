@@ -210,7 +210,7 @@ namespace AIHoloImager
                     GpuStaticSampler::AddressMode::Border);
 
                 rotate_pipeline_ = GpuRenderPipeline(gpu_system, GpuRenderPipeline::PrimitiveTopology::TriangleStrip, shaders,
-                    GpuVertexAttribs(gpu_system, {}), std::span(&bilinear_sampler, 1), states);
+                    GpuVertexLayout(gpu_system, {}), std::span(&bilinear_sampler, 1), states);
             }
             {
                 const ShaderInfo shader = {DEFINE_SHADER(ResizeCs)};

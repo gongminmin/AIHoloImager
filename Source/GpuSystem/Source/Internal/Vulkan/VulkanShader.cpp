@@ -13,14 +13,14 @@
 #include "VulkanErrorhandling.hpp"
 #include "VulkanSampler.hpp"
 #include "VulkanSystem.hpp"
-#include "VulkanVertexAttrib.hpp"
+#include "VulkanVertexLayout.hpp"
 
 namespace AIHoloImager
 {
     VULKAN_IMP_IMP(RenderPipeline)
 
     VulkanRenderPipeline::VulkanRenderPipeline(GpuSystem& gpu_system, GpuRenderPipeline::PrimitiveTopology topology,
-        std::span<const ShaderInfo> shaders, const GpuVertexAttribs& vertex_attribs, std::span<const GpuStaticSampler> static_samplers,
+        std::span<const ShaderInfo> shaders, const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers,
         const GpuRenderPipeline::States& states)
         : pipeline_layout_(VulkanImp(gpu_system), VK_NULL_HANDLE), pipeline_(VulkanImp(gpu_system), VK_NULL_HANDLE), topology_(topology)
     {
@@ -184,9 +184,9 @@ namespace AIHoloImager
         };
         TIFVK(vkCreatePipelineLayout(vulkan_device, &pipeline_layout_create_info, nullptr, &pipeline_layout_.Object()));
 
-        const auto& vulkan_vertex_attribs = VulkanImp(vertex_attribs);
-        const auto input_binding = vulkan_vertex_attribs.InputBindings();
-        const auto input_attribs = vulkan_vertex_attribs.InputAttribs();
+        const auto& vulkan_vertex_layout = VulkanImp(vertex_layout);
+        const auto input_binding = vulkan_vertex_layout.InputBindings();
+        const auto input_attribs = vulkan_vertex_layout.InputAttribs();
         const VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .vertexBindingDescriptionCount = static_cast<uint32_t>(input_binding.size()),
