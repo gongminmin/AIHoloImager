@@ -4,7 +4,7 @@ set(aihi_cmake_module_dir "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules")
 list(APPEND CMAKE_MODULE_PATH "${aihi_cmake_module_dir}")
 
 set(ai_holo_imager_major_version 0)
-set(ai_holo_imager_minor_version 5)
+set(ai_holo_imager_minor_version 6)
 set(ai_holo_imager_patch_version 0)
 set(ai_holo_imager_version ${ai_holo_imager_major_version}.${ai_holo_imager_minor_version}.${ai_holo_imager_patch_version})
 
