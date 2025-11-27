@@ -14,7 +14,7 @@
 
 namespace AIHoloImager
 {
-    class VulkanDescriptorPool
+    class VulkanDescriptorPool final
     {
         DISALLOW_COPY_AND_ASSIGN(VulkanDescriptorPool)
 

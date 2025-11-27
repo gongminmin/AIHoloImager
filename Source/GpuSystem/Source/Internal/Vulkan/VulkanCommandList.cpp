@@ -836,7 +836,7 @@ namespace AIHoloImager
 
         const VkCommandBufferAllocateInfo command_buff_allocate_info{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = vulkan_cmd_pool.CmdAllocator(),
+            .commandPool = vulkan_cmd_pool.CmdPool(),
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };

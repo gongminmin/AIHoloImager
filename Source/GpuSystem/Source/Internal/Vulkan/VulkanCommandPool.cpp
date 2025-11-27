@@ -3,8 +3,6 @@
 
 #include "VulkanCommandPool.hpp"
 
-#include "Base/ErrorHandling.hpp"
-
 #include "VulkanErrorhandling.hpp"
 #include "VulkanSystem.hpp"
 
@@ -39,7 +37,7 @@ namespace AIHoloImager
         return this->operator=(static_cast<VulkanCommandPool&&>(other));
     }
 
-    VkCommandPool VulkanCommandPool::CmdAllocator() const noexcept
+    VkCommandPool VulkanCommandPool::CmdPool() const noexcept
     {
         return cmd_pool_.Object();
     }

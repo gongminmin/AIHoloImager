@@ -112,6 +112,7 @@ if(enable_vulkan)
         Source/Internal/Vulkan/VulkanConversion.hpp
         Source/Internal/Vulkan/VulkanDescriptorAllocator.cpp
         Source/Internal/Vulkan/VulkanDescriptorAllocator.hpp
+        Source/Internal/Vulkan/VulkanErrorHandling.cpp
         Source/Internal/Vulkan/VulkanErrorHandling.hpp
         Source/Internal/Vulkan/VulkanImpDefine.hpp
         Source/Internal/Vulkan/VulkanResource.cpp

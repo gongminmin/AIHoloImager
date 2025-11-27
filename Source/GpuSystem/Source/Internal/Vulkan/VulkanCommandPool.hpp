@@ -27,7 +27,7 @@ namespace AIHoloImager
         VulkanCommandPool& operator=(VulkanCommandPool&& other) noexcept;
         GpuCommandPoolInternal& operator=(GpuCommandPoolInternal&& other) noexcept override;
 
-        VkCommandPool CmdAllocator() const noexcept;
+        VkCommandPool CmdPool() const noexcept;
 
         uint64_t FenceValue() const noexcept;
         void FenceValue(uint64_t value) noexcept;

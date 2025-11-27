@@ -355,7 +355,7 @@ namespace AIHoloImager
         return {src_access_mask, dst_access_mask};
     }
 
-    VkImageAspectFlags ToVulkanAspectMask(GpuFormat fmt)
+    VkImageAspectFlags ToVulkanAspectMask(GpuFormat fmt) noexcept
     {
         VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_NONE;
         if (IsDepthStencilFormat(fmt))

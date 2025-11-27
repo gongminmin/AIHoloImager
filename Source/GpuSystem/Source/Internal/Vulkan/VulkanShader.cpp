@@ -277,7 +277,7 @@ namespace AIHoloImager
         auto blend_attachment_states = std::make_unique<VkPipelineColorBlendAttachmentState[]>(states.rtv_formats.size());
         for (size_t i = 0; i < states.rtv_formats.size(); ++i)
         {
-            blend_attachment_states[i] = {
+            blend_attachment_states[i] = VkPipelineColorBlendAttachmentState{
                 .blendEnable = VK_FALSE,
                 .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
                 .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,

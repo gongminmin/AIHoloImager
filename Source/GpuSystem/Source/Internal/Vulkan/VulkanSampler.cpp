@@ -6,13 +6,14 @@
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 
+#include "VulkanErrorhandling.hpp"
 #include "VulkanSystem.hpp"
 
 namespace AIHoloImager
 {
-    void FillSamplerDesc(VkSamplerCreateInfo& sampler, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
+    VkSamplerCreateInfo FillSamplerDesc(const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes)
     {
-        sampler = {
+        VkSamplerCreateInfo sampler = {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         };
 
@@ -70,6 +71,8 @@ namespace AIHoloImager
         sampler.compareEnable = false;
         sampler.minLod = 0.0f;
         sampler.maxLod = VK_LOD_CLAMP_NONE;
+
+        return sampler;
     }
 
 
@@ -81,9 +84,8 @@ namespace AIHoloImager
     {
         const VkDevice vulkan_device = VulkanImp(gpu_system).Device();
 
-        VkSamplerCreateInfo sampler_create_info;
-        FillSamplerDesc(sampler_create_info, filters, addr_modes);
-        vkCreateSampler(vulkan_device, &sampler_create_info, nullptr, &sampler_->Object());
+        const VkSamplerCreateInfo sampler_create_info = FillSamplerDesc(filters, addr_modes);
+        TIFVK(vkCreateSampler(vulkan_device, &sampler_create_info, nullptr, &sampler_->Object()));
     }
 
     VulkanStaticSampler::~VulkanStaticSampler() = default;
@@ -114,9 +116,8 @@ namespace AIHoloImager
     {
         const VkDevice vulkan_device = VulkanImp(gpu_system).Device();
 
-        VkSamplerCreateInfo sampler_create_info;
-        FillSamplerDesc(sampler_create_info, filters, addr_modes);
-        vkCreateSampler(vulkan_device, &sampler_create_info, nullptr, &sampler_.Object());
+        const VkSamplerCreateInfo sampler_create_info = FillSamplerDesc(filters, addr_modes);
+        TIFVK(vkCreateSampler(vulkan_device, &sampler_create_info, nullptr, &sampler_.Object()));
 
         image_info_ = VkDescriptorImageInfo{
             .sampler = sampler_.Object(),

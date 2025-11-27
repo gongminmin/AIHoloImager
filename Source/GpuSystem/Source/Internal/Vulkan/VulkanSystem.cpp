@@ -112,7 +112,7 @@ namespace AIHoloImager
             }
             else
             {
-                std::cerr << "Validation layer VK_LAYER_KHRONOS_validation not present, validation is disabled\n";
+                std::cerr << "Validation layer VK_LAYER_KHRONOS_validation not present, validation is disabled.\n";
             }
         }
 
@@ -122,7 +122,6 @@ namespace AIHoloImager
         if (enable_debug)
         {
             debug_utils_msg_create_info.pNext = nullptr;
-
             TIFVK(vkCreateDebugUtilsMessengerEXT(instance_, &debug_utils_msg_create_info, nullptr, &debug_utils_messenger_));
         }
 
@@ -219,7 +218,7 @@ namespace AIHoloImager
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+                (queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) = i;
                 queue_family_indices.insert(i);
@@ -267,8 +266,8 @@ namespace AIHoloImager
             .timelineSemaphore = VK_TRUE,
         };
 
-        VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+        VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
             .pNext = &timeline_semaphore_feature,
             .nullDescriptor = VK_TRUE,
         };
@@ -287,13 +286,16 @@ namespace AIHoloImager
             .pEnabledFeatures = &enable_features,
         };
 
-        std::vector<const char*> device_exts;
+        std::vector<const char*> device_exts = {
+            VK_KHR_ROBUSTNESS_2_EXTENSION_NAME,
+            VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
+        };
         if (enable_sharing)
         {
-            device_exts.push_back(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
-            device_exts.push_back(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
-            device_exts.push_back(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
-            device_exts.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+            device_exts.insert(device_exts.end(), {
+                                                      VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+                                                      VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+                                                  });
         }
 
         for (auto iter = device_exts.begin(); iter != device_exts.end();)
@@ -731,7 +733,7 @@ namespace AIHoloImager
             auto& vulkan_pool = VulkanImp(*pool);
             if (vulkan_pool.EmptyAllocatedCommandBuffers() && (vulkan_pool.FenceValue() <= completed_fence))
             {
-                TIFVK(vkResetCommandPool(device_, vulkan_pool.CmdAllocator(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+                TIFVK(vkResetCommandPool(device_, vulkan_pool.CmdPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
                 return *pool;
             }
         }
