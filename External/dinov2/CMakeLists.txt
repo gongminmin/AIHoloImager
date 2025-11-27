@@ -1,7 +1,10 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-UpdateExternalLib("dinov2" "https://github.com/facebookresearch/dinov2.git" "e1277af2ba9496fbadf7aec6eba56e8d882d1e35")
+UpdateExternalLib(NAME "dinov2"
+                  URL "https://github.com/facebookresearch/dinov2.git"
+                  REV "e1277af2ba9496fbadf7aec6eba56e8d882d1e35"
+)
 
 set(py_files
     dinov2/dinov2/hub/backbones.py

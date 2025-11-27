@@ -1,7 +1,12 @@
 # Copyright (c) 2024-2025 Minmin Gong
 #
 
-UpdateExternalLib("openMVG" "https://github.com/openMVG/openMVG.git" "c92ed1be7c25068c0cdc0927e876a9ec92e97ce8" "" "" need_patch)
+UpdateExternalLib(NAME "openMVG"
+                  URL "https://github.com/openMVG/openMVG.git"
+                  REV "c92ed1be7c25068c0cdc0927e876a9ec92e97ce8"
+                  RECURSIVE_SUBMODULES
+                  NEED_CHECKOUT need_patch
+)
 if(need_patch)
     foreach(patch "0001-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE_DIR" "0002-Enable-to-load-from-memory-data-in-Matches_Provider-" "0003-Remove-pragma-warning-once-so-that-these-warnings-ca")
         ApplyPatch("openMVG" "${CMAKE_CURRENT_SOURCE_DIR}/Patches/${patch}.patch")

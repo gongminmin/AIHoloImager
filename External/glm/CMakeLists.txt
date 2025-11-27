@@ -1,4 +1,10 @@
-UpdateExternalLib("glm" "https://github.com/g-truc/glm.git" "33b4a621a697a305bc3a7610d290677b96beb181")
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib(NAME "glm"
+                  URL "https://github.com/g-truc/glm.git"
+                  REV "33b4a621a697a305bc3a7610d290677b96beb181"
+)
 
 set(BUILD_SHARED_LIBS OFF)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)

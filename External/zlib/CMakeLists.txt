@@ -1,4 +1,10 @@
-UpdateExternalLib("zlib" "https://github.com/madler/zlib.git" "09155eaa2f9270dc4ed1fa13e2b4b2613e6e4851")
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib(NAME "zlib"
+                  URL "https://github.com/madler/zlib.git"
+                  REV "09155eaa2f9270dc4ed1fa13e2b4b2613e6e4851"
+)
 
 set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
 
@@ -8,9 +14,9 @@ set(ZLIB_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(zlib EXCLUDE_FROM_ALL)
 
 set(ZLIB_INCLUDE_DIR
-	${CMAKE_CURRENT_SOURCE_DIR}/zlib
-	${CMAKE_CURRENT_BINARY_DIR}/zlib
-	CACHE INTERNAL "" FORCE
+    ${CMAKE_CURRENT_SOURCE_DIR}/zlib
+    ${CMAKE_CURRENT_BINARY_DIR}/zlib
+    CACHE INTERNAL "" FORCE
 )
 set(ZLIB_LIBRARY zlib CACHE INTERNAL "" FORCE)
 set(ZLIB_LIBRARIES ${ZLIB_LIBRARY} CACHE INTERNAL "" FORCE)

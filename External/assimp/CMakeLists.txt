@@ -1,4 +1,12 @@
-UpdateExternalLib("assimp" "https://github.com/assimp/assimp.git" "53b5dba4df171373fddb5ce7f00db6399c0aeeaa" "master" "v5.0.0")
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib(NAME "assimp"
+                  URL "https://github.com/assimp/assimp.git"
+                  REV "53b5dba4df171373fddb5ce7f00db6399c0aeeaa"
+                  BRANCH "master"
+                  SHALLOW_EXCLUDE "v5.0.0"
+)
 
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -35,16 +43,16 @@ if(ai_holo_imager_compiler_msvc)
             /wd4756 # Ignore the INFINITY constant overflow in some specific Windows SDKs
     )
 elseif(ai_holo_imager_compiler_clangcl)
-	target_compile_options(assimp
-		PRIVATE
-			-Wno-unused-function
-	)
-	if (ai_holo_imager_compiler_version GREATER_EQUAL 160)
-		target_compile_options(assimp
-			PRIVATE
-				-Wno-deprecated-copy
-		)
-	endif()
+    target_compile_options(assimp
+        PRIVATE
+            -Wno-unused-function
+    )
+    if (ai_holo_imager_compiler_version GREATER_EQUAL 160)
+        target_compile_options(assimp
+            PRIVATE
+                -Wno-deprecated-copy
+        )
+    endif()
 endif()
 
 set_target_properties(assimp PROPERTIES FOLDER "External")

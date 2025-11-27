@@ -1,4 +1,10 @@
-UpdateExternalLib("xatlas" "https://github.com/jpcy/xatlas.git" "f700c7790aaa030e794b52ba7791a05c085faf0c")
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib(NAME "xatlas"
+                  URL "https://github.com/jpcy/xatlas.git"
+                  REV "f700c7790aaa030e794b52ba7791a05c085faf0c"
+)
 
 add_library(xatlas STATIC
     xatlas/source/xatlas/xatlas.cpp

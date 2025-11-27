@@ -11,7 +11,11 @@ else()
     endif()
 
     set(ENV{GIT_LFS_SKIP_SMUDGE} 1)
-    UpdateExternalLib("TRELLIS-image-large" "https://huggingface.co/microsoft/TRELLIS-image-large" "2476b8db9c8484a1bbd16772c24ff88890f2b19a" "" "" need_checkout)
+    UpdateExternalLib(NAME "TRELLIS-image-large"
+                      URL "https://huggingface.co/microsoft/TRELLIS-image-large"
+                      REV "2476b8db9c8484a1bbd16772c24ff88890f2b19a"
+                      NEED_CHECKOUT need_checkout
+    )
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
     if(need_checkout)

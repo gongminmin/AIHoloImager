@@ -1,3 +1,6 @@
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
 execute_process(
     COMMAND Setup.bat "${Python3_EXECUTABLE}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

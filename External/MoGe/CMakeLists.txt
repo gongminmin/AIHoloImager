@@ -11,7 +11,11 @@ else()
     endif()
 
     set(ENV{GIT_LFS_SKIP_SMUDGE} 1)
-    UpdateExternalLib("moge-vitl" "https://huggingface.co/Ruicheng/moge-vitl" "979e84da9415762c30e6c0cf8dc0962896c793df" "" "" need_checkout)
+    UpdateExternalLib(NAME "moge-vitl"
+                      URL "https://huggingface.co/Ruicheng/moge-vitl"
+                      REV "979e84da9415762c30e6c0cf8dc0962896c793df"
+                      NEED_CHECKOUT need_checkout
+    )
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
     if(need_checkout)

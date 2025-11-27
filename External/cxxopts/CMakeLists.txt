@@ -1,4 +1,10 @@
-UpdateExternalLib("cxxopts" "https://github.com/jarro2783/cxxopts.git" "eb787304d67ec22f7c3a184ee8b4c481d04357fd")
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
+UpdateExternalLib(NAME "cxxopts"
+                  URL "https://github.com/jarro2783/cxxopts.git"
+                  REV "eb787304d67ec22f7c3a184ee8b4c481d04357fd"
+)
 
 set(CXXOPTS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CXXOPTS_BUILD_TESTS OFF CACHE BOOL "" FORCE)

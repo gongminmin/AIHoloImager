@@ -1,7 +1,10 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-UpdateExternalLib("SPIRV-Reflect" "https://github.com/KhronosGroup/SPIRV-Reflect.git" "ef913b3ab3da1becca3cf46b15a10667c67bebe5")
+UpdateExternalLib(NAME "SPIRV-Reflect"
+                  URL "https://github.com/KhronosGroup/SPIRV-Reflect.git"
+                  REV "ef913b3ab3da1becca3cf46b15a10667c67bebe5"
+)
 
 set(SPIRV_REFLECT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_ENABLE_ASAN OFF CACHE BOOL "" FORCE)

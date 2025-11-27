@@ -1,7 +1,10 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-UpdateExternalLib("Vulkan-Headers" "https://github.com/KhronosGroup/Vulkan-Headers.git" "6aefb8eb95c8e170d0805fd0f2d02832ec1e099a")
+UpdateExternalLib(NAME "Vulkan-Headers"
+                  URL "https://github.com/KhronosGroup/Vulkan-Headers.git"
+                  REV "6aefb8eb95c8e170d0805fd0f2d02832ec1e099a"
+)
 
 set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(ULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)

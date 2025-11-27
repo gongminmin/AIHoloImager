@@ -1,7 +1,10 @@
 # Copyright (c) 2025 Minmin Gong
 #
 
-UpdateExternalLib("volk" "https://github.com/zeux/volk.git" "59660878571aa99e3c9a366bb1d19fdcd701f0e7")
+UpdateExternalLib(NAME "volk"
+                  URL "https://github.com/zeux/volk.git"
+                  REV "59660878571aa99e3c9a366bb1d19fdcd701f0e7"
+)
 
 set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
 set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)

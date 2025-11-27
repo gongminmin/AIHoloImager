@@ -1,3 +1,6 @@
+# Copyright (c) 2024-2025 Minmin Gong
+#
+
 if(NOT EXISTS ${GIT_EXECUTABLE})
     unset(GIT_EXECUTABLE CACHE)
 endif()
@@ -12,7 +15,36 @@ if(NOT EXISTS ${GIT_EXECUTABLE})
     message(FATAL_ERROR "The git doesn't exist.")
 endif()
 
-function(CloneExternalLib name url branch shallow_exclude)
+# CloneExternalLib
+#
+# Clone an external git repository.
+#
+# Parameters:
+#   NAME            - Required: unique identifier for this external lib
+#   URL             - Required: git repository URL
+#   BRANCH          - Optional: if set, performs a shallow clone of this branch
+#   SHALLOW_EXCLUDE - Optional: single revision to exclude from shallow history
+#
+function(CloneExternalLib)
+    set(option_args )
+    set(one_value_keyword_args NAME URL BRANCH SHALLOW_EXCLUDE)
+    set(multi_value_keyword_args )
+
+    cmake_parse_arguments(
+        PARSE_ARGV 0
+        ARG_PREFIX
+        "${option_args}"
+        "${one_value_keyword_args}"
+        "${multi_value_keyword_args}"
+    )
+
+    if((NOT DEFINED ARG_PREFIX_NAME) OR (NOT DEFINED ARG_PREFIX_URL))
+        message(FATAL_ERROR "NAME and URL are required")
+    endif()
+
+    set(name ${ARG_PREFIX_NAME})
+    set(url ${ARG_PREFIX_URL})
+
     set(external_folder "${CMAKE_CURRENT_SOURCE_DIR}")
     set(external_lib_folder "${external_folder}/${name}")
 
@@ -24,30 +56,112 @@ function(CloneExternalLib name url branch shallow_exclude)
     message(STATUS "Cloning ${name}...")
     set(branch_param "")
     set(branch_name_param "")
-    if(NOT ("x${branch}" STREQUAL "x"))
+    if(DEFINED ARG_PREFIX_BRANCH)
         set(branch_param "-b")
-        set(branch_name_param "${branch}")
+        set(branch_name_param "${ARG_PREFIX_BRANCH}")
     endif()
     set(shallow_exclude_param "")
-    if(NOT ("x${shallow_exclude}" STREQUAL "x"))
-        set(shallow_exclude_param "--shallow-exclude=${shallow_exclude}")
+    if(DEFINED ARG_PREFIX_SHALLOW_EXCLUDE)
+        set(shallow_exclude_param "--shallow-exclude=${ARG_PREFIX_SHALLOW_EXCLUDE}")
     endif()
     execute_process(COMMAND "${GIT_EXECUTABLE}" clone ${url} ${branch_param} ${branch_name_param} ${shallow_exclude_param} "${name}" -n WORKING_DIRECTORY "${external_folder}")
 endfunction()
 
-function(CheckoutExternalLib name rev)
+# CheckoutExternalLib
+#
+# Fetches an external git repository.
+#
+# Parameters:
+#   NAME                 - Required: unique identifier for this external lib
+#   REV                  - Required: commit hash, tag, or branch to check out
+#   RECURSIVE_SUBMODULES - Optional: ON/OFF boolean - if ON, recuisive submodule init/update
+#   CHECKOUT_ERR         - Optional: output boolean variable indicating if a checkout was performed
+#
+function(CheckoutExternalLib)
+    set(option_args RECURSIVE_SUBMODULES)
+    set(one_value_keyword_args NAME REV CHECKOUT_ERR)
+    set(multi_value_keyword_args )
+
+    cmake_parse_arguments(
+        PARSE_ARGV 0
+        ARG_PREFIX
+        "${option_args}"
+        "${one_value_keyword_args}"
+        "${multi_value_keyword_args}"
+    )
+
+    if((NOT DEFINED ARG_PREFIX_NAME) OR (NOT DEFINED ARG_PREFIX_REV))
+        message(FATAL_ERROR "NAME and REV are required")
+    endif()
+
+    set(recursive_submodules OFF)
+    if(DEFINED ARG_PREFIX_RECURSIVE_SUBMODULES)
+        set(recursive_submodules ${ARG_PREFIX_RECURSIVE_SUBMODULES})
+    endif()
+
+    set(name ${ARG_PREFIX_NAME})
+    set(rev ${ARG_PREFIX_REV})
+
     set(external_folder "${CMAKE_CURRENT_SOURCE_DIR}")
     set(external_lib_folder "${external_folder}/${name}")
 
     execute_process(COMMAND "${GIT_EXECUTABLE}" checkout -q ${rev} WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE checkout_err)
-    set(${ARGV2} ${checkout_err} PARENT_SCOPE)
-    if(NOT ${checkout_err})
+    if((NOT ${checkout_err}) AND ${recursive_submodules})
         execute_process(COMMAND "${GIT_EXECUTABLE}" submodule update --init --recursive WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE checkout_err)
-        set(${ARGV2} ${checkout_err} PARENT_SCOPE)
+    endif()
+
+    if(DEFINED ARG_PREFIX_CHECKOUT_ERR)
+        set(${ARG_PREFIX_NEED_CHECKOUT} ${checkout_err} PARENT_SCOPE)
     endif()
 endfunction()
 
-function(UpdateExternalLib name url rev)
+# UpdateExternalLib
+#
+# Update an external library with fine-grained control.
+#
+# Parameters:
+#   NAME                 - Required: unique identifier for this external lib
+#   URL                  - Required: git repository URL
+#   REV                  - Required: commit hash, tag, or branch to check out
+#   BRANCH               - Optional: if set, performs a shallow clone of this branch
+#   SHALLOW_EXCLUDE      - Optional: single revision to exclude from shallow history
+#   RECURSIVE_SUBMODULES - Optional: ON/OFF boolean - if ON, recuisive submodule init/update
+#   NEED_CHECKOUT        - Optional: output boolean variable indicating if a checkout was performed
+#
+function(UpdateExternalLib)
+    set(option_args RECURSIVE_SUBMODULES)
+    set(one_value_keyword_args NAME URL REV BRANCH SHALLOW_EXCLUDE NEED_CHECKOUT)
+    set(multi_value_keyword_args )
+
+    cmake_parse_arguments(
+        PARSE_ARGV 0
+        ARG_PREFIX
+        "${option_args}"
+        "${one_value_keyword_args}"
+        "${multi_value_keyword_args}"
+    )
+
+    if((NOT DEFINED ARG_PREFIX_NAME) OR (NOT DEFINED ARG_PREFIX_URL) OR (NOT DEFINED ARG_PREFIX_REV))
+        message(FATAL_ERROR "NAME, URL and REV are required")
+    endif()
+
+    set(name ${ARG_PREFIX_NAME})
+    set(url ${ARG_PREFIX_URL})
+    set(rev ${ARG_PREFIX_REV})
+
+    set(clone_args )
+    if((DEFINED ARG_PREFIX_BRANCH) AND (NOT ARG_PREFIX_BRANCH STREQUAL ""))
+        list(APPEND clone_args BRANCH "${ARG_PREFIX_BRANCH}")
+    endif()
+    if((DEFINED ARG_PREFIX_SHALLOW_EXCLUDE) AND (NOT ARG_PREFIX_SHALLOW_EXCLUDE STREQUAL ""))
+        list(APPEND clone_args SHALLOW_EXCLUDE "${ARG_PREFIX_SHALLOW_EXCLUDE}")
+    endif()
+
+    set(checkout_args )
+    if((DEFINED ARG_PREFIX_RECURSIVE_SUBMODULES) AND ARG_PREFIX_RECURSIVE_SUBMODULES)
+        list(APPEND checkout_args "RECURSIVE_SUBMODULES")
+    endif()
+
     set(external_folder "${CMAKE_CURRENT_SOURCE_DIR}")
     set(external_lib_folder "${external_folder}/${name}")
 
@@ -79,23 +193,39 @@ function(UpdateExternalLib name url rev)
     endif()
 
     if(need_clone)
-        CloneExternalLib(${name} ${url} "${ARGV3}" "${ARGV4}")
+        CloneExternalLib(NAME ${name}
+                         URL ${url}
+                         ${clone_args}
+        )
         set(need_checkout TRUE)
     endif()
 
     if(need_checkout)
         message(STATUS "Checking out to revision ${rev}...")
-        CheckoutExternalLib(${name} ${rev} checkout_err)
+        CheckoutExternalLib(NAME ${name}
+                            REV ${rev}
+                            CHECKOUT_ERR checkout_err
+                            ${checkout_args}
+        )
         if(checkout_err)
             message(STATUS "COULD NOT checkout revision ${rev}, reclone the repository.")
-            CloneExternalLib(${name} ${url} "${ARGV3}" "${ARGV4}")
+            CloneExternalLib(NAME ${name}
+                             URL ${url}
+                             ${clone_args}
+            )
 
             message(STATUS "Checking out to revision ${rev}...")
-            CheckoutExternalLib(${name} ${rev})
+            CheckoutExternalLib(NAME ${name}
+                                REV ${rev}
+                                CHECKOUT_ERR checkout_err
+                                ${checkout_args}
+            )
         endif()
     endif()
 
-    set(${ARGV5} ${need_checkout} PARENT_SCOPE)
+    if(DEFINED ARG_PREFIX_NEED_CHECKOUT)
+        set(${ARG_PREFIX_NEED_CHECKOUT} ${need_checkout} PARENT_SCOPE)
+    endif()
 endfunction()
 
 function(ApplyPatch name patch)
