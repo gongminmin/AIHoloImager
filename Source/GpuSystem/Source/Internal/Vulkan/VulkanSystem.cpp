@@ -179,6 +179,14 @@ namespace AIHoloImager
         }
         Verify(physical_device_ != VK_NULL_HANDLE);
 
+        device_id_props_ = VkPhysicalDeviceIDProperties{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES,
+        };
+        device_props_ = VkPhysicalDeviceProperties2{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            .pNext = &device_id_props_,
+        };
+        vkGetPhysicalDeviceProperties2(physical_device_, &device_props_);
         vkGetPhysicalDeviceMemoryProperties(physical_device_, &mem_props_);
 
         uint32_t queue_family_count = 0;
@@ -431,21 +439,10 @@ namespace AIHoloImager
 
     LUID VulkanSystem::DeviceLuid() const noexcept
     {
-        VkPhysicalDeviceIDProperties device_id_props{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES,
-        };
-
-        VkPhysicalDeviceProperties2 device_props{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-            .pNext = &device_id_props,
-        };
-
-        vkGetPhysicalDeviceProperties2(physical_device_, &device_props);
-
         LUID ret{};
-        if (device_id_props.deviceLUIDValid)
+        if (device_id_props_.deviceLUIDValid)
         {
-            std::memcpy(&ret, device_id_props.deviceLUID, sizeof(ret));
+            std::memcpy(&ret, device_id_props_.deviceLUID, sizeof(ret));
         }
         return ret;
     }
@@ -494,15 +491,15 @@ namespace AIHoloImager
 
     uint32_t VulkanSystem::ConstantDataAlignment() const noexcept
     {
-        return 256;
+        return static_cast<uint32_t>(device_props_.properties.limits.minUniformBufferOffsetAlignment);
     }
     uint32_t VulkanSystem::StructuredDataAlignment() const noexcept
     {
-        return 16;
+        return static_cast<uint32_t>(device_props_.properties.limits.minStorageBufferOffsetAlignment);
     }
     uint32_t VulkanSystem::TextureDataAlignment() const noexcept
     {
-        return 512;
+        return static_cast<uint32_t>(device_props_.properties.limits.optimalBufferCopyOffsetAlignment);
     }
 
     void VulkanSystem::CpuWait(uint64_t fence_value)

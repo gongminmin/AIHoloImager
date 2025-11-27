@@ -162,6 +162,8 @@ namespace AIHoloImager
         VkDebugUtilsMessengerEXT debug_utils_messenger_ = VK_NULL_HANDLE;
 
         VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
+        VkPhysicalDeviceIDProperties device_id_props_{};
+        VkPhysicalDeviceProperties2 device_props_{};
         VkPhysicalDeviceMemoryProperties mem_props_{};
 
         VkDevice device_ = VK_NULL_HANDLE;
