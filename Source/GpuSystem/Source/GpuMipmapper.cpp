@@ -45,11 +45,12 @@ namespace AIHoloImager
                 gen_mipmap_cb->this_level_height = this_height;
                 gen_mipmap_cb.UploadStaging();
 
+                const GpuConstantBufferView gen_mipmap_cb_view(gpu_system_, gen_mipmap_cb);
                 const GpuShaderResourceView last_level_srv(gpu_system_, texture, i - 1);
                 GpuUnorderedAccessView this_level_uav(gpu_system_, texture, i);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &gen_mipmap_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &gen_mipmap_cb_view},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"last_level_tex", &last_level_srv},
@@ -60,7 +61,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, const GpuDynamicSampler*> samplers[] = {
                     {"mip_sampler", &sampler},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs, samplers};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs, samplers};
                 cmd_list.Compute(gen_mipmap_pipeline_, DivUp(this_width, BlockDim), DivUp(this_height, BlockDim), 1, shader_binding);
             }
         }

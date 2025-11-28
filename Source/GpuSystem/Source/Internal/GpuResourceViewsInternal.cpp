@@ -5,6 +5,13 @@
 
 namespace AIHoloImager
 {
+    GpuConstantBufferViewInternal::GpuConstantBufferViewInternal() noexcept = default;
+    GpuConstantBufferViewInternal::~GpuConstantBufferViewInternal() = default;
+
+    GpuConstantBufferViewInternal::GpuConstantBufferViewInternal(GpuConstantBufferViewInternal&& other) noexcept = default;
+    GpuConstantBufferViewInternal& GpuConstantBufferViewInternal::operator=(GpuConstantBufferViewInternal&& other) noexcept = default;
+
+
     GpuShaderResourceViewInternal::GpuShaderResourceViewInternal() noexcept = default;
     GpuShaderResourceViewInternal::~GpuShaderResourceViewInternal() = default;
 

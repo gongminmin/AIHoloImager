@@ -84,9 +84,8 @@ namespace AIHoloImager
     private:
         void Compute(
             const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
-        void GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets, std::list<VkDescriptorBufferInfo>& desc_buff_infos,
-            const VulkanBindingSlots& binding_slots, std::string_view shader_name, const GpuCommandList::ShaderBinding& shader_binding,
-            std::span<const VkDescriptorSet> desc_sets);
+        void GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets, const VulkanBindingSlots& binding_slots,
+            std::string_view shader_name, const GpuCommandList::ShaderBinding& shader_binding, std::span<const VkDescriptorSet> desc_sets);
 
     private:
         GpuSystem* gpu_system_ = nullptr;

@@ -24,7 +24,7 @@ namespace AIHoloImager
 {
     struct D3D12BindingSlots
     {
-        std::vector<std::string> cbs;
+        std::vector<std::string> cbvs;
         std::vector<std::string> srvs;
         std::vector<std::string> uavs;
         std::vector<std::string> samplers;

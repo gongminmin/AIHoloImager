@@ -176,6 +176,7 @@ namespace AIHoloImager
             uint32_t padding[3];
         };
         GpuConstantBufferOfType<AntiAliasIndirectArgsConstantBuffer> anti_alias_indirect_args_cb_;
+        GpuConstantBufferView anti_alias_indirect_args_cbv_;
         GpuBuffer indirect_args_;
         GpuUnorderedAccessView indirect_args_uav_;
 

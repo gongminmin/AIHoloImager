@@ -16,6 +16,38 @@
 
 namespace AIHoloImager
 {
+    EMPTY_IMP(GpuConstantBufferView)
+    IMP_INTERNAL(GpuConstantBufferView)
+
+    GpuConstantBufferView::GpuConstantBufferView() noexcept = default;
+    GpuConstantBufferView::GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer)
+        : GpuConstantBufferView(gpu_system, *cbuffer.MemBlock().Buffer(), cbuffer.MemBlock().Offset(), cbuffer.MemBlock().Size())
+    {
+    }
+    GpuConstantBufferView::GpuConstantBufferView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t offset, uint32_t size)
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateConstantBufferView(buffer, offset, size).release()))
+    {
+        static_assert(sizeof(Impl) == sizeof(GpuConstantBufferViewInternal));
+    }
+
+    GpuConstantBufferView::~GpuConstantBufferView() = default;
+
+    GpuConstantBufferView::GpuConstantBufferView(GpuConstantBufferView&& other) noexcept = default;
+    GpuConstantBufferView& GpuConstantBufferView::operator=(GpuConstantBufferView&& other) noexcept = default;
+
+    void GpuConstantBufferView::Reset()
+    {
+        assert(impl_);
+        impl_->Reset();
+    }
+
+    void GpuConstantBufferView::Transition(GpuCommandList& cmd_list) const
+    {
+        assert(impl_);
+        impl_->Transition(cmd_list);
+    }
+
+
     EMPTY_IMP(GpuShaderResourceView)
     IMP_INTERNAL(GpuShaderResourceView)
 

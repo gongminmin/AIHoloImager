@@ -13,6 +13,35 @@
 
 namespace AIHoloImager
 {
+    class VulkanConstantBufferView : public GpuConstantBufferViewInternal
+    {
+    public:
+        VulkanConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size);
+
+        ~VulkanConstantBufferView() override;
+
+        VulkanConstantBufferView(VulkanConstantBufferView&& other) noexcept;
+        explicit VulkanConstantBufferView(GpuConstantBufferViewInternal&& other) noexcept;
+        VulkanConstantBufferView& operator=(VulkanConstantBufferView&& other) noexcept;
+        GpuConstantBufferViewInternal& operator=(GpuConstantBufferViewInternal&& other) noexcept override;
+
+        void Reset() override;
+
+        void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(VulkanCommandList& cmd_list) const;
+
+        VkWriteDescriptorSet WriteDescSet() const noexcept;
+
+    private:
+        const GpuResource* resource_ = nullptr;
+        VkWriteDescriptorSet write_desc_set_;
+
+        VkDescriptorBufferInfo buff_info_{};
+        VulkanRecyclableObject<VkBufferView> buff_view_;
+    };
+
+    VULKAN_DEFINE_IMP(ConstantBufferView)
+
     class VulkanShaderResourceView : public GpuShaderResourceViewInternal
     {
     public:

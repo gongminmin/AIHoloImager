@@ -56,14 +56,15 @@ namespace AIHoloImager
             build_coord_hash_cb->num_coords = num_coords_;
             build_coord_hash_cb->hash_size = coord_hash_.Size() / (sizeof(uint32_t) * 5);
             build_coord_hash_cb.UploadStaging();
+            const GpuConstantBufferView build_coord_hash_cbv(gpu_system_, build_coord_hash_cb);
 
             {
                 const uint32_t clear_clr[] = {~0U, ~0U, ~0U, ~0U};
                 cmd_list.Clear(coord_hash_uav_, clear_clr);
             }
 
-            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                {"param_cb", &build_coord_hash_cb},
+            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                {"param_cb", &build_coord_hash_cbv},
             };
             std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                 {"coords_buff", &coords_srv_},
@@ -71,7 +72,7 @@ namespace AIHoloImager
             std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                 {"hash_table", &coord_hash_uav_},
             };
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(build_coord_hash_pipeline_, DivUp(num_coords_, BlockDim), 1, 1, shader_binding);
         }
 
@@ -127,14 +128,15 @@ namespace AIHoloImager
             find_avail_nei_cb->num_coords = num_coords_;
             find_avail_nei_cb->hash_size = coord_hash_.Size() / (sizeof(uint32_t) * 5);
             find_avail_nei_cb.UploadStaging();
+            const GpuConstantBufferView find_avail_nei_cbv(gpu_system_, find_avail_nei_cb);
 
             {
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
                 cmd_list.Clear(nei_indices_count_uav_, clear_clr);
             }
 
-            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                {"param_cb", &find_avail_nei_cb},
+            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                {"param_cb", &find_avail_nei_cbv},
             };
             std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                 {"coords_buff", &coords_srv_},
@@ -145,7 +147,7 @@ namespace AIHoloImager
                 {"nei_indices", &nei_indices_uav_},
                 {"nei_indices_count", &nei_indices_count_uav_},
             };
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(find_available_neighbors_pipeline_, DivUp(num_coords_, BlockDim), num_offsets, 1, shader_binding);
         }
 

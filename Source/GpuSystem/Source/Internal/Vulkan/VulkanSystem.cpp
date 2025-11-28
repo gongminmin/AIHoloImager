@@ -833,6 +833,12 @@ namespace AIHoloImager
         return std::make_unique<VulkanVertexLayout>(std::move(attribs), std::move(slot_strides));
     }
 
+    std::unique_ptr<GpuConstantBufferViewInternal> VulkanSystem::CreateConstantBufferView(
+        const GpuBuffer& buffer, uint32_t offset, uint32_t size) const
+    {
+        return std::make_unique<VulkanConstantBufferView>(buffer, offset, size);
+    }
+
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {

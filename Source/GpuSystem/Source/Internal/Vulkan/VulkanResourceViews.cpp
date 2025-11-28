@@ -13,6 +13,59 @@
 
 namespace AIHoloImager
 {
+    VULKAN_IMP_IMP(ConstantBufferView)
+
+    VulkanConstantBufferView::VulkanConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size) : resource_(&buffer)
+    {
+        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
+
+        buff_info_ = VkDescriptorBufferInfo{
+            .buffer = vulkan_buff,
+            .offset = offset,
+            .range = size,
+        };
+        write_desc_set_ = VkWriteDescriptorSet{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &buff_info_,
+        };
+    }
+
+    VulkanConstantBufferView::~VulkanConstantBufferView() = default;
+
+    VulkanConstantBufferView::VulkanConstantBufferView(VulkanConstantBufferView&& other) noexcept = default;
+    VulkanConstantBufferView::VulkanConstantBufferView(GpuConstantBufferViewInternal&& other) noexcept
+        : VulkanConstantBufferView(static_cast<VulkanConstantBufferView&&>(other))
+    {
+    }
+
+    VulkanConstantBufferView& VulkanConstantBufferView::operator=(VulkanConstantBufferView&& other) noexcept = default;
+    GpuConstantBufferViewInternal& VulkanConstantBufferView::operator=(GpuConstantBufferViewInternal&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanConstantBufferView&&>(other));
+    }
+
+    void VulkanConstantBufferView::Reset()
+    {
+    }
+
+    void VulkanConstantBufferView::Transition(GpuCommandList& cmd_list) const
+    {
+        this->Transition(VulkanImp(cmd_list));
+    }
+
+    void VulkanConstantBufferView::Transition(VulkanCommandList& cmd_list) const
+    {
+        VulkanImp(*resource_).Transition(cmd_list, GpuResourceState::Common);
+    }
+
+    VkWriteDescriptorSet VulkanConstantBufferView::WriteDescSet() const noexcept
+    {
+        return write_desc_set_;
+    }
+
+
     VULKAN_IMP_IMP(ShaderResourceView)
 
     VulkanShaderResourceView::VulkanShaderResourceView(

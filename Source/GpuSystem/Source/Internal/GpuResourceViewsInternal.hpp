@@ -8,6 +8,22 @@
 
 namespace AIHoloImager
 {
+    class GpuConstantBufferViewInternal
+    {
+        DISALLOW_COPY_AND_ASSIGN(GpuConstantBufferViewInternal)
+
+    public:
+        GpuConstantBufferViewInternal() noexcept;
+        virtual ~GpuConstantBufferViewInternal() noexcept;
+
+        GpuConstantBufferViewInternal(GpuConstantBufferViewInternal&& other) noexcept;
+        virtual GpuConstantBufferViewInternal& operator=(GpuConstantBufferViewInternal&& other) noexcept = 0;
+
+        virtual void Reset() = 0;
+
+        virtual void Transition(GpuCommandList& cmd_list) const = 0;
+    };
+
     class GpuShaderResourceViewInternal
     {
         DISALLOW_COPY_AND_ASSIGN(GpuShaderResourceViewInternal)

@@ -247,7 +247,6 @@ namespace AIHoloImager
         }
 
         std::vector<VkWriteDescriptorSet> write_desc_sets;
-        std::list<VkDescriptorBufferInfo> desc_buff_infos;
         for (uint32_t s = 0; s < static_cast<size_t>(GpuRenderPipeline::ShaderStage::Num); ++s)
         {
             const auto stage = static_cast<GpuRenderPipeline::ShaderStage>(s);
@@ -255,7 +254,7 @@ namespace AIHoloImager
             const auto& shader_name = vulkan_pipeline.ShaderName(stage);
             const auto& shader_binding = shader_bindings[s];
 
-            this->GenWriteDescSet(write_desc_sets, desc_buff_infos, binding_slots, shader_name, shader_binding, desc_sets);
+            this->GenWriteDescSet(write_desc_sets, binding_slots, shader_name, shader_binding, desc_sets);
         }
 
         if (!write_desc_sets.empty())
@@ -443,8 +442,7 @@ namespace AIHoloImager
         }
 
         std::vector<VkWriteDescriptorSet> write_desc_sets;
-        std::list<VkDescriptorBufferInfo> desc_buff_infos;
-        this->GenWriteDescSet(write_desc_sets, desc_buff_infos, binding_slots, shader_name, shader_binding, desc_sets);
+        this->GenWriteDescSet(write_desc_sets, binding_slots, shader_name, shader_binding, desc_sets);
 
         if (!write_desc_sets.empty())
         {
@@ -851,9 +849,8 @@ namespace AIHoloImager
         closed_ = false;
     }
 
-    void VulkanCommandList::GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets,
-        std::list<VkDescriptorBufferInfo>& desc_buff_infos, const VulkanBindingSlots& binding_slots, std::string_view shader_name,
-        const GpuCommandList::ShaderBinding& shader_binding, std::span<const VkDescriptorSet> desc_sets)
+    void VulkanCommandList::GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets, const VulkanBindingSlots& binding_slots,
+        std::string_view shader_name, const GpuCommandList::ShaderBinding& shader_binding, std::span<const VkDescriptorSet> desc_sets)
     {
         if (!binding_slots.cbv_srv_uav.empty())
         {
@@ -935,24 +932,15 @@ namespace AIHoloImager
 
                     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
                     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                        for (const auto& [binding_name, cb] : shader_binding.cbs)
+                        for (const auto& [binding_name, cbv] : shader_binding.cbvs)
                         {
                             if (binding_name == name)
                             {
-                                if (cb != nullptr)
+                                if (cbv != nullptr)
                                 {
-                                    const auto& mem_block = cb->MemBlock();
-                                    auto& desc_buff_info = desc_buff_infos.emplace_back(VkDescriptorBufferInfo{
-                                        .buffer = VulkanImp(*mem_block.Buffer()).Buffer(),
-                                        .offset = mem_block.Offset(),
-                                        .range = mem_block.Size(),
-                                    });
-                                    write_desc_sets.emplace_back(VkWriteDescriptorSet{
-                                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                        .descriptorCount = 1,
-                                        .descriptorType = type,
-                                        .pBufferInfo = &desc_buff_info,
-                                    });
+                                    auto& vulkan_cbv = VulkanImp(*cbv);
+                                    vulkan_cbv.Transition(*this);
+                                    write_desc_sets.emplace_back(vulkan_cbv.WriteDescSet());
                                 }
                                 else
                                 {

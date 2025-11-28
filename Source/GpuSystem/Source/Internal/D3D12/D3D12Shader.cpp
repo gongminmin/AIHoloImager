@@ -45,7 +45,7 @@ namespace
 
     struct ShaderReflectionInfo
     {
-        uint32_t num_cbs = 0;
+        uint32_t num_cbvs = 0;
         uint32_t num_srvs = 0;
         uint32_t num_uavs = 0;
         uint32_t num_dynamic_samplers = 0;
@@ -90,9 +90,9 @@ namespace AIHoloImager
                 {
                 case D3D_SIT_CBUFFER:
                 case D3D_SIT_TBUFFER:
-                    shader_rfl.num_cbs = std::max(shader_rfl.num_cbs, bind_desc.BindPoint + 1);
-                    binding_slots.cbs.resize(shader_rfl.num_cbs);
-                    binding_slots.cbs[bind_desc.BindPoint] = bind_desc.Name;
+                    shader_rfl.num_cbvs = std::max(shader_rfl.num_cbvs, bind_desc.BindPoint + 1);
+                    binding_slots.cbvs.resize(shader_rfl.num_cbvs);
+                    binding_slots.cbvs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_TEXTURE:
@@ -165,7 +165,7 @@ namespace AIHoloImager
                 ++range_index;
             }
 
-            num_root_params += shader_rfl.num_cbs;
+            num_root_params += shader_rfl.num_cbvs;
         }
 
         std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
@@ -216,7 +216,7 @@ namespace AIHoloImager
                     ++root_index;
                     ++range_index;
                 }
-                for (uint32_t i = 0; i < shader_rfl.num_cbs; ++i)
+                for (uint32_t i = 0; i < shader_rfl.num_cbvs; ++i)
                 {
                     root_params[root_index] = CreateRootParameterAsConstantBufferView(i, 0, visibility);
                     ++root_index;
@@ -427,9 +427,9 @@ namespace AIHoloImager
                 {
                 case D3D_SIT_CBUFFER:
                 case D3D_SIT_TBUFFER:
-                    shader_rfl.num_cbs = std::max(shader_rfl.num_cbs, bind_desc.BindPoint + 1);
-                    binding_slots_.cbs.resize(shader_rfl.num_cbs);
-                    binding_slots_.cbs[bind_desc.BindPoint] = bind_desc.Name;
+                    shader_rfl.num_cbvs = std::max(shader_rfl.num_cbvs, bind_desc.BindPoint + 1);
+                    binding_slots_.cbvs.resize(shader_rfl.num_cbvs);
+                    binding_slots_.cbvs[bind_desc.BindPoint] = bind_desc.Name;
                     break;
 
                 case D3D_SIT_TEXTURE:
@@ -499,7 +499,7 @@ namespace AIHoloImager
             ++range_index;
         }
 
-        const uint32_t num_root_params = num_desc_ranges + shader_rfl.num_cbs;
+        const uint32_t num_root_params = num_desc_ranges + shader_rfl.num_cbvs;
         std::unique_ptr<D3D12_ROOT_PARAMETER[]> root_params;
         if (num_root_params > 0)
         {
@@ -524,7 +524,7 @@ namespace AIHoloImager
                 ++root_index;
                 ++range_index;
             }
-            for (uint32_t i = 0; i < shader_rfl.num_cbs; ++i)
+            for (uint32_t i = 0; i < shader_rfl.num_cbvs; ++i)
             {
                 root_params[root_index] = CreateRootParameterAsConstantBufferView(i);
                 ++root_index;

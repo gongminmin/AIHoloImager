@@ -110,8 +110,10 @@ namespace AIHoloImager
                     merge_mask_cb->dest_size.y = height;
                     merge_mask_cb.UploadStaging();
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &merge_mask_cb},
+                    const GpuConstantBufferView merge_mask_cbv(gpu_system, merge_mask_cb);
+
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &merge_mask_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &image_srv},
@@ -119,7 +121,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"delighted_tex", &delighted_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(merge_mask_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
                 }
             }

@@ -481,20 +481,21 @@ namespace AIHoloImager
                 ++root_index;
             }
 
-            for (const auto& cb_name : binding_slots.cbs)
+            for (const auto& cbv_name : binding_slots.cbvs)
             {
-                if (!cb_name.empty())
+                if (!cbv_name.empty())
                 {
                     bool found = false;
-                    for (const auto& [binding_name, cb] : shader_binding.cbs)
+                    for (const auto& [binding_name, cbv] : shader_binding.cbvs)
                     {
-                        if (binding_name == cb_name)
+                        if (binding_name == cbv_name)
                         {
-                            if (cb != nullptr)
+                            if (cbv != nullptr)
                             {
-                                const auto& mem_block = cb->MemBlock();
-                                d3d12_cmd_list->SetGraphicsRootConstantBufferView(
-                                    root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+                                auto& d3d12_cbv = D3D12Imp(*cbv);
+                                d3d12_cbv.Transition(*this);
+
+                                d3d12_cmd_list->SetGraphicsRootConstantBufferView(root_index, d3d12_cbv.GpuVirtualAddress());
                             }
                             found = true;
                             break;
@@ -503,7 +504,7 @@ namespace AIHoloImager
                     if (!found)
                     {
                         std::cout << std::format(
-                            "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cb_name, shader_name);
+                            "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cbv_name, shader_name);
                     }
                 }
 
@@ -772,20 +773,21 @@ namespace AIHoloImager
             ++root_index;
         }
 
-        for (const auto& cb_name : binding_slots.cbs)
+        for (const auto& cbv_name : binding_slots.cbvs)
         {
-            if (!cb_name.empty())
+            if (!cbv_name.empty())
             {
                 bool found = false;
-                for (const auto& [binding_name, cb] : shader_binding.cbs)
+                for (const auto& [binding_name, cbv] : shader_binding.cbvs)
                 {
-                    if (binding_name == cb_name)
+                    if (binding_name == cbv_name)
                     {
-                        if (cb != nullptr)
+                        if (cbv != nullptr)
                         {
-                            const auto& mem_block = cb->MemBlock();
-                            d3d12_cmd_list->SetComputeRootConstantBufferView(
-                                root_index, D3D12Imp(*mem_block.Buffer()).GpuVirtualAddress() + mem_block.Offset());
+                            auto& d3d12_cbv = D3D12Imp(*cbv);
+                            d3d12_cbv.Transition(*this);
+
+                            d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, d3d12_cbv.GpuVirtualAddress());
                         }
                         found = true;
                         break;
@@ -794,7 +796,7 @@ namespace AIHoloImager
                 if (!found)
                 {
                     std::cout << std::format(
-                        "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cb_name, shader_name);
+                        "{}WARNING: {} CBuffer {} of shader {} is not bound\n", YellowEscape, EndEscape, cbv_name, shader_name);
                 }
             }
 

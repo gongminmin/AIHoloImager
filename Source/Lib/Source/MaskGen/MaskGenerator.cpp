@@ -154,6 +154,7 @@ namespace AIHoloImager
                 calc_bbox_cb->texture_size.y = height;
                 calc_bbox_cb.UploadStaging();
 
+                const GpuConstantBufferView calc_bbox_cbv(gpu_system, calc_bbox_cb);
                 GpuUnorderedAccessView bbox_uav(gpu_system, bbox_gpu_tex_);
 
                 {
@@ -164,8 +165,8 @@ namespace AIHoloImager
 
                     const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &calc_bbox_cb},
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &calc_bbox_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &input_srv},
@@ -173,7 +174,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"bounding_box_tex", &bbox_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(calc_bbox_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
                 }
 
@@ -219,9 +220,10 @@ namespace AIHoloImager
                 downsample_x_cb->scale = static_cast<float>(roi_width) / U2NetInputDim;
                 downsample_x_cb->x_dir = true;
                 downsample_x_cb.UploadStaging();
+                const GpuConstantBufferView downsample_x_cbv(gpu_system, downsample_x_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &downsample_x_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &downsample_x_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -229,7 +231,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(downsample_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
             }
             {
@@ -246,9 +248,10 @@ namespace AIHoloImager
                 downsample_y_cb->scale = static_cast<float>(roi_height) / U2NetInputDim;
                 downsample_y_cb->x_dir = false;
                 downsample_y_cb.UploadStaging();
+                const GpuConstantBufferView downsample_y_cbv(gpu_system, downsample_y_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &downsample_y_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &downsample_y_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -256,7 +259,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(downsample_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
 
@@ -268,9 +271,10 @@ namespace AIHoloImager
                 stat_image_cb->texture_size.x = U2NetInputDim;
                 stat_image_cb->texture_size.y = U2NetInputDim;
                 stat_image_cb.UploadStaging();
+                const GpuConstantBufferView stat_image_cbv(gpu_system, stat_image_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &stat_image_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &stat_image_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -278,7 +282,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"max_tex", &max_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(stat_image_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
             {
@@ -290,9 +294,10 @@ namespace AIHoloImager
                 normalize_image_cb->texture_size.x = U2NetInputDim;
                 normalize_image_cb->texture_size.y = U2NetInputDim;
                 normalize_image_cb.UploadStaging();
+                const GpuConstantBufferView normalize_image_cbv(gpu_system, normalize_image_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &normalize_image_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &normalize_image_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -301,7 +306,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &normalized_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(normalize_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
 
@@ -344,9 +349,10 @@ namespace AIHoloImager
                 stat_pred_cb->texture_size.x = U2NetInputDim;
                 stat_pred_cb->texture_size.y = U2NetInputDim;
                 stat_pred_cb.UploadStaging();
+                const GpuConstantBufferView stat_pred_cbv(gpu_system, stat_pred_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &stat_pred_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &stat_pred_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -354,7 +360,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"min_max_tex", &min_max_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(stat_pred_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
 
@@ -373,9 +379,10 @@ namespace AIHoloImager
                 upsample_x_cb->scale = static_cast<float>(U2NetInputDim) / roi_width;
                 upsample_x_cb->x_dir = true;
                 upsample_x_cb.UploadStaging();
+                const GpuConstantBufferView upsample_x_cbv(gpu_system, upsample_x_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &upsample_x_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &upsample_x_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -384,7 +391,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(upsample_pipeline_, DivUp(roi_width, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
             {
@@ -401,9 +408,10 @@ namespace AIHoloImager
                 upsample_y_cb->scale = static_cast<float>(U2NetInputDim) / roi_height;
                 upsample_y_cb->x_dir = false;
                 upsample_y_cb.UploadStaging();
+                const GpuConstantBufferView upsample_y_cbv(gpu_system, upsample_y_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &upsample_y_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &upsample_y_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
@@ -412,7 +420,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(upsample_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
             }
 
@@ -441,9 +449,10 @@ namespace AIHoloImager
                     erosion_cb->weights[7].x = Kernel[2][1];
                     erosion_cb->weights[8].x = Kernel[2][2];
                     erosion_cb.UploadStaging();
+                    const GpuConstantBufferView erosion_cbv(gpu_system, erosion_cb);
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &erosion_cb},
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &erosion_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &input_srv},
@@ -451,7 +460,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"output_tex", &output_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
                         erosion_dilation_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
@@ -473,9 +482,10 @@ namespace AIHoloImager
                     dilation_cb->weights[7].x = Kernel[2][1];
                     dilation_cb->weights[8].x = Kernel[2][2];
                     dilation_cb.UploadStaging();
+                    const GpuConstantBufferView dilation_cbv(gpu_system, dilation_cb);
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &dilation_cb},
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &dilation_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &input_srv},
@@ -483,7 +493,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"output_tex", &output_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
                         erosion_dilation_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
@@ -508,9 +518,10 @@ namespace AIHoloImager
                         gaussian_blur_x_cb->weights[i].x = Weights[i];
                     }
                     gaussian_blur_x_cb.UploadStaging();
+                    const GpuConstantBufferView gaussian_blur_x_cbv(gpu_system, gaussian_blur_x_cb);
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &gaussian_blur_x_cb},
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &gaussian_blur_x_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &input_srv},
@@ -518,7 +529,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"output_tex", &output_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(gaussian_blur_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
                 {
@@ -534,9 +545,10 @@ namespace AIHoloImager
                         gaussian_blur_y_cb->weights[i].x = Weights[i];
                     }
                     gaussian_blur_y_cb.UploadStaging();
+                    const GpuConstantBufferView gaussian_blur_y_cbv(gpu_system, gaussian_blur_y_cb);
 
-                    std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                        {"param_cb", &gaussian_blur_y_cb},
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &gaussian_blur_y_cbv},
                     };
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"input_tex", &input_srv},
@@ -544,7 +556,7 @@ namespace AIHoloImager
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"output_tex", &output_uav},
                     };
-                    const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(gaussian_blur_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
                 }
             }
@@ -561,9 +573,10 @@ namespace AIHoloImager
                 merge_mask_cb->texture_size.y = height;
                 merge_mask_cb->roi = roi;
                 merge_mask_cb.UploadStaging();
+                const GpuConstantBufferView merge_mask_cbv(gpu_system, merge_mask_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &merge_mask_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &merge_mask_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"mask_tex", &input_srv},
@@ -571,7 +584,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(merge_mask_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
             }
         }

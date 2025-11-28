@@ -113,6 +113,9 @@ namespace AIHoloImager
         std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
             std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const override;
 
+        std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(
+            const GpuBuffer& buffer, uint32_t offset, uint32_t size) const override;
+
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(

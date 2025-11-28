@@ -11,7 +11,6 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuCommandPool.hpp"
-#include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuShader.hpp"
@@ -72,7 +71,7 @@ namespace AIHoloImager
 
         struct ShaderBinding
         {
-            std::span<std::tuple<std::string_view, const GpuConstantBuffer*>> cbs;
+            std::span<std::tuple<std::string_view, const GpuConstantBufferView*>> cbvs;
             std::span<std::tuple<std::string_view, const GpuShaderResourceView*>> srvs;
             std::span<std::tuple<std::string_view, GpuUnorderedAccessView*>> uavs;
             std::span<std::tuple<std::string_view, const GpuDynamicSampler*>> samplers;

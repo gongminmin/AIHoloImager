@@ -13,6 +13,32 @@
 
 namespace AIHoloImager
 {
+    class D3D12ConstantBufferView : public GpuConstantBufferViewInternal
+    {
+    public:
+        D3D12ConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size);
+
+        ~D3D12ConstantBufferView() override;
+
+        D3D12ConstantBufferView(D3D12ConstantBufferView&& other) noexcept;
+        explicit D3D12ConstantBufferView(GpuConstantBufferViewInternal&& other) noexcept;
+        D3D12ConstantBufferView& operator=(D3D12ConstantBufferView&& other) noexcept;
+        GpuConstantBufferViewInternal& operator=(GpuConstantBufferViewInternal&& other) noexcept override;
+
+        void Reset() override;
+
+        void Transition(GpuCommandList& cmd_list) const override;
+        void Transition(D3D12CommandList& cmd_list) const;
+
+        D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
+
+    private:
+        const GpuResource* resource_ = nullptr;
+        D3D12_GPU_VIRTUAL_ADDRESS gpu_virtual_addr_;
+    };
+
+    D3D12_DEFINE_IMP(ConstantBufferView)
+
     class D3D12ShaderResourceView : public GpuShaderResourceViewInternal
     {
     public:

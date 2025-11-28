@@ -627,6 +627,12 @@ namespace AIHoloImager
         return std::make_unique<D3D12VertexLayout>(std::move(attribs), std::move(slot_strides));
     }
 
+    std::unique_ptr<GpuConstantBufferViewInternal> D3D12System::CreateConstantBufferView(
+        const GpuBuffer& buffer, uint32_t offset, uint32_t size) const
+    {
+        return std::make_unique<D3D12ConstantBufferView>(buffer, offset, size);
+    }
+
     std::unique_ptr<GpuShaderResourceViewInternal> D3D12System::CreateShaderResourceView(
         const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {

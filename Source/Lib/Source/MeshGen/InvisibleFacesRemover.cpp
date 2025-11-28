@@ -218,6 +218,7 @@ namespace AIHoloImager
             GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system_, "render_cb");
             render_cb->mvp = glm::transpose(proj_mtx_ * view_mtx);
             render_cb.UploadStaging();
+            const GpuConstantBufferView render_cbv(gpu_system_, render_cb);
 
             const float clear_clr[] = {0, 0, 0, 0};
             cmd_list.Clear(face_id_rtv_, clear_clr);
@@ -226,11 +227,11 @@ namespace AIHoloImager
             const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&vb, 0}};
             const GpuCommandList::IndexBufferBinding ib_binding = {&ib, 0, GpuFormat::R32_Uint};
 
-            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                {"param_cb", &render_cb},
+            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                {"param_cb", &render_cbv},
             };
             const GpuCommandList::ShaderBinding shader_bindings[] = {
-                {cbs, {}, {}},
+                {cbvs, {}, {}},
                 {{}, {}, {}},
             };
 
@@ -250,12 +251,13 @@ namespace AIHoloImager
                 GpuConstantBufferOfType<MarkFacesConstantBuffer> mark_faces_cb(gpu_system_, "mark_faces_cb");
                 mark_faces_cb->width_height = glm::uvec2(face_id_tex_.Width(0), face_id_tex_.Height(0));
                 mark_faces_cb.UploadStaging();
+                const GpuConstantBufferView mark_faces_cbv(gpu_system_, mark_faces_cb);
 
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
                 cmd_list.Clear(face_mark_uav_, clear_clr);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &mark_faces_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &mark_faces_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"face_id_tex", &face_id_srv_},
@@ -263,7 +265,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"face_mark_buff", &face_mark_uav_},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(mark_faces_pipeline_, DivUp(face_id_tex_.Width(0), BlockDim), DivUp(face_id_tex_.Height(0), BlockDim), 1,
                     shader_binding);
             }
@@ -273,9 +275,10 @@ namespace AIHoloImager
                 GpuConstantBufferOfType<AccumFacesConstantBuffer> accum_faces_cb(gpu_system_, "accum_faces_cb");
                 accum_faces_cb->num_faces = num_faces;
                 accum_faces_cb.UploadStaging();
+                const GpuConstantBufferView accum_faces_cbv(gpu_system_, accum_faces_cb);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &accum_faces_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &accum_faces_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"face_mark_buff", &face_mark_srv_},
@@ -283,7 +286,7 @@ namespace AIHoloImager
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"view_counter_buff", &view_counter_uav_},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(accum_faces_pipeline_, DivUp(num_faces, BlockDim), 1, 1, shader_binding);
             }
         }
@@ -297,11 +300,12 @@ namespace AIHoloImager
             filter_faces_cb->threshold = NumViews / 100;
             filter_faces_cb.UploadStaging();
 
+            const GpuConstantBufferView filter_faces_cbv(gpu_system_, filter_faces_cb);
             const GpuShaderResourceView index_srv(gpu_system_, index_buff, GpuFormat::R32_Uint);
             GpuUnorderedAccessView filtered_index_uav(gpu_system_, filtered_index_buff, GpuFormat::R32_Uint);
 
-            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                {"param_cb", &filter_faces_cb},
+            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                {"param_cb", &filter_faces_cbv},
             };
             std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                 {"index_buff", &index_srv},
@@ -311,7 +315,7 @@ namespace AIHoloImager
                 {"filtered_index_buff", &filtered_index_uav},
                 {"counter", &filtered_counter_uav_},
             };
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(filter_faces_pipeline_, DivUp(num_faces, BlockDim), 1, 1, shader_binding);
         }
 

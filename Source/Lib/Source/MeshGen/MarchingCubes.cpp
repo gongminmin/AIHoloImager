@@ -376,10 +376,12 @@ namespace AIHoloImager
                 calc_cube_indices_cb->isovalue = isovalue;
                 calc_cube_indices_cb.UploadStaging();
 
+                const GpuConstantBufferView calc_cube_indices_cbv(gpu_system_, calc_cube_indices_cb);
+
                 GpuUnorderedAccessView cube_offsets_uav(gpu_system_, cube_offsets_buff, GpuFormat::R32_Uint);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &calc_cube_indices_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &calc_cube_indices_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"edge_table", &edge_table_srv_},
@@ -389,7 +391,7 @@ namespace AIHoloImager
                     {"cube_offsets", &cube_offsets_uav},
                     {"counter", &counter_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(calc_cube_indices_pipeline_, group_x, group_y, group_z, shader_binding);
             }
 
@@ -421,12 +423,14 @@ namespace AIHoloImager
                 process_non_empty_cubes_cb->isovalue = isovalue;
                 process_non_empty_cubes_cb.UploadStaging();
 
+                const GpuConstantBufferView process_non_empty_cubes_cbv(gpu_system_, process_non_empty_cubes_cb);
+
                 GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
                 GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
                 GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &process_non_empty_cubes_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &process_non_empty_cubes_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"edge_table", &edge_table_srv_},
@@ -440,7 +444,7 @@ namespace AIHoloImager
                     {"vertex_index_offsets", &vertex_index_offsets_uav},
                     {"counter", &counter_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(process_non_empty_cubes_pipeline_, group_x, group_y, group_z, shader_binding);
             }
 
@@ -469,6 +473,8 @@ namespace AIHoloImager
                 gen_vertices_indices_cb->scale = scale;
                 gen_vertices_indices_cb.UploadStaging();
 
+                const GpuConstantBufferView gen_vertices_indices_cbv(gpu_system_, gen_vertices_indices_cb);
+
                 const GpuShaderResourceView non_empty_cube_ids_srv(gpu_system_, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
                 const GpuShaderResourceView non_empty_cube_indices_srv(gpu_system_, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
                 const GpuShaderResourceView vertex_index_offsets_srv(gpu_system_, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
@@ -480,8 +486,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system_, mesh_vertices_buff, GpuFormat::R32_Float);
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system_, mesh_indices_buff, GpuFormat::R32_Uint);
 
-                std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                    {"param_cb", &gen_vertices_indices_cb},
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &gen_vertices_indices_cbv},
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"edge_table", &edge_table_srv_},
@@ -496,7 +502,7 @@ namespace AIHoloImager
                     {"mesh_vertices", &mesh_vertices_uav},
                     {"mesh_indices", &mesh_indices_uav},
                 };
-                const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(gen_vertices_indices_pipeline_, DivUp(num_non_empty_cubes, BlockDim), 1, 1, shader_binding);
 
                 vertex_rb_future = cmd_list.ReadBackAsync(mesh_vertices_buff, mesh.VertexBuffer().data(), mesh.VertexBuffer().size_bytes());

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuConstantBuffer.hpp"
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/InternalDefine.hpp"
@@ -19,6 +20,31 @@ namespace AIHoloImager
     class GpuTexture2D;
     class GpuTexture2DArray;
     class GpuTexture3D;
+
+    class GpuConstantBufferViewInternal;
+
+    class GpuConstantBufferView final
+    {
+        DISALLOW_COPY_AND_ASSIGN(GpuConstantBufferView)
+        DEFINE_INTERNAL(GpuConstantBufferView)
+
+    public:
+        GpuConstantBufferView() noexcept;
+        GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer);
+        GpuConstantBufferView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t offset, uint32_t size);
+        ~GpuConstantBufferView();
+
+        GpuConstantBufferView(GpuConstantBufferView&& other) noexcept;
+        GpuConstantBufferView& operator=(GpuConstantBufferView&& other) noexcept;
+
+        void Reset();
+
+        void Transition(GpuCommandList& cmd_list) const;
+
+    private:
+        class Impl;
+        std::unique_ptr<Impl> impl_;
+    };
 
     class GpuShaderResourceViewInternal;
 

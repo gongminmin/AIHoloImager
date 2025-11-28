@@ -861,11 +861,12 @@ namespace AIHoloImager
             undistort_cb->width_height.w = 1.0f / input_tex.Height(0);
             undistort_cb.UploadStaging();
 
+            const GpuConstantBufferView undistort_cbv(gpu_system, undistort_cb);
             const GpuShaderResourceView input_srv(gpu_system, input_tex);
             GpuUnorderedAccessView output_uav(gpu_system, output_tex);
 
-            std::tuple<std::string_view, const GpuConstantBuffer*> cbs[] = {
-                {"param_cb", &undistort_cb},
+            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                {"param_cb", &undistort_cbv},
             };
             std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                 {"distorted_tex", &input_srv},
@@ -873,7 +874,7 @@ namespace AIHoloImager
             std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                 {"undistorted_tex", &output_uav},
             };
-            const GpuCommandList::ShaderBinding shader_binding = {cbs, srvs, uavs};
+            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(
                 undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, shader_binding);
         }

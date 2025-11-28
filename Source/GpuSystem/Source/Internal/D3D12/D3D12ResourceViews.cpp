@@ -14,6 +14,50 @@
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(ConstantBufferView)
+
+    D3D12ConstantBufferView::D3D12ConstantBufferView(const GpuBuffer& buffer, uint32_t offset, [[maybe_unused]] uint32_t size)
+        : resource_(&buffer)
+    {
+        auto* d3d12_buff = D3D12Imp(buffer).Resource();
+        gpu_virtual_addr_ = d3d12_buff->GetGPUVirtualAddress() + offset;
+    }
+
+    D3D12ConstantBufferView::~D3D12ConstantBufferView() = default;
+
+    D3D12ConstantBufferView::D3D12ConstantBufferView(D3D12ConstantBufferView&& other) noexcept = default;
+    D3D12ConstantBufferView::D3D12ConstantBufferView(GpuConstantBufferViewInternal&& other) noexcept
+        : D3D12ConstantBufferView(static_cast<D3D12ConstantBufferView&&>(other))
+    {
+    }
+
+    D3D12ConstantBufferView& D3D12ConstantBufferView::operator=(D3D12ConstantBufferView&& other) noexcept = default;
+    GpuConstantBufferViewInternal& D3D12ConstantBufferView::operator=(GpuConstantBufferViewInternal&& other) noexcept
+    {
+        return this->operator=(static_cast<D3D12ConstantBufferView&&>(other));
+    }
+
+    void D3D12ConstantBufferView::Reset()
+    {
+        gpu_virtual_addr_ = {};
+    }
+
+    void D3D12ConstantBufferView::Transition(GpuCommandList& cmd_list) const
+    {
+        this->Transition(D3D12Imp(cmd_list));
+    }
+
+    void D3D12ConstantBufferView::Transition(D3D12CommandList& cmd_list) const
+    {
+        D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::Common);
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS D3D12ConstantBufferView::GpuVirtualAddress() const noexcept
+    {
+        return gpu_virtual_addr_;
+    }
+
+
     D3D12_IMP_IMP(ShaderResourceView)
 
     D3D12ShaderResourceView::D3D12ShaderResourceView(
