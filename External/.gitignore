@@ -3,6 +3,7 @@ cxxopts/cxxopts/
 dinov2/dinov2/
 dinov2/Dinov2Models/
 DirectX-Headers/DirectX-Headers/
+DirectXShaderCompiler/PrebuiltDxc/
 glm/glm/
 Intrinsic/IntrinsicModels/
 MoGe/moge-vitl
