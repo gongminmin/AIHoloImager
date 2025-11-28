@@ -49,6 +49,8 @@
 #include <openMVG/sfm/pipelines/sfm_regions_provider.hpp>
 #include <openMVG/sfm/sfm_data.hpp>
 #ifdef AIHI_KEEP_INTERMEDIATES
+    #include <openMVG/features/svg_features.hpp>
+    #include <openMVG/matching/svg_matches.hpp>
     #include <openMVG/sfm/sfm_data_io.hpp>
 #endif
 #ifdef _MSC_VER
@@ -146,9 +148,10 @@ namespace AIHoloImager
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
             if (images.size() > 1)
             {
-                const FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
-                const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions);
-                const PairWiseMatches map_geometric_matches = this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential);
+                const FeatureRegions regions = this->FeatureExtraction(sfm_data, images, sfm_tmp_dir);
+                const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions, images, sfm_tmp_dir);
+                const PairWiseMatches map_geometric_matches =
+                    this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential, images, sfm_tmp_dir);
 
                 sfm_data = this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
             }
@@ -385,7 +388,8 @@ namespace AIHoloImager
             return sfm_data;
         }
 
-        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data, const std::vector<Texture>& images) const
+        FeatureRegions FeatureExtraction(
+            const SfM_Data& sfm_data, const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
@@ -424,10 +428,25 @@ namespace AIHoloImager
                 feature_regions.feature_regions[i] = image_describer.Describe(image_gray);
             }
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+            const auto features_tmp_dir = tmp_dir / "Features";
+            std::filesystem::create_directories(features_tmp_dir);
+
+            const std::filesystem::path root_dir(sfm_data.s_root_path);
+            for (const auto& mvg_view : sfm_data.views)
+            {
+                const auto& image = images[mvg_view.first];
+                features::Features2SVG((root_dir / mvg_view.second->s_Img_path).string(), {image.Width(), image.Height()},
+                    feature_regions.feature_regions[mvg_view.first]->GetRegionsPositions(),
+                    (features_tmp_dir / std::format("{}.svg", mvg_view.first)).string());
+            }
+#endif
+
             return feature_regions;
         }
 
-        PairWiseMatches PairMatching(const SfM_Data& sfm_data, const FeatureRegions& regions) const
+        PairWiseMatches PairMatching(const SfM_Data& sfm_data, const FeatureRegions& regions,
+            [[maybe_unused]] const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
@@ -449,11 +468,35 @@ namespace AIHoloImager
             matcher.Match(regions_provider, pairs, map_putative_matches);
             std::cout << std::format("# putative pairs: {}\n", map_putative_matches.size());
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+            const auto matching_tmp_dir = tmp_dir / "RawMatches";
+            std::filesystem::create_directories(matching_tmp_dir);
+
+            const std::filesystem::path root_dir(sfm_data.s_root_path);
+            for (const auto& match : map_putative_matches)
+            {
+                const IndexT id_left = match.first.first;
+                const IndexT id_right = match.first.second;
+
+                const auto& image_left = images[id_left];
+                const auto& image_right = images[id_right];
+
+                const auto path_left = root_dir / sfm_data.views.at(id_left)->s_Img_path;
+                const auto path_right = root_dir / sfm_data.views.at(id_right)->s_Img_path;
+
+                matching::Matches2SVG(path_left.string(), {image_left.Width(), image_left.Height()},
+                    regions.feature_regions[id_left]->GetRegionsPositions(), path_right.string(),
+                    {image_right.Width(), image_right.Height()}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
+                    (matching_tmp_dir / std::format("{}_{}.svg", id_left, id_right)).string());
+            }
+#endif
+
             return map_putative_matches;
         }
 
-        PairWiseMatches GeometricFilter(
-            const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches, const FeatureRegions& regions, bool sequential) const
+        PairWiseMatches GeometricFilter(const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches,
+            const FeatureRegions& regions, bool sequential, [[maybe_unused]] const std::vector<Texture>& images,
+            [[maybe_unused]] const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
 
@@ -497,6 +540,29 @@ namespace AIHoloImager
                     }
                 }
             }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            const auto matching_tmp_dir = tmp_dir / "FilteredMatches";
+            std::filesystem::create_directories(matching_tmp_dir);
+
+            const std::filesystem::path root_dir(sfm_data.s_root_path);
+            for (const auto& match : map_geometric_matches)
+            {
+                const IndexT id_left = match.first.first;
+                const IndexT id_right = match.first.second;
+
+                const auto& image_left = images[id_left];
+                const auto& image_right = images[id_right];
+
+                const auto path_left = root_dir / sfm_data.views.at(id_left)->s_Img_path;
+                const auto path_right = root_dir / sfm_data.views.at(id_right)->s_Img_path;
+
+                matching::Matches2SVG(path_left.string(), {image_left.Width(), image_left.Height()},
+                    regions.feature_regions[id_left]->GetRegionsPositions(), path_right.string(),
+                    {image_right.Width(), image_right.Height()}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
+                    (matching_tmp_dir / std::format("{}_{}.svg", id_left, id_right)).string());
+            }
+#endif
 
             return map_geometric_matches;
         }
