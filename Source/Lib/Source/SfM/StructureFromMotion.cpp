@@ -127,7 +127,7 @@ namespace AIHoloImager
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto point_cloud_estimator_destroy_method = python_system.GetAttr(*point_cloud_estimator_, "Destroy");
-            python_system.CallObject(*point_cloud_estimator_);
+            python_system.CallObject(*point_cloud_estimator_destroy_method);
 
             point_cloud_estimator_destroy_method.reset();
             point_cloud_estimator_focal_method_.reset();
