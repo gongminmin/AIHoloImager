@@ -7,7 +7,7 @@ from contextlib import contextmanager
 import importlib
 import json
 from pathlib import Path
-from typing import *
+from typing import Literal, Optional, Tuple, Union
 import warnings
 
 import numpy as np
@@ -25,19 +25,16 @@ from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
 class TrellisImageTo3DPipeline:
     def __init__(
         self,
-        models: dict[str, nn.Module] = None,
-        sparse_structure_sampler = None,
-        sparse_structure_sampler_params = {},
-        slat_sampler = None,
-        slat_sampler_params = {},
-        slat_normalization: dict = None,
-        image_cond_model: str = None,
+        models: dict[str, nn.Module],
+        sparse_structure_sampler: Samplers.FlowEuler.FlowEulerGuidanceIntervalSampler = None,
+        sparse_structure_sampler_params: Optional[dict] = {},
+        slat_sampler: Samplers.FlowEuler.FlowEulerGuidanceIntervalSampler = None,
+        slat_sampler_params: Optional[dict] = {},
+        slat_normalization: Optional[dict] = None,
+        image_cond_model: Optional[str] = None,
     ):
         assert models != None
-
         self.models = models
-        for model in self.models.values():
-            model.eval()
 
         self.sparse_structure_sampler = sparse_structure_sampler
         self.sparse_structure_sampler_params = sparse_structure_sampler_params
@@ -61,14 +58,16 @@ class TrellisImageTo3DPipeline:
         pth_file_name = this_py_dir.parents[1] / "Models/dinov2" / f"{model_full_name}_pretrain.pth"
         dinov2_model.load_state_dict(torch.load(pth_file_name, map_location = GeneralDevice(), weights_only = True))
 
-        dinov2_model.eval()
         self.models["image_cond_model"] = dinov2_model
         self.image_cond_model_transform = transforms.Compose([
             transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]),
         ])
 
+        for model in self.models.values():
+            model.eval()
+
     @staticmethod
-    def FromPretrained(path: str) -> "TrellisImageTo3DPipeline":
+    def FromPretrained(path: Union[str, Path]) -> "TrellisImageTo3DPipeline":
         config_file_path = Path(path) / "pipeline.json"
 
         with open(config_file_path, "r") as file:
@@ -140,8 +139,8 @@ class TrellisImageTo3DPipeline:
         self,
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
-        num_samples: int = 1,
-        sampler_params: dict = {},
+        num_samples: Optional[int] = 1,
+        sampler_params: Optional[dict] = {},
     ) -> torch.Tensor:
         """
         Sample sparse structures with the given conditioning.
@@ -198,7 +197,7 @@ class TrellisImageTo3DPipeline:
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
         coords: torch.Tensor,
-        sampler_params: dict = {},
+        sampler_params: Optional[dict] = {},
     ) -> sp.SparseTensor:
         """
         Sample structured latent with the given conditioning.
@@ -293,9 +292,9 @@ class TrellisImageTo3DPipeline:
         self,
         gpu_system,
         images: torch.Tensor,
-        num_samples: int = 1,
-        sparse_structure_sampler_params: dict = {},
-        slat_sampler_params: dict = {},
+        num_samples: Optional[int] = 1,
+        sparse_structure_sampler_params: Optional[dict] = {},
+        slat_sampler_params: Optional[dict] = {},
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
     ) -> list:
         """
