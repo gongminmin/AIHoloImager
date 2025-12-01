@@ -87,6 +87,8 @@ namespace AIHoloImager
         {
             std::unique_ptr<features::Regions> regions_type;
             std::vector<std::unique_ptr<features::Regions>> feature_regions;
+
+            std::shared_ptr<Regions_Provider> regions_provider;
         };
 
     public:
@@ -428,6 +430,9 @@ namespace AIHoloImager
                 feature_regions.feature_regions[i] = image_describer.Describe(image_gray);
             }
 
+            feature_regions.regions_provider = std::make_shared<Regions_Provider>();
+            feature_regions.regions_provider->load(sfm_data, feature_regions.feature_regions.data(), *feature_regions.regions_type);
+
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto features_tmp_dir = tmp_dir / "Features";
             std::filesystem::create_directories(features_tmp_dir);
@@ -452,10 +457,6 @@ namespace AIHoloImager
 
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Pair matching");
 
-            // Load the corresponding view regions
-            auto regions_provider = std::make_shared<Regions_Provider>();
-            regions_provider->load(sfm_data, regions.feature_regions.data(), *regions.regions_type);
-
             const float dist_ratio = 0.8f;
 
             assert(regions.regions_type->IsScalar());
@@ -465,7 +466,7 @@ namespace AIHoloImager
             std::cout << std::format("Matching on # pairs: {}\n", pairs.size());
 
             PairWiseMatches map_putative_matches;
-            matcher.Match(regions_provider, pairs, map_putative_matches);
+            matcher.Match(regions.regions_provider, pairs, map_putative_matches);
             std::cout << std::format("# putative pairs: {}\n", map_putative_matches.size());
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -505,10 +506,7 @@ namespace AIHoloImager
             const bool guided_matching = false;
             const uint32_t max_iteration = 2048;
 
-            auto regions_provider = std::make_shared<Regions_Provider>();
-            regions_provider->load(sfm_data, regions.feature_regions.data(), *regions.regions_type);
-
-            ImageCollectionGeometricFilter filter(&sfm_data, regions_provider);
+            ImageCollectionGeometricFilter filter(&sfm_data, regions.regions_provider);
 
             const double dist_ratio = 0.6;
 
