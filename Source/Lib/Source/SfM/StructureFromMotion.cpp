@@ -85,9 +85,7 @@ namespace AIHoloImager
     private:
         struct FeatureRegions
         {
-            std::unique_ptr<features::Regions> regions_type;
             std::vector<std::unique_ptr<features::Regions>> feature_regions;
-
             std::shared_ptr<Regions_Provider> regions_provider;
         };
 
@@ -399,9 +397,8 @@ namespace AIHoloImager
 
             features::SIFT_Anatomy_Image_describer image_describer;
 
-            FeatureRegions feature_regions;
-            feature_regions.regions_type = image_describer.Allocate();
-            feature_regions.feature_regions.resize(sfm_data.views.size());
+            FeatureRegions regions;
+            regions.feature_regions.resize(sfm_data.views.size());
 
 #ifdef _OPENMP
     #pragma omp parallel for schedule(dynamic)
@@ -427,11 +424,13 @@ namespace AIHoloImager
                     }
                 }
 
-                feature_regions.feature_regions[i] = image_describer.Describe(image_gray);
+                regions.feature_regions[i] = image_describer.Describe(image_gray);
             }
 
-            feature_regions.regions_provider = std::make_shared<Regions_Provider>();
-            feature_regions.regions_provider->load(sfm_data, feature_regions.feature_regions.data(), *feature_regions.regions_type);
+            auto regions_type = image_describer.Allocate();
+            assert(regions_type->IsScalar());
+            regions.regions_provider = std::make_shared<Regions_Provider>();
+            regions.regions_provider->load(sfm_data, regions.feature_regions.data(), *regions_type);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto features_tmp_dir = tmp_dir / "Features";
@@ -442,12 +441,12 @@ namespace AIHoloImager
             {
                 const auto& image = images[mvg_view.first];
                 features::Features2SVG((root_dir / mvg_view.second->s_Img_path).string(), {image.Width(), image.Height()},
-                    feature_regions.feature_regions[mvg_view.first]->GetRegionsPositions(),
+                    regions.feature_regions[mvg_view.first]->GetRegionsPositions(),
                     (features_tmp_dir / std::format("{}.svg", mvg_view.first)).string());
             }
 #endif
 
-            return feature_regions;
+            return regions;
         }
 
         PairWiseMatches PairMatching(const SfM_Data& sfm_data, const FeatureRegions& regions,
@@ -459,7 +458,6 @@ namespace AIHoloImager
 
             const float dist_ratio = 0.8f;
 
-            assert(regions.regions_type->IsScalar());
             Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
 
             const Pair_Set pairs = exhaustivePairs(sfm_data.GetViews().size());
@@ -470,6 +468,13 @@ namespace AIHoloImager
             std::cout << std::format("# putative pairs: {}\n", map_putative_matches.size());
 
 #ifdef AIHI_KEEP_INTERMEDIATES
+            uint32_t total_matches = 0;
+            for (const auto& match : map_putative_matches)
+            {
+                total_matches += static_cast<uint32_t>(match.second.size());
+            }
+            std::cout << std::format("# total putative feature pairs: {}\n", total_matches);
+
             const auto matching_tmp_dir = tmp_dir / "RawMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
@@ -540,6 +545,13 @@ namespace AIHoloImager
             }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
+            uint32_t total_matches = 0;
+            for (const auto& match : map_geometric_matches)
+            {
+                total_matches += static_cast<uint32_t>(match.second.size());
+            }
+            std::cout << std::format("# total geometric feature pairs: {}\n", total_matches);
+
             const auto matching_tmp_dir = tmp_dir / "FilteredMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
