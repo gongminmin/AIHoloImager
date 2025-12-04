@@ -149,11 +149,10 @@ namespace AIHoloImager
             if (images.size() > 1)
             {
                 const FeatureRegions regions = this->FeatureExtraction(sfm_data, images, sfm_tmp_dir);
-                const PairWiseMatches map_putative_matches = this->PairMatching(sfm_data, regions, images, sfm_tmp_dir);
-                const PairWiseMatches map_geometric_matches =
-                    this->GeometricFilter(sfm_data, map_putative_matches, regions, sequential, images, sfm_tmp_dir);
+                PairWiseMatches matches = this->PairMatching(sfm_data, regions, images, sfm_tmp_dir);
+                matches = this->GeometricFilter(sfm_data, matches, regions, sequential, images, sfm_tmp_dir);
 
-                sfm_data = this->PointCloudReconstruction(sfm_data, map_geometric_matches, regions, sequential, sfm_tmp_dir);
+                sfm_data = this->PointCloudReconstruction(sfm_data, matches, regions, sequential, sfm_tmp_dir);
             }
             else
             {
@@ -436,14 +435,18 @@ namespace AIHoloImager
             const auto features_tmp_dir = tmp_dir / "Features";
             std::filesystem::create_directories(features_tmp_dir);
 
+            size_t total_regions = 0;
             const std::filesystem::path root_dir(sfm_data.s_root_path);
             for (const auto& mvg_view : sfm_data.views)
             {
                 const auto& image = images[mvg_view.first];
+                const auto& region = *regions.feature_regions[mvg_view.first];
                 features::Features2SVG((root_dir / mvg_view.second->s_Img_path).string(), {image.Width(), image.Height()},
-                    regions.feature_regions[mvg_view.first]->GetRegionsPositions(),
-                    (features_tmp_dir / std::format("{}.svg", mvg_view.first)).string());
+                    region.GetRegionsPositions(), (features_tmp_dir / std::format("{}.svg", mvg_view.first)).string());
+
+                total_regions += region.RegionCount();
             }
+            std::cout << std::format("# feature regions: {}\n", total_regions);
 #endif
 
             return regions;
@@ -461,25 +464,25 @@ namespace AIHoloImager
             Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
 
             const Pair_Set pairs = exhaustivePairs(sfm_data.GetViews().size());
-            std::cout << std::format("Matching on # pairs: {}\n", pairs.size());
+            std::cout << std::format("Matching on # image pairs: {}\n", pairs.size());
 
-            PairWiseMatches map_putative_matches;
-            matcher.Match(regions.regions_provider, pairs, map_putative_matches);
-            std::cout << std::format("# putative pairs: {}\n", map_putative_matches.size());
+            PairWiseMatches putative_matches;
+            matcher.Match(regions.regions_provider, pairs, putative_matches);
+            std::cout << std::format("# putative image pairs: {}\n", putative_matches.size());
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             uint32_t total_matches = 0;
-            for (const auto& match : map_putative_matches)
+            for (const auto& match : putative_matches)
             {
                 total_matches += static_cast<uint32_t>(match.second.size());
             }
-            std::cout << std::format("# total putative feature pairs: {}\n", total_matches);
+            std::cout << std::format("# putative feature pairs: {}\n", total_matches);
 
             const auto matching_tmp_dir = tmp_dir / "RawMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
             const std::filesystem::path root_dir(sfm_data.s_root_path);
-            for (const auto& match : map_putative_matches)
+            for (const auto& match : putative_matches)
             {
                 const IndexT id_left = match.first.first;
                 const IndexT id_right = match.first.second;
@@ -497,11 +500,11 @@ namespace AIHoloImager
             }
 #endif
 
-            return map_putative_matches;
+            return putative_matches;
         }
 
-        PairWiseMatches GeometricFilter(const SfM_Data& sfm_data, const PairWiseMatches& map_putative_matches,
-            const FeatureRegions& regions, bool sequential, [[maybe_unused]] const std::vector<Texture>& images,
+        PairWiseMatches GeometricFilter(const SfM_Data& sfm_data, const PairWiseMatches& putative_matches, const FeatureRegions& regions,
+            bool sequential, [[maybe_unused]] const std::vector<Texture>& images,
             [[maybe_unused]] const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
@@ -515,27 +518,27 @@ namespace AIHoloImager
 
             const double dist_ratio = 0.6;
 
-            PairWiseMatches map_geometric_matches;
+            PairWiseMatches geometric_matches;
             if (sequential)
             {
                 filter.Robust_model_estimation(
-                    GeometricFilter_FMatrix_AC(4.0, max_iteration), map_putative_matches, guided_matching, dist_ratio);
-                map_geometric_matches = filter.Get_geometric_matches();
+                    GeometricFilter_FMatrix_AC(4.0, max_iteration), putative_matches, guided_matching, dist_ratio);
+                geometric_matches = filter.Get_geometric_matches();
             }
             else
             {
                 filter.Robust_model_estimation(
-                    GeometricFilter_EMatrix_AC(4.0, max_iteration), map_putative_matches, guided_matching, dist_ratio);
-                map_geometric_matches = filter.Get_geometric_matches();
+                    GeometricFilter_EMatrix_AC(4.0, max_iteration), putative_matches, guided_matching, dist_ratio);
+                geometric_matches = filter.Get_geometric_matches();
 
-                for (auto iter = map_geometric_matches.begin(); iter != map_geometric_matches.end();)
+                for (auto iter = geometric_matches.begin(); iter != geometric_matches.end();)
                 {
-                    const size_t putative_photometric_count = map_putative_matches.find(iter->first)->second.size();
+                    const size_t putative_photometric_count = putative_matches.find(iter->first)->second.size();
                     const size_t putative_geometric_count = iter->second.size();
                     const float ratio = putative_geometric_count / static_cast<float>(putative_photometric_count);
                     if ((putative_geometric_count < 50) || (ratio < 0.3f))
                     {
-                        iter = map_geometric_matches.erase(iter);
+                        iter = geometric_matches.erase(iter);
                     }
                     else
                     {
@@ -545,18 +548,20 @@ namespace AIHoloImager
             }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
+            std::cout << std::format("# filtered image pairs: {}\n", geometric_matches.size());
+
             uint32_t total_matches = 0;
-            for (const auto& match : map_geometric_matches)
+            for (const auto& match : geometric_matches)
             {
                 total_matches += static_cast<uint32_t>(match.second.size());
             }
-            std::cout << std::format("# total geometric feature pairs: {}\n", total_matches);
+            std::cout << std::format("# filtered feature pairs: {}\n", total_matches);
 
             const auto matching_tmp_dir = tmp_dir / "FilteredMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
             const std::filesystem::path root_dir(sfm_data.s_root_path);
-            for (const auto& match : map_geometric_matches)
+            for (const auto& match : geometric_matches)
             {
                 const IndexT id_left = match.first.first;
                 const IndexT id_right = match.first.second;
@@ -574,11 +579,11 @@ namespace AIHoloImager
             }
 #endif
 
-            return map_geometric_matches;
+            return geometric_matches;
         }
 
-        SfM_Data PointCloudReconstruction(const SfM_Data& sfm_data, const PairWiseMatches& map_geometric_matches,
-            const FeatureRegions& regions, bool sequential, const std::filesystem::path& tmp_dir) const
+        SfM_Data PointCloudReconstruction(const SfM_Data& sfm_data, const PairWiseMatches& matches, const FeatureRegions& regions,
+            bool sequential, const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_SfM.cpp
 
@@ -588,7 +593,7 @@ namespace AIHoloImager
             feats_provider.load(sfm_data, regions.feature_regions.data());
 
             Matches_Provider matches_provider;
-            matches_provider.load(sfm_data, map_geometric_matches);
+            matches_provider.load(sfm_data, matches);
 
             std::unique_ptr<ReconstructionEngine> sfm_engine;
             if (sequential)
