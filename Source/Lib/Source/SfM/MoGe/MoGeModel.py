@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 from torch.nn.utils import skip_init
 
-from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
+from PythonSystem import GeneralDevice
 from .Geometry import NormalizedViewPlaneUv, RecoverFocalShift, IntrinsicsFromFocalCenter, UnprojectCV, ImageUV
 
 class ResidualConvBlock(nn.Module):
@@ -214,8 +214,6 @@ class MoGeModel(nn.Module):
         self.register_buffer("image_mean", image_mean)
         self.register_buffer("image_std", image_std)
 
-        self.EnablePytorchNativeSdpa()
-
     @classmethod
     def FromPretrained(cls, model_path : Union[str, Path], model_kwargs : Optional[Dict[str, Any]] = None) -> "MoGeModel":
         """
@@ -235,10 +233,6 @@ class MoGeModel(nn.Module):
         model = skip_init(cls, **model_config)
         model.load_state_dict(checkpoint["model"])
         return model
-
-    def EnablePytorchNativeSdpa(self):
-        for i in range(len(self.backbone.blocks)):
-            self.backbone.blocks[i].attn = WrapDinov2AttentionWithSdpa(self.backbone.blocks[i].attn)
 
     def RemapPoints(self, points : torch.Tensor) -> torch.Tensor:
         if self.remap_output == "linear":

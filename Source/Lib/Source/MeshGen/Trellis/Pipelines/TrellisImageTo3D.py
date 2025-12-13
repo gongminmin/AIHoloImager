@@ -20,7 +20,7 @@ from . import Samplers
 from .. import Models
 from ..Modules import Sparse as sp
 
-from PythonSystem import GeneralDevice, WrapDinov2AttentionWithSdpa
+from PythonSystem import GeneralDevice
 
 class TrellisImageTo3DPipeline:
     def __init__(
@@ -48,8 +48,6 @@ class TrellisImageTo3DPipeline:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dinov2_model = backbones_module(pretrained = False)
-        for i in range(len(dinov2_model.blocks)):
-            dinov2_model.blocks[i].attn = WrapDinov2AttentionWithSdpa(dinov2_model.blocks[i].attn)
 
         compact_arch_name = "vitl"
         patch_size = 14

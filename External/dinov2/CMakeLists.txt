@@ -3,7 +3,7 @@
 
 UpdateExternalLib(NAME "dinov2"
                   URL "https://github.com/facebookresearch/dinov2.git"
-                  REV "e1277af2ba9496fbadf7aec6eba56e8d882d1e35"
+                  REV "b8931f7bf91576930313be2c6d6af376033b35f0"
 )
 
 set(py_files
