@@ -105,7 +105,6 @@ namespace AIHoloImager
     {
         return MakePyObjectPtr(PyObject_CallObject(&object, nullptr));
     }
-
     PyObjectPtr PythonSystem::CallObject(PyObject& object, PyObject& args)
     {
         return MakePyObjectPtr(PyObject_CallObject(&object, &args));
@@ -115,32 +114,26 @@ namespace AIHoloImager
     {
         return MakePyObjectPtr(PyLong_FromLong(value));
     }
-
     PyObjectPtr PythonSystem::MakeObject(uint32_t value)
     {
         return MakePyObjectPtr(PyLong_FromUnsignedLong(value));
     }
-
     PyObjectPtr PythonSystem::MakeObject(float value)
     {
         return MakePyObjectPtr(PyFloat_FromDouble(value));
     }
-
     PyObjectPtr PythonSystem::MakeObject(std::string_view str)
     {
         return MakePyObjectPtr(PyUnicode_FromStringAndSize(str.data(), str.size()));
     }
-
     PyObjectPtr PythonSystem::MakeObject(std::wstring_view str)
     {
         return MakePyObjectPtr(PyUnicode_FromWideChar(str.data(), str.size()));
     }
-
     PyObjectPtr PythonSystem::MakeObject(std::span<const std::byte> mem)
     {
         return MakePyObjectPtr(PyBytes_FromStringAndSize(reinterpret_cast<const char*>(mem.data()), mem.size()));
     }
-
     PyObjectPtr PythonSystem::MakeObject(void* ptr)
     {
         return MakePyObjectPtr(PyLong_FromUnsignedLongLong(reinterpret_cast<uint64_t>(ptr)));
@@ -153,6 +146,7 @@ namespace AIHoloImager
 
     void PythonSystem::SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item)
     {
+        Py_IncRef(&item);
         PyTuple_SetItem(&tuple, index, &item);
     }
 
