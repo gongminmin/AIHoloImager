@@ -11,7 +11,6 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-#include "AIHoloImager/Texture.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuTexture.hpp"

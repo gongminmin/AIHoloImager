@@ -57,6 +57,7 @@
     #pragma warning(pop)
 #endif
 
+#include "AIHoloImager/Texture.hpp"
 #include "Delighter/Delighter.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
