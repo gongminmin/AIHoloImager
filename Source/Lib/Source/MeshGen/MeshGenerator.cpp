@@ -594,8 +594,8 @@ namespace AIHoloImager
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            bb = Aabb();
             std::vector<uint8_t> point_used(sfm_input.structure.size(), 0);
+            std::vector<glm::vec3> object_points;
             std::vector<glm::vec3> plane_points;
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
@@ -643,7 +643,7 @@ namespace AIHoloImager
                                 {
                                     if (!(point_used[j] & 0x1U))
                                     {
-                                        bb.AddPoint(glm::vec3(landmark.point));
+                                        object_points.push_back(glm::vec3(landmark.point));
                                         point_used[j] |= 0x1U;
                                     }
 
@@ -670,6 +670,15 @@ namespace AIHoloImager
             }
 
             up_vec = glm::vec3(plane);
+
+            bb = Aabb();
+            for (uint32_t i = 0; i < object_points.size(); ++i)
+            {
+                if (glm::dot(up_vec, object_points[i]) + plane.w > 0)
+                {
+                    bb.AddPoint(object_points[i]);
+                }
+            }
         }
 
         std::vector<GpuTexture2D> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
