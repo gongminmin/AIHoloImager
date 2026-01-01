@@ -13,7 +13,7 @@ cbuffer param_cb
 
 Texture2D<float4> input_tex;
 
-RWTexture2D<uint32_t> max_tex;
+RWBuffer<uint32_t> max_buff;
 
 groupshared float group_wave_max[BlockDim * BlockDim / MinWaveSize];
 
@@ -55,6 +55,6 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     if (group_index == 0)
     {
-        InterlockedMax(max_tex[uint32_t2(0, 0)], uint32_t(max_ch * 1e5f));
+        InterlockedMax(max_buff[0], uint32_t(max_ch * 1e5f));
     }
 }

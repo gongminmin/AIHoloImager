@@ -15,7 +15,7 @@ cbuffer param_cb
 };
 
 Texture2D<float> input_tex;
-Texture2D<uint32_t> min_max_tex;
+Buffer<uint32_t> min_max_buff;
 
 #ifdef __spirv__
 [[vk::image_format("r8")]]
@@ -35,8 +35,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     float pred_scale;
     if (x_dir)
     {
-        min_pred = min_max_tex.Load(uint32_t3(0, 0, 0)) / 1e5f;
-        const float max_pred = min_max_tex.Load(uint32_t3(1, 0, 0)) / 1e5f;
+        min_pred = min_max_buff[0] / 1e5f;
+        const float max_pred = min_max_buff[1] / 1e5f;
         pred_scale = 1 / (max_pred - min_pred);
     }
     else

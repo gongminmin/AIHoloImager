@@ -125,23 +125,23 @@ namespace AIHoloImager
                     gpu_system, U2NetInputDim, height, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "downsampled_x_gpu_tex_");
                 downsampled_gpu_tex_ = GpuTexture2D(
                     gpu_system, U2NetInputDim, U2NetInputDim, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "downsampled_gpu_tex_");
-                image_max_gpu_tex_ =
-                    GpuTexture2D(gpu_system, 1, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, "image_max_gpu_tex_");
+                image_max_gpu_buff_ =
+                    GpuBuffer(gpu_system, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "image_max_gpu_buff_");
                 normalized_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "normalized_gpu_tex_");
 
                 pred_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "pred_gpu_tex_");
-                pred_min_max_gpu_tex_ =
-                    GpuTexture2D(gpu_system, 2, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_tex_");
+                pred_min_max_gpu_buff_ = GpuBuffer(
+                    gpu_system, 2 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_buff_");
                 mask_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_gpu_tex_");
                 mask_pingpong_gpu_tex_ =
                     GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_pingpong_gpu_tex_");
 
                 if (crop)
                 {
-                    bbox_gpu_tex_ =
-                        GpuTexture2D(gpu_system, 4, 1, 1, GpuFormat::R32_Uint, GpuResourceFlag::UnorderedAccess, "bbox_gpu_tex_");
+                    bbox_gpu_buff_ =
+                        GpuBuffer(gpu_system, 4 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "bbox_gpu_buff_");
                 }
             }
 
@@ -155,11 +155,11 @@ namespace AIHoloImager
                 calc_bbox_cb.UploadStaging();
 
                 const GpuConstantBufferView calc_bbox_cbv(gpu_system, calc_bbox_cb);
-                GpuUnorderedAccessView bbox_uav(gpu_system, bbox_gpu_tex_);
+                GpuUnorderedAccessView bbox_uav(gpu_system, bbox_gpu_buff_, GpuFormat::R32_Uint);
 
                 {
                     const uint32_t bb_init[] = {width, height, 0, 0};
-                    cmd_list.Upload(bbox_gpu_tex_, 0, bb_init, sizeof(bb_init));
+                    cmd_list.Upload(bbox_gpu_buff_, bb_init, sizeof(bb_init));
 
                     constexpr uint32_t BlockDim = 16;
 
@@ -172,14 +172,14 @@ namespace AIHoloImager
                         {"input_tex", &input_srv},
                     };
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                        {"bounding_box_tex", &bbox_uav},
+                        {"bounding_box_buff", &bbox_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(calc_bbox_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
                 }
 
                 // TODO: Use indirect dispatch to avoid the read back
-                const auto rb_future = cmd_list.ReadBackAsync(bbox_gpu_tex_, 0, &roi, sizeof(roi));
+                const auto rb_future = cmd_list.ReadBackAsync(bbox_gpu_buff_, &roi, sizeof(roi));
                 rb_future.wait();
 
                 const glm::uvec2 bb_min(roi.x, roi.y);
@@ -207,7 +207,7 @@ namespace AIHoloImager
             const uint32_t roi_height = roi.w - roi.y;
 
             constexpr uint32_t InitMinMax[2] = {~0U, 0U};
-            cmd_list.Upload(pred_min_max_gpu_tex_, 0, InitMinMax, sizeof(InitMinMax));
+            cmd_list.Upload(pred_min_max_gpu_buff_, InitMinMax, sizeof(InitMinMax));
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
@@ -265,7 +265,7 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
-                GpuUnorderedAccessView max_uav(gpu_system, image_max_gpu_tex_);
+                GpuUnorderedAccessView max_uav(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_image_cb(gpu_system, "stat_image_cb");
                 stat_image_cb->texture_size.x = U2NetInputDim;
@@ -280,14 +280,14 @@ namespace AIHoloImager
                     {"input_tex", &input_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                    {"max_tex", &max_uav},
+                    {"max_buff", &max_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(stat_image_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
-                const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_tex_);
+                const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint);
                 GpuUnorderedAccessView normalized_uav(gpu_system, normalized_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> normalize_image_cb(gpu_system, "normalize_image_cb");
@@ -301,7 +301,7 @@ namespace AIHoloImager
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
-                    {"max_tex", &max_srv},
+                    {"max_buff", &max_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &normalized_uav},
@@ -343,7 +343,7 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
-                GpuUnorderedAccessView min_max_uav(gpu_system, pred_min_max_gpu_tex_);
+                GpuUnorderedAccessView min_max_uav(gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_pred_cb(gpu_system, "stat_pred_cb");
                 stat_pred_cb->texture_size.x = U2NetInputDim;
@@ -358,7 +358,7 @@ namespace AIHoloImager
                     {"input_tex", &input_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                    {"min_max_tex", &min_max_uav},
+                    {"min_max_buff", &min_max_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(stat_pred_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
@@ -366,7 +366,7 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
-                const GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_tex_);
+                const GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint);
                 GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_x_cb(gpu_system, "upsample_x_cb");
@@ -386,7 +386,7 @@ namespace AIHoloImager
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
-                    {"min_max_tex", &min_max_srv},
+                    {"min_max_buff", &min_max_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
@@ -415,7 +415,7 @@ namespace AIHoloImager
                 };
                 std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                     {"input_tex", &input_srv},
-                    {"min_max_tex", nullptr},
+                    {"min_max_buff", nullptr},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"output_tex", &output_uav},
@@ -600,11 +600,11 @@ namespace AIHoloImager
 
         GpuTexture2D downsampled_x_gpu_tex_;
         GpuTexture2D downsampled_gpu_tex_;
-        GpuTexture2D image_max_gpu_tex_;
+        GpuBuffer image_max_gpu_buff_;
         GpuTexture2D normalized_gpu_tex_;
-        GpuTexture2D bbox_gpu_tex_;
+        GpuBuffer bbox_gpu_buff_;
         GpuTexture2D pred_gpu_tex_;
-        GpuTexture2D pred_min_max_gpu_tex_;
+        GpuBuffer pred_min_max_gpu_buff_;
         GpuTexture2D mask_gpu_tex_;
         GpuTexture2D mask_pingpong_gpu_tex_;
 

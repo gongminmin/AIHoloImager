@@ -9,7 +9,7 @@ cbuffer param_cb
 };
 
 Texture2D<float4> input_tex;
-Texture2D<uint32_t> max_tex;
+Buffer<uint32_t> max_buff;
 
 RWTexture2D<float> output_tex;
 
@@ -23,7 +23,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     }
 
     float3 color = input_tex.Load(uint3(dtid.xy, 0)).rgb;
-    color /= max_tex.Load(uint3(0, 0, 0)) / 1e5f;
+    color /= max_buff[0] / 1e5f;
 
     static const float3 Mean = float3(0.485f, 0.456f, 0.406f);
     static const float3 Std = float3(0.229f, 0.224f, 0.225f);

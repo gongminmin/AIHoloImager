@@ -13,7 +13,7 @@ cbuffer param_cb
 
 Texture2D input_tex;
 
-RWTexture2D<uint32_t> bounding_box_tex;
+RWBuffer<uint32_t> bounding_box_buff;
 
 groupshared uint32_t2 group_wave_mins[BlockDim * BlockDim / MinWaveSize];
 groupshared uint32_t2 group_wave_maxs[BlockDim * BlockDim / MinWaveSize];
@@ -67,9 +67,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     if ((group_index == 0) && (bb_min.x < bb_max.x) && (bb_min.y < bb_max.y))
     {
-        InterlockedMin(bounding_box_tex[uint32_t2(0, 0)], bb_min.x);
-        InterlockedMin(bounding_box_tex[uint32_t2(1, 0)], bb_min.y);
-        InterlockedMax(bounding_box_tex[uint32_t2(2, 0)], bb_max.x);
-        InterlockedMax(bounding_box_tex[uint32_t2(3, 0)], bb_max.y);
+        InterlockedMin(bounding_box_buff[0], bb_min.x);
+        InterlockedMin(bounding_box_buff[1], bb_min.y);
+        InterlockedMax(bounding_box_buff[2], bb_max.x);
+        InterlockedMax(bounding_box_buff[3], bb_max.y);
     }
 }
