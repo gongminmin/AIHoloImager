@@ -23,7 +23,7 @@ class PointCloudEstimator:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Focal(self, image, image_width, image_height, channels):
+    def Focal(self, image: bytes, image_width: int, image_height: int, channels: int) -> float:
         image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
         image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
 
@@ -33,7 +33,7 @@ class PointCloudEstimator:
         return self.model.Focal(image)
 
     @torch.no_grad()
-    def PointCloud(self, image, image_width, image_height, channels, fov_x):
+    def PointCloud(self, image: bytes, image_width: int, image_height: int, channels: int, fov_x: float) -> tuple:
         image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
         image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
 

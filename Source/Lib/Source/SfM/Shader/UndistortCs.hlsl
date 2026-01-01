@@ -58,6 +58,12 @@ float2 GetDistortedCoord(float2 p)
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
+    [branch]
+    if (any(dtid.xy >= uint32_t2(width_height.xy)))
+    {
+        return;
+    }
+
     float2 undistort_coord = dtid.xy;
     float2 distort_coord = GetDistortedCoord(undistort_coord);
 
@@ -67,5 +73,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         color.rgb = distorted_tex.SampleLevel(bilinear_sampler, distort_coord * width_height.zw, 0).rgb;
     }
 
-    undistorted_tex[dtid.xy] = color;
+    undistorted_tex[undistort_coord] = color;
 }
