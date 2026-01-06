@@ -46,6 +46,7 @@
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
 #include "CompiledShader/MeshGen/Dilate3DCs.h"
 #include "CompiledShader/MeshGen/DilateCs.h"
+#include "CompiledShader/MeshGen/ErosionMaskCs.h"
 #include "CompiledShader/MeshGen/ExtractMaskCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/MergeTextureCs.h"
@@ -195,6 +196,10 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             {
+                const ShaderInfo shader = {DEFINE_SHADER(ErosionMaskCs)};
+                erosion_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
+            }
+            {
                 const ShaderInfo shaders[] = {
                     {DEFINE_SHADER(RotateVs)},
                     {DEFINE_SHADER(RotatePs)},
@@ -279,10 +284,8 @@ namespace AIHoloImager
             auto& profiler = aihi_.PerfProfilerInstance();
             PerfRegion process_perf(profiler, "Mesh generator process");
 
-#ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = aihi_.TmpDir() / "MeshGen";
             std::filesystem::create_directories(output_dir);
-#endif
 
             Aabb obj_aabb;
             glm::vec3 up_vec;
@@ -292,7 +295,7 @@ namespace AIHoloImager
 
                 PerfRegion rotating_perf(profiler, "Rotating images");
 
-                this->StatForegroundObject(obj_aabb, up_vec, sfm_input);
+                this->StatForegroundObject(obj_aabb, up_vec, sfm_input, output_dir);
                 rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -590,7 +593,8 @@ namespace AIHoloImager
             return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
         }
 
-        void StatForegroundObject(Aabb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input)
+        void StatForegroundObject(Aabb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input,
+            [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -601,11 +605,52 @@ namespace AIHoloImager
             {
                 const auto& view = sfm_input.views[i];
 
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
                 Texture delighted_image(view.delighted_tex.Width(0), view.delighted_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                const auto rb_future = cmd_list.ReadBackAsync(view.delighted_tex, 0, delighted_image.Data(), delighted_image.DataSize());
-                gpu_system.Execute(std::move(cmd_list));
-                rb_future.wait();
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                    constexpr uint32_t BlockDim = 16;
+
+                    GpuTexture2D erosion_mask_gpu_texs[2];
+                    for (auto& tex : erosion_mask_gpu_texs)
+                    {
+                        tex = GpuTexture2D(gpu_system, view.delighted_tex.Width(0), view.delighted_tex.Height(0), 1, GpuFormat::RGBA8_UNorm,
+                            GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
+                    }
+
+                    auto erosion_mask_cb = GpuConstantBufferOfType<ErosionMaskConstantBuffer>(gpu_system, "erosion_mask_cb");
+                    erosion_mask_cb->texture_size = glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0));
+                    erosion_mask_cb.UploadStaging();
+                    const GpuConstantBufferView erosion_cbv(gpu_system, erosion_mask_cb);
+
+                    uint32_t dst;
+                    for (size_t j = 0; j < 4; ++j)
+                    {
+                        const uint32_t src = j & 1;
+                        dst = src ? 0 : 1;
+
+                        GpuShaderResourceView input_srv(gpu_system, j == 0 ? view.delighted_tex : erosion_mask_gpu_texs[src]);
+                        GpuUnorderedAccessView erosion_uav(gpu_system, erosion_mask_gpu_texs[dst]);
+
+                        std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                            {"param_cb", &erosion_cbv},
+                        };
+                        std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                            {"input_tex", &input_srv},
+                        };
+                        std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                            {"output_tex", &erosion_uav},
+                        };
+                        const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
+                        cmd_list.Compute(erosion_mask_pipeline_, DivUp(view.delighted_tex.Width(0), BlockDim),
+                            DivUp(view.delighted_tex.Height(0), BlockDim), 1, shader_binding);
+                    }
+
+                    const auto rb_future =
+                        cmd_list.ReadBackAsync(erosion_mask_gpu_texs[dst], 0, delighted_image.Data(), delighted_image.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+                    rb_future.wait();
+                }
 
                 const std::byte* delighted_image_data = delighted_image.Data();
                 const uint32_t fmt_size = FormatSize(delighted_image.Format());
@@ -663,22 +708,58 @@ namespace AIHoloImager
                 }
             }
 
+            glm::vec3 object_center(0, 0, 0);
+            for (size_t i = 0; i < object_points.size(); ++i)
+            {
+                object_center += object_points[i];
+            }
+            object_center /= static_cast<float>(object_points.size());
+
             glm::vec4 plane = this->FitPlane(plane_points);
-            if (glm::dot(glm::vec3(plane), bb.Center()) + plane.w < 0)
+            if (glm::dot(glm::vec3(plane), object_center) + plane.w < 0)
             {
                 plane = -plane;
             }
 
             up_vec = glm::vec3(plane);
 
+            constexpr float GroundThreshold = 0.01f;
+
             bb = Aabb();
-            for (uint32_t i = 0; i < object_points.size(); ++i)
+            for (size_t i = 0; i < object_points.size(); ++i)
             {
-                if (glm::dot(up_vec, object_points[i]) + plane.w > 0)
+                if (glm::dot(up_vec, object_points[i]) + plane.w > GroundThreshold)
                 {
                     bb.AddPoint(object_points[i]);
                 }
             }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+            {
+                const VertexAttrib pos_vertex_attribs[] = {
+                    {VertexAttrib::Semantic::Position, 0, 3},
+                };
+                constexpr uint32_t PosAttribIndex = 0;
+                const VertexDesc pos_clr_vertex_desc(pos_vertex_attribs);
+
+                {
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
+
+                    for (uint32_t i = 0; i < object_points.size(); ++i)
+                    {
+                        if (glm::dot(up_vec, object_points[i]) + plane.w > GroundThreshold)
+                        {
+                            const uint32_t vertex_index = pc_mesh.NumVertices();
+                            pc_mesh.ResizeVertices(vertex_index + 1);
+
+                            pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = object_points[i];
+                        }
+                    }
+
+                    SaveMesh(pc_mesh, tmp_dir / "ObjectPoints.ply");
+                }
+            }
+#endif
         }
 
         std::vector<GpuTexture2D> RotateImages(const StructureFromMotion::Result& sfm_input, const glm::vec3& up_vec)
@@ -1650,6 +1731,13 @@ namespace AIHoloImager
         TextureReconstruction texture_recon_;
 
         DiffOptimizer optimizer_;
+
+        struct ErosionMaskConstantBuffer
+        {
+            glm::uvec2 texture_size;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline erosion_mask_pipeline_;
 
         struct RotateConstantBuffer
         {
