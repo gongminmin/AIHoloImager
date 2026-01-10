@@ -59,7 +59,7 @@ set(aihi_files
     Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/DilateCs.hlsl
-    Source/MeshGen/Shader/ErosionMaskCs.hlsl
+    Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl
     Source/MeshGen/Shader/ExtractMaskCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/MergeTextureCs.hlsl
@@ -173,7 +173,7 @@ AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "c
 AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ErosionMaskCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")

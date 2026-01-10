@@ -9,14 +9,16 @@ static const uint32_t CacheDim = BlockDim + KernelRadius * 2;
 cbuffer param_cb
 {
     uint32_t2 texture_size;
+    bool erosion;
+    uint32_t channel;
 };
 
 Texture2D input_tex;
 
 #ifdef __spirv__
-[[vk::image_format("rgba8")]]
+[[vk::image_format("r8")]]
 #endif
-RWTexture2D<unorm float4> output_tex;
+RWTexture2D<unorm float> output_tex;
 
 groupshared bool sh_cache[CacheDim][CacheDim];
 
@@ -28,8 +30,11 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 gt_id : SV_GroupThreadID, u
         const uint32_t y = i / CacheDim;
         const uint32_t x = i - y * CacheDim;
         uint32_t2 coord = clamp(int32_t2(group_id.xy * BlockDim) - KernelRadius + int32_t2(x, y), 0, texture_size - 1);
-        sh_cache[y][x] = input_tex.Load(uint32_t3(coord, 0)).a > 0.5f;
-        sh_cache[y][x] = !sh_cache[y][x];
+        sh_cache[y][x] = input_tex.Load(uint32_t3(coord, 0))[channel] > 0.5f;
+        if (erosion)
+        {
+            sh_cache[y][x] = !sh_cache[y][x];
+        }
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -51,5 +56,5 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 gt_id : SV_GroupThreadID, u
         }
     }
 
-    output_tex[dtid.xy] = float4(input_tex.Load(uint32_t3(dtid.xy, 0)).rgb, !mark);
+    output_tex[dtid.xy] = erosion ? !mark : mark;
 }
