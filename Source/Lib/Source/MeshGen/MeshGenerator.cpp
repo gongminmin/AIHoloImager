@@ -755,6 +755,7 @@ namespace AIHoloImager
                 const uint32_t delighted_end_x = view.delighted_offset.x + delighted_image.Width();
                 const uint32_t delighted_end_y = view.delighted_offset.y + delighted_image.Height();
                 const uint32_t delighted_width = delighted_image.Width();
+                const uint32_t delighted_height = delighted_image.Height();
 
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
@@ -771,11 +772,14 @@ namespace AIHoloImager
                             {
                                 const uint32_t delighted_x = x - delighted_beg_x;
                                 const uint32_t delighted_y = y - delighted_beg_y;
-                                const std::byte mask = erosion_mask_image_data[delighted_y * delighted_width + delighted_x];
-                                if (mask > std::byte(0x7F))
+                                if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
-                                    object_points.push_back(landmark.point);
-                                    point_used[j] |= 0x1U;
+                                    const std::byte mask = erosion_mask_image_data[delighted_y * delighted_width + delighted_x];
+                                    if (mask > std::byte(0x7F))
+                                    {
+                                        object_points.push_back(landmark.point);
+                                        point_used[j] |= 0x1U;
+                                    }
                                 }
                             }
 
@@ -783,11 +787,14 @@ namespace AIHoloImager
                             {
                                 const uint32_t delighted_x = x - delighted_beg_x;
                                 const uint32_t delighted_y = y - delighted_beg_y;
-                                const std::byte mask = dilation_mask_image_data[delighted_y * delighted_width + delighted_x];
-                                if (mask <= std::byte(0x7F))
+                                if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
-                                    plane_points.push_back(landmark.point);
-                                    point_used[j] |= 0x2U;
+                                    const std::byte mask = dilation_mask_image_data[delighted_y * delighted_width + delighted_x];
+                                    if (mask <= std::byte(0x7F))
+                                    {
+                                        plane_points.push_back(landmark.point);
+                                        point_used[j] |= 0x2U;
+                                    }
                                 }
                             }
 
