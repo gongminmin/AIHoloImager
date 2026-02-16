@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 set(camera_database_src "${PROJECT_SOURCE_DIR}/External/openMVG/openMVG/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt")
@@ -119,11 +119,16 @@ set(aihi_files
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
+    Source/SfM/LightGlue/LightGlue.py
+    Source/SfM/LightGlue/SuperPoint.py
+    Source/SfM/LightGlue/__init__.py
     Source/SfM/MoGe/Geometry.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/ConvertDatasheet.py
+    Source/SfM/Extractor.py
+    Source/SfM/Matcher.py
     Source/SfM/PointCloudEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
@@ -287,6 +292,11 @@ set(py_files
     Source/SfM/MoGe/Geometry.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
+    Source/SfM/LightGlue/LightGlue.py
+    Source/SfM/LightGlue/SuperPoint.py
+    Source/SfM/LightGlue/__init__.py
+    Source/SfM/Extractor.py
+    Source/SfM/Matcher.py
     Source/SfM/PointCloudEstimator.py
 )
 foreach(py_file ${py_files})
@@ -309,7 +319,7 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)
+add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels DeployLightGlueModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)
 
 if(MSVC)
     target_link_libraries(AIHoloImagerLib

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "StructureFromMotion.hpp"
@@ -13,6 +13,10 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+
+#ifndef USES_SP_LG
+    #define USES_SP_LG 1
+#endif
 
 #ifndef OPENMVG_USE_OPENMP
     #define OPENMVG_USE_OPENMP
@@ -34,12 +38,16 @@
 #include <openMVG/exif/exif_IO_EasyExif.hpp>
 #include <openMVG/exif/sensor_width_database/datasheet.hpp>
 #include <openMVG/features/regions.hpp>
-#include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
-#include <openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp>
+#if !USES_SP_LG
+    #include <openMVG/features/sift/SIFT_Anatomy_Image_Describer.hpp>
+    #include <openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp>
+#endif
 #include <openMVG/matching_image_collection/E_ACRobust.hpp>
 #include <openMVG/matching_image_collection/F_ACRobust.hpp>
 #include <openMVG/matching_image_collection/GeometricFilter.hpp>
-#include <openMVG/matching_image_collection/Pair_Builder.hpp>
+#if !USES_SP_LG
+    #include <openMVG/matching_image_collection/Pair_Builder.hpp>
+#endif
 #include <openMVG/sfm/pipelines/global/GlobalSfM_rotation_averaging.hpp>
 #include <openMVG/sfm/pipelines/global/GlobalSfM_translation_averaging.hpp>
 #include <openMVG/sfm/pipelines/global/sfm_global_engine_relative_motions.hpp>
@@ -79,8 +87,58 @@ using namespace openMVG::image;
 using namespace openMVG::matching;
 using namespace openMVG::matching_image_collection;
 
+#if USES_SP_LG
+using SuperPointRegions = features::Scalar_Regions<features::PointFeature, float, 256>;
+
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION_INITIALIZER_LIST(SuperPointRegions)
+#endif
+
 namespace AIHoloImager
 {
+#if USES_SP_LG
+    class SuperPointImageDescriber : public features::Image_describer
+    {
+    public:
+        using Regions_type = SuperPointRegions;
+
+        SuperPointImageDescriber() noexcept = default;
+        ~SuperPointImageDescriber() noexcept override = default;
+
+        bool Set_configuration_preset([[maybe_unused]] features::EDESCRIBER_PRESET preset) override
+        {
+            return true;
+        }
+
+        std::unique_ptr<features::Regions> Allocate() const override
+        {
+            return std::make_unique<Regions_type>();
+        }
+
+        std::unique_ptr<features::Regions> Describe([[maybe_unused]] const image::Image<unsigned char>& image,
+            [[maybe_unused]] const image::Image<unsigned char>* mask = nullptr) override
+        {
+            return {};
+        }
+
+        std::unique_ptr<features::Regions> FillIn(
+            std::span<const Regions_type::FeatureT> points, std::span<const Regions_type::DescriptorT::bin_type> descs)
+        {
+            auto regions = std::make_unique<Regions_type>();
+
+            regions->Features().assign(points.begin(), points.end());
+
+            constexpr uint32_t FeatureLen = Regions_type::DescriptorT::static_size;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(points.size()); ++i)
+            {
+                auto& tmp = regions->Descriptors().emplace_back();
+                std::copy(descs.begin() + i * FeatureLen, descs.begin() + (i + 1) * FeatureLen, tmp.begin());
+            }
+
+            return regions;
+        }
+    };
+#endif
+
     class StructureFromMotion::Impl
     {
     private:
@@ -107,6 +165,19 @@ namespace AIHoloImager
                 point_cloud_estimator_ = python_system.CallObject(*point_cloud_estimator_class_);
                 point_cloud_estimator_focal_method_ = python_system.GetAttr(*point_cloud_estimator_, "Focal");
                 point_cloud_estimator_point_cloud_method_ = python_system.GetAttr(*point_cloud_estimator_, "PointCloud");
+
+#if USES_SP_LG
+                extractor_module_ = python_system.Import("Extractor");
+                extractor_class_ = python_system.GetAttr(*extractor_module_, "Extractor");
+                extractor_ = python_system.CallObject(*extractor_class_);
+                extractor_extract_method_ = python_system.GetAttr(*extractor_, "Extract");
+                extractor_export_features_method_ = python_system.GetAttr(*extractor_, "ExportFeatures");
+
+                matcher_module_ = python_system.Import("Matcher");
+                matcher_class_ = python_system.GetAttr(*matcher_module_, "Matcher");
+                matcher_ = python_system.CallObject(*matcher_class_);
+                matcher_match_method_ = python_system.GetAttr(*matcher_, "Match");
+#endif
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -127,6 +198,7 @@ namespace AIHoloImager
             PythonSystem::GilGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
+
             auto point_cloud_estimator_destroy_method = python_system.GetAttr(*point_cloud_estimator_, "Destroy");
             python_system.CallObject(*point_cloud_estimator_destroy_method);
 
@@ -136,6 +208,29 @@ namespace AIHoloImager
             point_cloud_estimator_.reset();
             point_cloud_estimator_class_.reset();
             point_cloud_estimator_module_.reset();
+
+#if USES_SP_LG
+            py_features_.reset();
+
+            auto extractor_destroy_method = python_system.GetAttr(*extractor_, "Destroy");
+            python_system.CallObject(*extractor_destroy_method);
+
+            extractor_destroy_method.reset();
+            extractor_extract_method_.reset();
+            extractor_export_features_method_.reset();
+            extractor_.reset();
+            extractor_class_.reset();
+            extractor_module_.reset();
+
+            auto matcher_destroy_method = python_system.GetAttr(*matcher_, "Destroy");
+            python_system.CallObject(*matcher_destroy_method);
+
+            matcher_destroy_method.reset();
+            matcher_match_method_.reset();
+            matcher_.reset();
+            matcher_class_.reset();
+            matcher_module_.reset();
+#endif
         }
 
         Result Process(const std::filesystem::path& input_path, bool sequential, bool no_delight)
@@ -395,14 +490,70 @@ namespace AIHoloImager
 
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Feature extraction");
 
-            features::SIFT_Anatomy_Image_describer image_describer;
-
             FeatureRegions regions;
             regions.feature_regions.resize(sfm_data.views.size());
 
-#ifdef _OPENMP
-    #pragma omp parallel for schedule(dynamic)
-#endif
+#if USES_SP_LG
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
+
+            SuperPointImageDescriber image_describer;
+
+            PythonSystem::GilGuard guard;
+            auto& python_system = aihi_.PythonSystemInstance();
+
+            const uint32_t num_images = static_cast<uint32_t>(sfm_data.views.size());
+
+            py_features_ = python_system.MakeTuple(num_images);
+            for (uint32_t i = 0; i < num_images; ++i)
+            {
+                const auto& image = images[i];
+                assert(image.Format() == ElementFormat::RGBA8_UNorm);
+
+                PyObjectPtr py_feature;
+                {
+                    auto args = python_system.MakeTuple(4);
+                    {
+                        auto py_image = python_system.MakeObject(std::span<const std::byte>(image.Data(), image.DataSize()));
+                        python_system.SetTupleItem(*args, 0, std::move(py_image));
+
+                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
+                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
+                        python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
+                    }
+
+                    py_feature = python_system.CallObject(*extractor_extract_method_, *args);
+                }
+
+                PyObjectPtr py_exported_feature;
+                {
+                    auto args = python_system.MakeTuple(1);
+                    {
+                        python_system.SetTupleItem(*args, 0, *py_feature);
+                    }
+
+                    py_exported_feature = python_system.CallObject(*extractor_export_features_method_, *args);
+                }
+
+                auto py_descriptors = python_system.GetTupleItem(*py_exported_feature, 0);
+                const auto descriptors_span =
+                    python_system.ToSpan<const typename SuperPointImageDescriber::Regions_type::DescriptorT::bin_type>(*py_descriptors);
+
+                const auto py_points = python_system.GetTupleItem(*py_exported_feature, 1);
+                const auto points_span = python_system.ToSpan<const typename features::PointFeature>(*py_points);
+
+                regions.feature_regions[i] = image_describer.FillIn(points_span, descriptors_span);
+
+                python_system.SetTupleItem(*py_features_, i, std::move(py_feature));
+            }
+#else
+            features::SIFT_Anatomy_Image_describer image_describer;
+
+    #ifdef _OPENMP
+        #pragma omp parallel for schedule(dynamic)
+    #endif
             for (int i = 0; i < static_cast<int>(sfm_data.views.size()); ++i)
             {
                 const auto& image = images[i];
@@ -426,6 +577,7 @@ namespace AIHoloImager
 
                 regions.feature_regions[i] = image_describer.Describe(image_gray);
             }
+#endif
 
             auto regions_type = image_describer.Allocate();
             assert(regions_type->IsScalar());
@@ -453,13 +605,56 @@ namespace AIHoloImager
             return regions;
         }
 
-        PairWiseMatches PairMatching(const SfM_Data& sfm_data, const FeatureRegions& regions,
+        PairWiseMatches PairMatching(const SfM_Data& sfm_data, [[maybe_unused]] const FeatureRegions& regions,
             [[maybe_unused]] const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Pair matching");
 
+#if USES_SP_LG
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+            }
+
+            PairWiseMatches putative_matches;
+            {
+                PythonSystem::GilGuard guard;
+                auto& python_system = aihi_.PythonSystemInstance();
+
+                for (uint32_t i = 0; i < static_cast<uint32_t>(sfm_data.views.size() - 1); ++i)
+                {
+                    auto args = python_system.MakeTuple(3);
+                    {
+                        python_system.SetTupleItem(*args, 0, *py_features_);
+                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(i));
+                    }
+
+                    for (uint32_t j = i + 1; j < static_cast<uint32_t>(sfm_data.views.size()); ++j)
+                    {
+                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(j));
+
+                        auto py_putative_matches = python_system.CallObject(*matcher_match_method_, *args);
+
+                        const uint32_t num_pairs = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_putative_matches, 1));
+
+                        auto& pairs = putative_matches[{i, j}];
+                        pairs.resize(num_pairs);
+
+                        if (num_pairs > 0)
+                        {
+                            auto py_pairs = python_system.GetTupleItem(*py_putative_matches, 0);
+                            const auto pairs_span = python_system.ToSpan<const glm::ivec2>(*py_pairs);
+                            std::memcpy(pairs.data(), pairs_span.data(), num_pairs * sizeof(glm::ivec2));
+                        }
+                    }
+                }
+            }
+
+            std::cout << std::format("Matching on # image pairs: {}\n", sfm_data.views.size() * (sfm_data.views.size() - 1) / 2);
+            std::cout << std::format("# putative image pairs: {}\n", putative_matches.size());
+#else
             const float dist_ratio = 0.8f;
 
             Cascade_Hashing_Matcher_Regions matcher(dist_ratio);
@@ -470,6 +665,7 @@ namespace AIHoloImager
             PairWiseMatches putative_matches;
             matcher.Match(regions.regions_provider, pairs, putative_matches);
             std::cout << std::format("# putative image pairs: {}\n", putative_matches.size());
+#endif
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             uint32_t total_matches = 0;
@@ -992,6 +1188,22 @@ namespace AIHoloImager
         PyObjectPtr point_cloud_estimator_;
         PyObjectPtr point_cloud_estimator_focal_method_;
         PyObjectPtr point_cloud_estimator_point_cloud_method_;
+
+#if USES_SP_LG
+        mutable PyObjectPtr py_features_;
+
+        PyObjectPtr extractor_module_;
+        PyObjectPtr extractor_class_;
+        PyObjectPtr extractor_;
+        PyObjectPtr extractor_extract_method_;
+        PyObjectPtr extractor_export_features_method_;
+
+        PyObjectPtr matcher_module_;
+        PyObjectPtr matcher_class_;
+        PyObjectPtr matcher_;
+        PyObjectPtr matcher_match_method_;
+#endif
+
         std::future<void> py_init_future_;
 
         struct UndistortConstantBuffer

@@ -6,6 +6,7 @@ DirectX-Headers/DirectX-Headers/
 DirectXShaderCompiler/PrebuiltDxc/
 glm/glm/
 Intrinsic/IntrinsicModels/
+LightGlue/LightGlueModels/
 MoGe/moge-vitl
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/

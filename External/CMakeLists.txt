@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 if(NOT EXISTS ${GIT_EXECUTABLE})
@@ -283,6 +283,7 @@ add_subdirectory(DirectX-Headers)
 add_subdirectory(DirectXShaderCompiler)
 add_subdirectory(glm)
 add_subdirectory(Intrinsic)
+add_subdirectory(LightGlue)
 add_subdirectory(MoGe)
 add_subdirectory(openMVG)
 add_subdirectory(PythonVenv)
