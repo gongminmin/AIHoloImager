@@ -634,13 +634,23 @@ namespace AIHoloImager
             std::vector<uint8_t> point_used(sfm_input.structure.size(), 0);
             std::vector<glm::vec3> object_points;
             std::vector<glm::vec3> plane_points;
+#ifdef AIHI_KEEP_INTERMEDIATES
+            std::vector<glm::vec3> object_colors;
+            std::vector<glm::vec3> plane_colors;
+#endif
             for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
             {
                 const auto& view = sfm_input.views[i];
 
-                Texture delighted_image(view.delighted_tex.Width(0), view.delighted_tex.Height(0), ElementFormat::RGBA8_UNorm);
-                Texture erosion_mask_image(view.delighted_tex.Width(0), view.delighted_tex.Height(0), ElementFormat::R8_UNorm);
-                Texture dilation_mask_image(view.delighted_tex.Width(0), view.delighted_tex.Height(0), ElementFormat::R8_UNorm);
+                const uint32_t delighted_width = view.delighted_tex.Width(0);
+                const uint32_t delighted_height = view.delighted_tex.Height(0);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                Texture delighted_image(delighted_width, delighted_height, ElementFormat::RGBA8_UNorm);
+                const uint32_t delighted_fmt_size = FormatChannels(delighted_image.Format());
+#endif
+                Texture erosion_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
+                Texture dilation_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -651,8 +661,8 @@ namespace AIHoloImager
                         GpuTexture2D erosion_mask_gpu_texs[2];
                         for (auto& tex : erosion_mask_gpu_texs)
                         {
-                            tex = GpuTexture2D(gpu_system, view.delighted_tex.Width(0), view.delighted_tex.Height(0), 1,
-                                GpuFormat::R8_UNorm, GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
+                            tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
+                                GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
                         }
 
                         uint32_t dst;
@@ -662,7 +672,7 @@ namespace AIHoloImager
                             dst = src ? 0 : 1;
 
                             auto erosion_mask_cb = GpuConstantBufferOfType<ErosionMaskConstantBuffer>(gpu_system, "erosion_mask_cb");
-                            erosion_mask_cb->texture_size = glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0));
+                            erosion_mask_cb->texture_size = glm::uvec2(delighted_width, delighted_height);
                             erosion_mask_cb->erosion = true;
                             erosion_mask_cb->channel = j == 0 ? 3 : 0;
                             erosion_mask_cb.UploadStaging();
@@ -681,8 +691,8 @@ namespace AIHoloImager
                                 {"output_tex", &erosion_uav},
                             };
                             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(view.delighted_tex.Width(0), BlockDim),
-                                DivUp(view.delighted_tex.Height(0), BlockDim), 1, shader_binding);
+                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(delighted_width, BlockDim),
+                                DivUp(delighted_height, BlockDim), 1, shader_binding);
                         }
 
                         erosion_rb_future =
@@ -696,8 +706,8 @@ namespace AIHoloImager
                         GpuTexture2D dilation_mask_gpu_texs[2];
                         for (auto& tex : dilation_mask_gpu_texs)
                         {
-                            tex = GpuTexture2D(gpu_system, view.delighted_tex.Width(0), view.delighted_tex.Height(0), 1,
-                                GpuFormat::R8_UNorm, GpuResourceFlag::UnorderedAccess, "dilation_mask_gpu_texs");
+                            tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
+                                GpuResourceFlag::UnorderedAccess, "dilation_mask_gpu_texs");
                         }
 
                         uint32_t dst;
@@ -707,7 +717,7 @@ namespace AIHoloImager
                             dst = src ? 0 : 1;
 
                             auto dilation_mask_cb = GpuConstantBufferOfType<ErosionMaskConstantBuffer>(gpu_system, "dilation_mask_cb");
-                            dilation_mask_cb->texture_size = glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0));
+                            dilation_mask_cb->texture_size = glm::uvec2(delighted_width, delighted_height);
                             dilation_mask_cb->erosion = false;
                             dilation_mask_cb->channel = j == 0 ? 3 : 0;
                             dilation_mask_cb.UploadStaging();
@@ -726,36 +736,45 @@ namespace AIHoloImager
                                 {"output_tex", &dilation_uav},
                             };
                             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(view.delighted_tex.Width(0), BlockDim),
-                                DivUp(view.delighted_tex.Height(0), BlockDim), 1, shader_binding);
+                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(delighted_width, BlockDim),
+                                DivUp(delighted_height, BlockDim), 1, shader_binding);
                         }
 
                         dilation_rb_future = cmd_list.ReadBackAsync(
                             dilation_mask_gpu_texs[dst], 0, dilation_mask_image.Data(), dilation_mask_image.DataSize());
                     }
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    std::future<void> delighted_rb_future =
+                        cmd_list.ReadBackAsync(view.delighted_tex, 0, delighted_image.Data(), delighted_image.DataSize());
+#endif
+
                     gpu_system.Execute(std::move(cmd_list));
 
                     erosion_rb_future.wait();
                     dilation_rb_future.wait();
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    delighted_rb_future.wait();
+#endif
                 }
 
                 const std::byte* erosion_mask_image_data = erosion_mask_image.Data();
                 const std::byte* dilation_mask_image_data = dilation_mask_image.Data();
+#ifdef AIHI_KEEP_INTERMEDIATES
+                const std::byte* delighted_image_data = delighted_image.Data();
+#endif
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x =
                     static_cast<uint32_t>(std::max(static_cast<int32_t>(view.delighted_offset.x) - static_cast<int32_t>(Gap), 0));
-                const uint32_t beg_y = view.delighted_offset.y + delighted_image.Height() - Gap;
-                const uint32_t end_x = view.delighted_offset.x + delighted_image.Width() + Gap;
-                const uint32_t end_y = view.delighted_offset.y + delighted_image.Height() + Gap;
+                const uint32_t beg_y = view.delighted_offset.y + delighted_height - Gap;
+                const uint32_t end_x = view.delighted_offset.x + delighted_width + Gap;
+                const uint32_t end_y = view.delighted_offset.y + delighted_height + Gap;
 
                 const uint32_t delighted_beg_x = view.delighted_offset.x;
                 const uint32_t delighted_beg_y = view.delighted_offset.y;
-                const uint32_t delighted_end_x = view.delighted_offset.x + delighted_image.Width();
-                const uint32_t delighted_end_y = view.delighted_offset.y + delighted_image.Height();
-                const uint32_t delighted_width = delighted_image.Width();
-                const uint32_t delighted_height = delighted_image.Height();
+                const uint32_t delighted_end_x = view.delighted_offset.x + delighted_width;
+                const uint32_t delighted_end_y = view.delighted_offset.y + delighted_height;
 
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
@@ -767,17 +786,34 @@ namespace AIHoloImager
                             const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
                             const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
 
+                            const uint32_t delighted_x = x - delighted_beg_x;
+                            const uint32_t delighted_y = y - delighted_beg_y;
+
+                            const glm::vec3 point = landmark.point;
+#ifdef AIHI_KEEP_INTERMEDIATES
+                            glm::vec3 color(0, 0, 0);
+                            if ((x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) && (y < delighted_end_y))
+                            {
+                                const uint32_t offset = (delighted_y * delighted_width + delighted_x) * delighted_fmt_size;
+                                const float r = static_cast<int>(delighted_image_data[offset + 0]) + 0.5f;
+                                const float g = static_cast<int>(delighted_image_data[offset + 1]) + 0.5f;
+                                const float b = static_cast<int>(delighted_image_data[offset + 2]) + 0.5f;
+                                color = glm::vec3(r, g, b) / 255.0f;
+                            }
+#endif
+
                             if (!(point_used[j] & 0x1U) && (x >= delighted_beg_x) && (y >= delighted_beg_y) && (x < delighted_end_x) &&
                                 (y < delighted_end_y))
                             {
-                                const uint32_t delighted_x = x - delighted_beg_x;
-                                const uint32_t delighted_y = y - delighted_beg_y;
                                 if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
                                     const std::byte mask = erosion_mask_image_data[delighted_y * delighted_width + delighted_x];
                                     if (mask > std::byte(0x7F))
                                     {
-                                        object_points.push_back(landmark.point);
+                                        object_points.push_back(point);
+#ifdef AIHI_KEEP_INTERMEDIATES
+                                        object_colors.push_back(color);
+#endif
                                         point_used[j] |= 0x1U;
                                     }
                                 }
@@ -785,14 +821,15 @@ namespace AIHoloImager
 
                             if (!(point_used[j] & 0x2U) && (x >= beg_x) && (y >= beg_y) && (x < end_x) && (y < end_y))
                             {
-                                const uint32_t delighted_x = x - delighted_beg_x;
-                                const uint32_t delighted_y = y - delighted_beg_y;
                                 if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
                                     const std::byte mask = dilation_mask_image_data[delighted_y * delighted_width + delighted_x];
                                     if (mask <= std::byte(0x7F))
                                     {
-                                        plane_points.push_back(landmark.point);
+                                        plane_points.push_back(point);
+#ifdef AIHI_KEEP_INTERMEDIATES
+                                        plane_colors.push_back(color);
+#endif
                                         point_used[j] |= 0x2U;
                                     }
                                 }
@@ -832,14 +869,16 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                const VertexAttrib pos_vertex_attribs[] = {
+                const VertexAttrib pos_clr_vertex_attribs[] = {
                     {VertexAttrib::Semantic::Position, 0, 3},
+                    {VertexAttrib::Semantic::Color, 0, 3},
                 };
                 constexpr uint32_t PosAttribIndex = 0;
-                const VertexDesc pos_vertex_desc(pos_vertex_attribs);
+                constexpr uint32_t ColorAttribIndex = 1;
+                const VertexDesc pos_clr_vertex_desc(pos_clr_vertex_attribs);
 
                 {
-                    Mesh pc_mesh = Mesh(pos_vertex_desc, 0, 0);
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
 
                     for (uint32_t i = 0; i < object_points.size(); ++i)
                     {
@@ -849,13 +888,14 @@ namespace AIHoloImager
                             pc_mesh.ResizeVertices(vertex_index + 1);
 
                             pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = object_points[i];
+                            pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = object_colors[i];
                         }
                     }
 
                     SaveMesh(pc_mesh, tmp_dir / "ObjectPoints.ply");
                 }
                 {
-                    Mesh pc_mesh = Mesh(pos_vertex_desc, 0, 0);
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
 
                     for (uint32_t i = 0; i < plane_points.size(); ++i)
                     {
@@ -863,6 +903,7 @@ namespace AIHoloImager
                         pc_mesh.ResizeVertices(vertex_index + 1);
 
                         pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = plane_points[i];
+                        pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = plane_colors[i];
                     }
 
                     SaveMesh(pc_mesh, tmp_dir / "PlanePoints.ply");
