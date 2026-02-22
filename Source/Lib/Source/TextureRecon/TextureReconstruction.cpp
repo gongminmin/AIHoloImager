@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "TextureReconstruction.hpp"
@@ -189,7 +189,7 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuRenderTargetView* rtvs[] = {&pos_rtv, &normal_rtv};
+            GpuRenderTargetView* rtvs[] = {&pos_rtv, &normal_rtv};
 
             const GpuViewport viewports[] = {{0, 0, static_cast<float>(texture_size), static_cast<float>(texture_size)}};
             const GpuRect scissor_rcs[] = {{0, 0, static_cast<int32_t>(texture_size), static_cast<int32_t>(texture_size)}};

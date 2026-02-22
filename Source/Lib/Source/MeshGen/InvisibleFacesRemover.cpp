@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "InvisibleFacesRemover.hpp"
@@ -235,7 +235,7 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuRenderTargetView* rtvs[] = {&face_id_rtv_};
+            GpuRenderTargetView* rtvs[] = {&face_id_rtv_};
 
             const GpuViewport viewport = {0, 0, static_cast<float>(face_id_tex_.Width(0)), static_cast<float>(face_id_tex_.Height(0))};
 

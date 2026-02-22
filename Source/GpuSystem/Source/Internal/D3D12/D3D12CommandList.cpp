@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12CommandList.hpp"
@@ -255,10 +255,10 @@ namespace AIHoloImager
 
     void D3D12CommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
         const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
-        std::span<const GpuRenderTargetView*> rtvs, const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
-        auto& d3d12_pipeline = D3D12Imp(pipeline);
+        const auto& d3d12_pipeline = D3D12Imp(pipeline);
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         if (!vbs.empty())
@@ -270,11 +270,12 @@ namespace AIHoloImager
                 const auto& vb_binding = vbs[i];
                 assert(vb_binding.vb != nullptr);
 
-                D3D12Imp(*vb_binding.vb).Transition(*this, GpuResourceState::Common);
+                const auto& d3d12_vb = D3D12Imp(*vb_binding.vb);
+                d3d12_vb.Transition(*this, GpuResourceState::Common);
 
                 D3D12_VERTEX_BUFFER_VIEW& vbv = vbvs[i];
                 vbv = {
-                    .BufferLocation = D3D12Imp(*vb_binding.vb).GpuVirtualAddress() + vb_binding.offset,
+                    .BufferLocation = d3d12_vb.GpuVirtualAddress() + vb_binding.offset,
                     .SizeInBytes = vb_binding.vb->Size(),
                     .StrideInBytes = slot_strides[i],
                 };
@@ -288,10 +289,11 @@ namespace AIHoloImager
 
         if (ib != nullptr)
         {
-            D3D12Imp(*ib->ib).Transition(*this, GpuResourceState::Common);
+            const auto& d3d12_ib = D3D12Imp(*ib->ib);
+            d3d12_ib.Transition(*this, GpuResourceState::Common);
 
             const D3D12_INDEX_BUFFER_VIEW ibv{
-                .BufferLocation = D3D12Imp(*ib->ib).GpuVirtualAddress() + ib->offset,
+                .BufferLocation = d3d12_ib.GpuVirtualAddress() + ib->offset,
                 .SizeInBytes = ib->ib->Size(),
                 .Format = ToDxgiFormat(ib->format),
             };
@@ -302,7 +304,7 @@ namespace AIHoloImager
             d3d12_cmd_list->IASetIndexBuffer(nullptr);
         }
 
-        for (const auto* rtv : rtvs)
+        for (auto* rtv : rtvs)
         {
             if (rtv != nullptr)
             {
@@ -380,7 +382,7 @@ namespace AIHoloImager
                             {
                                 if (srv != nullptr)
                                 {
-                                    auto& d3d12_srv = D3D12Imp(*srv);
+                                    const auto& d3d12_srv = D3D12Imp(*srv);
                                     d3d12_srv.Transition(*this);
 
                                     auto srv_cpu_handle =
@@ -492,7 +494,7 @@ namespace AIHoloImager
                         {
                             if (cbv != nullptr)
                             {
-                                auto& d3d12_cbv = D3D12Imp(*cbv);
+                                const auto& d3d12_cbv = D3D12Imp(*cbv);
                                 d3d12_cbv.Transition(*this);
 
                                 d3d12_cmd_list->SetGraphicsRootConstantBufferView(root_index, d3d12_cbv.GpuVirtualAddress());
@@ -618,7 +620,7 @@ namespace AIHoloImager
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        auto& d3d12_pipeline = D3D12Imp(pipeline);
+        const auto& d3d12_pipeline = D3D12Imp(pipeline);
         d3d12_pipeline.Bind(*this);
 
         const auto& binding_slots = d3d12_pipeline.BindingSlots();
@@ -675,7 +677,7 @@ namespace AIHoloImager
                         {
                             if (srv != nullptr)
                             {
-                                auto& d3d12_srv = D3D12Imp(*srv);
+                                const auto& d3d12_srv = D3D12Imp(*srv);
                                 d3d12_srv.Transition(*this);
 
                                 auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
@@ -784,7 +786,7 @@ namespace AIHoloImager
                     {
                         if (cbv != nullptr)
                         {
-                            auto& d3d12_cbv = D3D12Imp(*cbv);
+                            const auto& d3d12_cbv = D3D12Imp(*cbv);
                             d3d12_cbv.Transition(*this);
 
                             d3d12_cmd_list->SetComputeRootConstantBufferView(root_index, d3d12_cbv.GpuVirtualAddress());
@@ -813,51 +815,63 @@ namespace AIHoloImager
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
-        D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+        const auto& d3d12_src = D3D12Imp(src);
+        auto& d3d12_dst = D3D12Imp(dest);
 
-        d3d12_cmd_list->CopyResource(D3D12Imp(dest).Resource(), D3D12Imp(src).Resource());
+        d3d12_src.Transition(*this, GpuResourceState::CopySrc);
+        d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
+
+        d3d12_cmd_list->CopyResource(d3d12_dst.Resource(), d3d12_src.Resource());
     }
 
     void D3D12CommandList::Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
-        D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+        const auto& d3d12_src = D3D12Imp(src);
+        auto& d3d12_dst = D3D12Imp(dest);
 
-        d3d12_cmd_list->CopyBufferRegion(D3D12Imp(dest).Resource(), dst_offset, D3D12Imp(src).Resource(), src_offset, src_size);
+        d3d12_src.Transition(*this, GpuResourceState::CopySrc);
+        d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
+
+        d3d12_cmd_list->CopyBufferRegion(d3d12_dst.Resource(), dst_offset, d3d12_src.Resource(), src_offset, src_size);
     }
 
     void D3D12CommandList::Copy(GpuTexture& dest, const GpuTexture& src)
     {
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
-        D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+        const auto& d3d12_src = D3D12Imp(src);
+        auto& d3d12_dst = D3D12Imp(dest);
 
-        d3d12_cmd_list->CopyResource(D3D12Imp(dest).Resource(), D3D12Imp(src).Resource());
+        d3d12_src.Transition(*this, GpuResourceState::CopySrc);
+        d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
+
+        d3d12_cmd_list->CopyResource(d3d12_dst.Resource(), d3d12_src.Resource());
     }
 
     void D3D12CommandList::Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
         const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box)
     {
+        const auto& d3d12_src = D3D12Imp(src);
+        auto& d3d12_dst = D3D12Imp(dest);
+
         const D3D12_TEXTURE_COPY_LOCATION src_loc{
-            .pResource = D3D12Imp(src).Resource(),
+            .pResource = d3d12_src.Resource(),
             .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             .SubresourceIndex = src_sub_resource,
         };
 
         const D3D12_TEXTURE_COPY_LOCATION dst_loc{
-            .pResource = D3D12Imp(dest).Resource(),
+            .pResource = d3d12_dst.Resource(),
             .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             .SubresourceIndex = dest_sub_resource,
         };
 
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
-        D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+        d3d12_src.Transition(*this, GpuResourceState::CopySrc);
+        d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
 
         const D3D12_BOX d3d12_src_box{
             .left = src_box.left,
@@ -872,8 +886,6 @@ namespace AIHoloImager
 
     void D3D12CommandList::Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func)
     {
-        auto* d3d12_dest = D3D12Imp(dest).Resource();
-
         switch (dest.Heap())
         {
         case GpuHeap::Upload:
@@ -891,9 +903,10 @@ namespace AIHoloImager
             void* buff_data = upload_mem_block.CpuSpan<std::byte>().data();
             copy_func(buff_data);
 
-            D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+            auto& d3d12_dst = D3D12Imp(dest);
+            d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
             d3d12_cmd_list->CopyBufferRegion(
-                d3d12_dest, 0, D3D12Imp(*upload_mem_block.Buffer()).Resource(), upload_mem_block.Offset(), dest.Size());
+                d3d12_dst.Resource(), 0, D3D12Imp(*upload_mem_block.Buffer()).Resource(), upload_mem_block.Offset(), dest.Size());
 
             gpu_system_->DeallocUploadMemBlock(std::move(upload_mem_block));
         }
@@ -907,6 +920,8 @@ namespace AIHoloImager
     void D3D12CommandList::Upload(GpuTexture& dest, uint32_t sub_resource,
         const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
+        auto& d3d12_dst = D3D12Imp(dest);
+
         uint32_t mip;
         uint32_t array_slice;
         uint32_t plane_slice;
@@ -916,7 +931,7 @@ namespace AIHoloImager
         const uint32_t depth = dest.Depth(mip);
 
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
-        auto* d3d12_dest_texture = D3D12Imp(dest).Resource();
+        auto* d3d12_dest_texture = d3d12_dst.Resource();
 
         const auto desc = d3d12_dest_texture->GetDesc();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
@@ -954,7 +969,7 @@ namespace AIHoloImager
         assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(dest).Transition(*this, GpuResourceState::CopyDst);
+        d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
 
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
 
@@ -963,8 +978,6 @@ namespace AIHoloImager
 
     std::future<void> D3D12CommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* dst_data)>& copy_func)
     {
-        auto* d3d12_src_buff = D3D12Imp(src).Resource();
-
         switch (src.Heap())
         {
         case GpuHeap::Upload:
@@ -979,10 +992,11 @@ namespace AIHoloImager
 
             auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
 
-            D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
+            const auto& d3d12_src = D3D12Imp(src);
+            d3d12_src.Transition(*this, GpuResourceState::CopySrc);
 
             d3d12_cmd_list->CopyBufferRegion(
-                D3D12Imp(*read_back_mem_block.Buffer()).Resource(), read_back_mem_block.Offset(), d3d12_src_buff, 0, src.Size());
+                D3D12Imp(*read_back_mem_block.Buffer()).Resource(), read_back_mem_block.Offset(), d3d12_src.Resource(), 0, src.Size());
             const uint64_t fence_val = D3D12Imp(*gpu_system_).ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
 
             return std::async(
@@ -1004,6 +1018,9 @@ namespace AIHoloImager
     std::future<void> D3D12CommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
         const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
+        auto& d3d12_system = D3D12Imp(*gpu_system_);
+        const auto& d3d12_src = D3D12Imp(src);
+
         uint32_t mip;
         uint32_t array_slice;
         uint32_t plane_slice;
@@ -1012,8 +1029,8 @@ namespace AIHoloImager
         const uint32_t height = src.Height(mip);
         const uint32_t depth = src.Depth(mip);
 
-        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
-        auto* d3d12_src_texture = D3D12Imp(src).Resource();
+        auto* d3d12_device = d3d12_system.Device();
+        auto* d3d12_src_texture = d3d12_src.Resource();
 
         const auto desc = d3d12_src_texture->GetDesc();
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
@@ -1049,10 +1066,10 @@ namespace AIHoloImager
         assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
-        D3D12Imp(src).Transition(*this, GpuResourceState::CopySrc);
+        d3d12_src.Transition(*this, GpuResourceState::CopySrc);
 
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
-        const uint64_t fence_val = D3D12Imp(*gpu_system_).ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
+        const uint64_t fence_val = d3d12_system.ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
 
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch = layout.Footprint.RowPitch,

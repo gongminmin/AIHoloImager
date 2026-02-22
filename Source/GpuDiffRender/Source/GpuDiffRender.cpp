@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "GpuDiffRender.hpp"
@@ -253,7 +253,7 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv, &derivative_barycentric_rtv};
+            GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv, &derivative_barycentric_rtv};
 
             cmd_list.Render(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t),
                 shader_bindings, rtvs, &depth_dsv_, std::span(&viewport, 1), {});
@@ -266,7 +266,7 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
+            GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
 
             cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
                 &depth_dsv_, std::span(&viewport, 1), {});

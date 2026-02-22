@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "MeshGenerator.hpp"
@@ -974,7 +974,7 @@ namespace AIHoloImager
                         {{}, srvs, {}},
                     };
 
-                    const GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
+                    GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
 
                     const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
                     cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});

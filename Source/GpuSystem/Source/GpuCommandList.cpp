@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuCommandList.hpp"
@@ -101,8 +101,8 @@ namespace AIHoloImager
     }
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
-        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<const GpuRenderTargetView*> rtvs,
-        const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
         impl_->Internal().Render(pipeline, std::move(vbs), ib, num, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),

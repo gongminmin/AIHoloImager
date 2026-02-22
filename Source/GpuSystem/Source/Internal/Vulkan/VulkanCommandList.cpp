@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanCommandList.hpp"
@@ -184,7 +184,7 @@ namespace AIHoloImager
 
     void VulkanCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
         const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
-        std::span<const GpuRenderTargetView*> rtvs, const GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
         assert(gpu_system_ != nullptr);
@@ -192,7 +192,7 @@ namespace AIHoloImager
         auto& vulkan_system = VulkanImp(*gpu_system_);
         const VkDevice vulkan_device = vulkan_system.Device();
 
-        auto& vulkan_pipeline = VulkanImp(pipeline);
+        const auto& vulkan_pipeline = VulkanImp(pipeline);
 
         std::unique_ptr<VkBuffer[]> vbvs;
         std::unique_ptr<VkDeviceSize[]> vb_offsets;
@@ -205,8 +205,7 @@ namespace AIHoloImager
                 const auto& vb_binding = vbs[i];
                 assert(vb_binding.vb != nullptr);
 
-                auto& vulkan_buff = VulkanImp(*vb_binding.vb);
-
+                const auto& vulkan_buff = VulkanImp(*vb_binding.vb);
                 vulkan_buff.Transition(*this, GpuResourceState::Common);
 
                 vbvs[i] = vulkan_buff.Buffer();
@@ -219,7 +218,7 @@ namespace AIHoloImager
         VkIndexType index_type = VK_INDEX_TYPE_UINT16;
         if (ib != nullptr)
         {
-            auto& vulkan_buff = VulkanImp(*ib->ib);
+            const auto& vulkan_buff = VulkanImp(*ib->ib);
             vulkan_buff.Transition(*this, GpuResourceState::Common);
 
             ibv = vulkan_buff.Buffer();
@@ -268,7 +267,7 @@ namespace AIHoloImager
         std::vector<VkRenderingAttachmentInfo> color_attachments(rtvs.size());
         for (size_t i = 0; i < rtvs.size(); ++i)
         {
-            const auto& vulkan_rtv = VulkanImp(*rtvs[i]);
+            auto& vulkan_rtv = VulkanImp(*rtvs[i]);
             vulkan_rtv.Transition(*this);
 
             color_attachments[i] = VkRenderingAttachmentInfo{
@@ -289,7 +288,7 @@ namespace AIHoloImager
         bool has_stencil = false;
         if (dsv != nullptr)
         {
-            const auto& vulkan_dsv = VulkanImp(*dsv);
+            auto& vulkan_dsv = VulkanImp(*dsv);
             vulkan_dsv.Transition(*this);
 
             depth_stencil_attachment = VkRenderingAttachmentInfo{
@@ -428,7 +427,7 @@ namespace AIHoloImager
         auto& vulkan_system = VulkanImp(*gpu_system_);
         const VkDevice vulkan_device = vulkan_system.Device();
 
-        auto& vulkan_pipeline = VulkanImp(pipeline);
+        const auto& vulkan_pipeline = VulkanImp(pipeline);
         vulkan_pipeline.Bind(*this);
 
         const auto& binding_slots = vulkan_pipeline.BindingSlots();
@@ -460,7 +459,7 @@ namespace AIHoloImager
 
     void VulkanCommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
     {
-        auto& vulkan_src = VulkanImp(src);
+        const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
@@ -484,7 +483,7 @@ namespace AIHoloImager
 
     void VulkanCommandList::Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size)
     {
-        auto& vulkan_src = VulkanImp(src);
+        const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
@@ -508,7 +507,7 @@ namespace AIHoloImager
 
     void VulkanCommandList::Copy(GpuTexture& dest, const GpuTexture& src)
     {
-        auto& vulkan_src = VulkanImp(src);
+        const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
@@ -527,7 +526,7 @@ namespace AIHoloImager
     void VulkanCommandList::Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
         const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box)
     {
-        auto& vulkan_src = VulkanImp(src);
+        const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
@@ -696,7 +695,7 @@ namespace AIHoloImager
 
     std::future<void> VulkanCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* dst_data)>& copy_func)
     {
-        auto& vulkan_src = VulkanImp(src);
+        const auto& vulkan_src = VulkanImp(src);
 
         switch (src.Heap())
         {
@@ -748,6 +747,9 @@ namespace AIHoloImager
     std::future<void> VulkanCommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
         const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
+        auto& vulkan_system = VulkanImp(*gpu_system_);
+        const auto& vulkan_src = VulkanImp(src);
+
         uint32_t mip;
         uint32_t array_slice;
         uint32_t plane_slice;
@@ -756,8 +758,8 @@ namespace AIHoloImager
         const uint32_t height = src.Height(mip);
         const uint32_t depth = src.Depth(mip);
 
-        const VkDevice vulkan_device = VulkanImp(*gpu_system_).Device();
-        const VkImage vulkan_src_image = VulkanImp(src).Image();
+        const VkDevice vulkan_device = vulkan_system.Device();
+        const VkImage vulkan_src_image = vulkan_src.Image();
 
         VkMemoryRequirements requirements;
         vkGetImageMemoryRequirements(vulkan_device, vulkan_src_image, &requirements);
@@ -767,7 +769,7 @@ namespace AIHoloImager
 
         VkBuffer vulkan_dst_buff = VulkanImp(*read_back_mem_block.Buffer()).Buffer();
 
-        VulkanImp(src).Transition(*this, GpuResourceState::CopySrc);
+        vulkan_src.Transition(*this, GpuResourceState::CopySrc);
 
         const VkBufferImageCopy2 region{
             .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
@@ -801,7 +803,7 @@ namespace AIHoloImager
         };
         vkCmdCopyImageToBuffer2(cmd_buff_, &copy_info);
 
-        const uint64_t fence_val = VulkanImp(*gpu_system_).ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
+        const uint64_t fence_val = vulkan_system.ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
 
         const uint32_t row_pitch = width * FormatSize(src.Format());
         const uint32_t slice_pitch = row_pitch * height;
@@ -870,7 +872,7 @@ namespace AIHoloImager
                             {
                                 if (srv != nullptr)
                                 {
-                                    auto& vulkan_srv = VulkanImp(*srv);
+                                    const auto& vulkan_srv = VulkanImp(*srv);
                                     vulkan_srv.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_srv.WriteDescSet());
                                 }
@@ -938,7 +940,7 @@ namespace AIHoloImager
                             {
                                 if (cbv != nullptr)
                                 {
-                                    auto& vulkan_cbv = VulkanImp(*cbv);
+                                    const auto& vulkan_cbv = VulkanImp(*cbv);
                                     vulkan_cbv.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_cbv.WriteDescSet());
                                 }
