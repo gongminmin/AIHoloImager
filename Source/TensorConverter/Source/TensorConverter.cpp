@@ -168,7 +168,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
 
                 if (heap != GpuHeap::Default)
                 {
@@ -242,7 +242,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
             }
             else
             {
@@ -283,7 +283,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
             }
             else
             {
@@ -369,7 +369,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(GpuSystem::CmdQueueType::Render, fence_val);
+                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
             }
             else
             {

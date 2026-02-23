@@ -229,7 +229,7 @@ namespace AIHoloImager
             interpolate_intermediate_.derivative_barycentric, interpolate_intermediate_.prim_id, interpolate_intermediate_.indices,
             interpolate_intermediate_.shading, interpolate_intermediate_.derivative_shading);
 
-        const torch::Tensor shading = tensor_converter_.Convert(
+        torch::Tensor shading = tensor_converter_.Convert(
             cmd_list, interpolate_intermediate_.shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
         torch::Tensor derivative_shading;
         if (needs_dbc)

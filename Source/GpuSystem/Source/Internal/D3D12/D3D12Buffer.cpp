@@ -151,7 +151,6 @@ namespace AIHoloImager
     {
         auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
-
         if (curr_state_ != target_state)
         {
             const D3D12_RESOURCE_BARRIER barrier{
@@ -170,11 +169,13 @@ namespace AIHoloImager
         }
         else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
-            const D3D12_RESOURCE_BARRIER barrier{.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+            const D3D12_RESOURCE_BARRIER barrier{
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
                 .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                 .UAV{
                     .pResource = native_resource,
-                }};
+                },
+            };
             cmd_list.Transition(std::span(&barrier, 1));
         }
     }
