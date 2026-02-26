@@ -287,7 +287,7 @@ namespace AIHoloImager
         };
 
         std::vector<const char*> device_exts = {
-            VK_KHR_ROBUSTNESS_2_EXTENSION_NAME,
+            VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
             VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
         };
         if (enable_sharing)
