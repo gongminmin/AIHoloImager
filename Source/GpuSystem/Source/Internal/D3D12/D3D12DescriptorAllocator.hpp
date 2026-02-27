@@ -116,7 +116,7 @@ namespace AIHoloImager
         void Deallocate(D3D12DescriptorBlock&& desc_block);
         void Reallocate(D3D12DescriptorBlock& desc_block, uint32_t size);
 
-        void ClearStallPages(uint64_t completed_fence_value);
+        void ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value);
         void Clear();
 
     private:
@@ -147,7 +147,7 @@ namespace AIHoloImager
             struct StallRange
             {
                 FreeRange free_range;
-                uint64_t fence_value;
+                uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             };
 #pragma pack(pop)
             std::vector<StallRange> stall_list;

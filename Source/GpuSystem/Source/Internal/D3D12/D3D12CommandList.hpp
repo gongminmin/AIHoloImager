@@ -18,6 +18,8 @@
 
 namespace AIHoloImager
 {
+    class D3D12Resource;
+
     class D3D12CommandList : public GpuCommandListInternal
     {
     public:
@@ -88,9 +90,12 @@ namespace AIHoloImager
             return cmd_pool_;
         }
 
+        bool NeedsGpuWait(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+
     private:
         void Compute(
             const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
+        void CheckWrittenBy(const D3D12Resource& resource);
 
     private:
         GpuSystem* gpu_system_ = nullptr;
@@ -99,6 +104,9 @@ namespace AIHoloImager
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         ComPtr<ID3D12CommandList> cmd_list_;
         bool closed_ = false;
+
+        mutable GpuSystem::CmdQueueType wait_for_queue_type_ = GpuSystem::CmdQueueType::Num;
+        mutable uint64_t wait_for_fence_value_ = GpuSystem::MaxFenceValue;
     };
 
     D3D12_DEFINE_IMP(CommandList)

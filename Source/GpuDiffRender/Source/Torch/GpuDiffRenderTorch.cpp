@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "GpuDiffRenderTorch.hpp"
@@ -112,7 +112,7 @@ namespace AIHoloImager
         const uint32_t num_vertices = rast_intermediate_.positions.Size() / sizeof(glm::vec4);
         const bool needs_derivative_barycentric = grad_derivative_barycentric != nullptr;
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_barycentric), rast_intermediate_.grad_barycentric, GpuFormat::RG32_Float,
             GpuResourceFlag::None, "GpuDiffRenderTorch.RasterizeBwd.grad_barycentric");
@@ -204,7 +204,7 @@ namespace AIHoloImager
         const uint32_t num_attribs = static_cast<uint32_t>(vtx_attribs.size(1));
         const bool needs_dbc = derivative_barycentric != nullptr;
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         interpolate_intermediate_.num_attribs = num_attribs;
         tensor_converter_.Convert(cmd_list, std::move(vtx_attribs), interpolate_intermediate_.vtx_attribs, GpuHeap::Default,
@@ -250,7 +250,7 @@ namespace AIHoloImager
         const uint32_t num_vertices = interpolate_intermediate_.vtx_attribs.Size() / (num_attribs * sizeof(float));
         const bool needs_dbc = static_cast<bool>(interpolate_intermediate_.derivative_barycentric);
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_shading), interpolate_intermediate_.grad_shading, GpuHeap::Default,
             GpuResourceFlag::None, "GpuDiffRenderTorch.InterpolateBwd.grad_shading");
@@ -346,7 +346,7 @@ namespace AIHoloImager
     torch::Tensor GpuDiffRenderTorch::TextureFwd(torch::Tensor texture, torch::Tensor prim_id, torch::Tensor uv, std::string_view filter,
         std::string_view address_mode, torch::Tensor* derivative_uv)
     {
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         const torch::ScalarType scalar_type = texture.dtype().toScalarType();
         const uint32_t num_channels = static_cast<uint32_t>(texture.sizes().back());
@@ -532,7 +532,7 @@ namespace AIHoloImager
         const GpuFormat format = texture_intermediate_.texture.Format();
         const uint32_t num_channels = FormatChannels(format);
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_image), texture_intermediate_.grad_image, format, GpuResourceFlag::None,
             "GpuDiffRenderTorch.TextureBwd.grad_image");
@@ -559,7 +559,7 @@ namespace AIHoloImager
 
     GpuDiffRenderTorch::AntiAliasOppositeVertices GpuDiffRenderTorch::AntiAliasConstructOppositeVertices(torch::Tensor indices)
     {
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         GpuBuffer indices_buff;
         tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::None,
@@ -617,7 +617,7 @@ namespace AIHoloImager
         const uint32_t height = static_cast<uint32_t>(shading.size(1));
         const uint32_t num_attribs = static_cast<uint32_t>(shading.size(3));
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::None,
             "GpuDiffRenderTorch.AntiAliasFwd.shading");
@@ -664,7 +664,7 @@ namespace AIHoloImager
         const uint32_t height = aa_intermediate_.prim_id.Height(0);
         const uint32_t num_attribs = aa_intermediate_.shading.Size() / (width * height * sizeof(float));
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_anti_aliased), aa_intermediate_.grad_anti_aliased, GpuHeap::Default,
             GpuResourceFlag::None, "GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");

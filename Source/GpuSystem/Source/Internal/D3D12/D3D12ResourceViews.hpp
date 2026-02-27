@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -66,6 +66,8 @@ namespace AIHoloImager
         void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
 
+        const GpuResource* Resource() const noexcept;
+
     private:
         GpuSystem* gpu_system_ = nullptr;
         const GpuResource* resource_ = nullptr;
@@ -93,6 +95,7 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
+        void TransitionBack(D3D12CommandList& cmd_list) const;
 
         void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
@@ -124,6 +127,7 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(D3D12CommandList& cmd_list) const;
+        void TransitionBack(D3D12CommandList& cmd_list) const;
 
         void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;

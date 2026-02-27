@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12Buffer.hpp"
@@ -141,13 +141,13 @@ namespace AIHoloImager
         this->Transition(D3D12Imp(cmd_list), target_state);
     }
 
-    void D3D12Buffer::Transition(D3D12CommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
+    void D3D12Buffer::DoTransition(D3D12CommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
     {
         assert(sub_resource == 0);
         this->Transition(cmd_list, target_state);
     }
 
-    void D3D12Buffer::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
+    void D3D12Buffer::DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
         auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);

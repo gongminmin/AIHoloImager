@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 
 #include <volk.h>
@@ -51,21 +52,22 @@ namespace AIHoloImager
         uint32_t& QueueFamilyIndex(GpuSystem::CmdQueueType type) noexcept;
         uint32_t QueueFamilyIndex(GpuSystem::CmdQueueType type) const noexcept;
 
-        void* SharedFenceHandle() const noexcept override;
+        void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value) override;
-        uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, uint64_t wait_fence_value);
+        uint64_t Execute(GpuCommandList&& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
+        uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value);
 
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
 
-        void CpuWait(uint64_t fence_value) override;
-        void GpuWait(GpuSystem::CmdQueueType type, uint64_t fence_value) override;
-        uint64_t FenceValue() const noexcept override;
-        uint64_t CompletedFenceValue() const override;
+        void CpuWait(GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
+        void GpuWait(
+            GpuSystem::CmdQueueType target_queue_type, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
+        uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
+        uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
         void HandleDeviceLost() override;
         void ClearStallResources() override;
@@ -148,6 +150,10 @@ namespace AIHoloImager
             VkQueue cmd_queue = VK_NULL_HANDLE;
             std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
+
+            VkSemaphore timeline_semaphore = VK_NULL_HANDLE;
+            uint64_t fence_val = 0;
+            Win32UniqueHandle shared_fence_handle;
         };
 
     private:
@@ -155,7 +161,8 @@ namespace AIHoloImager
         CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
         const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(VulkanCommandList& cmd_list, uint64_t wait_fence_value);
+        uint64_t ExecuteOnly(VulkanCommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value);
+        void CollectFenceValues(uint64_t* fence_values);
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
             VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
@@ -175,11 +182,9 @@ namespace AIHoloImager
         std::vector<std::string> supported_exts_{};
         uint32_t queue_family_indices_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
-        CmdQueue cmd_queues_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
+        bool enable_sharing_;
 
-        VkSemaphore timeline_semaphore_ = VK_NULL_HANDLE;
-        uint64_t fence_val_ = 0;
-        Win32UniqueHandle shared_fence_handle_;
+        CmdQueue cmd_queues_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
         struct StallResourceInfo
         {
@@ -189,8 +194,8 @@ namespace AIHoloImager
             }
 
             void* resource;
-            uint64_t fence;
             std::function<void()> destroy_func;
+            uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
         };
         std::list<StallResourceInfo> stall_resources_;
 

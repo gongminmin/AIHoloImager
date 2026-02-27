@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanResourceViews.hpp"
@@ -285,6 +285,11 @@ namespace AIHoloImager
         return write_desc_set_;
     }
 
+    const GpuResource* VulkanShaderResourceView::Resource() const noexcept
+    {
+        return resource_;
+    }
+
     void VulkanShaderResourceView::FillWriteDescSetForImage()
     {
         image_info_ = VkDescriptorImageInfo{
@@ -377,6 +382,11 @@ namespace AIHoloImager
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::ColorWrite);
     }
 
+    void VulkanRenderTargetView::TransitionBack(VulkanCommandList& cmd_list) const
+    {
+        VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
+    }
+
     GpuResource* VulkanRenderTargetView::Resource() const noexcept
     {
         return resource_;
@@ -463,6 +473,11 @@ namespace AIHoloImager
     void VulkanDepthStencilView::Transition(VulkanCommandList& cmd_list) const
     {
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::DepthWrite);
+    }
+
+    void VulkanDepthStencilView::TransitionBack(VulkanCommandList& cmd_list) const
+    {
+        VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
     GpuResource* VulkanDepthStencilView::Resource() const noexcept

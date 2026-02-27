@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanResource.hpp"
@@ -22,6 +22,45 @@ namespace AIHoloImager
 
     VulkanResource::VulkanResource(VulkanResource&& other) noexcept = default;
     VulkanResource& VulkanResource::operator=(VulkanResource&& other) noexcept = default;
+
+    void VulkanResource::Transition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    {
+        this->DoTransition(cmd_list, sub_resource, target_state);
+        this->AccessedBy(cmd_list.Type(), target_state);
+    }
+
+    void VulkanResource::Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
+    {
+        this->DoTransition(cmd_list, target_state);
+        this->AccessedBy(cmd_list.Type(), target_state);
+    }
+
+    void VulkanResource::LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
+    {
+        type = written_by_queue_type_;
+        fence_value = written_by_fence_value_;
+    }
+
+    void VulkanResource::AccessedBy(GpuSystem::CmdQueueType type, GpuResourceState target_state) const
+    {
+        switch (target_state)
+        {
+        case GpuResourceState::ColorWrite:
+        case GpuResourceState::DepthWrite:
+        case GpuResourceState::UnorderedAccess:
+        case GpuResourceState::CopyDst:
+        {
+            const uint64_t fence_value = memory_.VulkanSys()->FenceValue(type);
+            if ((written_by_fence_value_ == GpuSystem::MaxFenceValue) || (type != written_by_queue_type_) ||
+                (fence_value >= written_by_fence_value_))
+            {
+                written_by_queue_type_ = type;
+                written_by_fence_value_ = fence_value;
+            }
+        }
+        break;
+        }
+    }
 
     void VulkanResource::CreateMemory(GpuResourceType type, const VkMemoryRequirements& requirements, GpuHeap heap, GpuResourceFlag flags)
     {

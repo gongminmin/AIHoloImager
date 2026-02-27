@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "TensorConverter/TensorConverter.hpp"
@@ -68,22 +68,10 @@ namespace AIHoloImager
 
             if (cuda_copy_enabled_)
             {
-                MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
-                switch (gpu_system_.NativeApi())
+                for (auto& ext_semaphore : ext_semaphores_)
                 {
-                case GpuSystem::Api::D3D12:
-                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
-                    break;
-                case GpuSystem::Api::Vulkan:
-                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::TimelineSemaphoreWin32;
-                    break;
-
-                default:
-                    Unreachable("Invalid API");
+                    ext_semaphore = {};
                 }
-                ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle();
-                ext_semaphore_handle_desc.flags = 0;
-                TIFCE(cuda_rt_.ImportExternalSemaphore(&ext_semaphore_, &ext_semaphore_handle_desc));
 
                 TIFCE(cuda_rt_.StreamCreate(&copy_stream_));
             }
@@ -93,7 +81,13 @@ namespace AIHoloImager
         {
             if (cuda_copy_enabled_)
             {
-                cuda_rt_.DestroyExternalSemaphore(ext_semaphore_);
+                for (auto ext_semaphore : ext_semaphores_)
+                {
+                    if (ext_semaphore != MiniCudaRt::ExternalSemaphore_t{})
+                    {
+                        cuda_rt_.DestroyExternalSemaphore(ext_semaphore);
+                    }
+                }
                 cuda_rt_.StreamDestroy(copy_stream_);
             }
         }
@@ -147,8 +141,11 @@ namespace AIHoloImager
 
                 copy_buff->Transition(cmd_list, GpuResourceState::CopyDst);
 
+                const auto queue_type = cmd_list.Type();
+                this->ImportSemaphore(queue_type);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
-                this->WaitExternalSemaphore(fence_val);
+                this->WaitExternalSemaphore(queue_type, fence_val);
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(*copy_buff);
 
@@ -167,8 +164,8 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
                 ++fence_val;
-                this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
+                this->SignalExternalSemaphore(queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
 
                 if (heap != GpuHeap::Default)
                 {
@@ -208,8 +205,11 @@ namespace AIHoloImager
             {
                 tex.Transition(cmd_list, GpuResourceState::CopyDst);
 
+                const auto queue_type = cmd_list.Type();
+                this->ImportSemaphore(queue_type);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
-                this->WaitExternalSemaphore(fence_val);
+                this->WaitExternalSemaphore(queue_type, fence_val);
 
                 torch::Tensor tensor = input_tensor.contiguous();
 
@@ -241,8 +241,8 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
                 ++fence_val;
-                this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
+                this->SignalExternalSemaphore(queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
             }
             else
             {
@@ -259,8 +259,11 @@ namespace AIHoloImager
             {
                 buff.Transition(cmd_list, GpuResourceState::CopySrc);
 
+                const auto queue_type = cmd_list.Type();
+                this->ImportSemaphore(queue_type);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
-                this->WaitExternalSemaphore(fence_val);
+                this->WaitExternalSemaphore(queue_type, fence_val);
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(buff);
 
@@ -282,8 +285,8 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
                 ++fence_val;
-                this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
+                this->SignalExternalSemaphore(queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
             }
             else
             {
@@ -334,8 +337,11 @@ namespace AIHoloImager
             {
                 tex.Transition(cmd_list, GpuResourceState::CopySrc);
 
+                const auto queue_type = cmd_list.Type();
+                this->ImportSemaphore(queue_type);
+
                 uint64_t fence_val = gpu_system_.ExecuteAndReset(cmd_list);
-                this->WaitExternalSemaphore(fence_val);
+                this->WaitExternalSemaphore(queue_type, fence_val);
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
@@ -368,8 +374,8 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
 
                 ++fence_val;
-                this->SignalExternalSemaphore(fence_val);
-                gpu_system_.GpuWait(cmd_list.Type(), fence_val);
+                this->SignalExternalSemaphore(queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
             }
             else
             {
@@ -437,18 +443,43 @@ namespace AIHoloImager
             return ext_mem;
         }
 
-        void WaitExternalSemaphore(uint64_t fence_val) const
+        void ImportSemaphore(GpuSystem::CmdQueueType type) const
+        {
+            if (ext_semaphores_[static_cast<uint32_t>(type)] == MiniCudaRt::ExternalSemaphore_t{})
+            {
+                MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
+                switch (gpu_system_.NativeApi())
+                {
+                case GpuSystem::Api::D3D12:
+                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::D3D12Fence;
+                    break;
+                case GpuSystem::Api::Vulkan:
+                    ext_semaphore_handle_desc.type = MiniCudaRt::ExternalSemaphoreHandleType::TimelineSemaphoreWin32;
+                    break;
+
+                default:
+                    Unreachable("Invalid API");
+                }
+                ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle(type);
+                ext_semaphore_handle_desc.flags = 0;
+                TIFCE(cuda_rt_.ImportExternalSemaphore(&ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_handle_desc));
+            }
+        }
+
+        void WaitExternalSemaphore(GpuSystem::CmdQueueType type, uint64_t fence_val) const
         {
             MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{};
             ext_semaphore_wait_params.params.fence.value = fence_val;
-            TIFCE(cuda_rt_.WaitExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_wait_params, 1, copy_stream_));
+            TIFCE(cuda_rt_.WaitExternalSemaphoresAsync(
+                &ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_wait_params, 1, copy_stream_));
         }
 
-        void SignalExternalSemaphore(uint64_t fence_val) const
+        void SignalExternalSemaphore(GpuSystem::CmdQueueType type, uint64_t fence_val) const
         {
             MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{};
             ext_semaphore_signal_params.params.fence.value = fence_val;
-            TIFCE(cuda_rt_.SignalExternalSemaphoresAsync(&ext_semaphore_, &ext_semaphore_signal_params, 1, copy_stream_));
+            TIFCE(cuda_rt_.SignalExternalSemaphoresAsync(
+                &ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_signal_params, 1, copy_stream_));
         }
 
         MiniCudaRt::ChannelFormatDesc FormatDesc(GpuFormat format) const noexcept
@@ -522,7 +553,7 @@ namespace AIHoloImager
         MiniCudaRt cuda_rt_;
 
         bool cuda_copy_enabled_;
-        MiniCudaRt::ExternalSemaphore_t ext_semaphore_{};
+        mutable MiniCudaRt::ExternalSemaphore_t ext_semaphores_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
         MiniCudaRt::Stream_t copy_stream_{};
     };
 

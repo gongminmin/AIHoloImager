@@ -10,11 +10,10 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuBuffer.hpp"
+#include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
 {
-    class GpuSystem;
-
     class GpuMemoryPage final
     {
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryPage)
@@ -124,7 +123,7 @@ namespace AIHoloImager
         void Deallocate(GpuMemoryBlock&& mem_block);
         void Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void ClearStallPages(uint64_t completed_fence_value);
+        void ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value);
         void Clear();
 
     private:
@@ -154,7 +153,7 @@ namespace AIHoloImager
             struct StallRange
             {
                 FreeRange free_range;
-                uint64_t fence_value;
+                uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             };
 #pragma pack(pop)
             std::vector<StallRange> stall_list;

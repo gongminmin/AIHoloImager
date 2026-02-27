@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -68,6 +68,8 @@ namespace AIHoloImager
 
         VkWriteDescriptorSet WriteDescSet() const noexcept;
 
+        const GpuResource* Resource() const noexcept;
+
     private:
         void FillWriteDescSetForImage();
         void FillWriteDescSetForStructuredBuffer(VkBuffer buff, uint32_t offset, uint32_t range);
@@ -103,6 +105,7 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(VulkanCommandList& cmd_list) const;
+        void TransitionBack(VulkanCommandList& cmd_list) const;
 
         GpuResource* Resource() const noexcept;
         VkImageView ImageView() const noexcept;
@@ -135,6 +138,7 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list) const override;
         void Transition(VulkanCommandList& cmd_list) const;
+        void TransitionBack(VulkanCommandList& cmd_list) const;
 
         GpuResource* Resource() const noexcept;
         VkImageView ImageView() const noexcept;

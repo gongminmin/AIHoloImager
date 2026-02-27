@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -30,8 +30,10 @@ namespace AIHoloImager
 
         ID3D12Resource* Resource() const noexcept;
 
-        virtual void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
-        virtual void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
+        void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
+        void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const;
+
+        void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
 
     protected:
         void Name(std::string_view name);
@@ -56,11 +58,20 @@ namespace AIHoloImager
         GpuFormat Format() const noexcept;
 
     private:
+        void AccessedBy(GpuSystem::CmdQueueType type, GpuResourceState target_state) const;
+
+        virtual void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
+
+    private:
         D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;
         GpuResourceType type_ = GpuResourceType::Buffer;
         GpuResourceFlag flags_ = GpuResourceFlag::None;
         D3D12_RESOURCE_DESC desc_{};
         Win32UniqueHandle shared_handle_;
+
+        mutable GpuSystem::CmdQueueType written_by_queue_type_ = GpuSystem::CmdQueueType::Num;
+        mutable uint64_t written_by_fence_value_ = GpuSystem::MaxFenceValue;
     };
 
     D3D12_DEFINE_IMP(Resource)

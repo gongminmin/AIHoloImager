@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanBuffer.hpp"
@@ -231,13 +231,14 @@ namespace AIHoloImager
         this->Transition(VulkanImp(cmd_list), target_state);
     }
 
-    void VulkanBuffer::Transition(VulkanCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
+    void VulkanBuffer::DoTransition(
+        VulkanCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
     {
         assert(sub_resource == 0);
         this->Transition(cmd_list, target_state);
     }
 
-    void VulkanBuffer::Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
+    void VulkanBuffer::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
         if ((curr_state_ != target_state) || (target_state == GpuResourceState::UnorderedAccess) ||
             (target_state == GpuResourceState::RayTracingAS))

@@ -17,8 +17,9 @@ namespace AIHoloImager
     class GpuSystem::Impl
     {
     public:
-        Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-            : host_(host), api_(SelectApi(api)),
+        Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
+            bool enable_async_compute)
+            : host_(host), api_(SelectApi(api)), enable_async_compute_(enable_async_compute),
               system_internal_(CreateGpuSystemInternal(api_, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false)
         {
@@ -26,7 +27,10 @@ namespace AIHoloImager
 
         ~Impl()
         {
-            host_.CpuWait();
+            for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
+            {
+                host_.CpuWait(static_cast<CmdQueueType>(i));
+            }
 
             mipmapper_.reset();
 
@@ -71,6 +75,15 @@ namespace AIHoloImager
         GpuSystem::Api NativeApi() const noexcept
         {
             return api_;
+        }
+
+        CmdQueueType OverrideCmdQueueType(CmdQueueType type) const noexcept
+        {
+            if (!enable_async_compute_ && (type == CmdQueueType::Compute))
+            {
+                return CmdQueueType::Render;
+            }
+            return type;
         }
 
         GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -121,16 +134,23 @@ namespace AIHoloImager
         {
             system_internal_->ClearStallResources();
 
-            const uint64_t completed_fence = system_internal_->CompletedFenceValue();
-
-            upload_mem_allocator_.ClearStallPages(completed_fence);
-            read_back_mem_allocator_.ClearStallPages(completed_fence);
+            for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
+            {
+                const auto queue_type = static_cast<CmdQueueType>(i);
+                const uint64_t completed_fence = system_internal_->CompletedFenceValue(queue_type);
+                if (completed_fence != 0)
+                {
+                    upload_mem_allocator_.ClearStallPages(queue_type, completed_fence);
+                    read_back_mem_allocator_.ClearStallPages(queue_type, completed_fence);
+                }
+            }
         }
 
     private:
         GpuSystem& host_;
 
         Api api_;
+        bool enable_async_compute_;
 
         std::unique_ptr<GpuSystemInternal> system_internal_;
 
@@ -141,8 +161,9 @@ namespace AIHoloImager
         std::unique_ptr<GpuMipmapper> mipmapper_;
     };
 
-    GpuSystem::GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : impl_(std::make_unique<Impl>(api, *this, std::move(confirm_device), enable_sharing, enable_debug))
+    GpuSystem::GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
+        bool enable_async_compute)
+        : impl_(std::make_unique<Impl>(api, *this, std::move(confirm_device), enable_sharing, enable_debug, enable_async_compute))
     {
     }
 
@@ -163,7 +184,7 @@ namespace AIHoloImager
 
     void* GpuSystem::NativeCommandQueue(CmdQueueType type) const noexcept
     {
-        return impl_ ? impl_->Internal().NativeCommandQueue(type) : nullptr;
+        return impl_ ? impl_->Internal().NativeCommandQueue(impl_->OverrideCmdQueueType(type)) : nullptr;
     }
 
     LUID GpuSystem::DeviceLuid() const noexcept
@@ -172,27 +193,27 @@ namespace AIHoloImager
         return impl_->Internal().DeviceLuid();
     }
 
-    void* GpuSystem::SharedFenceHandle() const noexcept
+    void* GpuSystem::SharedFenceHandle(CmdQueueType type) const noexcept
     {
-        return impl_ ? impl_->Internal().SharedFenceHandle() : nullptr;
+        return impl_ ? impl_->Internal().SharedFenceHandle(impl_->OverrideCmdQueueType(type)) : nullptr;
     }
 
-    GpuCommandList GpuSystem::CreateCommandList(GpuSystem::CmdQueueType type)
+    GpuCommandList GpuSystem::CreateCommandList(CmdQueueType type)
     {
         assert(impl_);
-        return impl_->Internal().CreateCommandList(type);
+        return impl_->Internal().CreateCommandList(impl_->OverrideCmdQueueType(type));
     }
 
-    uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
+    uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
     {
         assert(impl_);
-        return impl_->Internal().Execute(std::move(cmd_list), wait_fence_value);
+        return impl_->Internal().Execute(std::move(cmd_list), impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
     }
 
-    uint64_t GpuSystem::ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value)
+    uint64_t GpuSystem::ExecuteAndReset(GpuCommandList& cmd_list, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
     {
         assert(impl_);
-        return impl_->Internal().ExecuteAndReset(cmd_list, wait_fence_value);
+        return impl_->Internal().ExecuteAndReset(cmd_list, impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
     }
 
     uint32_t GpuSystem::ConstantDataAlignment() const noexcept
@@ -243,22 +264,23 @@ namespace AIHoloImager
         impl_->ReallocReadBackMemBlock(mem_block, size_in_bytes, alignment);
     }
 
-    void GpuSystem::CpuWait(uint64_t fence_value)
+    void GpuSystem::CpuWait(CmdQueueType wait_queue_type, uint64_t wait_fence_value)
     {
         assert(impl_);
-        impl_->Internal().CpuWait(fence_value);
+        impl_->Internal().CpuWait(impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
     }
 
-    void GpuSystem::GpuWait(CmdQueueType type, uint64_t fence_value)
+    void GpuSystem::GpuWait(CmdQueueType target_queue_type, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
     {
         assert(impl_);
-        impl_->Internal().GpuWait(type, fence_value);
+        impl_->Internal().GpuWait(
+            impl_->OverrideCmdQueueType(target_queue_type), impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
     }
 
-    uint64_t GpuSystem::FenceValue() const noexcept
+    uint64_t GpuSystem::FenceValue(CmdQueueType type) const noexcept
     {
         assert(impl_);
-        return impl_->Internal().FenceValue();
+        return impl_->Internal().FenceValue(impl_->OverrideCmdQueueType(type));
     }
 
     void GpuSystem::HandleDeviceLost()

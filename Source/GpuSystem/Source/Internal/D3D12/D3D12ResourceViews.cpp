@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12ResourceViews.hpp"
@@ -267,6 +267,11 @@ namespace AIHoloImager
         return cpu_handle_;
     }
 
+    const GpuResource* D3D12ShaderResourceView::Resource() const noexcept
+    {
+        return resource_;
+    }
+
 
     D3D12_IMP_IMP(RenderTargetView)
 
@@ -326,6 +331,11 @@ namespace AIHoloImager
     void D3D12RenderTargetView::Transition(D3D12CommandList& cmd_list) const
     {
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::ColorWrite);
+    }
+
+    void D3D12RenderTargetView::TransitionBack(D3D12CommandList& cmd_list) const
+    {
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
     void D3D12RenderTargetView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
@@ -398,6 +408,11 @@ namespace AIHoloImager
     void D3D12DepthStencilView::Transition(D3D12CommandList& cmd_list) const
     {
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::DepthWrite);
+    }
+
+    void D3D12DepthStencilView::TransitionBack(D3D12CommandList& cmd_list) const
+    {
+        D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
     void D3D12DepthStencilView::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept

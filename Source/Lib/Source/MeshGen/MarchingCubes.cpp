@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "MarchingCubes.hpp"
@@ -303,7 +303,7 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
-            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Default, GpuResourceFlag::None, "edge_table_buff");
             cmd_list.Upload(edge_table_buff_, EdgeTable, sizeof(EdgeTable));
@@ -358,7 +358,7 @@ namespace AIHoloImager
 
             const GpuShaderResourceView scalar_deformation_srv(gpu_system_, scalar_deformation);
 
-            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             // [num_non_empty_cubes, num_vertices, num_indices]
             GpuBuffer counter_buff(gpu_system_, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "counter_buff");
@@ -407,7 +407,7 @@ namespace AIHoloImager
                 return Mesh();
             }
 
-            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             GpuBuffer non_empty_cube_ids_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
                 GpuResourceFlag::UnorderedAccess, "non_empty_cube_ids_buff");
@@ -461,7 +461,7 @@ namespace AIHoloImager
             };
             Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_vertices, num_indices);
 
-            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             std::future<void> vertex_rb_future;
             std::future<void> index_rb_future;

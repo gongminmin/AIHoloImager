@@ -210,6 +210,8 @@ namespace AIHoloImager
 
                 vbvs[i] = vulkan_buff.Buffer();
                 vb_offsets[i] = vb_binding.offset;
+
+                this->CheckWrittenBy(vulkan_buff);
             }
         }
 
@@ -236,6 +238,8 @@ namespace AIHoloImager
             default:
                 Unreachable("Unsupported index format");
             }
+
+            this->CheckWrittenBy(vulkan_buff);
         }
 
         VkDescriptorSet desc_sets[] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
@@ -394,6 +398,19 @@ namespace AIHoloImager
 
         vkCmdEndRendering(cmd_buff_);
 
+        // In case these resources are used in a compute command list, where color write and depth write are not available.
+        for (auto* rtv : rtvs)
+        {
+            if (rtv != nullptr)
+            {
+                VulkanImp(*rtv).TransitionBack(*this);
+            }
+        }
+        if (dsv != nullptr)
+        {
+            VulkanImp(*dsv).TransitionBack(*this);
+        }
+
         for (uint32_t set = 0; set < num_sets; ++set)
         {
             vulkan_system.DeallocDescSet(desc_sets[set]);
@@ -462,6 +479,8 @@ namespace AIHoloImager
         const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
+        this->CheckWrittenBy(vulkan_src);
+
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
 
@@ -485,6 +504,8 @@ namespace AIHoloImager
     {
         const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
+
+        this->CheckWrittenBy(vulkan_src);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
@@ -510,6 +531,8 @@ namespace AIHoloImager
         const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
 
+        this->CheckWrittenBy(vulkan_src);
+
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
 
@@ -528,6 +551,8 @@ namespace AIHoloImager
     {
         const auto& vulkan_src = VulkanImp(src);
         auto& vulkan_dst = VulkanImp(dest);
+
+        this->CheckWrittenBy(vulkan_src);
 
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
@@ -708,6 +733,7 @@ namespace AIHoloImager
             auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
 
             const auto& vulkan_src = VulkanImp(src);
+            this->CheckWrittenBy(vulkan_src);
             vulkan_src.Transition(*this, GpuResourceState::CopySrc);
 
             const VkBufferCopy2 copy_region{
@@ -725,11 +751,11 @@ namespace AIHoloImager
             };
             vkCmdCopyBuffer2(cmd_buff_, &copy_info);
 
-            const uint64_t fence_val = VulkanImp(*gpu_system_).ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
+            const uint64_t fence_val = VulkanImp(*gpu_system_).ExecuteAndReset(*this, type_, GpuSystem::MaxFenceValue);
 
             return std::async(
                 std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
-                    gpu_system_->CpuWait(fence_val);
+                    gpu_system_->CpuWait(type_, fence_val);
 
                     const void* buff_data = read_back_mem_block.CpuSpan<std::byte>().data();
                     copy_func(buff_data);
@@ -748,6 +774,8 @@ namespace AIHoloImager
     {
         auto& vulkan_system = VulkanImp(*gpu_system_);
         const auto& vulkan_src = VulkanImp(src);
+
+        this->CheckWrittenBy(vulkan_src);
 
         uint32_t mip;
         uint32_t array_slice;
@@ -802,13 +830,13 @@ namespace AIHoloImager
         };
         vkCmdCopyImageToBuffer2(cmd_buff_, &copy_info);
 
-        const uint64_t fence_val = vulkan_system.ExecuteAndReset(*this, GpuSystem::MaxFenceValue);
+        const uint64_t fence_val = vulkan_system.ExecuteAndReset(*this, type_, GpuSystem::MaxFenceValue);
 
         const uint32_t row_pitch = width * FormatSize(src.Format());
         const uint32_t slice_pitch = row_pitch * height;
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch, slice_pitch, copy_func]() mutable {
-                gpu_system_->CpuWait(fence_val);
+                gpu_system_->CpuWait(type_, fence_val);
 
                 const void* tex_data = read_back_mem_block.CpuSpan<std::byte>().data();
                 copy_func(tex_data, row_pitch, slice_pitch);
@@ -874,6 +902,8 @@ namespace AIHoloImager
                                     const auto& vulkan_srv = VulkanImp(*srv);
                                     vulkan_srv.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_srv.WriteDescSet());
+
+                                    this->CheckWrittenBy(VulkanImp(*vulkan_srv.Resource()));
                                 }
                                 else
                                 {
@@ -907,6 +937,8 @@ namespace AIHoloImager
                                     auto& vulkan_uav = VulkanImp(*uav);
                                     vulkan_uav.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_uav.WriteDescSet());
+
+                                    this->CheckWrittenBy(VulkanImp(*vulkan_uav.Resource()));
                                 }
                                 else
                                 {
@@ -1011,5 +1043,29 @@ namespace AIHoloImager
                 }
             }
         }
+    }
+
+    void VulkanCommandList::CheckWrittenBy(const VulkanResource& resource)
+    {
+        GpuSystem::CmdQueueType lw_type;
+        uint64_t lw_fence_value;
+        resource.LastWrittenBy(lw_type, lw_fence_value);
+        if ((lw_type != GpuSystem::CmdQueueType::Num) && (lw_type != type_))
+        {
+            wait_for_queue_type_ = lw_type;
+            wait_for_fence_value_ = lw_fence_value;
+        }
+    }
+
+    bool VulkanCommandList::NeedsGpuWait(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
+    {
+        if (wait_for_queue_type_ != GpuSystem::CmdQueueType::Num)
+        {
+            type = wait_for_queue_type_;
+            fence_value = wait_for_fence_value_;
+            return true;
+        }
+
+        return false;
     }
 } // namespace AIHoloImager

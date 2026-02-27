@@ -896,7 +896,7 @@ namespace AIHoloImager
                             GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::None, "distort_gpu_tex");
                     }
 
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                     cmd_list.Upload(
                         distort_gpu_tex, 0, [&image](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
@@ -999,7 +999,7 @@ namespace AIHoloImager
                     const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
                     const uint32_t point_cloud_size = point_cloud_width * point_cloud_height;
 
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
                     auto& tensor_converter = aihi_.TensorConverterInstance();
                     GpuBuffer point_cloud_buff;
                     tensor_converter.ConvertPy(

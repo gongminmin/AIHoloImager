@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -54,8 +54,11 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-        void Transition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const override;
+        using VulkanResource::Transition;
+
+    private:
+        void DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         mutable std::vector<VkImageLayout> curr_layouts_;

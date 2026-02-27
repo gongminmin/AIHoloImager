@@ -309,7 +309,7 @@ namespace AIHoloImager
 
                 for (size_t i = 0; i < rotated_images.size(); ++i)
                 {
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
                     Texture rotated_image(rotated_images[i].Width(0), rotated_images[i].Height(0), ElementFormat::RGBA8_UNorm);
                     const auto rb_future = cmd_list.ReadBackAsync(rotated_images[i], 0, rotated_image.Data(), rotated_image.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
@@ -496,7 +496,7 @@ namespace AIHoloImager
 
                 Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 {
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                     this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
 
@@ -652,7 +652,7 @@ namespace AIHoloImager
                 Texture erosion_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
                 Texture dilation_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
                 {
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                     std::future<void> erosion_rb_future;
                     {
@@ -1071,7 +1071,7 @@ namespace AIHoloImager
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto& tensor_converter = aihi_.TensorConverterInstance();
 
-                cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                 auto args = python_system.MakeTuple(1);
                 {
@@ -1452,7 +1452,7 @@ namespace AIHoloImager
 
             constexpr uint32_t BlockDim = 256;
 
-            GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+            GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             cmd_list.Upload(pos_vb, [num_vertices, &mesh, pos_attrib_index](void* dst_data) {
                 glm::vec3* pos_data = reinterpret_cast<glm::vec3*>(dst_data);

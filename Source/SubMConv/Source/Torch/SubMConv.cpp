@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "SubMConv.hpp"
@@ -43,7 +43,7 @@ namespace AIHoloImager
             coord_hash_uav_ = GpuUnorderedAccessView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
         }
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(
             cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::None, "SubMConv3DHelper.coords_buff_");
@@ -108,7 +108,7 @@ namespace AIHoloImager
             offsets_srv_ = GpuShaderResourceView(gpu_system_, offsets_buff_, GpuFormat::RGB32_Sint);
         }
 
-        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
+        auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         cmd_list.Upload(offsets_buff_, [num_offsets, &base, &offsets](void* dst_data) {
             int32_t* i32_dst_data = static_cast<int32_t*>(dst_data);

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -8,11 +8,11 @@
 
 #include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuMipmapper.hpp"
 
 namespace AIHoloImager
 {
+    class GpuMemoryBlock;
     class GpuSystemInternal;
 
     class GpuSystem final
@@ -42,7 +42,7 @@ namespace AIHoloImager
 
     public:
         GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
-            bool enable_debug = false);
+            bool enable_debug = false, bool enable_async_compute = true);
         ~GpuSystem();
 
         GpuSystem(GpuSystem&& other) noexcept;
@@ -65,7 +65,7 @@ namespace AIHoloImager
 
         LUID DeviceLuid() const noexcept;
 
-        void* SharedFenceHandle() const noexcept;
+        void* SharedFenceHandle(CmdQueueType type) const noexcept;
         template <typename Traits>
         typename Traits::SharedHandleType SharedFenceHandle() const noexcept
         {
@@ -73,8 +73,10 @@ namespace AIHoloImager
         }
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
-        uint64_t Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, uint64_t wait_fence_value = MaxFenceValue);
+        uint64_t Execute(
+            GpuCommandList&& cmd_list, CmdQueueType wait_queue_type = CmdQueueType::Num, uint64_t wait_fence_value = MaxFenceValue);
+        uint64_t ExecuteAndReset(
+            GpuCommandList& cmd_list, CmdQueueType wait_queue_type = CmdQueueType::Num, uint64_t wait_fence_value = MaxFenceValue);
 
         uint32_t ConstantDataAlignment() const noexcept;
         uint32_t StructuredDataAlignment() const noexcept;
@@ -88,9 +90,9 @@ namespace AIHoloImager
         void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void CpuWait(uint64_t fence_value = MaxFenceValue);
-        void GpuWait(CmdQueueType type, uint64_t fence_value = MaxFenceValue);
-        uint64_t FenceValue() const noexcept;
+        void CpuWait(CmdQueueType wait_queue_type, uint64_t wait_fence_value = MaxFenceValue);
+        void GpuWait(CmdQueueType target_queue_type, CmdQueueType wait_queue_type, uint64_t wait_fence_value = MaxFenceValue);
+        uint64_t FenceValue(CmdQueueType type) const noexcept;
 
         void HandleDeviceLost();
 

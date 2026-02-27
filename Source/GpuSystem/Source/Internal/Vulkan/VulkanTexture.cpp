@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanTexture.hpp"
@@ -181,7 +181,7 @@ namespace AIHoloImager
         this->Transition(VulkanImp(cmd_list), target_state);
     }
 
-    void VulkanTexture::Transition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    void VulkanTexture::DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
         if (sub_resource == ~0U)
         {
@@ -219,7 +219,7 @@ namespace AIHoloImager
         }
     }
 
-    void VulkanTexture::Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
+    void VulkanTexture::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
         const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state);
         if ((curr_layouts_[0] == vulkan_target_layout) &&

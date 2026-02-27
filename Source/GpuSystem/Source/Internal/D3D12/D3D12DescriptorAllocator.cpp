@@ -173,9 +173,16 @@ namespace AIHoloImager
             {
                 if (&page.page.Heap() == desc_block.Heap())
                 {
-                    page.stall_list.push_back(
-                        {{static_cast<uint16_t>(desc_block.Offset()), static_cast<uint16_t>(desc_block.Offset() + desc_block.Size())},
-                            gpu_system_->FenceValue()});
+                    PageInfo::StallRange stall_range;
+                    stall_range.free_range = {
+                        static_cast<uint16_t>(desc_block.Offset()), static_cast<uint16_t>(desc_block.Offset() + desc_block.Size())};
+
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
+                    {
+                        stall_range.fence_values[i] = gpu_system_->FenceValue(static_cast<GpuSystem::CmdQueueType>(i));
+                    }
+
+                    page.stall_list.emplace_back(std::move(stall_range));
                     return;
                 }
             }
@@ -195,7 +202,7 @@ namespace AIHoloImager
         this->Allocate(lock, desc_block, size);
     }
 
-    void D3D12DescriptorAllocator::ClearStallPages(uint64_t completed_fence_value)
+    void D3D12DescriptorAllocator::ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -203,7 +210,8 @@ namespace AIHoloImager
         {
             for (auto stall_iter = page.stall_list.begin(); stall_iter != page.stall_list.end();)
             {
-                if (stall_iter->fence_value <= completed_fence_value)
+                const uint64_t fence_val = stall_iter->fence_values[static_cast<uint32_t>(queue_type)];
+                if ((fence_val != 0) && (fence_val <= completed_fence_value))
                 {
                     const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
                         stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {

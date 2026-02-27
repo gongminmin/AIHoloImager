@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -50,8 +50,11 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
-        void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
+        using D3D12Resource::Transition;
+
+    private:
+        void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         mutable std::vector<GpuResourceState> curr_states_;

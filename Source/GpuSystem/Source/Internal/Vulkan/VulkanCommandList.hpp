@@ -16,6 +16,7 @@
 namespace AIHoloImager
 {
     struct VulkanBindingSlots;
+    class VulkanResource;
 
     class VulkanCommandList : public GpuCommandListInternal
     {
@@ -81,11 +82,14 @@ namespace AIHoloImager
             return cmd_pool_;
         }
 
+        bool NeedsGpuWait(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+
     private:
         void Compute(
             const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
         void GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets, const VulkanBindingSlots& binding_slots,
             std::string_view shader_name, const GpuCommandList::ShaderBinding& shader_binding, std::span<const VkDescriptorSet> desc_sets);
+        void CheckWrittenBy(const VulkanResource& resource);
 
     private:
         GpuSystem* gpu_system_ = nullptr;
@@ -94,6 +98,9 @@ namespace AIHoloImager
         GpuSystem::CmdQueueType type_ = GpuSystem::CmdQueueType::Num;
         VkCommandBuffer cmd_buff_;
         bool closed_ = false;
+
+        mutable GpuSystem::CmdQueueType wait_for_queue_type_ = GpuSystem::CmdQueueType::Num;
+        mutable uint64_t wait_for_fence_value_ = GpuSystem::MaxFenceValue;
     };
 
     VULKAN_DEFINE_IMP(CommandList)

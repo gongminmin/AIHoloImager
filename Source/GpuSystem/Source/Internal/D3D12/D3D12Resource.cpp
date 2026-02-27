@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12Resource.hpp"
@@ -62,6 +62,45 @@ namespace AIHoloImager
     ID3D12Resource* D3D12Resource::Resource() const noexcept
     {
         return resource_.Object().Get();
+    }
+
+    void D3D12Resource::Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    {
+        this->DoTransition(cmd_list, sub_resource, target_state);
+        this->AccessedBy(cmd_list.Type(), target_state);
+    }
+
+    void D3D12Resource::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
+    {
+        this->DoTransition(cmd_list, target_state);
+        this->AccessedBy(cmd_list.Type(), target_state);
+    }
+
+    void D3D12Resource::LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
+    {
+        type = written_by_queue_type_;
+        fence_value = written_by_fence_value_;
+    }
+
+    void D3D12Resource::AccessedBy(GpuSystem::CmdQueueType type, GpuResourceState target_state) const
+    {
+        switch (target_state)
+        {
+        case GpuResourceState::ColorWrite:
+        case GpuResourceState::DepthWrite:
+        case GpuResourceState::UnorderedAccess:
+        case GpuResourceState::CopyDst:
+        {
+            const uint64_t fence_value = resource_.D3D12Sys()->FenceValue(type);
+            if ((written_by_fence_value_ == GpuSystem::MaxFenceValue) || (type != written_by_queue_type_) ||
+                (fence_value >= written_by_fence_value_))
+            {
+                written_by_queue_type_ = type;
+                written_by_fence_value_ = fence_value;
+            }
+        }
+        break;
+        }
     }
 
     void D3D12Resource::Reset()

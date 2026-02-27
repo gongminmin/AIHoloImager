@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "DiffOptimizer.hpp"
@@ -118,7 +118,7 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(12);
@@ -238,7 +238,7 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(13);
