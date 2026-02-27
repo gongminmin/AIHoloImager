@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -121,15 +121,15 @@ namespace AIHoloImager
         GpuMemoryAllocator& operator=(GpuMemoryAllocator&& other) noexcept;
 
         GpuMemoryBlock Allocate(uint32_t size_in_bytes, uint32_t alignment);
-        void Deallocate(GpuMemoryBlock&& mem_block, uint64_t fence_value);
-        void Reallocate(GpuMemoryBlock& mem_block, uint64_t fence_value, uint32_t size_in_bytes, uint32_t alignment);
+        void Deallocate(GpuMemoryBlock&& mem_block);
+        void Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void ClearStallPages(uint64_t fence_value);
+        void ClearStallPages(uint64_t completed_fence_value);
         void Clear();
 
     private:
         void Allocate(std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
-        void Deallocate(std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block, uint64_t fence_value);
+        void Deallocate(std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block);
 
     private:
         GpuSystem* gpu_system_;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuMemoryAllocator.hpp"
@@ -143,17 +143,16 @@ namespace AIHoloImager
         pages_.emplace_back(PageInfo{std::move(new_page), {{aligned_size, PageSize}}, {}});
     }
 
-    void GpuMemoryAllocator::Deallocate(GpuMemoryBlock&& mem_block, uint64_t fence_value)
+    void GpuMemoryAllocator::Deallocate(GpuMemoryBlock&& mem_block)
     {
         if (mem_block)
         {
             std::lock_guard<std::mutex> lock(allocation_mutex_);
-            this->Deallocate(lock, mem_block, fence_value);
+            this->Deallocate(lock, mem_block);
         }
     }
 
-    void GpuMemoryAllocator::Deallocate(
-        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block, uint64_t fence_value)
+    void GpuMemoryAllocator::Deallocate([[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block)
     {
         assert(mem_block);
 
@@ -165,7 +164,7 @@ namespace AIHoloImager
                 {
                     const uint32_t offset = mem_block.Offset() & ~SegmentMask;
                     const uint32_t size = (mem_block.Offset() + mem_block.Size() - offset + SegmentMask) & ~SegmentMask;
-                    page.stall_list.push_back({{offset, offset + size}, fence_value});
+                    page.stall_list.push_back({{offset, offset + size}, gpu_system_->FenceValue()});
                     return;
                 }
             }
@@ -174,18 +173,18 @@ namespace AIHoloImager
         }
     }
 
-    void GpuMemoryAllocator::Reallocate(GpuMemoryBlock& mem_block, uint64_t fence_value, uint32_t size_in_bytes, uint32_t alignment)
+    void GpuMemoryAllocator::Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
         if (mem_block)
         {
-            this->Deallocate(lock, mem_block, fence_value);
+            this->Deallocate(lock, mem_block);
         }
         this->Allocate(lock, mem_block, size_in_bytes, alignment);
     }
 
-    void GpuMemoryAllocator::ClearStallPages(uint64_t fence_value)
+    void GpuMemoryAllocator::ClearStallPages(uint64_t completed_fence_value)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -193,7 +192,7 @@ namespace AIHoloImager
         {
             for (auto stall_iter = page.stall_list.begin(); stall_iter != page.stall_list.end();)
             {
-                if (stall_iter->fence_value <= fence_value)
+                if (stall_iter->fence_value <= completed_fence_value)
                 {
                     const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
                         stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {

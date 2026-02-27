@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12System.hpp"
@@ -548,7 +548,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocRtvDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return rtv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return rtv_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     D3D12DescriptorBlock D3D12System::AllocDsvDescBlock(uint32_t size)
@@ -557,7 +557,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocDsvDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return dsv_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return dsv_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     D3D12DescriptorBlock D3D12System::AllocCbvSrvUavDescBlock(uint32_t size)
@@ -566,7 +566,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     D3D12DescriptorBlock D3D12System::AllocShaderVisibleCbvSrvUavDescBlock(uint32_t size)
@@ -575,7 +575,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocShaderVisibleCbvSrvUavDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return shader_visible_cbv_srv_uav_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     D3D12DescriptorBlock D3D12System::AllocSamplerDescBlock(uint32_t size)
@@ -584,7 +584,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocSamplerDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return sampler_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     D3D12DescriptorBlock D3D12System::AllocShaderVisibleSamplerDescBlock(uint32_t size)
@@ -593,7 +593,7 @@ namespace AIHoloImager
     }
     void D3D12System::DeallocShaderVisibleSamplerDescBlock(D3D12DescriptorBlock&& desc_block)
     {
-        return shader_visible_sampler_desc_allocator_.Deallocate(std::move(desc_block), fence_val_);
+        return shader_visible_sampler_desc_allocator_.Deallocate(std::move(desc_block));
     }
 
     std::unique_ptr<GpuBufferInternal> D3D12System::CreateBuffer(

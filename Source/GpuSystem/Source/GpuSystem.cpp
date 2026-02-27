@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuSystem.hpp"
@@ -79,11 +79,11 @@ namespace AIHoloImager
         }
         void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block)
         {
-            return upload_mem_allocator_.Deallocate(std::move(mem_block), system_internal_->FenceValue());
+            return upload_mem_allocator_.Deallocate(std::move(mem_block));
         }
         void ReallocUploadMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
         {
-            return upload_mem_allocator_.Reallocate(mem_block, system_internal_->FenceValue(), size_in_bytes, alignment);
+            return upload_mem_allocator_.Reallocate(mem_block, size_in_bytes, alignment);
         }
 
         GpuMemoryBlock AllocReadBackMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -92,11 +92,11 @@ namespace AIHoloImager
         }
         void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block)
         {
-            return read_back_mem_allocator_.Deallocate(std::move(mem_block), system_internal_->FenceValue());
+            return read_back_mem_allocator_.Deallocate(std::move(mem_block));
         }
         void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment)
         {
-            return read_back_mem_allocator_.Reallocate(mem_block, system_internal_->FenceValue(), size_in_bytes, alignment);
+            return read_back_mem_allocator_.Reallocate(mem_block, size_in_bytes, alignment);
         }
 
         GpuMipmapper& Mipmapper() noexcept

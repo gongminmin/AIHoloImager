@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -113,15 +113,15 @@ namespace AIHoloImager
         uint32_t DescriptorSize() const;
 
         D3D12DescriptorBlock Allocate(uint32_t size);
-        void Deallocate(D3D12DescriptorBlock&& desc_block, uint64_t fence_value);
-        void Reallocate(D3D12DescriptorBlock& desc_block, uint64_t fence_value, uint32_t size);
+        void Deallocate(D3D12DescriptorBlock&& desc_block);
+        void Reallocate(D3D12DescriptorBlock& desc_block, uint32_t size);
 
-        void ClearStallPages(uint64_t fence_value);
+        void ClearStallPages(uint64_t completed_fence_value);
         void Clear();
 
     private:
         void Allocate(std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block, uint32_t size);
-        void Deallocate(std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block, uint64_t fence_value);
+        void Deallocate(std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block);
 
     private:
         GpuSystem* gpu_system_;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "D3D12DescriptorAllocator.hpp"
@@ -152,17 +152,16 @@ namespace AIHoloImager
         pages_.emplace_back(PageInfo{std::move(new_page), {{static_cast<uint16_t>(size), default_page_size}}, {}});
     }
 
-    void D3D12DescriptorAllocator::Deallocate(D3D12DescriptorBlock&& desc_block, uint64_t fence_value)
+    void D3D12DescriptorAllocator::Deallocate(D3D12DescriptorBlock&& desc_block)
     {
         if (desc_block)
         {
             std::lock_guard<std::mutex> lock(allocation_mutex_);
-            this->Deallocate(lock, desc_block, fence_value);
+            this->Deallocate(lock, desc_block);
         }
     }
 
-    void D3D12DescriptorAllocator::Deallocate(
-        [[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block, uint64_t fence_value)
+    void D3D12DescriptorAllocator::Deallocate([[maybe_unused]] std::lock_guard<std::mutex>& proof_of_lock, D3D12DescriptorBlock& desc_block)
     {
         assert(desc_block);
 
@@ -176,7 +175,7 @@ namespace AIHoloImager
                 {
                     page.stall_list.push_back(
                         {{static_cast<uint16_t>(desc_block.Offset()), static_cast<uint16_t>(desc_block.Offset() + desc_block.Size())},
-                            fence_value});
+                            gpu_system_->FenceValue()});
                     return;
                 }
             }
@@ -185,18 +184,18 @@ namespace AIHoloImager
         }
     }
 
-    void D3D12DescriptorAllocator::Reallocate(D3D12DescriptorBlock& desc_block, uint64_t fence_value, uint32_t size)
+    void D3D12DescriptorAllocator::Reallocate(D3D12DescriptorBlock& desc_block, uint32_t size)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
         if (desc_block)
         {
-            this->Deallocate(lock, desc_block, fence_value);
+            this->Deallocate(lock, desc_block);
         }
         this->Allocate(lock, desc_block, size);
     }
 
-    void D3D12DescriptorAllocator::ClearStallPages(uint64_t fence_value)
+    void D3D12DescriptorAllocator::ClearStallPages(uint64_t completed_fence_value)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -204,7 +203,7 @@ namespace AIHoloImager
         {
             for (auto stall_iter = page.stall_list.begin(); stall_iter != page.stall_list.end();)
             {
-                if (stall_iter->fence_value <= fence_value)
+                if (stall_iter->fence_value <= completed_fence_value)
                 {
                     const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
                         stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {
