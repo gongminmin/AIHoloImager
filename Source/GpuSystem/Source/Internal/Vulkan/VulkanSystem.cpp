@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanSystem.hpp"
@@ -458,7 +458,7 @@ namespace AIHoloImager
     {
         GpuCommandList cmd_list;
         auto& cmd_pool = this->CurrentCommandPool(type);
-        auto& cmd_queue = this->GetOrCreateCommandQueue(type);
+        auto& cmd_queue = *this->GetCommandQueue(type);
         if (cmd_queue.free_cmd_lists.empty())
         {
             cmd_list = GpuCommandList(*gpu_system_, cmd_pool, type);
@@ -475,7 +475,7 @@ namespace AIHoloImager
     uint64_t VulkanSystem::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(VulkanImp(cmd_list), wait_fence_value);
-        this->GetOrCreateCommandQueue(cmd_list.Type()).free_cmd_lists.emplace_back(std::move(cmd_list));
+        this->GetCommandQueue(cmd_list.Type())->free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
@@ -574,7 +574,7 @@ namespace AIHoloImager
         const uint64_t curr_fence_value = fence_val_;
         ++fence_val_;
 
-        VkQueue cmd_queue = this->GetOrCreateCommandQueue(type).cmd_queue;
+        VkQueue vk_cmd_queue = this->GetOrCreateCommandQueue(type).cmd_queue;
 
         const VkTimelineSemaphoreSubmitInfo timeline_info{
             .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
@@ -607,7 +607,7 @@ namespace AIHoloImager
             .signalSemaphoreCount = 0,
         };
 
-        TIFVK(vkQueueSubmit(cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
+        TIFVK(vkQueueSubmit(vk_cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
     }
 
     uint64_t VulkanSystem::FenceValue() const noexcept
@@ -723,6 +723,21 @@ namespace AIHoloImager
         return cmd_queue;
     }
 
+    VulkanSystem::CmdQueue* VulkanSystem::GetCommandQueue(GpuSystem::CmdQueueType type)
+    {
+        auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        if (cmd_queue.cmd_queue != VK_NULL_HANDLE)
+        {
+            return &cmd_queue;
+        }
+        return nullptr;
+    }
+
+    const VulkanSystem::CmdQueue* VulkanSystem::GetCommandQueue(GpuSystem::CmdQueueType type) const
+    {
+        return const_cast<VulkanSystem*>(this)->GetCommandQueue(type);
+    }
+
     GpuCommandPool& VulkanSystem::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
@@ -747,7 +762,9 @@ namespace AIHoloImager
         cmd_list.Close();
 
         const GpuSystem::CmdQueueType type = cmd_list.Type();
-        VkQueue cmd_queue = this->GetOrCreateCommandQueue(type).cmd_queue;
+        auto* cmd_queue = this->GetCommandQueue(type);
+        assert(cmd_queue != nullptr);
+        VkQueue vk_cmd_queue = cmd_queue->cmd_queue;
 
         const uint64_t curr_fence_value = fence_val_;
         ++fence_val_;
@@ -793,7 +810,7 @@ namespace AIHoloImager
             submit_info.pWaitDstStageMask = &wait_stage;
         }
 
-        TIFVK(vkQueueSubmit(cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
+        TIFVK(vkQueueSubmit(vk_cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
 
         VulkanImp(cmd_pool).FenceValue(fence_val_);
 

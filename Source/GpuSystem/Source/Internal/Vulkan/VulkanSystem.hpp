@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -152,6 +152,8 @@ namespace AIHoloImager
 
     private:
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
+        CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
+        const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(VulkanCommandList& cmd_list, uint64_t wait_fence_value);
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

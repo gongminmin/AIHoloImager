@@ -266,15 +266,16 @@ namespace AIHoloImager
     {
         GpuCommandList cmd_list;
         auto& cmd_pool = this->CurrentCommandPool(type);
-        auto& cmd_queue = this->GetOrCreateCommandQueue(type);
-        if (cmd_queue.free_cmd_lists.empty())
+        auto* cmd_queue = this->GetCommandQueue(type);
+        assert(cmd_queue != nullptr);
+        if (cmd_queue->free_cmd_lists.empty())
         {
             cmd_list = GpuCommandList(*gpu_system_, cmd_pool, type);
         }
         else
         {
-            cmd_list = std::move(cmd_queue.free_cmd_lists.front());
-            cmd_queue.free_cmd_lists.pop_front();
+            cmd_list = std::move(cmd_queue->free_cmd_lists.front());
+            cmd_queue->free_cmd_lists.pop_front();
             cmd_list.Reset(cmd_pool);
         }
         return cmd_list;
@@ -283,7 +284,9 @@ namespace AIHoloImager
     uint64_t D3D12System::Execute(GpuCommandList&& cmd_list, uint64_t wait_fence_value)
     {
         const uint64_t new_fence_value = this->ExecuteOnly(D3D12Imp(cmd_list), wait_fence_value);
-        this->GetOrCreateCommandQueue(cmd_list.Type()).free_cmd_lists.emplace_back(std::move(cmd_list));
+        auto* cmd_queue = this->GetCommandQueue(cmd_list.Type());
+        assert(cmd_queue != nullptr);
+        cmd_queue->free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
@@ -453,6 +456,21 @@ namespace AIHoloImager
         return cmd_queue;
     }
 
+    D3D12System::CmdQueue* D3D12System::GetCommandQueue(GpuSystem::CmdQueueType type)
+    {
+        auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
+        if (cmd_queue.cmd_queue != nullptr)
+        {
+            return &cmd_queue;
+        }
+        return nullptr;
+    }
+
+    const D3D12System::CmdQueue* D3D12System::GetCommandQueue(GpuSystem::CmdQueueType type) const
+    {
+        return const_cast<D3D12System*>(this)->GetCommandQueue(type);
+    }
+
     GpuCommandPool& D3D12System::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
@@ -475,18 +493,20 @@ namespace AIHoloImager
         auto& cmd_pool = *cmd_list.CommandPool();
         cmd_list.Close();
 
-        ID3D12CommandQueue* cmd_queue = this->GetOrCreateCommandQueue(cmd_list.Type()).cmd_queue.Get();
+        auto* cmd_queue = this->GetCommandQueue(cmd_list.Type());
+        assert(cmd_queue != nullptr);
+        ID3D12CommandQueue* d3d12_cmd_queue = cmd_queue->cmd_queue.Get();
 
         if (wait_fence_value != GpuSystem::MaxFenceValue)
         {
-            cmd_queue->Wait(fence_.Get(), wait_fence_value);
+            d3d12_cmd_queue->Wait(fence_.Get(), wait_fence_value);
         }
 
         ID3D12CommandList* cmd_lists[] = {cmd_list.CommandListBase()};
-        cmd_queue->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
+        d3d12_cmd_queue->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
 
         const uint64_t curr_fence_value = fence_val_;
-        TIFHR(cmd_queue->Signal(fence_.Get(), curr_fence_value));
+        TIFHR(d3d12_cmd_queue->Signal(fence_.Get(), curr_fence_value));
         fence_val_ = curr_fence_value + 1;
 
         D3D12Imp(cmd_pool).FenceValue(fence_val_);

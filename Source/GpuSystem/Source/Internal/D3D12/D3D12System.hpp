@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -162,6 +162,8 @@ namespace AIHoloImager
 
     private:
         CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
+        CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
+        const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(D3D12CommandList& cmd_list, uint64_t wait_fence_value);
         static void DebugMessageCallback(

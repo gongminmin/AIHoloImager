@@ -695,8 +695,6 @@ namespace AIHoloImager
 
     std::future<void> VulkanCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* dst_data)>& copy_func)
     {
-        const auto& vulkan_src = VulkanImp(src);
-
         switch (src.Heap())
         {
         case GpuHeap::Upload:
@@ -709,6 +707,7 @@ namespace AIHoloImager
         {
             auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
 
+            const auto& vulkan_src = VulkanImp(src);
             vulkan_src.Transition(*this, GpuResourceState::CopySrc);
 
             const VkBufferCopy2 copy_region{
