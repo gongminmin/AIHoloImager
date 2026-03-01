@@ -36,16 +36,15 @@ namespace AIHoloImager
         virtual void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept = 0;
 
         virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) = 0;
-        virtual uint64_t Execute(GpuCommandList&& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) = 0;
-        virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) = 0;
+        virtual uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
+        virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
 
         virtual uint32_t ConstantDataAlignment() const noexcept = 0;
         virtual uint32_t StructuredDataAlignment() const noexcept = 0;
         virtual uint32_t TextureDataAlignment() const noexcept = 0;
 
-        virtual void CpuWait(GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) = 0;
-        virtual void GpuWait(
-            GpuSystem::CmdQueueType target_queue_type, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) = 0;
+        virtual void CpuWait(std::span<const GpuSystem::WaitFence> wait_fences) = 0;
+        virtual void GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
         virtual uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept = 0;
         virtual uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const = 0;
 

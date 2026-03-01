@@ -55,17 +55,16 @@ namespace AIHoloImager
         void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
-        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value);
+        uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
+        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
 
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
 
-        void CpuWait(GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
-        void GpuWait(
-            GpuSystem::CmdQueueType target_queue_type, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value) override;
+        void CpuWait(std::span<const GpuSystem::WaitFence> wait_fences) override;
+        void GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences) override;
         uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
         uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
@@ -171,7 +170,7 @@ namespace AIHoloImager
         CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
         const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, GpuSystem::CmdQueueType wait_queue_type, uint64_t wait_fence_value);
+        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
         static void DebugMessageCallback(
             D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context);
 

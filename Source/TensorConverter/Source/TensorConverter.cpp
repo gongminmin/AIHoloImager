@@ -66,12 +66,13 @@ namespace AIHoloImager
                 cuda_copy_enabled_ = (std::memcmp(&gpu_luid, device_prop.luid, sizeof(gpu_luid)) == 0);
             }
 
+            for (auto& ext_semaphore : ext_semaphores_)
+            {
+                ext_semaphore = {};
+            }
+
             if (cuda_copy_enabled_)
             {
-                for (auto& ext_semaphore : ext_semaphores_)
-                {
-                    ext_semaphore = {};
-                }
 
                 TIFCE(cuda_rt_.StreamCreate(&copy_stream_));
             }
@@ -165,7 +166,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
 
                 if (heap != GpuHeap::Default)
                 {
@@ -242,7 +243,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
             }
             else
             {
@@ -286,7 +287,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
             }
             else
             {
@@ -375,7 +376,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, queue_type, fence_val);
+                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
             }
             else
             {

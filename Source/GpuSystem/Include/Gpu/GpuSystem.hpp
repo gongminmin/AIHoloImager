@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <span>
 
 #include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
@@ -40,6 +41,12 @@ namespace AIHoloImager
             Num,
         };
 
+        struct WaitFence
+        {
+            CmdQueueType type = CmdQueueType::Num;
+            uint64_t value = MaxFenceValue;
+        };
+
     public:
         GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
             bool enable_debug = false, bool enable_async_compute = true);
@@ -73,10 +80,8 @@ namespace AIHoloImager
         }
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
-        uint64_t Execute(
-            GpuCommandList&& cmd_list, CmdQueueType wait_queue_type = CmdQueueType::Num, uint64_t wait_fence_value = MaxFenceValue);
-        uint64_t ExecuteAndReset(
-            GpuCommandList& cmd_list, CmdQueueType wait_queue_type = CmdQueueType::Num, uint64_t wait_fence_value = MaxFenceValue);
+        uint64_t Execute(GpuCommandList&& cmd_list, std::span<const WaitFence> wait_fences = {});
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const WaitFence> wait_fences = {});
 
         uint32_t ConstantDataAlignment() const noexcept;
         uint32_t StructuredDataAlignment() const noexcept;
@@ -90,8 +95,8 @@ namespace AIHoloImager
         void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void CpuWait(CmdQueueType wait_queue_type, uint64_t wait_fence_value = MaxFenceValue);
-        void GpuWait(CmdQueueType target_queue_type, CmdQueueType wait_queue_type, uint64_t wait_fence_value = MaxFenceValue);
+        void CpuWait(std::span<const WaitFence> wait_fences = {});
+        void GpuWait(CmdQueueType target_queue_type, std::span<const WaitFence> wait_fences = {});
         uint64_t FenceValue(CmdQueueType type) const noexcept;
 
         void HandleDeviceLost();

@@ -90,12 +90,12 @@ namespace AIHoloImager
             return cmd_pool_;
         }
 
-        bool NeedsGpuWait(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+        void CheckWrittenBy(const D3D12Resource& resource);
+        void WaitForFences(uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)]) const;
 
     private:
         void Compute(
             const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
-        void CheckWrittenBy(const D3D12Resource& resource);
 
     private:
         GpuSystem* gpu_system_ = nullptr;
@@ -105,8 +105,7 @@ namespace AIHoloImager
         ComPtr<ID3D12CommandList> cmd_list_;
         bool closed_ = false;
 
-        mutable GpuSystem::CmdQueueType wait_for_queue_type_ = GpuSystem::CmdQueueType::Num;
-        mutable uint64_t wait_for_fence_value_ = GpuSystem::MaxFenceValue;
+        mutable uint64_t wait_for_fence_values_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
     };
 
     D3D12_DEFINE_IMP(CommandList)

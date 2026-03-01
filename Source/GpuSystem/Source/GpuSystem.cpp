@@ -27,10 +27,7 @@ namespace AIHoloImager
 
         ~Impl()
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(CmdQueueType::Num); ++i)
-            {
-                host_.CpuWait(static_cast<CmdQueueType>(i));
-            }
+            host_.CpuWait({});
 
             mipmapper_.reset();
 
@@ -84,6 +81,29 @@ namespace AIHoloImager
                 return CmdQueueType::Render;
             }
             return type;
+        }
+
+        std::vector<WaitFence> OverrideWaitFence(std::span<const WaitFence> wait_fences) const noexcept
+        {
+            std::vector<WaitFence> ret;
+            ret.reserve(wait_fences.size());
+            for (auto& fence : wait_fences)
+            {
+                if (fence.type != CmdQueueType::Num)
+                {
+                    const auto override_type = this->OverrideCmdQueueType(fence.type);
+                    if (override_type != fence.type)
+                    {
+                        auto& value = ret[static_cast<size_t>(override_type)].value;
+                        value = std::max(value, fence.value);
+                    }
+                    else
+                    {
+                        ret.push_back(fence);
+                    }
+                }
+            }
+            return ret;
         }
 
         GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment)
@@ -204,16 +224,16 @@ namespace AIHoloImager
         return impl_->Internal().CreateCommandList(impl_->OverrideCmdQueueType(type));
     }
 
-    uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
+    uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, std::span<const WaitFence> wait_fences)
     {
         assert(impl_);
-        return impl_->Internal().Execute(std::move(cmd_list), impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
+        return impl_->Internal().Execute(std::move(cmd_list), std::span<const WaitFence>(impl_->OverrideWaitFence(wait_fences)));
     }
 
-    uint64_t GpuSystem::ExecuteAndReset(GpuCommandList& cmd_list, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
+    uint64_t GpuSystem::ExecuteAndReset(GpuCommandList& cmd_list, std::span<const WaitFence> wait_fences)
     {
         assert(impl_);
-        return impl_->Internal().ExecuteAndReset(cmd_list, impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
+        return impl_->Internal().ExecuteAndReset(cmd_list, std::span<const WaitFence>(impl_->OverrideWaitFence(wait_fences)));
     }
 
     uint32_t GpuSystem::ConstantDataAlignment() const noexcept
@@ -264,17 +284,17 @@ namespace AIHoloImager
         impl_->ReallocReadBackMemBlock(mem_block, size_in_bytes, alignment);
     }
 
-    void GpuSystem::CpuWait(CmdQueueType wait_queue_type, uint64_t wait_fence_value)
+    void GpuSystem::CpuWait(std::span<const WaitFence> wait_fences)
     {
         assert(impl_);
-        impl_->Internal().CpuWait(impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
+        impl_->Internal().CpuWait(std::span<const WaitFence>(impl_->OverrideWaitFence(wait_fences)));
     }
 
-    void GpuSystem::GpuWait(CmdQueueType target_queue_type, CmdQueueType wait_queue_type, uint64_t wait_fence_value)
+    void GpuSystem::GpuWait(CmdQueueType target_queue_type, std::span<const WaitFence> wait_fences)
     {
         assert(impl_);
         impl_->Internal().GpuWait(
-            impl_->OverrideCmdQueueType(target_queue_type), impl_->OverrideCmdQueueType(wait_queue_type), wait_fence_value);
+            impl_->OverrideCmdQueueType(target_queue_type), std::span<const WaitFence>(impl_->OverrideWaitFence(wait_fences)));
     }
 
     uint64_t GpuSystem::FenceValue(CmdQueueType type) const noexcept

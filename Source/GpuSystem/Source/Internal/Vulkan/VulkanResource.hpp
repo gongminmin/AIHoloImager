@@ -25,6 +25,7 @@ namespace AIHoloImager
         void Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const;
 
         void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+        void ClearLastWrittenBy() const;
 
     protected:
         void CreateMemory(GpuResourceType type, const VkMemoryRequirements& requirements, GpuHeap heap, GpuResourceFlag flags);
@@ -36,7 +37,7 @@ namespace AIHoloImager
         GpuResourceFlag Flags() const noexcept;
 
     private:
-        void AccessedBy(GpuSystem::CmdQueueType type, GpuResourceState target_state) const;
+        void AccessedBy(VulkanCommandList& cmd_list, GpuResourceState target_state) const;
 
         virtual void DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const = 0;

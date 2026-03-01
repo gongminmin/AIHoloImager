@@ -68,6 +68,8 @@ namespace AIHoloImager
         }
 
         d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
+
+        std::fill(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), 0);
     }
 
     D3D12CommandList::~D3D12CommandList()
@@ -283,8 +285,6 @@ namespace AIHoloImager
                     .SizeInBytes = vb_binding.vb->Size(),
                     .StrideInBytes = slot_strides[i],
                 };
-
-                this->CheckWrittenBy(d3d12_vb);
             }
             d3d12_cmd_list->IASetVertexBuffers(0, static_cast<uint32_t>(vbs.size()), vbvs.get());
         }
@@ -304,8 +304,6 @@ namespace AIHoloImager
                 .Format = ToDxgiFormat(ib->format),
             };
             d3d12_cmd_list->IASetIndexBuffer(&ibv);
-
-            this->CheckWrittenBy(d3d12_ib);
         }
         else
         {
@@ -393,8 +391,6 @@ namespace AIHoloImager
                                     const auto& d3d12_srv = D3D12Imp(*srv);
                                     d3d12_srv.Transition(*this);
 
-                                    this->CheckWrittenBy(D3D12Imp(*d3d12_srv.Resource()));
-
                                     auto srv_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
                                     d3d12_srv.CopyTo(srv_cpu_handle);
@@ -434,8 +430,6 @@ namespace AIHoloImager
                                 {
                                     auto& d3d12_uav = D3D12Imp(*uav);
                                     d3d12_uav.Transition(*this);
-
-                                    this->CheckWrittenBy(D3D12Imp(*d3d12_uav.Resource()));
 
                                     auto uav_cpu_handle =
                                         OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
@@ -705,8 +699,6 @@ namespace AIHoloImager
                                 const auto& d3d12_srv = D3D12Imp(*srv);
                                 d3d12_srv.Transition(*this);
 
-                                this->CheckWrittenBy(D3D12Imp(*d3d12_srv.Resource()));
-
                                 auto srv_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
                                 d3d12_srv.CopyTo(srv_cpu_handle);
                             }
@@ -745,8 +737,6 @@ namespace AIHoloImager
                             {
                                 auto& d3d12_uav = D3D12Imp(*uav);
                                 d3d12_uav.Transition(*this);
-
-                                this->CheckWrittenBy(D3D12Imp(*d3d12_uav.Resource()));
 
                                 auto uav_cpu_handle = OffsetHandle(srv_uav_desc_block.CpuHandle(), srv_uav_heap_base, srv_uav_desc_size);
                                 d3d12_uav.CopyTo(uav_cpu_handle);
@@ -847,8 +837,6 @@ namespace AIHoloImager
         const auto& d3d12_src = D3D12Imp(src);
         auto& d3d12_dst = D3D12Imp(dest);
 
-        this->CheckWrittenBy(d3d12_src);
-
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
         d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
 
@@ -861,8 +849,6 @@ namespace AIHoloImager
 
         const auto& d3d12_src = D3D12Imp(src);
         auto& d3d12_dst = D3D12Imp(dest);
-
-        this->CheckWrittenBy(d3d12_src);
 
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
         d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
@@ -877,8 +863,6 @@ namespace AIHoloImager
         const auto& d3d12_src = D3D12Imp(src);
         auto& d3d12_dst = D3D12Imp(dest);
 
-        this->CheckWrittenBy(d3d12_src);
-
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
         d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
 
@@ -890,8 +874,6 @@ namespace AIHoloImager
     {
         const auto& d3d12_src = D3D12Imp(src);
         auto& d3d12_dst = D3D12Imp(dest);
-
-        this->CheckWrittenBy(d3d12_src);
 
         const D3D12_TEXTURE_COPY_LOCATION src_loc{
             .pResource = d3d12_src.Resource(),
@@ -1030,16 +1012,16 @@ namespace AIHoloImager
             auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
 
             const auto& d3d12_src = D3D12Imp(src);
-            this->CheckWrittenBy(d3d12_src);
             d3d12_src.Transition(*this, GpuResourceState::CopySrc);
 
             d3d12_cmd_list->CopyBufferRegion(
                 D3D12Imp(*read_back_mem_block.Buffer()).Resource(), read_back_mem_block.Offset(), d3d12_src.Resource(), 0, src.Size());
-            const uint64_t fence_val = D3D12Imp(*gpu_system_).ExecuteAndReset(*this, type_, GpuSystem::MaxFenceValue);
+            const uint64_t fence_val =
+                D3D12Imp(*gpu_system_).ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
 
             return std::async(
                 std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
-                    gpu_system_->CpuWait(type_, fence_val);
+                    gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
 
                     const void* buff_data = read_back_mem_block.CpuSpan<std::byte>().data();
                     copy_func(buff_data);
@@ -1058,8 +1040,6 @@ namespace AIHoloImager
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
         const auto& d3d12_src = D3D12Imp(src);
-
-        this->CheckWrittenBy(d3d12_src);
 
         uint32_t mip;
         uint32_t array_slice;
@@ -1109,12 +1089,13 @@ namespace AIHoloImager
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
 
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
-        const uint64_t fence_val = d3d12_system.ExecuteAndReset(*this, type_, GpuSystem::MaxFenceValue);
+        const uint64_t fence_val =
+            d3d12_system.ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
 
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch = layout.Footprint.RowPitch,
                 slice_pitch = layout.Footprint.RowPitch * layout.Footprint.Height, copy_func]() mutable {
-                gpu_system_->CpuWait(type_, fence_val);
+                gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
 
                 const void* tex_data = read_back_mem_block.CpuSpan<std::byte>().data();
                 copy_func(tex_data, row_pitch, slice_pitch);
@@ -1166,8 +1147,7 @@ namespace AIHoloImager
         d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
         closed_ = false;
 
-        wait_for_queue_type_ = GpuSystem::CmdQueueType::Num;
-        wait_for_fence_value_ = GpuSystem::MaxFenceValue;
+        std::fill(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), 0);
     }
 
     void D3D12CommandList::CheckWrittenBy(const D3D12Resource& resource)
@@ -1177,20 +1157,13 @@ namespace AIHoloImager
         resource.LastWrittenBy(lw_type, lw_fence_value);
         if ((lw_type != GpuSystem::CmdQueueType::Num) && (lw_type != type_))
         {
-            wait_for_queue_type_ = lw_type;
-            wait_for_fence_value_ = lw_fence_value;
+            auto& wait_for = wait_for_fence_values_[static_cast<size_t>(lw_type)];
+            wait_for = std::max(lw_fence_value, wait_for);
         }
     }
 
-    bool D3D12CommandList::NeedsGpuWait(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
+    void D3D12CommandList::WaitForFences(uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)]) const
     {
-        if (wait_for_queue_type_ != GpuSystem::CmdQueueType::Num)
-        {
-            type = wait_for_queue_type_;
-            fence_value = wait_for_fence_value_;
-            return true;
-        }
-
-        return false;
+        std::copy(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), fence_values);
     }
 } // namespace AIHoloImager

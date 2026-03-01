@@ -34,6 +34,7 @@ namespace AIHoloImager
         void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const;
 
         void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+        void ClearLastWrittenBy() const;
 
     protected:
         void Name(std::string_view name);
@@ -58,7 +59,7 @@ namespace AIHoloImager
         GpuFormat Format() const noexcept;
 
     private:
-        void AccessedBy(GpuSystem::CmdQueueType type, GpuResourceState target_state) const;
+        void AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state) const;
 
         virtual void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
