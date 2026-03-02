@@ -152,21 +152,34 @@ namespace AIHoloImager
         }
         else
         {
-            if (curr_states_[sub_resource] != target_state)
+            auto* native_resource = this->Resource();
+            auto& curr_state = curr_states_[sub_resource];
+            if (curr_state != target_state)
             {
                 const D3D12_RESOURCE_BARRIER barrier{
                     .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
                     .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                     .Transition{
-                        .pResource = this->Resource(),
+                        .pResource = native_resource,
                         .Subresource = sub_resource,
-                        .StateBefore = ToD3D12ResourceState(curr_states_[sub_resource]),
+                        .StateBefore = ToD3D12ResourceState(curr_state),
                         .StateAfter = ToD3D12ResourceState(target_state),
                     },
                 };
                 cmd_list.Transition(std::span(&barrier, 1));
 
-                curr_states_[sub_resource] = target_state;
+                curr_state = target_state;
+            }
+            else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
+            {
+                const D3D12_RESOURCE_BARRIER barrier{
+                    .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                    .UAV{
+                        .pResource = native_resource,
+                    },
+                };
+                cmd_list.Transition(std::span(&barrier, 1));
             }
         }
     }

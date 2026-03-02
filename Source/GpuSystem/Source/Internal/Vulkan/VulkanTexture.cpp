@@ -189,32 +189,47 @@ namespace AIHoloImager
         }
         else
         {
+            uint32_t mip_level, array_index, plane;
+            DecomposeSubResource(sub_resource, this->MipLevels(), this->Planes(), mip_level, array_index, plane);
+
+            VkImageMemoryBarrier barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = texture_.Object(),
+                .subresourceRange{
+                    .aspectMask = ToVulkanAspectMask(format_),
+                    .baseMipLevel = mip_level,
+                    .levelCount = 1,
+                    .baseArrayLayer = array_index,
+                    .layerCount = 1,
+                },
+            };
+
+            bool need_transition = false;
             auto vulkan_target_layout = ToVulkanImageLayout(target_state);
             if (curr_layouts_[sub_resource] != vulkan_target_layout)
             {
-                uint32_t mip_level, array_index, plane;
-                DecomposeSubResource(sub_resource, this->MipLevels(), this->Planes(), mip_level, array_index, plane);
-
-                const VkImageMemoryBarrier barrier{
-                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                    .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                    .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                    .oldLayout = curr_layouts_[sub_resource],
-                    .newLayout = vulkan_target_layout,
-                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = texture_.Object(),
-                    .subresourceRange{
-                        .aspectMask = ToVulkanAspectMask(format_),
-                        .baseMipLevel = mip_level,
-                        .levelCount = 1,
-                        .baseArrayLayer = array_index,
-                        .layerCount = 1,
-                    },
-                };
-                cmd_list.Transition(std::span(&barrier, 1));
+                barrier.oldLayout = curr_layouts_[sub_resource];
+                barrier.newLayout = vulkan_target_layout;
+                std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
 
                 curr_layouts_[sub_resource] = vulkan_target_layout;
+                need_transition = true;
+            }
+            else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
+            {
+                barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+                barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+                barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+                need_transition = true;
+            }
+
+            if (need_transition)
+            {
+                cmd_list.Transition(std::span(&barrier, 1));
             }
         }
     }
@@ -227,6 +242,8 @@ namespace AIHoloImager
         {
             VkImageMemoryBarrier barrier{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                 .newLayout = VK_IMAGE_LAYOUT_GENERAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -240,7 +257,6 @@ namespace AIHoloImager
                     .layerCount = this->ArraySize(),
                 },
             };
-            std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
 
             cmd_list.Transition(std::span(&barrier, 1));
         }
