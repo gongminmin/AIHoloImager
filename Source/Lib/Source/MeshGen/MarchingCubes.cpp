@@ -398,7 +398,7 @@ namespace AIHoloImager
             glm::uvec3 counter(0, 0, 0);
             auto rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
 
-            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.ExecuteAndReset(cmd_list);
 
             rb_future.wait();
             const uint32_t num_non_empty_cubes = counter.x;
@@ -406,8 +406,6 @@ namespace AIHoloImager
             {
                 return Mesh();
             }
-
-            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             GpuBuffer non_empty_cube_ids_buff(gpu_system_, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
                 GpuResourceFlag::UnorderedAccess, "non_empty_cube_ids_buff");
@@ -450,7 +448,7 @@ namespace AIHoloImager
 
             rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
 
-            gpu_system_.Execute(std::move(cmd_list));
+            gpu_system_.ExecuteAndReset(cmd_list);
 
             rb_future.wait();
             const uint32_t num_vertices = counter.y;
@@ -460,8 +458,6 @@ namespace AIHoloImager
                 {VertexAttrib::Semantic::Position, 0, 3},
             };
             Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_vertices, num_indices);
-
-            cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
             std::future<void> vertex_rb_future;
             std::future<void> index_rb_future;
