@@ -12,6 +12,7 @@
 
 #include "Base/ErrorHandling.hpp"
 #include "Base/SmartPtrHelper.hpp"
+#include "Base/Util.hpp"
 #include "Base/Uuid.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
@@ -38,6 +39,8 @@ DEFINE_UUID_OF(ID3D12CommandSignature);
 DEFINE_UUID_OF(ID3D12DescriptorHeap);
 DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
+DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedData1);
+DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedDataSettings1);
 DEFINE_UUID_OF(ID3D12Fence);
 DEFINE_UUID_OF(ID3D12InfoQueue1);
 DEFINE_UUID_OF(ID3D12PipelineState);
@@ -47,6 +50,113 @@ DEFINE_UUID_OF(ID3D12ShaderReflection);
 
 const auto IID_IDxcUtils = __uuidof(IDxcUtils);
 DEFINE_UUID_OF(IDxcUtils);
+
+namespace
+{
+    std::string_view BreadcrumbToString(D3D12_AUTO_BREADCRUMB_OP op)
+    {
+        switch (static_cast<uint32_t>(op))
+        {
+        case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
+            return "SetMarker";
+        case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
+            return "BeginEvent";
+        case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
+            return "EndEvent";
+        case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
+            return "DrawInstanced";
+        case D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED:
+            return "DrawIndexedInstanced";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT:
+            return "ExecuteIndirect";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCH:
+            return "Dispatch";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION:
+            return "CopyBufferRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION:
+            return "CopyTextureRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE:
+            return "CopyResource";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYTILES:
+            return "CopyTiles";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE:
+            return "ResolveSubresource";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW:
+            return "ClearRenderTargetView";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW:
+            return "ClearUnorderedAccessView";
+        case D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW:
+            return "ClearDepthStencilView";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER:
+            return "ResourceBarrier";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE:
+            return "ExecuteBundle";
+        case D3D12_AUTO_BREADCRUMB_OP_PRESENT:
+            return "Present";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA:
+            return "ResolveQueryData";
+        case D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION:
+            return "BeginSubmission";
+        case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
+            return "EndSubmission";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME:
+            return "DecodeFrame";
+        case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES:
+            return "ProcessFrames";
+        case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT:
+            return "AtomicCopyBufferUINT";
+        case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64:
+            return "AtomicCopyBufferUINT64";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION:
+            return "ResolveSubresourceRegion";
+        case D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE:
+            return "WriteBufferImmediate";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1:
+            return "DecodeFrame1";
+        case D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION:
+            return "SetProtectedResourceSession";
+        case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2:
+            return "DecodeFrame2";
+        case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1:
+            return "ProcessFrames1";
+        case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
+            return "BuildRaytracingAccelerationStructure";
+        case D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO:
+            return "EmitRaytracingAccelerationStructurePostbuildInfo";
+        case D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE:
+            return "CopyRaytracingAccelerationStructure";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
+            return "DispatchRays";
+        case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND:
+            return "InitializeMetaCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND:
+            return "ExecuteMetaCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION:
+            return "EstimateMotion";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP:
+            return "ResolveMotionVectorHeap";
+        case D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1:
+            return "SetPipelineState1";
+        case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND:
+            return "InitializeExtensionCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND:
+            return "ExecuteExtensionCommand";
+        case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH:
+            return "DispatchMesh";
+        case D3D12_AUTO_BREADCRUMB_OP_ENCODEFRAME:
+            return "EncodeFrame";
+        case D3D12_AUTO_BREADCRUMB_OP_RESOLVEENCODEROUTPUTMETADATA:
+            return "ResolveEncoderOutputMetadata";
+        case 45: // D3D12_AUTO_BREADCRUMB_OP_BARRIER
+            return "Barrier";
+        case 46: // D3D12_AUTO_BREADCRUMB_OP_BEGIN_COMMAND_LIST
+            return "BeginCommandList";
+
+        default:
+            return "";
+        }
+    }
+} // namespace
 
 namespace AIHoloImager
 {
@@ -69,6 +179,10 @@ namespace AIHoloImager
             if (SUCCEEDED(::D3D12GetDebugInterface(UuidOf<ID3D12Debug>(), debug_ctrl.PutVoid())))
             {
                 debug_ctrl->EnableDebugLayer();
+
+                ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> dred_settings;
+                TIFHR(::D3D12GetDebugInterface(UuidOf<ID3D12DeviceRemovedExtendedDataSettings1>(), dred_settings.PutVoid()));
+                dred_settings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
             }
             else
             {
@@ -154,7 +268,7 @@ namespace AIHoloImager
                 d3d_info_queue->AddStorageFilterEntries(&filter);
 
                 d3d_info_queue->RegisterMessageCallback(
-                    DebugMessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &dbg_callback_cookie_);
+                    DebugMessageCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, this, &dbg_callback_cookie_);
             }
         }
 
@@ -833,8 +947,8 @@ namespace AIHoloImager
         return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_pool, type);
     }
 
-    void D3D12System::DebugMessageCallback(D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id,
-        LPCSTR description, [[maybe_unused]] void* context)
+    void D3D12System::DebugMessageCallback(
+        D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context)
     {
         constexpr const char* RedEscape = "\033[31m";
         constexpr const char* GreenEscape = "\033[32m";
@@ -912,10 +1026,81 @@ namespace AIHoloImager
             Unreachable("Invalid D3D12 message category");
         }
 
-        std::ostream& output_stream =
-            (severity == D3D12_MESSAGE_SEVERITY_CORRUPTION || severity == D3D12_MESSAGE_SEVERITY_ERROR) ? std::cerr : std::cout;
+        const bool is_severe = (severity == D3D12_MESSAGE_SEVERITY_CORRUPTION) || (severity == D3D12_MESSAGE_SEVERITY_ERROR);
+
+        std::ostream& output_stream = is_severe ? std::cerr : std::cout;
         output_stream << std::format(
             "{}{}: {}({})[{}]: {}\n", color_escape, severity_str, EndEscape, category_str, static_cast<uint32_t>(id), description);
         output_stream.flush();
+
+        if (is_severe)
+        {
+            auto* d3d12_device = static_cast<D3D12System*>(context)->device_.Get();
+            const HRESULT removed_reason = d3d12_device->GetDeviceRemovedReason();
+            if (removed_reason != S_OK)
+            {
+                output_stream << std::format(
+                    "{}Device removed{}, reason code 0x{:X}\n", RedEscape, EndEscape, static_cast<uint32_t>(removed_reason));
+                output_stream.flush();
+
+                ComPtr<ID3D12DeviceRemovedExtendedData1> dred;
+                TIFHR(d3d12_device->QueryInterface(UuidOf<ID3D12DeviceRemovedExtendedData1>(), dred.PutVoid()));
+
+                D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 dred_auto_breadcrumbs_output;
+                TIFHR(dred->GetAutoBreadcrumbsOutput1(&dred_auto_breadcrumbs_output));
+
+                struct BreadcrumbNodeInfo
+                {
+                    std::string cmd_list_name;
+                    std::string cmd_queue_name;
+
+                    std::vector<D3D12_AUTO_BREADCRUMB_OP> ops;
+                };
+
+                std::vector<BreadcrumbNodeInfo> breadcrumbs_nodes;
+                const D3D12_AUTO_BREADCRUMB_NODE1* head_auto_breadcrumb_node = dred_auto_breadcrumbs_output.pHeadAutoBreadcrumbNode;
+                while (head_auto_breadcrumb_node != nullptr)
+                {
+                    BreadcrumbNodeInfo& info = breadcrumbs_nodes.emplace_back();
+                    if (head_auto_breadcrumb_node->pCommandListDebugNameW != nullptr)
+                    {
+                        Convert(info.cmd_list_name,
+                            std::u16string_view(reinterpret_cast<const char16_t*>(head_auto_breadcrumb_node->pCommandListDebugNameW)));
+                    }
+                    if (head_auto_breadcrumb_node->pCommandQueueDebugNameW != nullptr)
+                    {
+                        Convert(info.cmd_queue_name,
+                            std::u16string_view(reinterpret_cast<const char16_t*>(head_auto_breadcrumb_node->pCommandQueueDebugNameW)));
+                    }
+                    info.ops.insert(info.ops.end(), head_auto_breadcrumb_node->pCommandHistory,
+                        head_auto_breadcrumb_node->pCommandHistory + head_auto_breadcrumb_node->BreadcrumbCount);
+
+                    head_auto_breadcrumb_node = head_auto_breadcrumb_node->pNext;
+                }
+
+                output_stream << std::format("{} breadcrumb nodes captured, from old to new:\n", breadcrumbs_nodes.size());
+                for (const auto& node : breadcrumbs_nodes)
+                {
+                    output_stream << std::format("Breadcrumb - CmdList `{}` in CmdQueue `{}`\n",
+                        node.cmd_list_name.empty() ? "<Unknown>" : node.cmd_list_name,
+                        node.cmd_queue_name.empty() ? "<Unknown>" : node.cmd_queue_name);
+                    for (const auto& op : node.ops)
+                    {
+                        output_stream << "    Op: ";
+                        const std::string_view op_str = BreadcrumbToString(op);
+                        if (op_str.empty())
+                        {
+                            output_stream << std::format("Unknown {}", static_cast<uint32_t>(op));
+                        }
+                        else
+                        {
+                            output_stream << op_str;
+                        }
+                        output_stream << '\n';
+                    }
+                }
+                output_stream.flush();
+            }
+        }
     }
 } // namespace AIHoloImager
