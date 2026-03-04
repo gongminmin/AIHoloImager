@@ -96,6 +96,11 @@ namespace AIHoloImager
         return type_;
     }
 
+    void D3D12CommandList::Name(std::string_view name)
+    {
+        SetName(*cmd_list_, name);
+    }
+
     D3D12CommandList::operator bool() const noexcept
     {
         return cmd_list_ ? true : false;

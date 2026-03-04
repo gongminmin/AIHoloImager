@@ -218,10 +218,10 @@ namespace AIHoloImager
         return impl_ ? impl_->Internal().SharedFenceHandle(impl_->OverrideCmdQueueType(type)) : nullptr;
     }
 
-    GpuCommandList GpuSystem::CreateCommandList(CmdQueueType type)
+    GpuCommandList GpuSystem::CreateCommandList(CmdQueueType type, std::string_view name)
     {
         assert(impl_);
-        return impl_->Internal().CreateCommandList(impl_->OverrideCmdQueueType(type));
+        return impl_->Internal().CreateCommandList(impl_->OverrideCmdQueueType(type), std::move(name));
     }
 
     uint64_t GpuSystem::Execute(GpuCommandList&& cmd_list, std::span<const WaitFence> wait_fences)

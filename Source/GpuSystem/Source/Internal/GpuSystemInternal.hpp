@@ -35,7 +35,7 @@ namespace AIHoloImager
 
         virtual void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept = 0;
 
-        virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) = 0;
+        virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) = 0;
         virtual uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
         virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
 

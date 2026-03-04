@@ -414,7 +414,7 @@ namespace AIHoloImager
         return cmd_queue ? cmd_queue->shared_fence_handle.get() : nullptr;
     }
 
-    GpuCommandList VulkanSystem::CreateCommandList(GpuSystem::CmdQueueType type)
+    GpuCommandList VulkanSystem::CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name)
     {
         GpuCommandList cmd_list;
         auto& cmd_pool = this->CurrentCommandPool(type);
@@ -429,6 +429,7 @@ namespace AIHoloImager
             cmd_queue.free_cmd_lists.pop_front();
             cmd_list.Reset(cmd_pool);
         }
+        cmd_list.Name(std::move(name));
         return cmd_list;
     }
 

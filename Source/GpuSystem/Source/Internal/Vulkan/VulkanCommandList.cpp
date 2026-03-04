@@ -63,6 +63,11 @@ namespace AIHoloImager
         return type_;
     }
 
+    void VulkanCommandList::Name(std::string_view name)
+    {
+        SetName(*gpu_system_, cmd_buff_, VK_OBJECT_TYPE_COMMAND_BUFFER, std::move(name));
+    }
+
     VulkanCommandList::operator bool() const noexcept
     {
         return cmd_buff_ != VK_NULL_HANDLE;

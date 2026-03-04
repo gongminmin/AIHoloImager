@@ -53,6 +53,12 @@ namespace AIHoloImager
         return impl_->Internal().Type();
     }
 
+    void GpuCommandList::Name(std::string_view name)
+    {
+        assert(impl_);
+        return impl_->Internal().Name(std::move(name));
+    }
+
     GpuCommandList::operator bool() const noexcept
     {
         return impl_ && static_cast<bool>(impl_->Internal());

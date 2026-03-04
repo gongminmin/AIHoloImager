@@ -30,6 +30,7 @@ namespace AIHoloImager
         GpuCommandListInternal& operator=(GpuCommandListInternal&& other) noexcept override;
 
         GpuSystem::CmdQueueType Type() const noexcept override;
+        void Name(std::string_view name) override;
 
         explicit operator bool() const noexcept override;
 

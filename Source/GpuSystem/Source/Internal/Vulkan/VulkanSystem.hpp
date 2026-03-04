@@ -54,7 +54,7 @@ namespace AIHoloImager
 
         void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
-        [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type) override;
+        [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
         uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
         uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
         uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);

@@ -79,7 +79,7 @@ namespace AIHoloImager
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedFenceHandle());
         }
 
-        [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type);
+        [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
         uint64_t Execute(GpuCommandList&& cmd_list, std::span<const WaitFence> wait_fences = {});
         uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const WaitFence> wait_fences = {});
 
