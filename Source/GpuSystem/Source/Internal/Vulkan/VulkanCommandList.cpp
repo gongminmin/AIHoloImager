@@ -21,6 +21,7 @@
 #include "VulkanShader.hpp"
 #include "VulkanSystem.hpp"
 #include "VulkanTexture.hpp"
+#include "VulkanUtil.hpp"
 
 namespace
 {
@@ -65,7 +66,7 @@ namespace AIHoloImager
 
     void VulkanCommandList::Name(std::string_view name)
     {
-        SetName(*gpu_system_, cmd_buff_, VK_OBJECT_TYPE_COMMAND_BUFFER, std::move(name));
+        SetName(VulkanImp(*gpu_system_), cmd_buff_, VK_OBJECT_TYPE_COMMAND_BUFFER, std::move(name));
     }
 
     VulkanCommandList::operator bool() const noexcept

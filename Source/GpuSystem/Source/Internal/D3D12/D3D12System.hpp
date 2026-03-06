@@ -26,7 +26,7 @@ namespace AIHoloImager
     class D3D12System : public GpuSystemInternal
     {
     public:
-        D3D12System(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
+        explicit D3D12System(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
             bool enable_sharing = false, bool enable_debug = false);
         ~D3D12System() override;
 

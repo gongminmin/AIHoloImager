@@ -22,7 +22,7 @@ namespace AIHoloImager
     class VulkanSystem : public GpuSystemInternal
     {
     public:
-        VulkanSystem(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
+        explicit VulkanSystem(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
             bool enable_sharing = false, bool enable_debug = false);
         ~VulkanSystem() override;
 
