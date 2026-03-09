@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12CommandPool.hpp"
@@ -22,6 +22,10 @@ namespace AIHoloImager
 
         case GpuSystem::CmdQueueType::Compute:
             d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            break;
+
+        case GpuSystem::CmdQueueType::Copy:
+            d3d12_type = D3D12_COMMAND_LIST_TYPE_COPY;
             break;
 
         case GpuSystem::CmdQueueType::VideoEncode:

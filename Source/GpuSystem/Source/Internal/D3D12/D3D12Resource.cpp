@@ -66,13 +66,19 @@ namespace AIHoloImager
 
     void D3D12Resource::Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
-        this->DoTransition(cmd_list, sub_resource, target_state);
+        if (cmd_list.Type() != GpuSystem::CmdQueueType::Copy)
+        {
+            this->DoTransition(cmd_list, sub_resource, target_state);
+        }
         this->AccessedBy(cmd_list, target_state);
     }
 
     void D3D12Resource::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
-        this->DoTransition(cmd_list, target_state);
+        if (cmd_list.Type() != GpuSystem::CmdQueueType::Copy)
+        {
+            this->DoTransition(cmd_list, target_state);
+        }
         this->AccessedBy(cmd_list, target_state);
     }
 

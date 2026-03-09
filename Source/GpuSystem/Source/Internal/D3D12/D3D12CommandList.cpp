@@ -58,6 +58,11 @@ namespace AIHoloImager
                 0, D3D12_COMMAND_LIST_TYPE_COMPUTE, cmd_allocator, nullptr, UuidOf<ID3D12GraphicsCommandList>(), cmd_list_.PutVoid()));
             break;
 
+        case GpuSystem::CmdQueueType::Copy:
+            TIFHR(d3d12_device->CreateCommandList(
+                0, D3D12_COMMAND_LIST_TYPE_COPY, cmd_allocator, nullptr, UuidOf<ID3D12GraphicsCommandList>(), cmd_list_.PutVoid()));
+            break;
+
         case GpuSystem::CmdQueueType::VideoEncode:
             TIFHR(d3d12_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE, cmd_allocator, nullptr,
                 UuidOf<ID3D12VideoEncodeCommandList>(), cmd_list_.PutVoid()));
@@ -112,6 +117,7 @@ namespace AIHoloImager
         {
         case GpuSystem::CmdQueueType::Render:
         case GpuSystem::CmdQueueType::Compute:
+        case GpuSystem::CmdQueueType::Copy:
             d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get());
             break;
 
@@ -143,6 +149,7 @@ namespace AIHoloImager
         {
         case GpuSystem::CmdQueueType::Render:
         case GpuSystem::CmdQueueType::Compute:
+        case GpuSystem::CmdQueueType::Copy:
             static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get())
                 ->ResourceBarrier(static_cast<uint32_t>(barriers.size()), barriers.data());
             break;
@@ -998,7 +1005,8 @@ namespace AIHoloImager
             .back = depth,
         };
 
-        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
+        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute) ||
+               (type_ == GpuSystem::CmdQueueType::Copy));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         d3d12_dst.Transition(*this, GpuResourceState::CopyDst);
@@ -1099,7 +1107,8 @@ namespace AIHoloImager
             .back = depth,
         };
 
-        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute));
+        assert((type_ == GpuSystem::CmdQueueType::Render) || (type_ == GpuSystem::CmdQueueType::Compute) ||
+               (type_ == GpuSystem::CmdQueueType::Copy));
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
@@ -1126,6 +1135,7 @@ namespace AIHoloImager
         {
         case GpuSystem::CmdQueueType::Render:
         case GpuSystem::CmdQueueType::Compute:
+        case GpuSystem::CmdQueueType::Copy:
             static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get())->Close();
             break;
 
@@ -1150,6 +1160,7 @@ namespace AIHoloImager
         {
         case GpuSystem::CmdQueueType::Render:
         case GpuSystem::CmdQueueType::Compute:
+        case GpuSystem::CmdQueueType::Copy:
             static_cast<ID3D12GraphicsCommandList*>(cmd_list_.Get())->Reset(d3d12_cmd_alloc, nullptr);
             break;
 

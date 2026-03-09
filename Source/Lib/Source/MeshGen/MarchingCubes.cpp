@@ -303,7 +303,7 @@ namespace AIHoloImager
     public:
         explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
         {
-            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+            auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
             edge_table_buff_ = GpuBuffer(gpu_system_, sizeof(EdgeTable), GpuHeap::Default, GpuResourceFlag::None, "edge_table_buff");
             cmd_list.Upload(edge_table_buff_, EdgeTable, sizeof(EdgeTable));

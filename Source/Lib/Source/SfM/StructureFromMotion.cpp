@@ -999,7 +999,7 @@ namespace AIHoloImager
                     const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
                     const uint32_t point_cloud_size = point_cloud_width * point_cloud_height;
 
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
                     auto& tensor_converter = aihi_.TensorConverterInstance();
                     GpuBuffer point_cloud_buff;
                     tensor_converter.ConvertPy(

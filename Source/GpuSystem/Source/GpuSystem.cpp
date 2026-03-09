@@ -18,8 +18,8 @@ namespace AIHoloImager
     {
     public:
         Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
-            bool enable_async_compute)
-            : host_(host), api_(SelectApi(api)), enable_async_compute_(enable_async_compute),
+            bool enable_async_compute, bool enable_async_copy)
+            : host_(host), api_(SelectApi(api)), enable_async_compute_(enable_async_compute), enable_async_copy_(enable_async_copy),
               system_internal_(CreateGpuSystemInternal(api_, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false)
         {
@@ -76,6 +76,10 @@ namespace AIHoloImager
 
         CmdQueueType OverrideCmdQueueType(CmdQueueType type) const noexcept
         {
+            if (!enable_async_copy_ && (type == CmdQueueType::Copy))
+            {
+                return CmdQueueType::Compute;
+            }
             if (!enable_async_compute_ && (type == CmdQueueType::Compute))
             {
                 return CmdQueueType::Render;
@@ -160,6 +164,7 @@ namespace AIHoloImager
 
         Api api_;
         bool enable_async_compute_;
+        bool enable_async_copy_;
 
         std::unique_ptr<GpuSystemInternal> system_internal_;
 
@@ -171,8 +176,9 @@ namespace AIHoloImager
     };
 
     GpuSystem::GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
-        bool enable_async_compute)
-        : impl_(std::make_unique<Impl>(api, *this, std::move(confirm_device), enable_sharing, enable_debug, enable_async_compute))
+        bool enable_async_compute, bool enable_async_copy)
+        : impl_(std::make_unique<Impl>(
+              api, *this, std::move(confirm_device), enable_sharing, enable_debug, enable_async_compute, enable_async_copy))
     {
     }
 

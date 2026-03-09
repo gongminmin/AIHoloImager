@@ -37,6 +37,7 @@ namespace AIHoloImager
         {
             Render = 0,
             Compute,
+            Copy,
             VideoEncode,
 
             Num,
@@ -55,7 +56,7 @@ namespace AIHoloImager
 
     public:
         GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
-            bool enable_debug = false, bool enable_async_compute = true);
+            bool enable_debug = false, bool enable_async_compute = true, bool enable_async_copy = true);
         ~GpuSystem();
 
         GpuSystem(GpuSystem&& other) noexcept;

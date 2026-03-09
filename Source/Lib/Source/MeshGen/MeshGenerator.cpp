@@ -309,7 +309,7 @@ namespace AIHoloImager
 
                 for (size_t i = 0; i < rotated_images.size(); ++i)
                 {
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
                     Texture rotated_image(rotated_images[i].Width(0), rotated_images[i].Height(0), ElementFormat::RGBA8_UNorm);
                     const auto rb_future = cmd_list.ReadBackAsync(rotated_images[i], 0, rotated_image.Data(), rotated_image.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
@@ -1042,6 +1042,11 @@ namespace AIHoloImager
                     cmd_list.Compute(
                         resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(ResizedImageSize, BlockDim), 1, shader_binding);
                 }
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                // It could be used in a copy queue
+                resized_rotated_roi_tex.Transition(cmd_list, GpuResourceState::Common);
+#endif
             }
 
             gpu_system.Execute(std::move(cmd_list));

@@ -582,6 +582,10 @@ namespace AIHoloImager
                 d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
                 break;
 
+            case GpuSystem::CmdQueueType::Copy:
+                d3d12_type = D3D12_COMMAND_LIST_TYPE_COPY;
+                break;
+
             case GpuSystem::CmdQueueType::VideoEncode:
                 d3d12_type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
                 break;

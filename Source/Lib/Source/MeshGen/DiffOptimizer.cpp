@@ -118,7 +118,7 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(12);
@@ -238,7 +238,7 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto args = python_system.MakeTuple(13);
