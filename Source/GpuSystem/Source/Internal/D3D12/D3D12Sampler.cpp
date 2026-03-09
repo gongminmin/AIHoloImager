@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12Sampler.hpp"
@@ -182,8 +182,9 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12DynamicSampler&&>(other));
     }
 
-    void D3D12DynamicSampler::CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
+    void D3D12DynamicSampler::CopyTo(const D3D12CommandList& cmd_list, D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
     {
+        cmd_list.RegisterAccessedObject(desc_block_.StalledWaitFences());
         d3d12_device_->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
     }
 

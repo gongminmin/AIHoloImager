@@ -248,7 +248,9 @@ namespace AIHoloImager
         const uint32_t num_sets = vulkan_pipeline.NumDescSetLayouts();
         for (uint32_t set = 0; set < num_sets; ++set)
         {
-            desc_sets[set] = vulkan_system.AllocDescSet(vulkan_pipeline.DescSetLayout(set));
+            auto& desc_set = vulkan_system.AllocDescSet(vulkan_pipeline.DescSetLayout(set));
+            this->RegisterAccessedObject(desc_set.StalledWaitFences());
+            desc_sets[set] = desc_set.Object();
         }
 
         std::vector<VkWriteDescriptorSet> write_desc_sets;
@@ -456,7 +458,9 @@ namespace AIHoloImager
         const uint32_t num_sets = vulkan_pipeline.NumDescSetLayouts();
         for (uint32_t set = 0; set < num_sets; ++set)
         {
-            desc_sets[set] = vulkan_system.AllocDescSet(vulkan_pipeline.DescSetLayout(set));
+            auto& desc_set = vulkan_system.AllocDescSet(vulkan_pipeline.DescSetLayout(set));
+            this->RegisterAccessedObject(desc_set.StalledWaitFences());
+            desc_sets[set] = desc_set.Object();
         }
 
         std::vector<VkWriteDescriptorSet> write_desc_sets;
@@ -745,11 +749,12 @@ namespace AIHoloImager
             vkCmdCopyBuffer2(cmd_buff_, &copy_info);
 
             const uint64_t fence_val =
-                VulkanImp(*gpu_system_).ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
+                VulkanImp(*gpu_system_)
+                    .ExecuteAndReset(*this, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, GpuSystem::MaxFenceValue}})));
 
             return std::async(
                 std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
-                    gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
+                    gpu_system_->CpuWait(ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, fence_val}})));
 
                     const void* buff_data = read_back_mem_block.CpuSpan<std::byte>().data();
                     copy_func(buff_data);
@@ -822,14 +827,14 @@ namespace AIHoloImager
         };
         vkCmdCopyImageToBuffer2(cmd_buff_, &copy_info);
 
-        const uint64_t fence_val =
-            vulkan_system.ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
+        const uint64_t fence_val = vulkan_system.ExecuteAndReset(
+            *this, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, GpuSystem::MaxFenceValue}})));
 
         const uint32_t row_pitch = width * FormatSize(src.Format());
         const uint32_t slice_pitch = row_pitch * height;
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch, slice_pitch, copy_func]() mutable {
-                gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
+                gpu_system_->CpuWait(ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, fence_val}})));
 
                 const void* tex_data = read_back_mem_block.CpuSpan<std::byte>().data();
                 copy_func(tex_data, row_pitch, slice_pitch);
@@ -870,7 +875,7 @@ namespace AIHoloImager
         vulkan_cmd_pool.RegisterAllocatedCommandBuffer(cmd_buff_);
         closed_ = false;
 
-        std::fill(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), 0);
+        wait_fences_ = {};
     }
 
     void VulkanCommandList::GenWriteDescSet(std::vector<VkWriteDescriptorSet>& write_desc_sets, const VulkanBindingSlots& binding_slots,
@@ -1009,7 +1014,9 @@ namespace AIHoloImager
                         {
                             if (sampler != nullptr)
                             {
-                                write_desc_sets.emplace_back(VulkanImp(*sampler).WriteDescSet());
+                                auto& vulkan_sampler = VulkanImp(*sampler);
+                                this->RegisterAccessedObject(vulkan_sampler.StalledWaitFences());
+                                write_desc_sets.emplace_back(vulkan_sampler.WriteDescSet());
                             }
                             else
                             {
@@ -1043,13 +1050,48 @@ namespace AIHoloImager
         resource.LastWrittenBy(lw_type, lw_fence_value);
         if ((lw_type != GpuSystem::CmdQueueType::Num) && (lw_type != type_))
         {
-            auto& wait_for = wait_for_fence_values_[static_cast<size_t>(lw_type)];
+            auto& wait_for = wait_fences_.fence_values[static_cast<size_t>(lw_type)];
             wait_for = std::max(lw_fence_value, wait_for);
         }
     }
 
-    void VulkanCommandList::WaitForFences(uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)]) const
+    void VulkanCommandList::WaitForFences(GpuSystem::WaitFences& wait_fences) const
     {
-        std::copy(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), fence_values);
+        wait_fences = wait_fences_;
+    }
+
+    void VulkanCommandList::RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const
+    {
+        bool found = false;
+        for (auto& existing_wait_fences : accessed_objects_)
+        {
+            if (existing_wait_fences == wait_fences)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            wait_fences->fence_values[static_cast<size_t>(type_)] = GpuSystem::MaxFenceValue;
+            accessed_objects_.emplace_back(std::move(wait_fences));
+        }
+    }
+
+    void VulkanCommandList::UpdateAccessInfo(uint64_t fence_value)
+    {
+        for (auto& wait_fences : accessed_objects_)
+        {
+            auto& curr_fence_value = wait_fences->fence_values[static_cast<uint32_t>(type_)];
+            if (curr_fence_value == GpuSystem::MaxFenceValue)
+            {
+                curr_fence_value = fence_value;
+            }
+            else
+            {
+                curr_fence_value = std::max(curr_fence_value, fence_value);
+            }
+        }
     }
 } // namespace AIHoloImager

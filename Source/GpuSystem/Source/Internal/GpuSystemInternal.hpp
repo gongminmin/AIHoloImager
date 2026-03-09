@@ -36,15 +36,15 @@ namespace AIHoloImager
         virtual void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept = 0;
 
         virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) = 0;
-        virtual uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
-        virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
+        virtual uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) = 0;
+        virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) = 0;
 
         virtual uint32_t ConstantDataAlignment() const noexcept = 0;
         virtual uint32_t StructuredDataAlignment() const noexcept = 0;
         virtual uint32_t TextureDataAlignment() const noexcept = 0;
 
-        virtual void CpuWait(std::span<const GpuSystem::WaitFence> wait_fences) = 0;
-        virtual void GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences) = 0;
+        virtual void CpuWait(const GpuSystem::WaitFences& wait_fences) = 0;
+        virtual void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) = 0;
         virtual uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept = 0;
         virtual uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const = 0;
 
@@ -65,8 +65,7 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
             std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const = 0;
 
-        virtual std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(
-            const GpuBuffer& buffer, uint32_t offset, uint32_t size) const = 0;
+        virtual std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(const GpuMemoryBlock& mem_block) const = 0;
 
         virtual std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const = 0;

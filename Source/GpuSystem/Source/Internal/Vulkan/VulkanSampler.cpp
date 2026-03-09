@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanSampler.hpp"
@@ -107,6 +107,11 @@ namespace AIHoloImager
         return sampler_;
     }
 
+    const std::shared_ptr<GpuSystem::WaitFences>& VulkanStaticSampler::StalledWaitFences() const noexcept
+    {
+        return sampler_->StalledWaitFences();
+    }
+
 
     VULKAN_IMP_IMP(DynamicSampler)
 
@@ -152,6 +157,12 @@ namespace AIHoloImager
     {
         return write_desc_set_;
     }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& VulkanDynamicSampler::StalledWaitFences() const noexcept
+    {
+        return sampler_.StalledWaitFences();
+    }
+
 
     VkWriteDescriptorSet NullDynamicSamplerWriteDescSet()
     {

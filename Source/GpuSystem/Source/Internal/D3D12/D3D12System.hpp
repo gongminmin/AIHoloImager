@@ -55,23 +55,23 @@ namespace AIHoloImager
         void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
-        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
+        uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
+        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
 
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
 
-        void CpuWait(std::span<const GpuSystem::WaitFence> wait_fences) override;
-        void GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences) override;
+        void CpuWait(const GpuSystem::WaitFences& wait_fences) override;
+        void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) override;
         uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
         uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
         void HandleDeviceLost() override;
         void ClearStallResources() override;
 
-        void Recycle(ComPtr<ID3D12DeviceChild>&& resource);
+        void Recycle(ComPtr<ID3D12DeviceChild>&& resource, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
         ComPtr<ID3D12ShaderReflection> ShaderReflect(std::span<const uint8_t> bytecode);
@@ -113,8 +113,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
             std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides) const override;
 
-        std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(
-            const GpuBuffer& buffer, uint32_t offset, uint32_t size) const override;
+        std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(const GpuMemoryBlock& mem_block) const override;
 
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
@@ -170,7 +169,7 @@ namespace AIHoloImager
         CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
         const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
+        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
         static void DebugMessageCallback(
             D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context);
 
@@ -186,7 +185,7 @@ namespace AIHoloImager
         struct StallResourceInfo
         {
             ComPtr<ID3D12DeviceChild> resource;
-            uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
+            std::shared_ptr<GpuSystem::WaitFences> wait_fences;
         };
         std::list<StallResourceInfo> stall_resources_;
 

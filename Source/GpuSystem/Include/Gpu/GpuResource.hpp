@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2005 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "Base/Enum.hpp"
+#include "Gpu/GpuSystem.hpp"
 
 namespace AIHoloImager
 {
@@ -90,5 +91,7 @@ namespace AIHoloImager
 
         virtual GpuResourceInternal& Internal() noexcept = 0;
         virtual const GpuResourceInternal& Internal() const noexcept = 0;
+
+        virtual const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept = 0;
     };
 } // namespace AIHoloImager

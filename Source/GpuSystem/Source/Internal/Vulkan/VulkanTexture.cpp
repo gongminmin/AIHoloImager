@@ -189,6 +189,8 @@ namespace AIHoloImager
         }
         else
         {
+            cmd_list.RegisterAccessedObject(this->StalledWaitFences());
+
             uint32_t mip_level, array_index, plane;
             DecomposeSubResource(sub_resource, this->MipLevels(), this->Planes(), mip_level, array_index, plane);
 
@@ -236,6 +238,8 @@ namespace AIHoloImager
 
     void VulkanTexture::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
+        cmd_list.RegisterAccessedObject(this->StalledWaitFences());
+
         const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state);
         if ((curr_layouts_[0] == vulkan_target_layout) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
@@ -330,5 +334,10 @@ namespace AIHoloImager
         }
 
         curr_layouts_.assign(this->MipLevels() * this->Planes(), vulkan_target_layout);
+    }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& VulkanTexture::StalledWaitFences() const noexcept
+    {
+        return texture_.StalledWaitFences();
     }
 } // namespace AIHoloImager

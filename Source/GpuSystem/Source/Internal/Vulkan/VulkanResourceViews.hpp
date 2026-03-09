@@ -16,7 +16,7 @@ namespace AIHoloImager
     class VulkanConstantBufferView : public GpuConstantBufferViewInternal
     {
     public:
-        VulkanConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size);
+        explicit VulkanConstantBufferView(const GpuMemoryBlock& mem_block);
 
         ~VulkanConstantBufferView() override;
 
@@ -34,6 +34,7 @@ namespace AIHoloImager
 
     private:
         const GpuResource* resource_ = nullptr;
+        const GpuMemoryBlock* mem_block_ = nullptr;
         VkWriteDescriptorSet write_desc_set_;
 
         VkDescriptorBufferInfo buff_info_{};

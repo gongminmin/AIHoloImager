@@ -240,6 +240,8 @@ namespace AIHoloImager
 
     void VulkanBuffer::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
+        cmd_list.RegisterAccessedObject(this->StalledWaitFences());
+
         if ((curr_state_ != target_state) || (target_state == GpuResourceState::UnorderedAccess) ||
             (target_state == GpuResourceState::RayTracingAS))
         {
@@ -257,5 +259,10 @@ namespace AIHoloImager
 
             curr_state_ = target_state;
         }
+    }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& VulkanBuffer::StalledWaitFences() const noexcept
+    {
+        return buff_.StalledWaitFences();
     }
 } // namespace AIHoloImager

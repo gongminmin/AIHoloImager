@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuBuffer.hpp"
@@ -138,5 +138,11 @@ namespace AIHoloImager
     {
         assert(impl_);
         impl_->Transition(cmd_list, target_state);
+    }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& GpuBuffer::StalledWaitFences() const noexcept
+    {
+        assert(impl_);
+        return impl_->StalledWaitFences();
     }
 } // namespace AIHoloImager

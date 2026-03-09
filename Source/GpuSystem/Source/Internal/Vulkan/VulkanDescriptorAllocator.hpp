@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -45,7 +45,7 @@ namespace AIHoloImager
 
         explicit operator bool() const;
 
-        VkDescriptorSet Allocate(VkDescriptorSetLayout layout);
+        VulkanRecyclableObject<VkDescriptorSet>& Allocate(VkDescriptorSetLayout layout);
         void Deallocate(VkDescriptorSet desc_set);
 
     private:

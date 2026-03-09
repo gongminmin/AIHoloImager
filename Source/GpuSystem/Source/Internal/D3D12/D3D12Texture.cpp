@@ -255,4 +255,9 @@ namespace AIHoloImager
 
         curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
     }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& D3D12Texture::StalledWaitFences() const noexcept
+    {
+        return this->D3D12Resource::StalledWaitFences();
+    }
 } // namespace AIHoloImager

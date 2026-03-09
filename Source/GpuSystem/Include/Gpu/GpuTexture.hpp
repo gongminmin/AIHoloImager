@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -64,6 +64,8 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
+
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,

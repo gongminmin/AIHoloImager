@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanDescriptorAllocator.hpp"
@@ -70,7 +70,7 @@ namespace AIHoloImager
         return gpu_system_ != nullptr;
     }
 
-    VkDescriptorSet VulkanDescriptorSetAllocator::Allocate(VkDescriptorSetLayout layout)
+    VulkanRecyclableObject<VkDescriptorSet>& VulkanDescriptorSetAllocator::Allocate(VkDescriptorSetLayout layout)
     {
         const VkDevice vulkan_device = VulkanImp(*gpu_system_).Device();
 
@@ -88,7 +88,7 @@ namespace AIHoloImager
             if (result == VK_SUCCESS)
             {
                 desc_set.AddExtraRecycleParam(allocate_info.descriptorPool);
-                return pool.allocated_sets.emplace_back(std::move(desc_set)).Object();
+                return pool.allocated_sets.emplace_back(std::move(desc_set));
             }
         }
 
@@ -96,7 +96,7 @@ namespace AIHoloImager
         allocate_info.descriptorPool = new_pool.pool.Pool();
         TIFVK(vkAllocateDescriptorSets(vulkan_device, &allocate_info, &desc_set.Object()));
         desc_set.AddExtraRecycleParam(allocate_info.descriptorPool);
-        return new_pool.allocated_sets.emplace_back(std::move(desc_set)).Object();
+        return new_pool.allocated_sets.emplace_back(std::move(desc_set));
     }
 
     void VulkanDescriptorSetAllocator::Deallocate(VkDescriptorSet desc_set)

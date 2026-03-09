@@ -36,6 +36,8 @@ namespace AIHoloImager
         void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
         void ClearLastWrittenBy() const;
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept;
+
     protected:
         void Name(std::string_view name);
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -16,6 +16,7 @@
 namespace AIHoloImager
 {
     class GpuSystem;
+    class D3D12CommandList;
 
     class D3D12StaticSampler : public GpuStaticSamplerInternal
     {
@@ -49,7 +50,7 @@ namespace AIHoloImager
         D3D12DynamicSampler& operator=(D3D12DynamicSampler&& other) noexcept;
         GpuDynamicSamplerInternal& operator=(GpuDynamicSamplerInternal&& other) noexcept override;
 
-        void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void CopyTo(const D3D12CommandList& cmd_list, D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
 
         const D3D12_SAMPLER_DESC& SamplerDesc() const noexcept;
 

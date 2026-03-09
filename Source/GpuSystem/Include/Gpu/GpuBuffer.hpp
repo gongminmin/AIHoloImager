@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -8,11 +8,11 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/GpuSystem.hpp"
 #include "Gpu/InternalDefine.hpp"
 
 namespace AIHoloImager
 {
-    class GpuSystem;
     class GpuCommandList;
 
     struct GpuRange
@@ -93,6 +93,8 @@ namespace AIHoloImager
 
         void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
+
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     private:
         class Impl;

@@ -15,14 +15,15 @@ namespace AIHoloImager
 {
     VULKAN_IMP_IMP(ConstantBufferView)
 
-    VulkanConstantBufferView::VulkanConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size) : resource_(&buffer)
+    VulkanConstantBufferView::VulkanConstantBufferView(const GpuMemoryBlock& mem_block)
+        : resource_(mem_block.Buffer()), mem_block_(&mem_block)
     {
-        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
+        const VkBuffer vulkan_buff = VulkanImp(*mem_block.Buffer()).Buffer();
 
         buff_info_ = VkDescriptorBufferInfo{
             .buffer = vulkan_buff,
-            .offset = offset,
-            .range = size,
+            .offset = mem_block.Offset(),
+            .range = mem_block.Size(),
         };
         write_desc_set_ = VkWriteDescriptorSet{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -57,6 +58,9 @@ namespace AIHoloImager
 
     void VulkanConstantBufferView::Transition(VulkanCommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(mem_block_->StalledWaitFences());
+        cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
+
         VulkanImp(*resource_).Transition(cmd_list, GpuResourceState::Common);
     }
 
@@ -277,6 +281,15 @@ namespace AIHoloImager
 
     void VulkanShaderResourceView::Transition(VulkanCommandList& cmd_list) const
     {
+        if (buff_view_)
+        {
+            cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
+        }
+        if (image_view_)
+        {
+            cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
+        }
+
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
@@ -379,6 +392,7 @@ namespace AIHoloImager
 
     void VulkanRenderTargetView::Transition(VulkanCommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::ColorWrite);
     }
 
@@ -472,6 +486,7 @@ namespace AIHoloImager
 
     void VulkanDepthStencilView::Transition(VulkanCommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::DepthWrite);
     }
 
@@ -655,6 +670,15 @@ namespace AIHoloImager
 
     void VulkanUnorderedAccessView::Transition(VulkanCommandList& cmd_list) const
     {
+        if (buff_view_)
+        {
+            cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
+        }
+        if (image_view_)
+        {
+            cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
+        }
+
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::UnorderedAccess);
     }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -34,5 +34,7 @@ namespace AIHoloImager
 
         virtual void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
         virtual void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const = 0;
+
+        virtual const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept = 0;
     };
 } // namespace AIHoloImager

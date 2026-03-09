@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanShader.hpp"
@@ -371,6 +371,17 @@ namespace AIHoloImager
 
     void VulkanRenderPipeline::Bind(VulkanCommandList& cmd_list) const
     {
+        for (auto& desc_set_layout : descriptor_set_layouts_)
+        {
+            cmd_list.RegisterAccessedObject(desc_set_layout.StalledWaitFences());
+        }
+        for (auto& static_sampler : static_samplers_)
+        {
+            cmd_list.RegisterAccessedObject(static_sampler->StalledWaitFences());
+        }
+        cmd_list.RegisterAccessedObject(pipeline_layout_.StalledWaitFences());
+        cmd_list.RegisterAccessedObject(pipeline_.StalledWaitFences());
+
         const VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
         vkCmdBindPipeline(cmd_buff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.Object());
     }
@@ -563,6 +574,17 @@ namespace AIHoloImager
 
     void VulkanComputePipeline::Bind(VulkanCommandList& cmd_list) const
     {
+        for (auto& desc_set_layout : descriptor_set_layouts_)
+        {
+            cmd_list.RegisterAccessedObject(desc_set_layout.StalledWaitFences());
+        }
+        for (auto& static_sampler : static_samplers_)
+        {
+            cmd_list.RegisterAccessedObject(static_sampler->StalledWaitFences());
+        }
+        cmd_list.RegisterAccessedObject(pipeline_layout_.StalledWaitFences());
+        cmd_list.RegisterAccessedObject(pipeline_.StalledWaitFences());
+
         const VkCommandBuffer cmd_buff = cmd_list.CommandBuffer();
         vkCmdBindPipeline(cmd_buff, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_.Object());
     }

@@ -179,4 +179,9 @@ namespace AIHoloImager
             cmd_list.Transition(std::span(&barrier, 1));
         }
     }
+
+    const std::shared_ptr<GpuSystem::WaitFences>& D3D12Buffer::StalledWaitFences() const noexcept
+    {
+        return this->D3D12Resource::StalledWaitFences();
+    }
 } // namespace AIHoloImager

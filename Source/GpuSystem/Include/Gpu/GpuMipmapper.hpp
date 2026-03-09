@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -7,12 +7,12 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSampler.hpp"
-#include "Gpu/GpuTexture.hpp"
 
 namespace AIHoloImager
 {
     class GpuSystem;
     class GpuCommandList;
+    class GpuTexture2D;
 
     class GpuMipmapper final
     {

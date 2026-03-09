@@ -16,7 +16,7 @@ namespace AIHoloImager
     class D3D12ConstantBufferView : public GpuConstantBufferViewInternal
     {
     public:
-        D3D12ConstantBufferView(const GpuBuffer& buffer, uint32_t offset, uint32_t size);
+        explicit D3D12ConstantBufferView(const GpuMemoryBlock& mem_block);
 
         ~D3D12ConstantBufferView() override;
 
@@ -34,6 +34,7 @@ namespace AIHoloImager
 
     private:
         const GpuResource* resource_ = nullptr;
+        const GpuMemoryBlock* mem_block_ = nullptr;
         D3D12_GPU_VIRTUAL_ADDRESS gpu_virtual_addr_;
     };
 

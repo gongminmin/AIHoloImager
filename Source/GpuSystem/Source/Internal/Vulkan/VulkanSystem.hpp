@@ -55,39 +55,39 @@ namespace AIHoloImager
         void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences) override;
-        uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
+        uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
+        uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
 
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
 
-        void CpuWait(std::span<const GpuSystem::WaitFence> wait_fences) override;
-        void GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences) override;
+        void CpuWait(const GpuSystem::WaitFences& wait_fences) override;
+        void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) override;
         uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
         uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
         void HandleDeviceLost() override;
         void ClearStallResources() override;
 
-        void Recycle(VkBuffer buff);
-        void Recycle(VkBufferView buff_view);
-        void Recycle(VkImage image);
-        void Recycle(VkImageView image_view);
-        void Recycle(VkCommandPool cmd_pool);
-        void Recycle(VkDescriptorPool desc_pool);
-        void Recycle(VkDescriptorSet desc_set, VkDescriptorPool desc_pool);
-        void Recycle(VkSampler sampler);
-        void Recycle(VkPipelineLayout layout);
-        void Recycle(VkDescriptorSetLayout layout);
-        void Recycle(VkPipeline pipeline);
-        void Recycle(VkDeviceMemory memory);
-        void Recycle(VkRenderPass render_pass);
+        void Recycle(VkBuffer buff, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkBufferView buff_view, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkImage image, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkImageView image_view, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkCommandPool cmd_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkDescriptorPool desc_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkDescriptorSet desc_set, VkDescriptorPool desc_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkSampler sampler, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkPipelineLayout layout, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkDescriptorSetLayout layout, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkPipeline pipeline, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkDeviceMemory memory, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkRenderPass render_pass, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
 
-        VkDescriptorSet AllocDescSet(VkDescriptorSetLayout layout);
+        VulkanRecyclableObject<VkDescriptorSet>& AllocDescSet(VkDescriptorSetLayout layout);
         void DeallocDescSet(VkDescriptorSet desc_set);
 
         std::unique_ptr<GpuBufferInternal> CreateBuffer(
@@ -104,8 +104,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuVertexLayoutInternal> CreateVertexLayout(
             std::span<const GpuVertexAttrib> layout, std::span<const uint32_t> slot_strides) const override;
 
-        std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(
-            const GpuBuffer& buffer, uint32_t offset, uint32_t size) const override;
+        std::unique_ptr<GpuConstantBufferViewInternal> CreateConstantBufferView(const GpuMemoryBlock& mem_block) const override;
 
         std::unique_ptr<GpuShaderResourceViewInternal> CreateShaderResourceView(
             const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const override;
@@ -160,8 +159,7 @@ namespace AIHoloImager
         CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
         const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(VulkanCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences);
-        void CollectFenceValues(uint64_t* fence_values);
+        uint64_t ExecuteOnly(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
             VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
@@ -194,7 +192,7 @@ namespace AIHoloImager
 
             void* resource;
             std::function<void()> destroy_func;
-            uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
+            std::shared_ptr<GpuSystem::WaitFences> wait_fences;
         };
         std::list<StallResourceInfo> stall_resources_;
 

@@ -51,6 +51,8 @@ namespace AIHoloImager
         void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
         using D3D12Resource::Transition;
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
+
         D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
 
     private:

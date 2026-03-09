@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -10,6 +10,7 @@
 #include <directx/d3d12.h>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuResource.hpp"
 
 namespace AIHoloImager
 {
@@ -21,8 +22,11 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(D3D12RecyclableObject)
 
     public:
-        D3D12RecyclableObject() = default;
-        D3D12RecyclableObject(D3D12System& d3d12_system, T object) : d3d12_system_(&d3d12_system), object_(std::move(object))
+        D3D12RecyclableObject() : object_{}, stalled_wait_fences_(std::make_shared<GpuSystem::WaitFences>())
+        {
+        }
+        D3D12RecyclableObject(D3D12System& d3d12_system, T object)
+            : d3d12_system_(&d3d12_system), object_(std::move(object)), stalled_wait_fences_(std::make_shared<GpuSystem::WaitFences>())
         {
         }
 
@@ -40,6 +44,7 @@ namespace AIHoloImager
 
                 d3d12_system_ = std::exchange(other.d3d12_system_, {});
                 object_ = std::move(other.object_);
+                stalled_wait_fences_ = std::move(other.stalled_wait_fences_);
             }
 
             return *this;
@@ -84,18 +89,25 @@ namespace AIHoloImager
             object_ = nullptr;
         }
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept
+        {
+            return stalled_wait_fences_;
+        }
+
     private:
         void Recycle()
         {
             if (object_ && object_.Unique())
             {
-                d3d12_system_->Recycle(std::move(object_));
+                d3d12_system_->Recycle(std::move(object_), std::move(stalled_wait_fences_));
             }
         }
 
     private:
         D3D12System* d3d12_system_ = nullptr;
         T object_;
+
+        std::shared_ptr<GpuSystem::WaitFences> stalled_wait_fences_;
     };
 
     void SetName(ID3D12Object& d3d12_object, std::string_view name);

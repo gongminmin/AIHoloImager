@@ -50,7 +50,9 @@ namespace AIHoloImager
     }
 
 
-    GpuMemoryBlock::GpuMemoryBlock() noexcept = default;
+    GpuMemoryBlock::GpuMemoryBlock() noexcept : stalled_wait_fences_(std::make_shared<GpuSystem::WaitFences>())
+    {
+    }
     GpuMemoryBlock::~GpuMemoryBlock() = default;
 
     GpuMemoryBlock::GpuMemoryBlock(GpuMemoryBlock&& other) noexcept = default;
@@ -62,6 +64,8 @@ namespace AIHoloImager
         offset_ = 0;
         size_ = 0;
         cpu_addr_ = nullptr;
+
+        stalled_wait_fences_ = std::make_shared<GpuSystem::WaitFences>();
     }
 
     void GpuMemoryBlock::Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept
@@ -70,6 +74,8 @@ namespace AIHoloImager
         offset_ = offset;
         size_ = size;
         cpu_addr_ = page.CpuAddress<std::byte>() + offset;
+
+        stalled_wait_fences_ = std::make_shared<GpuSystem::WaitFences>();
     }
 
 
@@ -168,10 +174,7 @@ namespace AIHoloImager
                     PageInfo::StallRange stall_range;
                     stall_range.free_range = {offset, offset + size};
 
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
-                    {
-                        stall_range.fence_values[i] = gpu_system_->FenceValue(static_cast<GpuSystem::CmdQueueType>(i));
-                    }
+                    stall_range.wait_fences = mem_block.StalledWaitFences();
 
                     page.stall_list.emplace_back(std::move(stall_range));
                     return;
@@ -193,7 +196,7 @@ namespace AIHoloImager
         this->Allocate(lock, mem_block, size_in_bytes, alignment);
     }
 
-    void GpuMemoryAllocator::ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value)
+    void GpuMemoryAllocator::ClearStallPages(const GpuSystem::WaitFences& wait_fences)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -201,8 +204,18 @@ namespace AIHoloImager
         {
             for (auto stall_iter = page.stall_list.begin(); stall_iter != page.stall_list.end();)
             {
-                const uint64_t fence_val = stall_iter->fence_values[static_cast<uint32_t>(queue_type)];
-                if ((fence_val != 0) && (fence_val <= completed_fence_value))
+                bool completed = true;
+                for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
+                {
+                    const uint64_t fence_val = stall_iter->wait_fences->fence_values[i];
+                    if ((fence_val != 0) && (fence_val > wait_fences.fence_values[i]))
+                    {
+                        completed = false;
+                        break;
+                    }
+                }
+
+                if (completed)
                 {
                     const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
                         stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {

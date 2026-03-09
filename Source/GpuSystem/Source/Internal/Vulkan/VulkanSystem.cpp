@@ -433,21 +433,21 @@ namespace AIHoloImager
         return cmd_list;
     }
 
-    uint64_t VulkanSystem::Execute(GpuCommandList&& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences)
+    uint64_t VulkanSystem::Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences)
     {
-        const uint64_t new_fence_value = this->ExecuteOnly(VulkanImp(cmd_list), std::move(wait_fences));
+        const uint64_t new_fence_value = this->ExecuteOnly(VulkanImp(cmd_list), wait_fences);
         this->GetCommandQueue(cmd_list.Type())->free_cmd_lists.emplace_back(std::move(cmd_list));
         return new_fence_value;
     }
 
-    uint64_t VulkanSystem::ExecuteAndReset(GpuCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences)
+    uint64_t VulkanSystem::ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
     {
-        return this->ExecuteAndReset(VulkanImp(cmd_list), std::move(wait_fences));
+        return this->ExecuteAndReset(VulkanImp(cmd_list), wait_fences);
     }
 
-    uint64_t VulkanSystem::ExecuteAndReset(VulkanCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences)
+    uint64_t VulkanSystem::ExecuteAndReset(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
     {
-        const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, std::move(wait_fences));
+        const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fences);
         cmd_list.Reset(this->CurrentCommandPool(cmd_list.Type()));
         return new_fence_value;
     }
@@ -465,27 +465,17 @@ namespace AIHoloImager
         return static_cast<uint32_t>(device_props_.properties.limits.optimalBufferCopyOffsetAlignment);
     }
 
-    void VulkanSystem::CpuWait(std::span<const GpuSystem::WaitFence> wait_fences)
+    void VulkanSystem::CpuWait(const GpuSystem::WaitFences& wait_fences)
     {
-        GpuSystem::WaitFence wait_max_fences[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-        if (wait_fences.empty())
+        for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
         {
-            for (size_t i = 0; i < std::size(wait_max_fences); ++i)
-            {
-                wait_max_fences[i] = {static_cast<GpuSystem::CmdQueueType>(i), GpuSystem::MaxFenceValue};
-            }
-
-            wait_fences = wait_max_fences;
-        }
-
-        for (const auto& fence : wait_fences)
-        {
-            auto* wait_cmd_queue = this->GetCommandQueue(fence.type);
+            const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
+            auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
             if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->timeline_semaphore != VK_NULL_HANDLE))
             {
                 uint64_t wait_fence_value;
                 bool succeeded = false;
-                if (fence.value == GpuSystem::MaxFenceValue)
+                if ((wait_fences.fence_values[i] == 0) || (wait_fences.fence_values[i] == GpuSystem::MaxFenceValue))
                 {
                     wait_fence_value = wait_cmd_queue->fence_val;
 
@@ -510,7 +500,7 @@ namespace AIHoloImager
                 }
                 else
                 {
-                    wait_fence_value = fence.value;
+                    wait_fence_value = wait_fences.fence_values[i];
                     succeeded = true;
                 }
 
@@ -538,34 +528,25 @@ namespace AIHoloImager
         this->ClearStallResources();
     }
 
-    void VulkanSystem::GpuWait(GpuSystem::CmdQueueType target_queue_type, std::span<const GpuSystem::WaitFence> wait_fences)
+    void VulkanSystem::GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences)
     {
         auto* target_cmd_queue = this->GetCommandQueue(target_queue_type);
         if (target_cmd_queue != nullptr)
         {
-            GpuSystem::WaitFence wait_max_fences[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-            if (wait_fences.empty())
-            {
-                for (size_t i = 0; i < std::size(wait_max_fences); ++i)
-                {
-                    wait_max_fences[i] = {static_cast<GpuSystem::CmdQueueType>(i), GpuSystem::MaxFenceValue};
-                }
-
-                wait_fences = wait_max_fences;
-            }
-
             uint64_t wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             VkSemaphore wait_semaphores[std::size(wait_fence_values)];
             VkPipelineStageFlags wait_stages[std::size(wait_fence_values)];
             uint32_t num_waits = 0;
-            for (const auto& fence : wait_fences)
+            for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
             {
-                if ((fence.type != GpuSystem::CmdQueueType::Num) && (fence.value != 0))
+                const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
+                auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
+                if ((wait_cmd_queue != nullptr) && (wait_fences.fence_values[i] != 0))
                 {
-                    auto* wait_cmd_queue = this->GetCommandQueue(fence.type);
-                    wait_fence_values[num_waits] = fence.value == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val : fence.value;
+                    wait_fence_values[num_waits] =
+                        wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val : wait_fences.fence_values[i];
                     wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
-                    switch (fence.type)
+                    switch (queue_type)
                     {
                     case GpuSystem::CmdQueueType::Render:
                         wait_stages[num_waits] = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
@@ -578,7 +559,7 @@ namespace AIHoloImager
                         break;
                     }
 
-                    if (target_queue_type == fence.type)
+                    if (target_queue_type == queue_type)
                     {
                         target_cmd_queue->fence_val = std::max(target_cmd_queue->fence_val, wait_fence_values[num_waits]) + 1;
                     }
@@ -646,84 +627,66 @@ namespace AIHoloImager
         device_ = VK_NULL_HANDLE;
     }
 
-    void VulkanSystem::CollectFenceValues(uint64_t* fence_values)
+    void VulkanSystem::Recycle(VkBuffer buff, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
-        {
-            fence_values[i] = this->FenceValue(static_cast<GpuSystem::CmdQueueType>(i));
-        }
+        stall_resources_.emplace_back(buff, [this, buff]() { vkDestroyBuffer(device_, buff, nullptr); }, std::move(wait_fences));
     }
-
-    void VulkanSystem::Recycle(VkBuffer buff)
+    void VulkanSystem::Recycle(VkBufferView buff_view, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(buff, [this, buff]() { vkDestroyBuffer(device_, buff, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            buff_view, [this, buff_view]() { vkDestroyBufferView(device_, buff_view, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkBufferView buff_view)
+    void VulkanSystem::Recycle(VkImage image, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info =
-            stall_resources_.emplace_back(buff_view, [this, buff_view]() { vkDestroyBufferView(device_, buff_view, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(image, [this, image]() { vkDestroyImage(device_, image, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkImage image)
+    void VulkanSystem::Recycle(VkImageView image_view, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(image, [this, image]() { vkDestroyImage(device_, image, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            image_view, [this, image_view]() { vkDestroyImageView(device_, image_view, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkImageView image_view)
+    void VulkanSystem::Recycle(VkCommandPool cmd_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info =
-            stall_resources_.emplace_back(image_view, [this, image_view]() { vkDestroyImageView(device_, image_view, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            cmd_pool, [this, cmd_pool]() { vkDestroyCommandPool(device_, cmd_pool, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkCommandPool cmd_pool)
+    void VulkanSystem::Recycle(VkDescriptorPool desc_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(cmd_pool, [this, cmd_pool]() { vkDestroyCommandPool(device_, cmd_pool, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            desc_pool, [this, desc_pool]() { vkDestroyDescriptorPool(device_, desc_pool, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkDescriptorPool desc_pool)
+    void VulkanSystem::Recycle(VkDescriptorSet desc_set, VkDescriptorPool desc_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info =
-            stall_resources_.emplace_back(desc_pool, [this, desc_pool]() { vkDestroyDescriptorPool(device_, desc_pool, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            desc_set, [this, desc_set, desc_pool]() { vkFreeDescriptorSets(device_, desc_pool, 1, &desc_set); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkDescriptorSet desc_set, VkDescriptorPool desc_pool)
+    void VulkanSystem::Recycle(VkSampler sampler, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(
-            desc_set, [this, desc_set, desc_pool]() { vkFreeDescriptorSets(device_, desc_pool, 1, &desc_set); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(sampler, [this, sampler]() { vkDestroySampler(device_, sampler, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkSampler sampler)
+    void VulkanSystem::Recycle(VkPipelineLayout layout, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(sampler, [this, sampler]() { vkDestroySampler(device_, sampler, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            layout, [this, layout]() { vkDestroyPipelineLayout(device_, layout, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkPipelineLayout layout)
+    void VulkanSystem::Recycle(VkDescriptorSetLayout layout, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(layout, [this, layout]() { vkDestroyPipelineLayout(device_, layout, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            layout, [this, layout]() { vkDestroyDescriptorSetLayout(device_, layout, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkDescriptorSetLayout layout)
+    void VulkanSystem::Recycle(VkPipeline pipeline, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info =
-            stall_resources_.emplace_back(layout, [this, layout]() { vkDestroyDescriptorSetLayout(device_, layout, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            pipeline, [this, pipeline]() { vkDestroyPipeline(device_, pipeline, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkPipeline pipeline)
+    void VulkanSystem::Recycle(VkDeviceMemory memory, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(pipeline, [this, pipeline]() { vkDestroyPipeline(device_, pipeline, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(memory, [this, memory]() { vkFreeMemory(device_, memory, nullptr); }, std::move(wait_fences));
     }
-    void VulkanSystem::Recycle(VkDeviceMemory memory)
+    void VulkanSystem::Recycle(VkRenderPass render_pass, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
     {
-        auto& res_info = stall_resources_.emplace_back(memory, [this, memory]() { vkFreeMemory(device_, memory, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
-    }
-    void VulkanSystem::Recycle(VkRenderPass render_pass)
-    {
-        auto& res_info =
-            stall_resources_.emplace_back(render_pass, [this, render_pass]() { vkDestroyRenderPass(device_, render_pass, nullptr); });
-        this->CollectFenceValues(res_info.fence_values);
+        stall_resources_.emplace_back(
+            render_pass, [this, render_pass]() { vkDestroyRenderPass(device_, render_pass, nullptr); }, std::move(wait_fences));
     }
 
     void VulkanSystem::ClearStallResources()
@@ -731,15 +694,14 @@ namespace AIHoloImager
         for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
         {
             const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
-            auto* cmd_queue = this->GetCommandQueue(queue_type);
-            if (cmd_queue != nullptr)
+            const uint64_t completed_fence = this->CompletedFenceValue(queue_type);
+            if (completed_fence != 0)
             {
-                const uint64_t completed_fence = this->CompletedFenceValue(queue_type);
                 for (auto res_iter = stall_resources_.begin(); res_iter != stall_resources_.end(); ++res_iter)
                 {
-                    if (res_iter->fence_values[i] <= completed_fence)
+                    if (res_iter->wait_fences->fence_values[i] <= completed_fence)
                     {
-                        res_iter->fence_values[i] = 0;
+                        res_iter->wait_fences->fence_values[i] = 0;
                     }
                 }
             }
@@ -750,7 +712,7 @@ namespace AIHoloImager
             bool all_completed = true;
             for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
             {
-                if (iter->fence_values[i] != 0)
+                if (iter->wait_fences->fence_values[i] != 0)
                 {
                     all_completed = false;
                     break;
@@ -854,7 +816,7 @@ namespace AIHoloImager
         return *cmd_queue.cmd_pools.emplace_back(std::make_unique<GpuCommandPool>(*gpu_system_, type));
     }
 
-    uint64_t VulkanSystem::ExecuteOnly(VulkanCommandList& cmd_list, std::span<const GpuSystem::WaitFence> wait_fences)
+    uint64_t VulkanSystem::ExecuteOnly(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
     {
         auto& cmd_pool = *cmd_list.CommandPool();
         cmd_list.Close();
@@ -864,47 +826,50 @@ namespace AIHoloImager
         assert(cmd_queue != nullptr);
         VkQueue vk_cmd_queue = cmd_queue->cmd_queue;
 
-        uint64_t wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-        cmd_list.WaitForFences(wait_fence_values);
-
-        for (auto& fence : wait_fences)
-        {
-            if ((fence.type != GpuSystem::CmdQueueType::Num) && (fence.value != 0) && (fence.value != GpuSystem::MaxFenceValue))
-            {
-                auto& value = wait_fence_values[static_cast<uint32_t>(fence.type)];
-                value = std::max(value, fence.value);
-            }
-        }
+        GpuSystem::WaitFences dep_wait_fences;
+        cmd_list.WaitForFences(dep_wait_fences);
 
         uint64_t compact_wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
         VkSemaphore compact_wait_semaphores[std::size(compact_wait_fence_values)];
         VkPipelineStageFlags compact_wait_stages[std::size(compact_wait_fence_values)];
         uint32_t num_waits = 0;
-        for (size_t i = 0; i < std::size(wait_fence_values); ++i)
+        for (size_t i = 0; i < std::size(dep_wait_fences.fence_values); ++i)
         {
-            if (wait_fence_values[i] != 0)
+            const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
+            auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
+            if (wait_cmd_queue != nullptr)
             {
-                const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
-                compact_wait_fence_values[num_waits] = wait_fence_values[i];
-                compact_wait_semaphores[num_waits] = this->GetCommandQueue(queue_type)->timeline_semaphore;
-                switch (queue_type)
+                uint64_t fence_value = dep_wait_fences.fence_values[i];
+                if (wait_fences.fence_values[i] != 0)
                 {
-                case GpuSystem::CmdQueueType::Render:
-                    compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                    break;
-                case GpuSystem::CmdQueueType::Compute:
-                    compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                    break;
-                case GpuSystem::CmdQueueType::VideoEncode:
-                    compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-                    break;
+                    fence_value =
+                        std::max(fence_value, wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
+                                                                                                      : wait_fences.fence_values[i]);
                 }
+                if (fence_value != 0)
+                {
+                    compact_wait_fence_values[num_waits] = fence_value;
+                    compact_wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
+                    switch (queue_type)
+                    {
+                    case GpuSystem::CmdQueueType::Render:
+                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                        break;
+                    case GpuSystem::CmdQueueType::Compute:
+                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                        break;
+                    case GpuSystem::CmdQueueType::VideoEncode:
+                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                        break;
+                    }
 
-                ++num_waits;
+                    ++num_waits;
+                }
             }
         }
 
         const uint64_t curr_fence_value = cmd_queue->fence_val;
+        cmd_list.UpdateAccessInfo(curr_fence_value);
         ++cmd_queue->fence_val;
 
         const VkCommandBuffer cmd_buffs[] = {cmd_list.CommandBuffer()};
@@ -974,10 +939,9 @@ namespace AIHoloImager
         return std::make_unique<VulkanVertexLayout>(std::move(attribs), std::move(slot_strides));
     }
 
-    std::unique_ptr<GpuConstantBufferViewInternal> VulkanSystem::CreateConstantBufferView(
-        const GpuBuffer& buffer, uint32_t offset, uint32_t size) const
+    std::unique_ptr<GpuConstantBufferViewInternal> VulkanSystem::CreateConstantBufferView(const GpuMemoryBlock& mem_block) const
     {
-        return std::make_unique<VulkanConstantBufferView>(buffer, offset, size);
+        return std::make_unique<VulkanConstantBufferView>(mem_block);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
@@ -1144,7 +1108,7 @@ namespace AIHoloImager
         return static_cast<uint32_t>(-1);
     }
 
-    VkDescriptorSet VulkanSystem::AllocDescSet(VkDescriptorSetLayout layout)
+    VulkanRecyclableObject<VkDescriptorSet>& VulkanSystem::AllocDescSet(VkDescriptorSetLayout layout)
     {
         if (!desc_set_allocators_)
         {

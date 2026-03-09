@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <string_view>
 
 #include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
@@ -41,10 +42,15 @@ namespace AIHoloImager
             Num,
         };
 
-        struct WaitFence
+        struct WaitQueueFence
         {
             CmdQueueType type = CmdQueueType::Num;
             uint64_t value = MaxFenceValue;
+        };
+
+        struct WaitFences
+        {
+            uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)] = {};
         };
 
     public:
@@ -80,8 +86,8 @@ namespace AIHoloImager
         }
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
-        uint64_t Execute(GpuCommandList&& cmd_list, std::span<const WaitFence> wait_fences = {});
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, std::span<const WaitFence> wait_fences = {});
+        uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = {});
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = {});
 
         uint32_t ConstantDataAlignment() const noexcept;
         uint32_t StructuredDataAlignment() const noexcept;
@@ -95,8 +101,8 @@ namespace AIHoloImager
         void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void CpuWait(std::span<const WaitFence> wait_fences = {});
-        void GpuWait(CmdQueueType target_queue_type, std::span<const WaitFence> wait_fences = {});
+        void CpuWait(const WaitFences& wait_fences = {});
+        void GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences = {});
         uint64_t FenceValue(CmdQueueType type) const noexcept;
 
         void HandleDeviceLost();
@@ -112,4 +118,6 @@ namespace AIHoloImager
     {
         return (a + b - 1) / b;
     }
+
+    GpuSystem::WaitFences ToWaitFences(std::span<const GpuSystem::WaitQueueFence> wait_queue_fences);
 } // namespace AIHoloImager

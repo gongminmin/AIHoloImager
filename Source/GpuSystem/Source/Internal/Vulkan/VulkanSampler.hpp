@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -31,6 +31,8 @@ namespace AIHoloImager
 
         const std::shared_ptr<VulkanRecyclableObject<VkSampler>>& Sampler() const noexcept;
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept;
+
     private:
         std::shared_ptr<VulkanRecyclableObject<VkSampler>> sampler_;
     };
@@ -51,6 +53,8 @@ namespace AIHoloImager
 
         const VkSampler& Sampler() const noexcept;
         VkWriteDescriptorSet WriteDescSet() const noexcept;
+
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept;
 
     private:
         VulkanRecyclableObject<VkSampler> sampler_;

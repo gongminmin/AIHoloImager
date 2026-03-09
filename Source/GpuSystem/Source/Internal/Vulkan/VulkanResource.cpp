@@ -35,6 +35,11 @@ namespace AIHoloImager
         this->AccessedBy(cmd_list, target_state);
     }
 
+    const std::shared_ptr<GpuSystem::WaitFences>& VulkanResource::StalledWaitFences() const noexcept
+    {
+        return memory_.StalledWaitFences();
+    }
+
     void VulkanResource::LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
     {
         type = written_by_queue_type_;
@@ -49,6 +54,8 @@ namespace AIHoloImager
 
     void VulkanResource::AccessedBy(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
+        cmd_list.RegisterAccessedObject(this->StalledWaitFences());
+
         switch (target_state)
         {
         case GpuResourceState::Common:

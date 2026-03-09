@@ -166,7 +166,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
+                gpu_system_.GpuWait(queue_type, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{queue_type, fence_val}})));
 
                 if (heap != GpuHeap::Default)
                 {
@@ -243,7 +243,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
+                gpu_system_.GpuWait(queue_type, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{queue_type, fence_val}})));
             }
             else
             {
@@ -287,7 +287,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
+                gpu_system_.GpuWait(queue_type, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{queue_type, fence_val}})));
             }
             else
             {
@@ -376,7 +376,7 @@ namespace AIHoloImager
 
                 ++fence_val;
                 this->SignalExternalSemaphore(queue_type, fence_val);
-                gpu_system_.GpuWait(queue_type, std::span<const GpuSystem::WaitFence>({{queue_type, fence_val}}));
+                gpu_system_.GpuWait(queue_type, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{queue_type, fence_val}})));
             }
             else
             {

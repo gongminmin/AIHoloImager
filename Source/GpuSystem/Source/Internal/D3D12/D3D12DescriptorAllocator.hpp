@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Base/Noncopyable.hpp"
+#include "Gpu/GpuResource.hpp"
 
 #include "D3D12DescriptorHeap.hpp"
 
@@ -52,7 +53,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(D3D12DescriptorBlock)
 
     public:
-        D3D12DescriptorBlock() noexcept;
+        D3D12DescriptorBlock();
         ~D3D12DescriptorBlock() noexcept;
 
         D3D12DescriptorBlock(D3D12DescriptorBlock&& other) noexcept;
@@ -91,12 +92,19 @@ namespace AIHoloImager
             return gpu_handle_;
         }
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept
+        {
+            return stalled_wait_fences_;
+        }
+
     private:
         const D3D12DescriptorHeap* heap_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle_{};
+
+        std::shared_ptr<GpuSystem::WaitFences> stalled_wait_fences_;
     };
 
     class D3D12DescriptorAllocator final
@@ -116,7 +124,7 @@ namespace AIHoloImager
         void Deallocate(D3D12DescriptorBlock&& desc_block);
         void Reallocate(D3D12DescriptorBlock& desc_block, uint32_t size);
 
-        void ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value);
+        void ClearStallPages(const GpuSystem::WaitFences& wait_fences);
         void Clear();
 
     private:
@@ -146,8 +154,8 @@ namespace AIHoloImager
 #pragma pack(push, 1)
             struct StallRange
             {
+                std::shared_ptr<GpuSystem::WaitFences> wait_fences;
                 FreeRange free_range;
-                uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             };
 #pragma pack(pop)
             std::vector<StallRange> stall_list;

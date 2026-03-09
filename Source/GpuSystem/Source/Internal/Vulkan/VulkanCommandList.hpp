@@ -84,7 +84,10 @@ namespace AIHoloImager
         }
 
         void CheckWrittenBy(const VulkanResource& resource);
-        void WaitForFences(uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)]) const;
+        void WaitForFences(GpuSystem::WaitFences& wait_fences) const;
+
+        void RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const;
+        void UpdateAccessInfo(uint64_t fence_value);
 
     private:
         void Compute(
@@ -100,7 +103,8 @@ namespace AIHoloImager
         VkCommandBuffer cmd_buff_;
         bool closed_ = false;
 
-        mutable uint64_t wait_for_fence_values_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
+        mutable GpuSystem::WaitFences wait_fences_;
+        mutable std::vector<std::shared_ptr<GpuSystem::WaitFences>> accessed_objects_;
     };
 
     VULKAN_DEFINE_IMP(CommandList)

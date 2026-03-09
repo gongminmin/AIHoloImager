@@ -101,11 +101,18 @@ namespace AIHoloImager
             return std::span<const T>(reinterpret_cast<const T*>(cpu_addr_), size_ / sizeof(const T));
         }
 
+        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept
+        {
+            return stalled_wait_fences_;
+        }
+
     private:
         const GpuBuffer* buffer_ = nullptr;
         uint32_t offset_ = 0;
         uint32_t size_ = 0;
         void* cpu_addr_ = nullptr;
+
+        std::shared_ptr<GpuSystem::WaitFences> stalled_wait_fences_;
     };
 
     class GpuMemoryAllocator final
@@ -123,7 +130,7 @@ namespace AIHoloImager
         void Deallocate(GpuMemoryBlock&& mem_block);
         void Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value);
+        void ClearStallPages(const GpuSystem::WaitFences& wait_fences);
         void Clear();
 
     private:
@@ -152,8 +159,8 @@ namespace AIHoloImager
 #pragma pack(push, 1)
             struct StallRange
             {
+                std::shared_ptr<GpuSystem::WaitFences> wait_fences;
                 FreeRange free_range;
-                uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             };
 #pragma pack(pop)
             std::vector<StallRange> stall_list;

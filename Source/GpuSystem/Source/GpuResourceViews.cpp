@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuResourceViews.hpp"
@@ -21,11 +21,7 @@ namespace AIHoloImager
 
     GpuConstantBufferView::GpuConstantBufferView() noexcept = default;
     GpuConstantBufferView::GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer)
-        : GpuConstantBufferView(gpu_system, *cbuffer.MemBlock().Buffer(), cbuffer.MemBlock().Offset(), cbuffer.MemBlock().Size())
-    {
-    }
-    GpuConstantBufferView::GpuConstantBufferView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t offset, uint32_t size)
-        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateConstantBufferView(buffer, offset, size).release()))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateConstantBufferView(cbuffer.MemBlock()).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuConstantBufferViewInternal));
     }

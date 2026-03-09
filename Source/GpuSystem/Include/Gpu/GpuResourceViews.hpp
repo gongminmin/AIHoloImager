@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -31,7 +31,6 @@ namespace AIHoloImager
     public:
         GpuConstantBufferView() noexcept;
         GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer);
-        GpuConstantBufferView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t offset, uint32_t size);
         ~GpuConstantBufferView();
 
         GpuConstantBufferView(GpuConstantBufferView&& other) noexcept;

@@ -55,7 +55,9 @@ namespace AIHoloImager
     D3D12DescriptorPage& D3D12DescriptorPage::operator=(D3D12DescriptorPage&& other) noexcept = default;
 
 
-    D3D12DescriptorBlock::D3D12DescriptorBlock() noexcept = default;
+    D3D12DescriptorBlock::D3D12DescriptorBlock() : stalled_wait_fences_(std::make_shared<GpuSystem::WaitFences>())
+    {
+    }
     D3D12DescriptorBlock::~D3D12DescriptorBlock() noexcept = default;
 
     D3D12DescriptorBlock::D3D12DescriptorBlock(D3D12DescriptorBlock&& other) noexcept = default;
@@ -68,6 +70,8 @@ namespace AIHoloImager
         size_ = 0;
         cpu_handle_ = {};
         gpu_handle_ = {};
+
+        stalled_wait_fences_ = std::make_shared<GpuSystem::WaitFences>();
     }
 
     void D3D12DescriptorBlock::Reset(const D3D12DescriptorPage& page, uint32_t offset, uint32_t size) noexcept
@@ -78,6 +82,8 @@ namespace AIHoloImager
 
         const uint32_t desc_size = DescriptorSize(heap_->Type());
         std::tie(cpu_handle_, gpu_handle_) = OffsetHandle(page.CpuHandleStart(), page.GpuHandleStart(), offset, desc_size);
+
+        stalled_wait_fences_ = std::make_shared<GpuSystem::WaitFences>();
     }
 
 
@@ -177,10 +183,7 @@ namespace AIHoloImager
                     stall_range.free_range = {
                         static_cast<uint16_t>(desc_block.Offset()), static_cast<uint16_t>(desc_block.Offset() + desc_block.Size())};
 
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(GpuSystem::CmdQueueType::Num); ++i)
-                    {
-                        stall_range.fence_values[i] = gpu_system_->FenceValue(static_cast<GpuSystem::CmdQueueType>(i));
-                    }
+                    stall_range.wait_fences = desc_block.StalledWaitFences();
 
                     page.stall_list.emplace_back(std::move(stall_range));
                     return;
@@ -202,7 +205,7 @@ namespace AIHoloImager
         this->Allocate(lock, desc_block, size);
     }
 
-    void D3D12DescriptorAllocator::ClearStallPages(GpuSystem::CmdQueueType queue_type, uint64_t completed_fence_value)
+    void D3D12DescriptorAllocator::ClearStallPages(const GpuSystem::WaitFences& wait_fences)
     {
         std::lock_guard<std::mutex> lock(allocation_mutex_);
 
@@ -210,8 +213,18 @@ namespace AIHoloImager
         {
             for (auto stall_iter = page.stall_list.begin(); stall_iter != page.stall_list.end();)
             {
-                const uint64_t fence_val = stall_iter->fence_values[static_cast<uint32_t>(queue_type)];
-                if ((fence_val != 0) && (fence_val <= completed_fence_value))
+                bool completed = true;
+                for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
+                {
+                    const uint64_t fence_val = stall_iter->wait_fences->fence_values[i];
+                    if ((fence_val != 0) && (fence_val > wait_fences.fence_values[i]))
+                    {
+                        completed = false;
+                        break;
+                    }
+                }
+
+                if (completed)
                 {
                     const auto free_iter = std::lower_bound(page.free_list.begin(), page.free_list.end(),
                         stall_iter->free_range.first_offset, [](const PageInfo::FreeRange& free_range, uint32_t first_offset) {

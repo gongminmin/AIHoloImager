@@ -16,11 +16,11 @@ namespace AIHoloImager
 {
     D3D12_IMP_IMP(ConstantBufferView)
 
-    D3D12ConstantBufferView::D3D12ConstantBufferView(const GpuBuffer& buffer, uint32_t offset, [[maybe_unused]] uint32_t size)
-        : resource_(&buffer)
+    D3D12ConstantBufferView::D3D12ConstantBufferView(const GpuMemoryBlock& mem_block)
+        : resource_(mem_block.Buffer()), mem_block_(&mem_block)
     {
-        auto* d3d12_buff = D3D12Imp(buffer).Resource();
-        gpu_virtual_addr_ = d3d12_buff->GetGPUVirtualAddress() + offset;
+        auto* d3d12_buff = D3D12Imp(*mem_block.Buffer()).Resource();
+        gpu_virtual_addr_ = d3d12_buff->GetGPUVirtualAddress() + mem_block.Offset();
     }
 
     D3D12ConstantBufferView::~D3D12ConstantBufferView() = default;
@@ -49,6 +49,7 @@ namespace AIHoloImager
 
     void D3D12ConstantBufferView::Transition(D3D12CommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(mem_block_->StalledWaitFences());
         D3D12Imp(*resource_).Transition(cmd_list, GpuResourceState::Common);
     }
 
@@ -253,6 +254,7 @@ namespace AIHoloImager
 
     void D3D12ShaderResourceView::Transition(D3D12CommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(desc_block_.StalledWaitFences());
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
@@ -330,6 +332,7 @@ namespace AIHoloImager
 
     void D3D12RenderTargetView::Transition(D3D12CommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(desc_block_.StalledWaitFences());
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::ColorWrite);
     }
 
@@ -407,6 +410,7 @@ namespace AIHoloImager
 
     void D3D12DepthStencilView::Transition(D3D12CommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(desc_block_.StalledWaitFences());
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::DepthWrite);
     }
 
@@ -580,6 +584,7 @@ namespace AIHoloImager
 
     void D3D12UnorderedAccessView::Transition(D3D12CommandList& cmd_list) const
     {
+        cmd_list.RegisterAccessedObject(desc_block_.StalledWaitFences());
         D3D12Imp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::UnorderedAccess);
     }
 

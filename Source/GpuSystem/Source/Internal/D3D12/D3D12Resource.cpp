@@ -76,6 +76,11 @@ namespace AIHoloImager
         this->AccessedBy(cmd_list, target_state);
     }
 
+    const std::shared_ptr<GpuSystem::WaitFences>& D3D12Resource::StalledWaitFences() const noexcept
+    {
+        return resource_.StalledWaitFences();
+    }
+
     void D3D12Resource::LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
     {
         type = written_by_queue_type_;
@@ -90,6 +95,8 @@ namespace AIHoloImager
 
     void D3D12Resource::AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
+        cmd_list.RegisterAccessedObject(this->StalledWaitFences());
+
         switch (target_state)
         {
         case GpuResourceState::Common:

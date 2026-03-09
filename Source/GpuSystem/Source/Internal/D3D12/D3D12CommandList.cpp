@@ -68,8 +68,6 @@ namespace AIHoloImager
         }
 
         d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
-
-        std::fill(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), 0);
     }
 
     D3D12CommandList::~D3D12CommandList()
@@ -193,6 +191,8 @@ namespace AIHoloImager
         D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
         d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
 
+        this->RegisterAccessedObject(uav_desc_block.StalledWaitFences());
+
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
@@ -224,6 +224,8 @@ namespace AIHoloImager
 
         D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
         d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
+
+        this->RegisterAccessedObject(uav_desc_block.StalledWaitFences());
 
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
@@ -348,6 +350,7 @@ namespace AIHoloImager
         if (num_srv_uav_descs > 0)
         {
             srv_uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
+            this->RegisterAccessedObject(srv_uav_desc_block.StalledWaitFences());
             heaps[num_heaps] = srv_uav_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
@@ -355,6 +358,7 @@ namespace AIHoloImager
         if (num_sampler_descs > 0)
         {
             sampler_desc_block = d3d12_system.AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
+            this->RegisterAccessedObject(sampler_desc_block.StalledWaitFences());
             heaps[num_heaps] = sampler_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
@@ -475,7 +479,7 @@ namespace AIHoloImager
                                 {
                                     auto sampler_cpu_handle =
                                         OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                    D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                                    D3D12Imp(*sampler).CopyTo(*this, sampler_cpu_handle);
                                 }
                                 found = true;
                                 break;
@@ -661,6 +665,7 @@ namespace AIHoloImager
         if (num_srv_uav_descs > 0)
         {
             srv_uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(num_srv_uav_descs);
+            this->RegisterAccessedObject(srv_uav_desc_block.StalledWaitFences());
             heaps[num_heaps] = srv_uav_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
@@ -668,6 +673,7 @@ namespace AIHoloImager
         if (num_sampler_descs > 0)
         {
             sampler_desc_block = d3d12_system.AllocShaderVisibleSamplerDescBlock(num_sampler_descs);
+            this->RegisterAccessedObject(sampler_desc_block.StalledWaitFences());
             heaps[num_heaps] = sampler_desc_block.Heap()->DescriptorHeap();
             ++num_heaps;
         }
@@ -780,7 +786,7 @@ namespace AIHoloImager
                             {
                                 auto sampler_cpu_handle =
                                     OffsetHandle(sampler_desc_block.CpuHandle(), sampler_heap_base, sampler_desc_size);
-                                D3D12Imp(*sampler).CopyTo(sampler_cpu_handle);
+                                D3D12Imp(*sampler).CopyTo(*this, sampler_cpu_handle);
                             }
                             found = true;
                             break;
@@ -923,6 +929,7 @@ namespace AIHoloImager
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
             auto upload_mem_block = gpu_system_->AllocUploadMemBlock(dest.Size(), gpu_system_->StructuredDataAlignment());
+            this->RegisterAccessedObject(upload_mem_block.StalledWaitFences());
 
             void* buff_data = upload_mem_block.CpuSpan<std::byte>().data();
             copy_func(buff_data);
@@ -964,6 +971,7 @@ namespace AIHoloImager
         assert(layout.Footprint.RowPitch >= width * FormatSize(dest.Format()));
 
         auto upload_mem_block = gpu_system_->AllocUploadMemBlock(static_cast<uint32_t>(required_size), gpu_system_->TextureDataAlignment());
+        this->RegisterAccessedObject(upload_mem_block.StalledWaitFences());
 
         void* tex_data = upload_mem_block.CpuSpan<std::byte>().data();
         copy_func(tex_data, layout.Footprint.RowPitch, layout.Footprint.RowPitch * layout.Footprint.Height);
@@ -1015,6 +1023,7 @@ namespace AIHoloImager
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
             auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(src.Size(), gpu_system_->StructuredDataAlignment());
+            this->RegisterAccessedObject(read_back_mem_block.StalledWaitFences());
 
             const auto& d3d12_src = D3D12Imp(src);
             d3d12_src.Transition(*this, GpuResourceState::CopySrc);
@@ -1022,11 +1031,12 @@ namespace AIHoloImager
             d3d12_cmd_list->CopyBufferRegion(
                 D3D12Imp(*read_back_mem_block.Buffer()).Resource(), read_back_mem_block.Offset(), d3d12_src.Resource(), 0, src.Size());
             const uint64_t fence_val =
-                D3D12Imp(*gpu_system_).ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
+                D3D12Imp(*gpu_system_)
+                    .ExecuteAndReset(*this, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, GpuSystem::MaxFenceValue}})));
 
             return std::async(
                 std::launch::deferred, [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), copy_func]() mutable {
-                    gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
+                    gpu_system_->CpuWait(ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, fence_val}})));
 
                     const void* buff_data = read_back_mem_block.CpuSpan<std::byte>().data();
                     copy_func(buff_data);
@@ -1065,6 +1075,7 @@ namespace AIHoloImager
 
         auto read_back_mem_block =
             gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(required_size), gpu_system_->TextureDataAlignment());
+        this->RegisterAccessedObject(read_back_mem_block.StalledWaitFences());
 
         const D3D12_TEXTURE_COPY_LOCATION src_loc{
             .pResource = d3d12_src_texture,
@@ -1094,13 +1105,13 @@ namespace AIHoloImager
         d3d12_src.Transition(*this, GpuResourceState::CopySrc);
 
         d3d12_cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &src_box);
-        const uint64_t fence_val =
-            d3d12_system.ExecuteAndReset(*this, std::span<const GpuSystem::WaitFence>({{type_, GpuSystem::MaxFenceValue}}));
+        const uint64_t fence_val = d3d12_system.ExecuteAndReset(
+            *this, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, GpuSystem::MaxFenceValue}})));
 
         return std::async(std::launch::deferred,
             [this, fence_val, read_back_mem_block = std::move(read_back_mem_block), row_pitch = layout.Footprint.RowPitch,
                 slice_pitch = layout.Footprint.RowPitch * layout.Footprint.Height, copy_func]() mutable {
-                gpu_system_->CpuWait(std::span<const GpuSystem::WaitFence>({{type_, fence_val}}));
+                gpu_system_->CpuWait(ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, fence_val}})));
 
                 const void* tex_data = read_back_mem_block.CpuSpan<std::byte>().data();
                 copy_func(tex_data, row_pitch, slice_pitch);
@@ -1152,7 +1163,7 @@ namespace AIHoloImager
         d3d12_cmd_pool.RegisterAllocatedCommandList(cmd_list_.Get());
         closed_ = false;
 
-        std::fill(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), 0);
+        wait_fences_ = {};
     }
 
     void D3D12CommandList::CheckWrittenBy(const D3D12Resource& resource)
@@ -1162,13 +1173,48 @@ namespace AIHoloImager
         resource.LastWrittenBy(lw_type, lw_fence_value);
         if ((lw_type != GpuSystem::CmdQueueType::Num) && (lw_type != type_))
         {
-            auto& wait_for = wait_for_fence_values_[static_cast<size_t>(lw_type)];
+            auto& wait_for = wait_fences_.fence_values[static_cast<size_t>(lw_type)];
             wait_for = std::max(lw_fence_value, wait_for);
         }
     }
 
-    void D3D12CommandList::WaitForFences(uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)]) const
+    void D3D12CommandList::WaitForFences(GpuSystem::WaitFences& wait_fences) const
     {
-        std::copy(std::begin(wait_for_fence_values_), std::end(wait_for_fence_values_), fence_values);
+        wait_fences = wait_fences_;
+    }
+
+    void D3D12CommandList::RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const
+    {
+        bool found = false;
+        for (auto& existing_wait_fences : accessed_objects_)
+        {
+            if (existing_wait_fences == wait_fences)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            wait_fences->fence_values[static_cast<size_t>(type_)] = GpuSystem::MaxFenceValue;
+            accessed_objects_.emplace_back(std::move(wait_fences));
+        }
+    }
+
+    void D3D12CommandList::UpdateAccessInfo(uint64_t fence_value)
+    {
+        for (auto& wait_fences : accessed_objects_)
+        {
+            auto& curr_fence_value = wait_fences->fence_values[static_cast<uint32_t>(type_)];
+            if (curr_fence_value == GpuSystem::MaxFenceValue)
+            {
+                curr_fence_value = fence_value;
+            }
+            else
+            {
+                curr_fence_value = std::max(curr_fence_value, fence_value);
+            }
+        }
     }
 } // namespace AIHoloImager
