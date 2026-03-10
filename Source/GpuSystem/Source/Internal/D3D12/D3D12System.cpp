@@ -293,7 +293,7 @@ namespace AIHoloImager
 
     D3D12System::~D3D12System()
     {
-        this->CpuWait({});
+        this->CpuWait(GpuSystem::WaitFences::Forever());
 
         rtv_desc_allocator_.Clear();
         shader_visible_sampler_desc_allocator_.Clear();
@@ -423,26 +423,11 @@ namespace AIHoloImager
         {
             const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
             auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
-            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_event.get() != INVALID_HANDLE_VALUE))
+            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0) && (wait_fences.fence_values[i] != 0))
             {
-                uint64_t wait_fence_value;
-                bool succeeded = false;
-                if ((wait_fences.fence_values[i] == 0) || (wait_fences.fence_values[i] == GpuSystem::MaxFenceValue))
-                {
-                    wait_fence_value = wait_cmd_queue->fence_val;
-                    if (SUCCEEDED(wait_cmd_queue->cmd_queue->Signal(wait_cmd_queue->fence.Get(), wait_cmd_queue->fence_val)))
-                    {
-                        succeeded = true;
-                        ++wait_cmd_queue->fence_val;
-                    }
-                }
-                else
-                {
-                    wait_fence_value = wait_fences.fence_values[i];
-                    succeeded = true;
-                }
-
-                if (succeeded && (wait_cmd_queue->fence->GetCompletedValue() < wait_fence_value))
+                const uint64_t wait_fence_value =
+                    wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1 : wait_fences.fence_values[i];
+                if (wait_cmd_queue->fence->GetCompletedValue() < wait_fence_value)
                 {
                     if (SUCCEEDED(wait_cmd_queue->fence->SetEventOnCompletion(wait_fence_value, wait_cmd_queue->fence_event.get())))
                     {
@@ -464,10 +449,11 @@ namespace AIHoloImager
             {
                 const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
                 auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
-                if ((wait_cmd_queue != nullptr) && (wait_fences.fence_values[i] != 0))
+                if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0) && (wait_fences.fence_values[i] != 0))
                 {
-                    const uint64_t wait_fence_value =
-                        wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val : wait_fences.fence_values[i];
+                    const uint64_t wait_fence_value = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue
+                                                          ? wait_cmd_queue->fence_val - 1
+                                                          : wait_fences.fence_values[i];
                     target_cmd_queue->cmd_queue->Wait(wait_cmd_queue->fence.Get(), wait_fence_value);
                     if (target_queue_type == queue_type)
                     {
@@ -667,7 +653,7 @@ namespace AIHoloImager
         for (size_t i = 0; i < std::size(dep_wait_fences.fence_values); ++i)
         {
             auto* wait_cmd_queue = this->GetCommandQueue(static_cast<GpuSystem::CmdQueueType>(i));
-            if (wait_cmd_queue != nullptr)
+            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0))
             {
                 uint64_t fence_value = dep_wait_fences.fence_values[i];
                 if (wait_fences.fence_values[i] != 0)

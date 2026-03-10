@@ -52,6 +52,9 @@ namespace AIHoloImager
         struct WaitFences
         {
             uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)] = {};
+
+            static WaitFences Forever();
+            static WaitFences Ignore();
         };
 
     public:
@@ -87,8 +90,8 @@ namespace AIHoloImager
         }
 
         [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
-        uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = {});
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = {});
+        uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
 
         uint32_t ConstantDataAlignment() const noexcept;
         uint32_t StructuredDataAlignment() const noexcept;
@@ -102,8 +105,8 @@ namespace AIHoloImager
         void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
         void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void CpuWait(const WaitFences& wait_fences = {});
-        void GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences = {});
+        void CpuWait(const WaitFences& wait_fences = WaitFences::Forever());
+        void GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences = WaitFences::Forever());
         uint64_t FenceValue(CmdQueueType type) const noexcept;
 
         void HandleDeviceLost();

@@ -282,19 +282,7 @@ namespace AIHoloImager
     void GpuSystem::CpuWait(const WaitFences& wait_fences)
     {
         assert(impl_);
-        WaitFences wait_max_fences;
-        for (size_t i = 0; i < std::size(wait_max_fences.fence_values); ++i)
-        {
-            if (wait_fences.fence_values[i] == 0)
-            {
-                wait_max_fences.fence_values[i] = MaxFenceValue;
-            }
-            else
-            {
-                wait_max_fences.fence_values[i] = wait_fences.fence_values[i];
-            }
-        }
-        impl_->Internal().CpuWait(impl_->OverrideWaitFence(wait_max_fences));
+        impl_->Internal().CpuWait(impl_->OverrideWaitFence(wait_fences));
     }
 
     void GpuSystem::GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences)
@@ -330,6 +318,22 @@ namespace AIHoloImager
     const GpuSystemInternal& GpuSystem::Internal() const noexcept
     {
         return const_cast<GpuSystem&>(*this).Internal();
+    }
+
+    GpuSystem::WaitFences GpuSystem::WaitFences::Forever()
+    {
+        GpuSystem::WaitFences ret;
+        for (size_t i = 0; i < std::size(ret.fence_values); ++i)
+        {
+            ret.fence_values[i] = MaxFenceValue;
+        }
+        return ret;
+    }
+
+    GpuSystem::WaitFences GpuSystem::WaitFences::Ignore()
+    {
+        GpuSystem::WaitFences ret{};
+        return ret;
     }
 
     GpuSystem::WaitFences ToWaitFences(std::span<const GpuSystem::WaitQueueFence> wait_queue_fences)

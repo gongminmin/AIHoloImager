@@ -328,7 +328,7 @@ namespace AIHoloImager
 
     VulkanSystem::~VulkanSystem()
     {
-        this->CpuWait({});
+        this->CpuWait(GpuSystem::WaitFences::Forever());
 
         desc_set_allocators_ = VulkanDescriptorSetAllocator();
 
@@ -477,55 +477,23 @@ namespace AIHoloImager
         {
             const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
             auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
-            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->timeline_semaphore != VK_NULL_HANDLE))
+            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0) && (wait_fences.fence_values[i] != 0))
             {
-                uint64_t wait_fence_value;
-                bool succeeded = false;
-                if ((wait_fences.fence_values[i] == 0) || (wait_fences.fence_values[i] == GpuSystem::MaxFenceValue))
+                const uint64_t wait_fence_value =
+                    wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1 : wait_fences.fence_values[i];
+                uint64_t completed_value;
+                if (vkGetSemaphoreCounterValue(device_, wait_cmd_queue->timeline_semaphore, &completed_value) == VK_SUCCESS)
                 {
-                    wait_fence_value = wait_cmd_queue->fence_val;
-
-                    const VkTimelineSemaphoreSubmitInfo timeline_info{
-                        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-                        .signalSemaphoreValueCount = 1,
-                        .pSignalSemaphoreValues = &wait_cmd_queue->fence_val,
-                    };
-
-                    const VkSubmitInfo submit_info{
-                        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                        .pNext = &timeline_info,
-                        .signalSemaphoreCount = 1,
-                        .pSignalSemaphores = &wait_cmd_queue->timeline_semaphore,
-                    };
-
-                    if (vkQueueSubmit(wait_cmd_queue->cmd_queue, 1, &submit_info, VK_NULL_HANDLE) == VK_SUCCESS)
+                    if (completed_value < wait_fence_value)
                     {
-                        succeeded = true;
-                        ++wait_cmd_queue->fence_val;
-                    }
-                }
-                else
-                {
-                    wait_fence_value = wait_fences.fence_values[i];
-                    succeeded = true;
-                }
-
-                if (succeeded)
-                {
-                    uint64_t completed_value;
-                    if (vkGetSemaphoreCounterValue(device_, wait_cmd_queue->timeline_semaphore, &completed_value) == VK_SUCCESS)
-                    {
-                        if (completed_value < wait_fence_value)
-                        {
-                            const VkSemaphoreWaitInfo wait_info{
-                                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-                                .flags = 0,
-                                .semaphoreCount = 1,
-                                .pSemaphores = &wait_cmd_queue->timeline_semaphore,
-                                .pValues = &wait_fence_value,
-                            };
-                            vkWaitSemaphores(device_, &wait_info, ~0ULL);
-                        }
+                        const VkSemaphoreWaitInfo wait_info{
+                            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+                            .flags = 0,
+                            .semaphoreCount = 1,
+                            .pSemaphores = &wait_cmd_queue->timeline_semaphore,
+                            .pValues = &wait_fence_value,
+                        };
+                        vkWaitSemaphores(device_, &wait_info, ~0ULL);
                     }
                 }
             }
@@ -547,10 +515,10 @@ namespace AIHoloImager
             {
                 const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
                 auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
-                if ((wait_cmd_queue != nullptr) && (wait_fences.fence_values[i] != 0))
+                if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0) && (wait_fences.fence_values[i] != 0))
                 {
-                    wait_fence_values[num_waits] =
-                        wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val : wait_fences.fence_values[i];
+                    wait_fence_values[num_waits] = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
+                                                                                                           : wait_fences.fence_values[i];
                     wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
                     switch (queue_type)
                     {
@@ -846,7 +814,7 @@ namespace AIHoloImager
         {
             const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
             auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
-            if (wait_cmd_queue != nullptr)
+            if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0))
             {
                 uint64_t fence_value = dep_wait_fences.fence_values[i];
                 if (wait_fences.fence_values[i] != 0)
