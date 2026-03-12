@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
@@ -158,6 +158,7 @@ class DiffOptimizer:
         vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
         scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, viewports, cropped_roi, cropped_resolution)
+        DeviceSync(self.device)
         return (TensorToBytes(scale), TensorToBytes(rotation), TensorToBytes(translation))
 
     def DownsampleImage(self, img):
@@ -352,6 +353,7 @@ class DiffOptimizer:
 
         texture = self.FitTexture(texture, mask_tex, mip_levels, vtx_positions, vtx_uv, indices, crop_images, mvp_mtxs, viewports, cropped_roi, cropped_resolution)
         texture = (texture * 255.0).clamp(0, 255).to(torch.uint8)
+        DeviceSync(self.device)
         return texture
 
     def Dilate(self, image, mask, times):

@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from torch.nn.utils import skip_init
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
 def Round32(x):
@@ -174,6 +174,8 @@ class Delighter:
 
         alpha_channel = torch.full((result_image.shape[0], result_image.shape[1], 1), 255, dtype = result_image.dtype, device = self.device)
         result_image = torch.cat((result_image, alpha_channel), -1)
+
+        DeviceSync(self.device)
         return result_image
 
     def LoadModels(self, paths):

@@ -56,6 +56,12 @@ def PurgeTorchCache():
     if (torch_device != None) and hasattr(torch_device, "empty_cache"):
         torch_device.empty_cache()
 
+def DeviceSync(device: torch.device):
+    global compute_device_name
+    torch_device = getattr(torch, compute_device_name, None)
+    if (torch_device != None) and hasattr(torch_device, "synchronize"):
+        torch_device.synchronize(device)
+
 def TensorFromBytes(buffer : bytes, dtype : torch.dtype, count : int, device : Optional[torch.device] = None) -> torch.Tensor:
     import warnings
     with warnings.catch_warnings():

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
@@ -73,6 +73,8 @@ class MeshGenerator:
             indices.append(start_offset + i * (3 + 3) + 2)
         indices = torch.tensor(indices, device = self.device)
         self.color_features = torch.index_select(sparse_volume.feats, -1, indices)
+
+        DeviceSync(self.device)
 
     def Resolution(self):
         return self.resolution

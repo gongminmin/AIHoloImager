@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from LightGlue import SuperPoint
 
 class Extractor:
@@ -33,6 +33,7 @@ class Extractor:
         scale = torch.tensor((0.299, 0.587, 0.114), device = self.device, dtype = image.dtype).view(1, 3, 1, 1)
         gray_image = (image * scale).sum(1, keepdim = True)
 
+        DeviceSync(self.device)
         return self.extractor.Extract(gray_image)
 
     def ExportFeatures(self, features: dict) -> tuple:

@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from torch.nn.utils import skip_init
 
-from PythonSystem import ComputeDevice, GeneralDevice, PurgeTorchCache
+from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache
 from U2Net import U2Net, U2NetSmall
 
 class MaskGenerator:
@@ -42,4 +42,6 @@ class MaskGenerator:
             pred = self.u2net_small(norm_img)
 
         pred = pred.reshape(height, width, 1)
+
+        DeviceSync(self.device)
         return pred

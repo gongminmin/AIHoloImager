@@ -626,6 +626,21 @@ namespace AIHoloImager
             void* buff_data = upload_mem_block.CpuSpan<std::byte>().data();
             copy_func(buff_data);
 
+            VkBuffer vulkan_src_buff = VulkanImp(*upload_mem_block.Buffer()).Buffer();
+
+            const VkBufferMemoryBarrier barrier{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = vulkan_src_buff,
+                .offset = upload_mem_block.Offset(),
+                .size = upload_mem_block.Size(),
+            };
+            vkCmdPipelineBarrier(
+                cmd_buff_, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+
             vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
 
             const VkBufferCopy2 copy_region{
@@ -636,7 +651,7 @@ namespace AIHoloImager
             };
             const VkCopyBufferInfo2 copy_info{
                 .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-                .srcBuffer = VulkanImp(*upload_mem_block.Buffer()).Buffer(),
+                .srcBuffer = vulkan_src_buff,
                 .dstBuffer = vulkan_dst.Buffer(),
                 .regionCount = 1,
                 .pRegions = &copy_region,
@@ -678,6 +693,18 @@ namespace AIHoloImager
         void* tex_data = upload_mem_block.CpuSpan<std::byte>().data();
         const uint32_t row_pitch = dest.Width(mip) * FormatSize(dest.Format());
         copy_func(tex_data, row_pitch, row_pitch * dest.Height(mip));
+
+        const VkBufferMemoryBarrier barrier{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_HOST_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = vulkan_src_buffer,
+            .offset = upload_mem_block.Offset(),
+            .size = upload_mem_block.Size(),
+        };
+        vkCmdPipelineBarrier(cmd_buff_, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
 
@@ -747,6 +774,21 @@ namespace AIHoloImager
                 .pRegions = &copy_region,
             };
             vkCmdCopyBuffer2(cmd_buff_, &copy_info);
+
+            VkBuffer vulkan_read_back_buffer = VulkanImp(*read_back_mem_block.Buffer()).Buffer();
+
+            const VkBufferMemoryBarrier barrier{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = vulkan_read_back_buffer,
+                .offset = read_back_mem_block.Offset(),
+                .size = read_back_mem_block.Size(),
+            };
+            vkCmdPipelineBarrier(
+                cmd_buff_, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 
             const uint64_t fence_val =
                 VulkanImp(*gpu_system_)
@@ -826,6 +868,20 @@ namespace AIHoloImager
             .pRegions = &region,
         };
         vkCmdCopyImageToBuffer2(cmd_buff_, &copy_info);
+
+        VkBuffer vulkan_read_back_buffer = VulkanImp(*read_back_mem_block.Buffer()).Buffer();
+
+        const VkBufferMemoryBarrier barrier{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = vulkan_read_back_buffer,
+            .offset = read_back_mem_block.Offset(),
+            .size = read_back_mem_block.Size(),
+        };
+        vkCmdPipelineBarrier(cmd_buff_, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 
         const uint64_t fence_val = vulkan_system.ExecuteAndReset(
             *this, ToWaitFences(std::span<const GpuSystem::WaitQueueFence>({{type_, GpuSystem::MaxFenceValue}})));
