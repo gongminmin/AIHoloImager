@@ -180,11 +180,7 @@ namespace AIHoloImager
 
                 mesh_generator_module_ = python_system.Import("MeshGenerator");
                 mesh_generator_class_ = python_system.GetAttr(*mesh_generator_module_, "MeshGenerator");
-                auto args = python_system.MakeTuple(1);
-                {
-                    python_system.SetTupleItem(*args, 0, python_system.MakeObject(reinterpret_cast<void*>(&gpu_system)));
-                }
-                mesh_generator_ = python_system.CallObject(*mesh_generator_class_, *args);
+                mesh_generator_ = python_system.CallObject(*mesh_generator_class_, reinterpret_cast<void*>(&gpu_system));
                 mesh_generator_gen_features_method_ = python_system.GetAttr(*mesh_generator_, "GenFeatures");
                 mesh_generator_resolution_method_ = python_system.GetAttr(*mesh_generator_, "Resolution");
                 mesh_generator_coords_method_ = python_system.GetAttr(*mesh_generator_, "Coords");
@@ -1078,20 +1074,16 @@ namespace AIHoloImager
 
                 cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-                auto args = python_system.MakeTuple(1);
+                const uint32_t num_images = static_cast<uint32_t>(input_images.size());
+                auto imgs_args = python_system.MakeTupleOfSize(num_images);
+                for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    const uint32_t num_images = static_cast<uint32_t>(input_images.size());
-                    auto imgs_args = python_system.MakeTuple(num_images);
-                    for (uint32_t i = 0; i < num_images; ++i)
-                    {
-                        auto image_data = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, input_images[i]));
-                        python_system.SetTupleItem(*imgs_args, i, std::move(image_data));
-                    }
-                    python_system.SetTupleItem(*args, 0, std::move(imgs_args));
+                    auto image_data = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, input_images[i]));
+                    python_system.SetTupleItem(*imgs_args, i, std::move(image_data));
                 }
                 gpu_system.ExecuteAndReset(cmd_list);
 
-                python_system.CallObject(*mesh_generator_gen_features_method_, *args);
+                python_system.CallObject(*mesh_generator_gen_features_method_, std::move(imgs_args));
 
                 const auto py_grid_res = python_system.CallObject(*mesh_generator_resolution_method_);
                 grid_res = python_system.Cast<uint32_t>(*py_grid_res);

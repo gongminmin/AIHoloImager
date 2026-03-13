@@ -34,11 +34,7 @@ namespace AIHoloImager
 
                 diff_optimizer_module_ = python_system.Import("DiffOptimizer");
                 diff_optimizer_class_ = python_system.GetAttr(*diff_optimizer_module_, "DiffOptimizer");
-                auto args = python_system.MakeTuple(1);
-                {
-                    python_system.SetTupleItem(*args, 0, python_system.MakeObject(reinterpret_cast<void*>(&gpu_system)));
-                }
-                diff_optimizer_ = python_system.CallObject(*diff_optimizer_class_, *args);
+                diff_optimizer_ = python_system.CallObject(*diff_optimizer_class_, reinterpret_cast<void*>(&gpu_system));
                 diff_optimizer_opt_transform_method_ = python_system.GetAttr(*diff_optimizer_, "OptimizeTransform");
                 diff_optimizer_opt_texture_method_ = python_system.GetAttr(*diff_optimizer_, "OptimizeTexture");
             });
@@ -121,61 +117,33 @@ namespace AIHoloImager
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
-                auto args = python_system.MakeTuple(12);
+
+                auto imgs_args = python_system.MakeTupleOfSize(num_images);
+                for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    python_system.SetTupleItem(*args, 0,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3))));
-                    python_system.SetTupleItem(*args, 1,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(colors.data()), colors.size() * sizeof(glm::vec3))));
-                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(static_cast<uint32_t>(positions.size())));
+                    const auto& view = sfm_input.views[i];
+                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                    const auto indices = mesh.IndexBuffer();
-                    python_system.SetTupleItem(*args, 3,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t))));
-                    python_system.SetTupleItem(*args, 4, python_system.MakeObject(static_cast<uint32_t>(indices.size())));
-
-                    auto imgs_args = python_system.MakeTuple(num_images);
-                    for (uint32_t i = 0; i < num_images; ++i)
-                    {
-                        auto img_tuple = python_system.MakeTuple(5);
-
-                        const auto& view = sfm_input.views[i];
-                        const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
-
-                        const auto& delighted_tex = view.delighted_tex;
-                        PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
-                        python_system.SetTupleItem(*img_tuple, 0, std::move(image));
-                        python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(view.delighted_offset.x));
-                        python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(view.delighted_offset.y));
-                        python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(intrinsic.width));
-                        python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(intrinsic.height));
-
-                        python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
-                    }
-                    python_system.SetTupleItem(*args, 5, std::move(imgs_args));
-
-                    python_system.SetTupleItem(*args, 6,
-                        python_system.MakeObject(std::span(
-                            reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4))));
-                    python_system.SetTupleItem(*args, 7,
-                        python_system.MakeObject(std::span(
-                            reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2))));
-
-                    python_system.SetTupleItem(*args, 8, python_system.MakeObject(num_images));
-
-                    python_system.SetTupleItem(
-                        *args, 9, python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale))));
-                    python_system.SetTupleItem(
-                        *args, 10, python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation))));
-                    python_system.SetTupleItem(*args, 11,
-                        python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation))));
+                    const auto& delighted_tex = view.delighted_tex;
+                    PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
+                    auto img_tuple = python_system.MakeTuple(
+                        std::move(image), view.delighted_offset.x, view.delighted_offset.y, intrinsic.width, intrinsic.height);
+                    python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
                 gpu_system.Execute(std::move(cmd_list));
 
-                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_, *args);
+                const auto indices = mesh.IndexBuffer();
+                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_,
+                    std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3)),
+                    std::span(reinterpret_cast<const std::byte*>(colors.data()), colors.size() * sizeof(glm::vec3)),
+                    static_cast<uint32_t>(positions.size()),
+                    std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
+                    static_cast<uint32_t>(indices.size()), std::move(imgs_args),
+                    std::span(reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4)),
+                    std::span(reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2)),
+                    num_images, std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
+                    std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
+                    std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)));
 
                 const auto scale_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 0));
                 const auto rotate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 1));
@@ -241,62 +209,33 @@ namespace AIHoloImager
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
-                auto args = python_system.MakeTuple(13);
+
+                auto imgs_args = python_system.MakeTupleOfSize(num_images);
+                for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    python_system.SetTupleItem(*args, 0,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3))));
-                    python_system.SetTupleItem(*args, 1,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(tex_coords.data()), tex_coords.size() * sizeof(glm::vec2))));
-                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(static_cast<uint32_t>(positions.size())));
+                    const auto& view = sfm_input.views[i];
+                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
 
-                    const auto indices = mesh.IndexBuffer();
-                    python_system.SetTupleItem(*args, 3,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t))));
-                    python_system.SetTupleItem(*args, 4, python_system.MakeObject(static_cast<uint32_t>(indices.size())));
-
-                    auto imgs_args = python_system.MakeTuple(num_images);
-                    for (uint32_t i = 0; i < num_images; ++i)
-                    {
-                        auto img_tuple = python_system.MakeTuple(5);
-
-                        const auto& view = sfm_input.views[i];
-                        const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
-
-                        const auto& delighted_tex = view.delighted_tex;
-                        PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
-                        python_system.SetTupleItem(*img_tuple, 0, std::move(image));
-                        python_system.SetTupleItem(*img_tuple, 1, python_system.MakeObject(view.delighted_offset.x));
-                        python_system.SetTupleItem(*img_tuple, 2, python_system.MakeObject(view.delighted_offset.y));
-                        python_system.SetTupleItem(*img_tuple, 3, python_system.MakeObject(intrinsic.width));
-                        python_system.SetTupleItem(*img_tuple, 4, python_system.MakeObject(intrinsic.height));
-
-                        python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
-                    }
-                    python_system.SetTupleItem(*args, 5, std::move(imgs_args));
-
-                    python_system.SetTupleItem(*args, 6,
-                        python_system.MakeObject(
-                            std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4))));
-                    python_system.SetTupleItem(*args, 7,
-                        python_system.MakeObject(std::span(
-                            reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2))));
-
-                    python_system.SetTupleItem(*args, 8, python_system.MakeObject(num_images));
-
-                    python_system.SetTupleItem(*args, 9,
-                        python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(texture.Data()), texture.DataSize())));
-                    python_system.SetTupleItem(*args, 10, python_system.MakeObject(static_cast<uint32_t>(texture.Width())));
-                    python_system.SetTupleItem(*args, 11, python_system.MakeObject(static_cast<uint32_t>(texture.Height())));
-
-                    python_system.SetTupleItem(*args, 12,
-                        python_system.MakeObject(std::span(reinterpret_cast<const std::byte*>(mask_tex.Data()), mask_tex.DataSize())));
+                    const auto& delighted_tex = view.delighted_tex;
+                    PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
+                    auto img_tuple = python_system.MakeTuple(
+                        std::move(image), view.delighted_offset.x, view.delighted_offset.y, intrinsic.width, intrinsic.height);
+                    python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
                 gpu_system.ExecuteAndReset(cmd_list);
 
-                auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_, *args);
+                const auto indices = mesh.IndexBuffer();
+                auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_,
+                    std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3)),
+                    std::span(reinterpret_cast<const std::byte*>(tex_coords.data()), tex_coords.size() * sizeof(glm::vec2)),
+                    static_cast<uint32_t>(positions.size()),
+                    std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
+                    static_cast<uint32_t>(indices.size()), std::move(imgs_args),
+                    std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4)),
+                    std::span(reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2)),
+                    num_images, std::span(reinterpret_cast<const std::byte*>(texture.Data()), texture.DataSize()),
+                    static_cast<uint32_t>(texture.Width()), static_cast<uint32_t>(texture.Height()),
+                    std::span(reinterpret_cast<const std::byte*>(mask_tex.Data()), mask_tex.DataSize()));
 
                 GpuTexture2D texture_opt;
                 tensor_converter.ConvertPy(

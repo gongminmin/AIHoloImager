@@ -438,18 +438,10 @@ namespace AIHoloImager
                             PythonSystem::GilGuard guard;
 
                             auto& python_system = aihi_.PythonSystemInstance();
-                            auto args = python_system.MakeTuple(4);
-                            {
-                                auto py_image = python_system.MakeObject(
-                                    std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
-                                python_system.SetTupleItem(*args, 0, std::move(py_image));
-
-                                python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
-                                python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
-                                python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
-                            }
-
-                            auto py_focal = python_system.CallObject(*point_cloud_estimator_focal_method_, *args);
+                            auto py_image = python_system.MakeObject(
+                                std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
+                            auto py_focal = python_system.CallObject(*point_cloud_estimator_focal_method_, std::move(py_image),
+                                image.Width(), image.Height(), FormatChannels(image.Format()));
                             sum_focal += python_system.Cast<double>(*py_focal);
                         }
                     }
@@ -506,36 +498,16 @@ namespace AIHoloImager
 
             const uint32_t num_images = static_cast<uint32_t>(sfm_data.views.size());
 
-            py_features_ = python_system.MakeTuple(num_images);
+            py_features_ = python_system.MakeTupleOfSize(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
                 const auto& image = images[i];
                 assert(image.Format() == ElementFormat::RGBA8_UNorm);
 
-                PyObjectPtr py_feature;
-                {
-                    auto args = python_system.MakeTuple(4);
-                    {
-                        auto py_image = python_system.MakeObject(std::span<const std::byte>(image.Data(), image.DataSize()));
-                        python_system.SetTupleItem(*args, 0, std::move(py_image));
-
-                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(image.Width()));
-                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(image.Height()));
-                        python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
-                    }
-
-                    py_feature = python_system.CallObject(*extractor_extract_method_, *args);
-                }
-
-                PyObjectPtr py_exported_feature;
-                {
-                    auto args = python_system.MakeTuple(1);
-                    {
-                        python_system.SetTupleItem(*args, 0, *py_feature);
-                    }
-
-                    py_exported_feature = python_system.CallObject(*extractor_export_features_method_, *args);
-                }
+                auto py_image = python_system.MakeObject(std::span<const std::byte>(image.Data(), image.DataSize()));
+                PyObjectPtr py_feature = python_system.CallObject(
+                    *extractor_extract_method_, std::move(py_image), image.Width(), image.Height(), FormatChannels(image.Format()));
+                PyObjectPtr py_exported_feature = python_system.CallObject(*extractor_export_features_method_, *py_feature);
 
                 auto py_descriptors = python_system.GetTupleItem(*py_exported_feature, 0);
                 const auto descriptors_span =
@@ -625,17 +597,9 @@ namespace AIHoloImager
 
                 for (uint32_t i = 0; i < static_cast<uint32_t>(sfm_data.views.size() - 1); ++i)
                 {
-                    auto args = python_system.MakeTuple(3);
-                    {
-                        python_system.SetTupleItem(*args, 0, *py_features_);
-                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(i));
-                    }
-
                     for (uint32_t j = i + 1; j < static_cast<uint32_t>(sfm_data.views.size()); ++j)
                     {
-                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(j));
-
-                        auto py_putative_matches = python_system.CallObject(*matcher_match_method_, *args);
+                        auto py_putative_matches = python_system.CallObject(*matcher_match_method_, *py_features_, i, j);
 
                         const uint32_t num_pairs = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_putative_matches, 1));
 
@@ -977,22 +941,13 @@ namespace AIHoloImager
                     PythonSystem::GilGuard guard;
 
                     auto& python_system = aihi_.PythonSystemInstance();
-                    auto args = python_system.MakeTuple(5);
-                    {
-                        auto py_image = python_system.MakeObject(
-                            std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
-                        python_system.SetTupleItem(*args, 0, std::move(py_image));
 
-                        python_system.SetTupleItem(*args, 1, python_system.MakeObject(width));
-                        python_system.SetTupleItem(*args, 2, python_system.MakeObject(height));
-                        python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
-
-                        const double fx = ret.intrinsics[0].k[0].x;
-                        const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
-                        python_system.SetTupleItem(*args, 4, python_system.MakeObject(fov_x));
-                    }
-
-                    auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, *args);
+                    auto py_image = python_system.MakeObject(
+                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
+                    const double fx = ret.intrinsics[0].k[0].x;
+                    const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
+                    auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image),
+                        width, height, FormatChannels(image.Format()), fov_x);
 
                     const auto py_point_cloud = python_system.GetTupleItem(*py_point_cloud_items, 0);
                     const uint32_t point_cloud_width = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 1));

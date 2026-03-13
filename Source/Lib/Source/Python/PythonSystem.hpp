@@ -46,7 +46,14 @@ namespace AIHoloImager
         PyObjectPtr GetAttr(PyObject& module, const char* name);
 
         PyObjectPtr CallObject(PyObject& object);
-        PyObjectPtr CallObject(PyObject& object, PyObject& args);
+        PyObjectPtr CallObjectTuple(PyObject& object, PyObject& tuple_args);
+
+        template <typename... Args>
+        PyObjectPtr CallObject(PyObject& object, Args&&... args)
+        {
+            auto args_tuple = this->MakeTuple(std::forward<Args>(args)...);
+            return this->CallObjectTuple(object, *args_tuple);
+        }
 
         PyObjectPtr MakeObject(int32_t value);
         PyObjectPtr MakeObject(uint32_t value);
@@ -56,10 +63,35 @@ namespace AIHoloImager
         PyObjectPtr MakeObject(std::span<const std::byte> mem);
         PyObjectPtr MakeObject(void* ptr);
 
-        PyObjectPtr MakeTuple(uint32_t size);
+        PyObjectPtr MakeTupleOfSize(uint32_t size);
         void SetTupleItem(PyObject& tuple, uint32_t index, PyObject& item);
         void SetTupleItem(PyObject& tuple, uint32_t index, PyObjectPtr item);
         PyObjectPtr GetTupleItem(PyObject& tuple, uint32_t index);
+
+        template <typename... Args>
+        PyObjectPtr MakeTuple(Args&&... args)
+        {
+            auto ret = this->MakeTupleOfSize(sizeof...(Args));
+            uint32_t index = 0;
+            (
+                [&] {
+                    if constexpr (std::is_same_v<std::remove_cvref_t<Args>, PyObjectPtr>)
+                    {
+                        this->SetTupleItem(*ret, index, std::move(args));
+                    }
+                    else if constexpr (std::is_same_v<Args, PyObject&>)
+                    {
+                        this->SetTupleItem(*ret, index, args);
+                    }
+                    else
+                    {
+                        this->SetTupleItem(*ret, index, this->MakeObject(args));
+                    }
+                    ++index;
+                }(),
+                ...);
+            return ret;
+        }
 
         template <typename T>
         T Cast(PyObject& object);

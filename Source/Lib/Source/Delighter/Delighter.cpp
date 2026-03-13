@@ -85,16 +85,9 @@ namespace AIHoloImager
                 PythonSystem::GilGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
-                auto args = python_system.MakeTuple(4);
-                {
-                    python_system.SetTupleItem(*args, 0, std::move(roi_tensor));
 
-                    python_system.SetTupleItem(*args, 1, python_system.MakeObject(width));
-                    python_system.SetTupleItem(*args, 2, python_system.MakeObject(height));
-                    python_system.SetTupleItem(*args, 3, python_system.MakeObject(FormatChannels(image.Format())));
-                }
-
-                const auto output_roi_image = python_system.CallObject(*delighter_process_method_, *args);
+                const auto output_roi_image = python_system.CallObject(
+                    *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(image.Format()));
                 tensor_converter.ConvertPy(
                     cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "delighted_tex");
 

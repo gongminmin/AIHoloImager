@@ -79,11 +79,7 @@ namespace AIHoloImager
         auto py_sys = this->Import("PythonSystem");
         auto init_py_sys_method = this->GetAttr(*py_sys, "InitPySys");
 
-        auto args = this->MakeTuple(1);
-        {
-            this->SetTupleItem(*args, 0, this->MakeObject(std::move(device)));
-        }
-        this->CallObject(*init_py_sys_method, *args);
+        this->CallObject(*init_py_sys_method, std::move(device));
     }
 
     PythonSystem::~PythonSystem() noexcept = default;
@@ -105,9 +101,9 @@ namespace AIHoloImager
     {
         return MakePyObjectPtr(PyObject_CallObject(&object, nullptr));
     }
-    PyObjectPtr PythonSystem::CallObject(PyObject& object, PyObject& args)
+    PyObjectPtr PythonSystem::CallObjectTuple(PyObject& object, PyObject& tuple_args)
     {
-        return MakePyObjectPtr(PyObject_CallObject(&object, &args));
+        return MakePyObjectPtr(PyObject_CallObject(&object, &tuple_args));
     }
 
     PyObjectPtr PythonSystem::MakeObject(int32_t value)
@@ -139,7 +135,7 @@ namespace AIHoloImager
         return MakePyObjectPtr(PyLong_FromUnsignedLongLong(reinterpret_cast<uint64_t>(ptr)));
     }
 
-    PyObjectPtr PythonSystem::MakeTuple(uint32_t size)
+    PyObjectPtr PythonSystem::MakeTupleOfSize(uint32_t size)
     {
         return MakePyObjectPtr(PyTuple_New(size));
     }
@@ -149,7 +145,6 @@ namespace AIHoloImager
         Py_IncRef(&item);
         PyTuple_SetItem(&tuple, index, &item);
     }
-
     void PythonSystem::SetTupleItem(PyObject& tuple, uint32_t index, PyObjectPtr item)
     {
         PyTuple_SetItem(&tuple, index, item.release());
