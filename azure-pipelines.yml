@@ -40,8 +40,27 @@ stages:
           git config --global user.name "Dummy Name"
         displayName: 'Config git'
 
+      - task: Cache@2
+        inputs:
+          key: 'Build | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(configuration)'
+          restoreKeys: 'Build | $(configuration)'
+          path: Build
+        displayName: Cache Build
+
+      - task: Cache@2
+        inputs:
+          key: 'External | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(configuration)'
+          restoreKeys: 'External | $(configuration)'
+          path: External
+        displayName: Cache External
+
       - script: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
           cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
           cmake --build Build -j
         displayName: 'Build'
+
+      - bash: |
+          rm -rf Build/bin
+          rm -rf Build/Source
+        displayName: 'Remove uncached files'
