@@ -22,6 +22,7 @@
 #include "D3D12Conversion.hpp"
 #include "D3D12DescriptorHeap.hpp"
 #include "D3D12ImpDefine.hpp"
+#include "D3D12Query.hpp"
 #include "D3D12ResourceViews.hpp"
 #include "D3D12Sampler.hpp"
 #include "D3D12Shader.hpp"
@@ -912,6 +913,11 @@ namespace AIHoloImager
     std::unique_ptr<GpuCommandListInternal> D3D12System::CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const
     {
         return std::make_unique<D3D12CommandList>(*gpu_system_, cmd_pool, type);
+    }
+
+    std::unique_ptr<GpuTimerQueryInternal> D3D12System::CreateTimerQuery() const
+    {
+        return std::make_unique<D3D12TimerQuery>(*gpu_system_);
     }
 
     void D3D12System::DebugMessageCallback(

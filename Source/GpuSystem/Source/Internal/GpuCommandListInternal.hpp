@@ -21,6 +21,7 @@ namespace AIHoloImager
 
         virtual GpuSystem::CmdQueueType Type() const noexcept = 0;
         virtual void Name(std::string_view name) = 0;
+        virtual GpuSystem& GpuSys() noexcept = 0;
 
         virtual explicit operator bool() const noexcept = 0;
 

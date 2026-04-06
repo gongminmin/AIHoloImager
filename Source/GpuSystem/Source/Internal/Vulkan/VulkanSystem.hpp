@@ -62,6 +62,7 @@ namespace AIHoloImager
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
+        float TimestampFrequency() const noexcept;
 
         void CpuWait(const GpuSystem::WaitFences& wait_fences) override;
         void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) override;
@@ -84,6 +85,7 @@ namespace AIHoloImager
         void Recycle(VkPipeline pipeline, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkDeviceMemory memory, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkRenderPass render_pass, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkQueryPool query_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
 
@@ -141,6 +143,8 @@ namespace AIHoloImager
         std::unique_ptr<GpuCommandPoolInternal> CreateCommandPool(GpuSystem::CmdQueueType type) const override;
 
         std::unique_ptr<GpuCommandListInternal> CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const override;
+
+        std::unique_ptr<GpuTimerQueryInternal> CreateTimerQuery() const override;
 
     private:
         struct CmdQueue

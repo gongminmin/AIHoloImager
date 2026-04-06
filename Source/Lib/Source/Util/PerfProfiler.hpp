@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "Base/NonCopyable.hpp"
+#include "Gpu/GpuCommandList.hpp"
 
 namespace AIHoloImager
 {
@@ -34,7 +35,7 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(PerfRegion);
 
     public:
-        PerfRegion(PerfProfiler& profiler, std::string_view name);
+        PerfRegion(PerfProfiler& profiler, std::string_view name, GpuCommandList* gpu_cmd_list = nullptr);
         ~PerfRegion();
 
     private:

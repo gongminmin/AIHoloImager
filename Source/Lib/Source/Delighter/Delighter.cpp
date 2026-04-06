@@ -60,7 +60,7 @@ namespace AIHoloImager
 
         GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image)
         {
-            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Delighter process");
+            PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Delighter process", &cmd_list);
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -76,7 +76,7 @@ namespace AIHoloImager
             }
 
             {
-                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init", &cmd_list);
                 py_init_future_.wait();
             }
 

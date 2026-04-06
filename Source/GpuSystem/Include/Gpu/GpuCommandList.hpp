@@ -87,6 +87,7 @@ namespace AIHoloImager
 
         GpuSystem::CmdQueueType Type() const noexcept;
         void Name(std::string_view name);
+        GpuSystem& GpuSys() noexcept;
 
         explicit operator bool() const noexcept;
 

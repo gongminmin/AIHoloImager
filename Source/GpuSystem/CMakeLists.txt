@@ -16,6 +16,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuFormat.hpp
     Include/Gpu/GpuMemoryAllocator.hpp
     Include/Gpu/GpuMipmapper.hpp
+    Include/Gpu/GpuQuery.hpp
     Include/Gpu/GpuResource.hpp
     Include/Gpu/GpuResourceViews.hpp
     Include/Gpu/GpuSampler.hpp
@@ -30,6 +31,8 @@ set(aihi_gpu_system_files
     Source/Internal/GpuCommandListInternal.hpp
     Source/Internal/GpuCommandPoolInternal.cpp
     Source/Internal/GpuCommandPoolInternal.hpp
+    Source/Internal/GpuQueryInternal.cpp
+    Source/Internal/GpuQueryInternal.hpp
     Source/Internal/GpuResourceInternal.cpp
     Source/Internal/GpuResourceInternal.hpp
     Source/Internal/GpuResourceViewsInternal.cpp
@@ -55,6 +58,7 @@ set(aihi_gpu_system_files
     Source/GpuFormat.cpp
     Source/GpuMemoryAllocator.cpp
     Source/GpuMipmapper.cpp
+    Source/GpuQuery.cpp
     Source/GpuResource.cpp
     Source/GpuResourceViews.cpp
     Source/GpuSampler.cpp
@@ -81,6 +85,8 @@ if(enable_d3d12)
         Source/Internal/D3D12/D3D12DescriptorHeap.cpp
         Source/Internal/D3D12/D3D12DescriptorHeap.hpp
         Source/Internal/D3D12/D3D12ImpDefine.hpp
+        Source/Internal/D3D12/D3D12Query.cpp
+        Source/Internal/D3D12/D3D12Query.hpp
         Source/Internal/D3D12/D3D12Resource.cpp
         Source/Internal/D3D12/D3D12Resource.hpp
         Source/Internal/D3D12/D3D12ResourceViews.cpp
@@ -115,6 +121,8 @@ if(enable_vulkan)
         Source/Internal/Vulkan/VulkanErrorHandling.cpp
         Source/Internal/Vulkan/VulkanErrorHandling.hpp
         Source/Internal/Vulkan/VulkanImpDefine.hpp
+        Source/Internal/Vulkan/VulkanQuery.cpp
+        Source/Internal/Vulkan/VulkanQuery.hpp
         Source/Internal/Vulkan/VulkanResource.cpp
         Source/Internal/Vulkan/VulkanResource.hpp
         Source/Internal/Vulkan/VulkanResourceViews.cpp

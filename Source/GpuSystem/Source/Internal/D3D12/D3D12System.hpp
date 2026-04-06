@@ -151,6 +151,8 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuCommandListInternal> CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const override;
 
+        std::unique_ptr<GpuTimerQueryInternal> CreateTimerQuery() const override;
+
     private:
         struct CmdQueue
         {

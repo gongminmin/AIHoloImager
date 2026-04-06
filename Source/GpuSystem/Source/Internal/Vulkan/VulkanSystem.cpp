@@ -15,6 +15,7 @@
 #include "VulkanCommandList.hpp"
 #include "VulkanCommandPool.hpp"
 #include "VulkanErrorhandling.hpp"
+#include "VulkanQuery.hpp"
 #include "VulkanResourceViews.hpp"
 #include "VulkanSampler.hpp"
 #include "VulkanShader.hpp"
@@ -470,6 +471,10 @@ namespace AIHoloImager
     {
         return static_cast<uint32_t>(device_props_.properties.limits.optimalBufferCopyOffsetAlignment);
     }
+    float VulkanSystem::TimestampFrequency() const noexcept
+    {
+        return device_props_.properties.limits.timestampPeriod;
+    }
 
     void VulkanSystem::CpuWait(const GpuSystem::WaitFences& wait_fences)
     {
@@ -664,6 +669,11 @@ namespace AIHoloImager
     {
         stall_resources_.emplace_back(
             render_pass, [this, render_pass]() { vkDestroyRenderPass(device_, render_pass, nullptr); }, std::move(wait_fences));
+    }
+    void VulkanSystem::Recycle(VkQueryPool query_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
+    {
+        stall_resources_.emplace_back(
+            query_pool, [this, query_pool]() { vkDestroyQueryPool(device_, query_pool, nullptr); }, std::move(wait_fences));
     }
 
     void VulkanSystem::ClearStallResources()
@@ -1016,6 +1026,11 @@ namespace AIHoloImager
     std::unique_ptr<GpuCommandListInternal> VulkanSystem::CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const
     {
         return std::make_unique<VulkanCommandList>(*gpu_system_, cmd_pool, type);
+    }
+
+    std::unique_ptr<GpuTimerQueryInternal> VulkanSystem::CreateTimerQuery() const
+    {
+        return std::make_unique<VulkanTimerQuery>(*gpu_system_);
     }
 
     VkBool32 VulkanSystem::DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

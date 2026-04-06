@@ -69,6 +69,11 @@ namespace AIHoloImager
         SetName(VulkanImp(*gpu_system_), cmd_buff_, VK_OBJECT_TYPE_COMMAND_BUFFER, std::move(name));
     }
 
+    GpuSystem& VulkanCommandList::GpuSys() noexcept
+    {
+        return *gpu_system_;
+    }
+
     VulkanCommandList::operator bool() const noexcept
     {
         return cmd_buff_ != VK_NULL_HANDLE;

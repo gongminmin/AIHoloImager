@@ -110,7 +110,7 @@ namespace AIHoloImager
 
         void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, glm::uvec4& roi)
         {
-            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), "Mask generator generate");
+            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), "Mask generator generate", &cmd_list);
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -196,7 +196,7 @@ namespace AIHoloImager
     private:
         void GenMask(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, const glm::uvec4& roi, bool blur, bool large_model)
         {
-            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), std::format("U2Net ({})", large_model ? "large" : "small"));
+            PerfRegion generate_perf(aihi_.PerfProfilerInstance(), std::format("U2Net ({})", large_model ? "large" : "small"), &cmd_list);
 
             auto& gpu_system = aihi_.GpuSystemInstance();
             auto& python_system = aihi_.PythonSystemInstance();
@@ -319,7 +319,7 @@ namespace AIHoloImager
             }
 
             {
-                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init", &cmd_list);
                 py_init_future_.wait();
             }
 

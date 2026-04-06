@@ -9,6 +9,7 @@
 #include "GpuBufferInternal.hpp"
 #include "GpuCommandListInternal.hpp"
 #include "GpuCommandPoolInternal.hpp"
+#include "GpuQueryInternal.hpp"
 #include "GpuResourceViewsInternal.hpp"
 #include "GpuSamplerInternal.hpp"
 #include "GpuShaderInternal.hpp"
@@ -102,5 +103,7 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuCommandPoolInternal> CreateCommandPool(GpuSystem::CmdQueueType type) const = 0;
 
         virtual std::unique_ptr<GpuCommandListInternal> CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const = 0;
+
+        virtual std::unique_ptr<GpuTimerQueryInternal> CreateTimerQuery() const = 0;
     };
 } // namespace AIHoloImager

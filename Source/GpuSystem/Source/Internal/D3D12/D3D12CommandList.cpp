@@ -104,6 +104,11 @@ namespace AIHoloImager
         SetName(*cmd_list_, name);
     }
 
+    GpuSystem& D3D12CommandList::GpuSys() noexcept
+    {
+        return *gpu_system_;
+    }
+
     D3D12CommandList::operator bool() const noexcept
     {
         return cmd_list_ ? true : false;

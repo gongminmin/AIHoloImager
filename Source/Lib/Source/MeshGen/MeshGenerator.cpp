@@ -322,7 +322,7 @@ namespace AIHoloImager
             {
                 std::cout << "Generating mesh from images...\n";
 
-                PerfRegion rotating_perf(profiler, "Generate mesh");
+                PerfRegion gen_mesh_perf(profiler, "Generate mesh");
 
                 mesh = this->GenMesh(rotated_images, color_vol_tex);
 
