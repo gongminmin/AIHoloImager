@@ -9,8 +9,6 @@
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuTexture.hpp"
-#include "SfM/StructureFromMotion.hpp"
-#include "Util/BoundingBox.hpp"
 
 namespace AIHoloImager
 {
@@ -19,6 +17,18 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(TextureReconstruction);
 
     public:
+        struct ProjectionDesc
+        {
+            const GpuTexture2D* image;
+
+            glm::mat4x4 view_mtx;
+            glm::mat4x4 proj_mtx;
+            uint32_t full_width;
+            uint32_t full_height;
+            glm::vec2 vp_offset;
+            glm::uvec2 image_offset;
+        };
+
         struct Result
         {
             GpuTexture2D color_tex;
@@ -32,8 +42,7 @@ namespace AIHoloImager
 
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
-        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb, const StructureFromMotion::Result& sfm_input,
-            uint32_t texture_size);
+        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const ProjectionDesc> projections, uint32_t texture_size);
 
     private:
         class Impl;

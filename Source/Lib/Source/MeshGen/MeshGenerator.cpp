@@ -487,8 +487,31 @@ namespace AIHoloImager
 
                 PerfRegion texturing_perf(profiler, "Generate texture");
 
-                const Obb world_obb = Obb::Transform(obb, model_mtx);
-                auto texture_result = texture_recon_.Process(mesh, model_mtx, world_obb, sfm_input, texture_size);
+                TextureReconstruction::Result texture_result;
+                {
+                    const Obb world_obb = Obb::Transform(obb, model_mtx);
+                    std::vector<TextureReconstruction::ProjectionDesc> projections(sfm_input.views.size());
+                    for (size_t i = 0; i < sfm_input.views.size(); ++i)
+                    {
+                        auto& projection = projections[i];
+
+                        projection.image = &sfm_input.views[i].delighted_tex;
+
+                        const auto& view = sfm_input.views[i];
+                        const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+
+                        projection.view_mtx = CalcViewMatrix(view);
+                        const glm::vec2 near_far_plane = CalcNearFarPlane(projection.view_mtx, world_obb);
+                        projection.proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
+
+                        projection.full_width = intrinsic.width;
+                        projection.full_height = intrinsic.height;
+
+                        projection.vp_offset = CalcViewportOffset(intrinsic);
+                        projection.image_offset = view.delighted_offset;
+                    }
+                    texture_result = texture_recon_.Process(mesh, model_mtx, projections, texture_size);
+                }
 
                 Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 {

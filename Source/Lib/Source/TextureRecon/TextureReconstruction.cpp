@@ -90,8 +90,7 @@ namespace AIHoloImager
             }
         }
 
-        TextureReconstruction::Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
+        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const ProjectionDesc> projections, uint32_t texture_size)
         {
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = aihi_.TmpDir() / "Texture";
@@ -133,7 +132,7 @@ namespace AIHoloImager
 
             TextureReconstruction::Result result;
             result.color_tex = this->GenTextureFromPhotos(
-                cmd_list, mesh_vb, mesh_ib, model_mtx, world_obb, flatten_pos_tex, flatten_normal_tex, sfm_input, texture_size);
+                cmd_list, mesh_vb, mesh_ib, model_mtx, flatten_pos_tex, flatten_normal_tex, std::move(projections), texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -199,8 +198,8 @@ namespace AIHoloImager
         }
 
         GpuTexture2D GenTextureFromPhotos(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
-            const glm::mat4x4& model_mtx, const Obb& world_obb, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
-            const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
+            const glm::mat4x4& model_mtx, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
+            std::span<const ProjectionDesc> projections, uint32_t texture_size)
         {
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
@@ -216,31 +215,25 @@ namespace AIHoloImager
             const GpuShaderResourceView flatten_pos_srv(gpu_system_, flatten_pos_tex, 0);
             const GpuShaderResourceView flatten_normal_srv(gpu_system_, flatten_normal_tex, 0);
 
-            for (size_t i = 0; i < sfm_input.views.size(); ++i)
+            for (size_t i = 0; i < projections.size(); ++i)
             {
-                std::cout << std::format("Projecting images ({} / {})\r", i + 1, sfm_input.views.size());
+                std::cout << std::format("Projecting images ({} / {})\r", i + 1, projections.size());
 
-                const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+                const auto& projection = projections[i];
 
-                GpuTexture2D shadow_map_tex(gpu_system_, intrinsic.width, intrinsic.height, 1, GpuFormat::D32_Float,
+                GpuTexture2D shadow_map_tex(gpu_system_, projection.full_width, projection.full_height, 1, GpuFormat::D32_Float,
                     GpuResourceFlag::DepthStencil, "shadow_map_tex");
                 const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex, GpuFormat::R32_Float);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
-                const GpuShaderResourceView photo_srv(gpu_system_, view.delighted_tex);
+                const GpuShaderResourceView photo_srv(gpu_system_, *projection.image);
 
-                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
-                const glm::vec2 near_far_plane = CalcNearFarPlane(view_mtx, world_obb);
-                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
-                const glm::mat4x4 mvp_mtx = proj_mtx * view_mtx * model_mtx;
-                const glm::vec2 vp_offset = CalcViewportOffset(intrinsic);
+                const glm::mat4x4 mvp_mtx = projection.proj_mtx * projection.view_mtx * model_mtx;
 
-                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, mvp_mtx, vp_offset, intrinsic, shadow_map_dsv);
+                this->GenShadowMap(cmd_list, mesh_vb, mesh_ib, num_indices, mvp_mtx, projection, shadow_map_dsv);
 
-                this->ProjectTexture(cmd_list, texture_size, view_mtx, proj_mtx, vp_offset, intrinsic, flatten_pos_srv, flatten_normal_srv,
-                    photo_srv, view.delighted_offset, glm::uvec2(view.delighted_tex.Width(0), view.delighted_tex.Height(0)), shadow_map_srv,
-                    accum_color_uav);
+                this->ProjectTexture(
+                    cmd_list, texture_size, projection, flatten_pos_srv, flatten_normal_srv, photo_srv, shadow_map_srv, accum_color_uav);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
@@ -258,8 +251,7 @@ namespace AIHoloImager
         }
 
         void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices,
-            const glm::mat4x4& mvp_mtx, const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic,
-            GpuDepthStencilView& shadow_map_dsv)
+            const glm::mat4x4& mvp_mtx, const ProjectionDesc& projection, GpuDepthStencilView& shadow_map_dsv)
         {
             GpuConstantBufferOfType<GenShadowMapConstantBuffer> gen_shadow_map_cb(gpu_system_, "gen_shadow_map_cb");
             gen_shadow_map_cb->mvp = glm::transpose(mvp_mtx);
@@ -279,30 +271,30 @@ namespace AIHoloImager
                 {{}, {}, {}},
             };
 
-            const GpuViewport viewport = {
-                vp_offset.x, vp_offset.y, static_cast<float>(intrinsic.width), static_cast<float>(intrinsic.height)};
+            const GpuViewport viewport = {projection.vp_offset.x, projection.vp_offset.y, static_cast<float>(projection.full_width),
+                static_cast<float>(projection.full_height)};
 
             cmd_list.Render(gen_shadow_map_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, {}, &shadow_map_dsv,
                 std::span(&viewport, 1), {});
         }
 
-        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
-            const glm::vec2& vp_offset, const StructureFromMotion::PinholeIntrinsic& intrinsic,
+        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const ProjectionDesc& projection,
             const GpuShaderResourceView& flatten_pos_srv, const GpuShaderResourceView& flatten_normal_srv,
-            const GpuShaderResourceView& projective_map_srv, const glm::uvec2& delighted_offset, const glm::uvec2& delighted_size,
-            const GpuShaderResourceView& shadow_map_srv, GpuUnorderedAccessView& accum_color_uav)
+            const GpuShaderResourceView& projective_map_srv, const GpuShaderResourceView& shadow_map_srv,
+            GpuUnorderedAccessView& accum_color_uav)
         {
             constexpr uint32_t BlockDim = 16;
 
             GpuConstantBufferOfType<ProjectTextureConstantBuffer> project_tex_cb(gpu_system_, "project_tex_cb");
-            project_tex_cb->camera_view_proj = glm::transpose(proj_mtx * view_mtx);
-            project_tex_cb->camera_view = glm::transpose(view_mtx);
-            project_tex_cb->camera_view_it = glm::inverse(view_mtx);
-            project_tex_cb->vp_offset = glm::vec2(vp_offset.x / intrinsic.width, vp_offset.y / intrinsic.height);
-            project_tex_cb->delighted_offset = glm::vec2(
-                static_cast<float>(delighted_offset.x) / intrinsic.width, static_cast<float>(delighted_offset.y) / intrinsic.height);
-            project_tex_cb->delighted_scale =
-                glm::vec2(static_cast<float>(intrinsic.width) / delighted_size.x, static_cast<float>(intrinsic.height) / delighted_size.y);
+            project_tex_cb->camera_view_proj = glm::transpose(projection.proj_mtx * projection.view_mtx);
+            project_tex_cb->camera_view = glm::transpose(projection.view_mtx);
+            project_tex_cb->camera_view_it = glm::inverse(projection.view_mtx);
+            project_tex_cb->vp_offset =
+                glm::vec2(projection.vp_offset.x / projection.full_width, projection.vp_offset.y / projection.full_height);
+            project_tex_cb->delighted_offset = glm::vec2(static_cast<float>(projection.image_offset.x) / projection.full_width,
+                static_cast<float>(projection.image_offset.y) / projection.full_height);
+            project_tex_cb->delighted_scale = glm::vec2(static_cast<float>(projection.full_width) / projection.image->Width(0),
+                static_cast<float>(projection.full_height) / projection.image->Height(0));
             project_tex_cb->texture_size = texture_size;
             project_tex_cb.UploadStaging();
             const GpuConstantBufferView project_tex_cbv(gpu_system_, project_tex_cb);
@@ -406,9 +398,9 @@ namespace AIHoloImager
     TextureReconstruction::TextureReconstruction(TextureReconstruction&& other) noexcept = default;
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
-    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx, const Obb& world_obb,
-        const StructureFromMotion::Result& sfm_input, uint32_t texture_size)
+    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx,
+        std::span<const TextureReconstruction::ProjectionDesc> projections, uint32_t texture_size)
     {
-        return impl_->Process(mesh, model_mtx, world_obb, sfm_input, texture_size);
+        return impl_->Process(mesh, model_mtx, std::move(projections), texture_size);
     }
 } // namespace AIHoloImager
