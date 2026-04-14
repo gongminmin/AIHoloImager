@@ -7,7 +7,7 @@ cbuffer param_cb
 {
     float4x4 inv_model;
 
-    uint32_t texture_size;
+    uint32_t2 texture_size;
     float inv_scale;
 };
 

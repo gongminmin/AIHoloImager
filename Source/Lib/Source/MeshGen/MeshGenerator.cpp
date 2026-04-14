@@ -1782,18 +1782,19 @@ namespace AIHoloImager
         }
 
         void MergeTexture(GpuCommandList& cmd_list, const GpuTexture3D& color_vol_tex, const GpuTexture2D& pos_tex,
-            const glm::mat4x4& model_mtx, GpuTexture2D& color_tex)
+            const glm::mat4x4& model_mtx, GpuTexture2D& merged_tex)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            GpuUnorderedAccessView merged_uav(gpu_system, color_tex);
+            GpuUnorderedAccessView merged_uav(gpu_system, merged_tex);
 
-            const uint32_t texture_size = color_tex.Width(0);
+            const uint32_t texture_width = merged_tex.Width(0);
+            const uint32_t texture_height = merged_tex.Height(0);
 
             GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, "merge_texture_cb");
             merge_texture_cb->inv_scale = 1 / GridScale;
             merge_texture_cb->inv_model = glm::transpose(glm::inverse(model_mtx));
-            merge_texture_cb->texture_size = texture_size;
+            merge_texture_cb->texture_size = glm::uvec2(texture_width, texture_height);
             merge_texture_cb.UploadStaging();
 
             const GpuConstantBufferView merge_texture_cbv(gpu_system, merge_texture_cb);
@@ -1813,7 +1814,7 @@ namespace AIHoloImager
                 {"merged_tex", &merged_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
+            cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_width, BlockDim), DivUp(texture_height, BlockDim), 1, shader_binding);
         }
 
         glm::mat4x4 GuessModelMatrix(const Obb& obb, const Aabb& obj_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
@@ -1945,9 +1946,9 @@ namespace AIHoloImager
         {
             glm::mat4x4 inv_model;
 
-            uint32_t texture_size;
+            glm::uvec2 texture_size;
             float inv_scale;
-            uint32_t padding[2];
+            uint32_t padding[1];
         };
         GpuComputePipeline merge_texture_pipeline_;
 
