@@ -133,6 +133,7 @@ namespace AIHoloImager
             TextureReconstruction::Result result;
             result.color_tex = this->GenTextureFromPhotos(
                 cmd_list, mesh_vb, mesh_ib, model_mtx, flatten_pos_tex, flatten_normal_tex, std::move(projections), texture_size);
+            result.pos_tex = std::move(flatten_pos_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -145,11 +146,12 @@ namespace AIHoloImager
                 rb_future.wait();
                 SaveTexture(projective_tex, output_dir / "Projective.png");
             }
+
+            result.color_tex.Transition(cmd_list, GpuResourceState::Common);
+            result.pos_tex.Transition(cmd_list, GpuResourceState::Common);
 #endif
 
             gpu_system_.Execute(std::move(cmd_list));
-
-            result.pos_tex = std::move(flatten_pos_tex);
             return result;
         }
 
