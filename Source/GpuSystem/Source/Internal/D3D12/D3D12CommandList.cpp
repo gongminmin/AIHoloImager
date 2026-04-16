@@ -1232,5 +1232,6 @@ namespace AIHoloImager
                 curr_fence_value = std::max(curr_fence_value, fence_value);
             }
         }
+        accessed_objects_.clear();
     }
 } // namespace AIHoloImager
