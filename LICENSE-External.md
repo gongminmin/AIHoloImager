@@ -16,8 +16,7 @@ This project uses the following open-source libraries and tools. We are grateful
 
 ### dinov2
 - **Repository**: https://github.com/facebookresearch/dinov2
-- **Code License**: [Apache License 2.0](https://github.com/facebookresearch/dinov2/blob/main/LICENSE)
-- **Pretrained Model License**: [FAIR Noncommercial Research License](https://github.com/facebookresearch/dinov2/blob/main/LICENSE_XRAY_DINO_MODEL) (Non-commercial only)
+- **Code & Pretrained Model License**: [Apache License 2.0](https://github.com/facebookresearch/dinov2/blob/main/LICENSE)
 - **Copyright**: Meta Platforms, Inc. and affiliates
 
 ### DirectX-Headers
@@ -39,7 +38,7 @@ This project uses the following open-source libraries and tools. We are grateful
 
 ### Intrinsic
 - **Repository**: https://github.com/compphoto/Intrinsic
-- **Code & Pretrained Model License**: [Academic use only License](https://github.com/compphoto/Intrinsic/blob/main/LICENSE)
+- **Code & Pretrained Model License**: [Academic use only License](https://github.com/compphoto/Intrinsic/blob/main/LICENSE) (Non-commercial only)
 - **Copyright**: Chris Careaga, Yagiz Aksoy, Computational Photography Laboratory
 
 ### LightGlue
@@ -53,14 +52,14 @@ This project uses the following open-source libraries and tools. We are grateful
 - **Pretrained Model License**: [Apache-2.0 License](https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md)
 - **Copyright**: Microsoft Corporation
 
-**Note**, we implement a simplified inference process in our code base, by taking MoGe as a reference.
+**Note**, we implement a simplified inference process in our code base, by taking the original code as a reference.
 
 ### numpy
 - **Repository**: https://github.com/numpy/numpy
 - **License**: [BSD 3-Clause License](https://github.com/numpy/numpy/blob/main/LICENSE.txt)
 - **Copyright**: NumPy Developers
 
-- **Note**, it's dependent via pip package.
+**Note**, it's depended via pip package.
 
 ### openMVG
 - **Repository**: https://github.com/openMVG/openMVG
@@ -77,13 +76,13 @@ This project uses the following open-source libraries and tools. We are grateful
 - **License**: [BSD 3-Clause License](https://github.com/pytorch/pytorch/blob/main/LICENSE)
 - **Copyright**: Facebook, Inc.
 
-**Note**, it's dependent via pip package.
+**Note**, it's depended via pip package.
 
 ### safetensors
 - **Repository**: https://github.com/safetensors/safetensors
 - **License**: [Apache-2.0 License](https://github.com/safetensors/safetensors/blob/main/LICENSE)
 
-**Note**, it's dependent via pip package.
+**Note**, it's depended via pip package.
 
 ### SPIRV-Reflect
 - **Repository**: https://github.com/KhronosGroup/SPIRV-Reflect
@@ -97,7 +96,7 @@ This project uses the following open-source libraries and tools. We are grateful
 ### SuperPoint
 - **Repository**: https://github.com/magicleap/SuperPointPretrainedNetwork
 - **Code License**: [Apache-2.0 License](https://github.com/cvg/LightGlue/blob/main/LICENSE)
-- **Pretrained Model License**: https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE
+- **Pretrained Model License**: [Academic use only License](https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE) (Non-commercial only)
 - **Copyright**: Magic Leap, Inc.
 
 **Note**, we take the inference code from LightGlue, pretrained model from the original SuperPoint.
@@ -107,25 +106,25 @@ This project uses the following open-source libraries and tools. We are grateful
 - **License**: [BSD 3-Clause License](https://github.com/pytorch/vision/blob/main/LICENSE)
 - **Copyright**: Soumith Chintala
 
-**Note**, it's dependent via pip package.
+**Note**, it's depended via pip package.
 
 ### tqdm
 - **Repository**: https://github.com/tqdm/tqdm
 - **License**: [MPL-2.0 License](https://github.com/tqdm/tqdm/blob/master/LICENCE)
 - **Copyright**: Casper da Costa-Luis
 
-**Note**, it's dependent via pip package.
+**Note**, it's depended via pip package.
 
 ### TRELLIS
 - **Repository**: https://github.com/Microsoft/TRELLIS
 - **Code & Pretrained Model License**: [MIT License](https://github.com/microsoft/TRELLIS/blob/main/LICENSE)
 - **Copyright**: Microsoft Corporation
 
-**Note**, we implement a simplified inference process in our code base, by taking TRELLIS as a reference.
+**Note**, we implement a simplified inference process in our code base, by taking the original code as a reference.
 
 ### U-2-Net
 - **Repository**: https://github.com/xuebinqin/U-2-Net
-- **Code & Pretrained Model License**: [Apache License](https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE)
+- **Code & Pretrained Model License**: [Apache-2.0 License](https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE)
 
 ### volk
 - **Repository**: https://github.com/zeux/volk
@@ -134,7 +133,7 @@ This project uses the following open-source libraries and tools. We are grateful
 
 ### Vulkan-Headers
 - **Repository**: https://github.com/KhronosGroup/Vulkan-Headers
-- **License**: [Apache-2.0](https://github.com/KhronosGroup/Vulkan-Headers/blob/main/LICENSE.md)
+- **License**: [Apache-2.0 License](https://github.com/KhronosGroup/Vulkan-Headers/blob/main/LICENSE.md)
 - **Copyright**: The Khronos Group Inc.
 
 ### xatlas
@@ -154,7 +153,7 @@ This project uses the following open-source libraries and tools. We are grateful
 - **License**: [MIT License](https://github.com/wkentaro/gdown/blob/main/LICENSE)
 - **Copyright**: Kentaro Wada
 
-**Note**, it's dependent via pip package. We only call it's binary during development.
+**Note**, it's depended via pip package. We only call it's binary during development.
 
 ### easyexif
 - **Repository**: https://github.com/mayanklahiri/easyexif
