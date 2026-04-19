@@ -1,0 +1,77 @@
+// Copyright (c) 2024-2026 Minmin Gong
+//
+
+static const uint32_t BlockDim = 256;
+static const uint32_t MinWaveSize = 16;
+
+cbuffer param_cb
+{
+    uint32_t size;
+    bool from_input;
+    bool exclusive;
+};
+
+Buffer<DATA_TYPE> input;
+
+RWBuffer<DATA_TYPE> input_output;
+RWBuffer<DATA_TYPE> sum_output;
+
+groupshared DATA_TYPE group_scan_sum[BlockDim / MinWaveSize];
+
+DATA_TYPE ScanBlock(uint32_t group_index, DATA_TYPE value)
+{
+    const uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
+    const uint32_t num_waves = BlockDim / wave_size;
+
+    DATA_TYPE prefix_sum = WavePrefixSum(value);
+    if (lane_index == wave_size - 1)
+    {
+        group_scan_sum[wave_index] = prefix_sum + value;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    if (group_index < num_waves)
+    {
+        const DATA_TYPE wave_prefix_sum = group_scan_sum[group_index];
+        group_scan_sum[group_index] = WavePrefixSum(wave_prefix_sum);
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    if (wave_index > 0)
+    {
+        prefix_sum += group_scan_sum[wave_index];
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    return prefix_sum;
+}
+
+[numthreads(BlockDim, 1, 1)]
+void main(uint32_t3 gid : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
+{
+    DATA_TYPE input_data = 0;
+    if (dtid.x < size)
+    {
+        if (from_input)
+        {
+            input_data = input[dtid.x];
+        }
+        else
+        {
+            input_data = input_output[dtid.x];
+        }
+    }
+
+    DATA_TYPE scanned_data = ScanBlock(group_index, input_data);
+    if (dtid.x < size)
+    {
+        input_output[dtid.x] = exclusive ? scanned_data : input_data + scanned_data;
+    }
+
+    if (group_index == BlockDim - 1)
+    {
+        sum_output[gid.x] = input_data + scanned_data;
+    }
+}

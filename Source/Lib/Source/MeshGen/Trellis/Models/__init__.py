@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/__init__.py
@@ -8,6 +8,7 @@ from torch.nn.utils import skip_init
 __attributes = {
     "SparseStructureDecoder": "SparseStructureVae",
     "SparseStructureFlowModel": "SparseStructureFlow",
+    'SLatGaussianDecoder': 'StructuredLatentVae',
     "SLatMeshDecoder": "StructuredLatentVae",
     "SLatFlowModel": "StructuredLatentFlow",
 }

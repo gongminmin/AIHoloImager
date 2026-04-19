@@ -1,0 +1,266 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+// Modified from https://github.com/jaesung-cs/vulkan_radix_sort/blob/master/src/shader/downsweep.slang
+
+#pragma once
+
+#include "SortCommon.hlslh"
+
+cbuffer param_cb
+{
+    uint32_t num_items;
+    uint32_t pass;
+    uint32_t base_shift;
+    uint32_t bits;
+};
+
+Buffer<KeyType> keys;
+Buffer<ValueType> values;
+Buffer<uint32_t> global_hist;
+Buffer<uint32_t> partition_hist;
+
+RWBuffer<KeyType> output_keys;
+RWBuffer<ValueType> output_values;
+
+groupshared uint32_t group_local_hist[PartitionSize];  // (R, S=16)=4096, (P) for alias. take maximum.
+groupshared uint32_t group_local_hist_sum[NumDigitBins];
+
+// returns 0b00000....11111, where msb is id-1.
+uint32_t4 GetExclusiveWaveMask(uint32_t id)
+{
+    // Clamp bit-shift right operand between 0..31 to avoid undefined behavior.
+    const uint32_t shift = (1U << (id & 31)) - 1;
+    // Right shift operation on signed integer copies sign bit, use the trick for masking.
+    // (negative)     >> 31 = 111...111
+    // (non-negative) >> 31 = 000...000
+    const int x = int(id) >> 5;
+    return uint32_t4(
+        (shift & ((-1 - x) >> 31)) | ((0 - x) >> 31),
+        (shift & ((0 - x) >> 31)) | ((1 - x) >> 31),
+        (shift & ((1 - x) >> 31)) | ((2 - x) >> 31),
+        (shift & ((2 - x) >> 31)) | ((3 - x) >> 31)
+    );
+}
+
+uint32_t GetBitCount(uint32_t4 value)
+{
+    const uint32_t4 result = countbits(value);
+    return result[0] + result[1] + result[2] + result[3];
+}
+
+[numthreads(WorksetSize, 1, 1)]
+void main(uint32_t3 group_id : SV_GroupID, uint32_t group_index : SV_GroupIndex)
+{
+    const uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
+    const uint32_t num_waves = WorksetSize / wave_size;
+
+    const uint32_t4 wave_mask = GetExclusiveWaveMask(lane_index);
+
+    const uint32_t partition_index = group_id.x;
+    const uint32_t partition_start = partition_index * PartitionSize;
+
+    [branch]
+    if (partition_start >= num_items)
+    {
+        return;
+    }
+
+    for (uint32_t i = group_index; i < PartitionSize; i += WorksetSize)
+    {
+        group_local_hist[i] = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    uint32_t local_offsets[PartitionDivision];
+    KeyType local_keys[PartitionDivision];
+#if VALUE_SIZE > 0
+    uint32_t local_values[PartitionDivision];
+#endif
+    {
+        uint32_t local_radix[PartitionDivision];
+        uint32_t wave_hist[PartitionDivision];
+
+        for (uint32_t i = 0; i < PartitionDivision; ++i)
+        {
+            const uint32_t key_index = partition_start + wave_index * PartitionDivision * wave_size + i * wave_size + lane_index;
+            const KeyType key = key_index < num_items ? keys[key_index] : DummyKey();
+            local_keys[i] = key;
+
+#if VALUE_SIZE > 0
+            local_values[i] = key_index < num_items ? values[key_index] : DummyValue();
+#endif
+
+            const uint32_t radix = KeyBitfieldExtract(key, base_shift, bits);
+            local_radix[i] = radix;
+
+            // Mask per digit
+            uint32_t4 mask = WaveActiveBallot(true);
+            for (uint32_t j = 0; j < bits; ++j)
+            {
+                const uint32_t digit = (radix >> j) & 1U;
+                const uint32_t4 ballot = WaveActiveBallot(digit == 1);
+                // digit - 1 is 0 or 0xffffffff. xor to flip.
+                mask &= (uint32_t4(digit, digit, digit, digit) - 1) ^ ballot;
+            }
+
+            // Wave level offset for radix
+            const uint32_t wave_offset = GetBitCount(wave_mask & mask);
+            const uint32_t radix_count = GetBitCount(mask);
+
+            // Elect a representative per radix, add to histogram
+            if (wave_offset == 0)
+            {
+                // Accumulate to local histogram
+                InterlockedAdd(group_local_hist[radix * num_waves + wave_index], radix_count);
+                wave_hist[i] = radix_count;
+            }
+            else
+            {
+                wave_hist[i] = 0;
+            }
+
+            local_offsets[i] = wave_offset;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // Local histogram reduce 4096 or 2048
+        for (uint32_t i = group_index; i < num_waves * NumDigitBins; i += WorksetSize)
+        {
+            const uint32_t value = group_local_hist[i];
+            const uint32_t prefix_sum = WavePrefixSum(value);
+            if (lane_index == wave_size - 1)
+            {
+                group_local_hist_sum[i / wave_size] = prefix_sum + value;
+            }
+            group_local_hist[i] = prefix_sum;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // Local histogram reduce 128 or 32
+        const uint32_t intermediate_offset_0 = num_waves * NumDigitBins / wave_size;
+        if (group_index < intermediate_offset_0)
+        {
+            const uint32_t value = group_local_hist_sum[group_index];
+            const uint32_t exclusive = WavePrefixSum(value);
+            if (lane_index == wave_size - 1)
+            {
+                group_local_hist_sum[intermediate_offset_0 + group_index / wave_size] = exclusive + value;
+            }
+            group_local_hist_sum[group_index] = exclusive;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // local histogram reduce 4 or 1
+        const uint32_t intermediate_size_1 = max(num_waves * NumDigitBins / wave_size / wave_size, 1);
+        if (group_index < intermediate_size_1)
+        {
+            const uint32_t value = group_local_hist_sum[intermediate_offset_0 + group_index];
+            group_local_hist_sum[intermediate_offset_0 + group_index] = WavePrefixSum(value);
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // Local histogram add 128
+        if (group_index < intermediate_offset_0)
+        {
+            group_local_hist_sum[group_index] += group_local_hist_sum[intermediate_offset_0 + group_index / wave_size];
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // Local histogram add 4096
+        for (uint32_t i = group_index; i < num_waves * NumDigitBins; i += WorksetSize)
+        {
+            group_local_hist[i] += group_local_hist_sum[i / wave_size];
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        // Post-scan stage
+        for (uint32_t i = 0; i < PartitionDivision; ++i)
+        {
+            const uint32_t radix = local_radix[i];
+            local_offsets[i] += group_local_hist[radix * num_waves + wave_index];
+            GroupMemoryBarrierWithGroupSync();
+
+            if (wave_hist[i] > 0)
+            {
+                InterlockedAdd(group_local_hist[radix * num_waves + wave_index], wave_hist[i]);
+            }
+            GroupMemoryBarrierWithGroupSync();
+        }
+
+        // After atomic add, local histogram contains inclusive sum
+        if (group_index < NumDigitBins)
+        {
+            const uint32_t v = group_index == 0 ? 0 : group_local_hist[group_index * num_waves - 1];
+            group_local_hist_sum[group_index] = global_hist[pass * NumDigitBins + group_index] + partition_hist[partition_index * NumDigitBins + group_index] - v;
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    uint32_t local_dst_offsets[PartitionDivision];
+    {
+        const uint32_t comp_index = base_shift / 32;
+        const uint32_t comp_shift = base_shift & 31;
+
+        // Rearrange keys. grouping keys together makes dst offset to be almost sequential, grants huge
+        // speed boost. now local histogram is unused, so alias memory.
+        for (uint32_t i = 0; i < PartitionDivision; ++i)
+        {
+            group_local_hist[local_offsets[i]] = ReadKeyComp(local_keys[i], comp_index);
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        for (uint32_t i = group_index; i < PartitionSize; i += WorksetSize)
+        {
+            const uint32_t key_comp = group_local_hist[i];
+            const uint32_t radix = BitfieldExtract(key_comp, comp_shift, bits);
+            const uint32_t dst_offset = group_local_hist_sum[radix] + i;
+            local_dst_offsets[i / WorksetSize] = dst_offset;
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    for (uint32_t ki = 0; ki < NumKeyComps(); ++ki)
+    {
+        for (uint32_t i = 0; i < PartitionDivision; ++i)
+        {
+            group_local_hist[local_offsets[i]] = ReadKeyComp(local_keys[i], ki);
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        for (uint32_t i = group_index; i < PartitionSize; i += WorksetSize)
+        {
+            const uint32_t key_comp = group_local_hist[i];
+            const uint32_t dst_offset = local_dst_offsets[i / WorksetSize];
+            if (dst_offset < num_items)
+            {
+                WriteKeyComp(output_keys[dst_offset], ki, key_comp);
+            }
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+#if VALUE_SIZE > 0
+    for (uint32_t vi = 0; vi < NumValueComps(); ++vi)
+    {
+        for (uint32_t i = 0; i < PartitionDivision; ++i)
+        {
+            group_local_hist[local_offsets[i]] = ReadValueComp(local_values[i], vi);
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        for (uint32_t i = group_index; i < PartitionSize; i += WorksetSize)
+        {
+            const uint32_t value_comp = group_local_hist[i];
+            const uint32_t dst_offset = local_dst_offsets[i / WorksetSize];
+            if (dst_offset < num_items)
+            {
+                WriteValueComp(output_values[dst_offset], vi, value_comp);
+            }
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+#endif
+}

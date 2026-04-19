@@ -1,0 +1,103 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+// Modified from https://github.com/jaesung-cs/vulkan_radix_sort/blob/master/src/shader/spine.slang
+
+#pragma once
+
+#include "SortCommon.hlslh"
+#include "Utils.hlslh"
+
+static const uint32_t MinWaveSize = 16;
+
+cbuffer param_cb
+{
+    uint32_t num_items;
+    uint32_t pass;
+};
+
+RWBuffer<uint32_t> global_hist;
+RWBuffer<uint32_t> partition_hist;
+
+groupshared uint32_t group_reduction;
+groupshared uint32_t group_intermediate[WorksetSize / MinWaveSize];
+
+[numthreads(WorksetSize, 1, 1)]
+void main(uint32_t3 group_id : SV_GroupID, uint32_t group_index : SV_GroupIndex)
+{
+    const uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
+    const uint32_t num_waves = WorksetSize / wave_size;
+
+    const uint32_t radix = group_id.x;
+    const uint32_t partition_count = DivUp(num_items, PartitionSize);
+
+    if (group_index == 0)
+    {
+        group_reduction = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    for (uint32_t i = 0; i * WorksetSize < partition_count; ++i)
+    {
+        const uint32_t partition_index = i * WorksetSize + group_index;
+
+        const uint32_t value = partition_index < partition_count ? partition_hist[partition_index * NumDigitBins + radix] : 0;
+        uint32_t prefix_sum = WavePrefixSum(value) + group_reduction;
+        if (lane_index == wave_size - 1)
+        {
+            group_intermediate[wave_index] = prefix_sum + value;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        if (group_index < num_waves)
+        {
+            const uint32_t wave_prefix_sum = group_intermediate[group_index];
+            const uint32_t cross_wave_prefix_sum = WavePrefixSum(wave_prefix_sum);
+            if (group_index == num_waves - 1)
+            {
+                group_reduction += cross_wave_prefix_sum + wave_prefix_sum;
+            }
+            group_intermediate[group_index] = cross_wave_prefix_sum;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        if (partition_index < partition_count)
+        {
+            if (wave_index > 0)
+            {
+                prefix_sum += group_intermediate[wave_index];
+            }
+            partition_hist[partition_index * NumDigitBins + radix] = prefix_sum;
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if (radix == 0)
+    {
+        if (group_index < NumDigitBins)
+        {
+            const uint32_t value = global_hist[pass * NumDigitBins + group_index];
+            uint32_t prefix_sum = WavePrefixSum(value);
+            if (lane_index == wave_size - 1)
+            {
+                group_intermediate[wave_index] = prefix_sum + value;
+            }
+            GroupMemoryBarrierWithGroupSync();
+
+            if (group_index < NumDigitBins / wave_size)
+            {
+                const uint32_t prev_sum = group_intermediate[group_index];
+                group_intermediate[group_index] = WavePrefixSum(prev_sum);
+            }
+            GroupMemoryBarrierWithGroupSync();
+
+            if (wave_index > 0)
+            {
+                prefix_sum += group_intermediate[wave_index];
+            }
+            global_hist[pass * NumDigitBins + group_index] = prefix_sum;
+        }
+    }
+}

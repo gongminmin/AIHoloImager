@@ -135,7 +135,6 @@ namespace AIHoloImager
             TextureReconstruction::Result result;
             result.color_tex = this->GenTextureByProjection(
                 cmd_list, mesh_vb, mesh_ib, model_mtx, flatten_pos_tex, flatten_normal_tex, std::move(projections), texture_size);
-            result.pos_tex = std::move(flatten_pos_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -150,7 +149,6 @@ namespace AIHoloImager
             }
 
             result.color_tex.Transition(cmd_list, GpuResourceState::Common);
-            result.pos_tex.Transition(cmd_list, GpuResourceState::Common);
 #endif
 
             texture_perf.End();

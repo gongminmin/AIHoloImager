@@ -1,0 +1,30 @@
+// Copyright (c) 2024-2026 Minmin Gong
+//
+
+static const uint32_t BlockDim = 256;
+
+cbuffer param_cb
+{
+    uint32_t size;
+};
+
+Buffer<DATA_TYPE> sum;
+
+RWBuffer<DATA_TYPE> output;
+
+groupshared DATA_TYPE group_sum;
+
+[numthreads(BlockDim, 1, 1)]
+void main(uint32_t3 gid : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
+{
+    if (group_index == 0)
+    {
+        group_sum = sum[gid.x];
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    if (dtid.x < size)
+    {
+        output[dtid.x] += group_sum;
+    }
+}

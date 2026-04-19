@@ -1,20 +1,14 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 static const uint32_t BlockDim = 16;
 
 cbuffer param_cb
 {
-    float4x4 inv_model;
-
     uint32_t2 texture_size;
-    float inv_scale;
 };
 
-Texture3D color_vol_tex;
-Texture2D pos_tex;
-
-SamplerState trilinear_sampler;
+Texture2D gsplat_color_tex;
 
 #ifdef __spirv__
 [[vk::image_format("rgba8")]]
@@ -36,16 +30,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 pos_ws = pos_tex[dtid.xy];
-    [branch]
-    if (pos_ws.a < 0.5f)
-    {
-        return;
-    }
-
-    float4 pos_os = mul(pos_ws, inv_model);
-    pos_os /= pos_os.w;
-
-    const float3 vol_coord = pos_os.zyx * inv_scale + 0.5f;
-    merged_tex[dtid.xy] = saturate(color_vol_tex.SampleLevel(trilinear_sampler, vol_coord, 0));
+    merged_tex[dtid.xy] = saturate(gsplat_color_tex[dtid.xy]);
 }

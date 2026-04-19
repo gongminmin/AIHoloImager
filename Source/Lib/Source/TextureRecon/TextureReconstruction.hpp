@@ -32,7 +32,6 @@ namespace AIHoloImager
         struct Result
         {
             GpuTexture2D color_tex;
-            GpuTexture2D pos_tex;
         };
 
     public:

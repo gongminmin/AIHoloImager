@@ -1,0 +1,21 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+#pragma once
+
+#include "Utils.hlslh"
+
+static const uint32_t ImgTileX = 16;
+static const uint32_t ImgTileY = 16;
+
+void GetRect(float2 p, int max_radius, out uint32_t2 rect_min, out uint32_t2 rect_max, uint32_t2 grid)
+{
+    rect_min = uint32_t2(
+        min(grid.x, max(0, (p.x - max_radius) / ImgTileX)),
+        min(grid.y, max(0, (p.y - max_radius) / ImgTileY))
+    );
+    rect_max = uint32_t2(
+        min(grid.x, max(0, DivUp(p.x + max_radius, ImgTileX))),
+        min(grid.y, max(0, DivUp(p.y + max_radius, ImgTileY)))
+    );
+}

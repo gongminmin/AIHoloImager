@@ -19,6 +19,7 @@ else()
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
     if(need_checkout)
+        PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16.safetensors")
         PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_mesh_swin8_B_64l8m256c_fp16.safetensors")
         PullLfsFile("TRELLIS-image-large" "ckpts/slat_flow_img_dit_L_64l8p2_fp16.safetensors")
         PullLfsFile("TRELLIS-image-large" "ckpts/ss_dec_conv3d_16l8_fp16.safetensors")
@@ -28,6 +29,8 @@ else()
     set(deployed_files )
 
     set(copy_files
+        ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16.json
+        ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16.safetensors
         ckpts/slat_dec_mesh_swin8_B_64l8m256c_fp16.json
         ckpts/slat_dec_mesh_swin8_B_64l8m256c_fp16.safetensors
         ckpts/slat_flow_img_dit_L_64l8p2_fp16.json

@@ -1,0 +1,62 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+#pragma once
+
+#include "SortCommon.hlslh"
+#include "Utils.hlslh"
+
+static const uint32_t BlockDim = 256;
+
+cbuffer param_cb
+{
+    uint32_t num_items;
+    uint32_t pass;
+    uint32_t base_shift;
+    uint32_t bits;
+};
+
+Buffer<KeyType> keys;
+
+RWBuffer<uint32_t> global_hist;
+RWBuffer<uint32_t> partition_hist;
+
+groupshared uint32_t group_local_hist[NumDigitBins];
+
+[numthreads(BlockDim, 1, 1)]
+void main(uint32_t3 group_id : SV_GroupID, uint32_t group_index : SV_GroupIndex)
+{
+    const uint32_t partition_index = group_id.x;
+    const uint32_t partition_start = partition_index * PartitionSize;
+
+    [branch]
+    if (partition_start >= num_items)
+    {
+        return;
+    }
+
+    for (uint32_t i = group_index; i < NumDigitBins; i += BlockDim)
+    {
+        group_local_hist[i] = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    const uint32_t keys_per_block = DivUp(WorksetSize, BlockDim);
+    for (uint32_t i = 0; i < PartitionDivision; ++i)
+    {
+        for (uint32_t j = 0; j < keys_per_block; ++j)
+        {
+            const uint32_t key_index = partition_start + i * WorksetSize + j * BlockDim + group_index;
+            const KeyType key = key_index < num_items ? keys[key_index] : DummyKey();
+            const uint32_t radix = KeyBitfieldExtract(key, base_shift, bits);
+            InterlockedAdd(group_local_hist[radix], 1);
+        }
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    for (uint32_t i = group_index; i < NumDigitBins; i += BlockDim)
+    {
+        partition_hist[partition_index * NumDigitBins + i] = group_local_hist[i];
+        InterlockedAdd(global_hist[pass * NumDigitBins + i], group_local_hist[i]);
+    }
+}

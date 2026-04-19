@@ -32,6 +32,7 @@
 
 #include "Base/Util.hpp"
 #include "DiffOptimizer.hpp"
+#include "GaussianSplatting.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
@@ -41,6 +42,7 @@
 #include "MeshSimp/MeshSimplification.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
+#include "Util/CameraUtil.hpp"
 #include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
@@ -166,7 +168,7 @@ namespace AIHoloImager
     {
     public:
         explicit Impl(AIHoloImagerInternal& aihi)
-            : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi), optimizer_(aihi)
+            : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi), gsplat_(aihi), optimizer_(aihi)
         {
             PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Mesh generator init");
 
@@ -187,6 +189,13 @@ namespace AIHoloImager
                 mesh_generator_density_features_method_ = python_system.GetAttr(*mesh_generator_, "DensityFeatures");
                 mesh_generator_deformation_features_method_ = python_system.GetAttr(*mesh_generator_, "DeformationFeatures");
                 mesh_generator_color_features_method_ = python_system.GetAttr(*mesh_generator_, "ColorFeatures");
+                mesh_generator_gsplat_num_gaussians_method_ = python_system.GetAttr(*mesh_generator_, "GSplatNumGaussians");
+                mesh_generator_gsplat_sh_coefficients_method_ = python_system.GetAttr(*mesh_generator_, "GSplatShCoefficients");
+                mesh_generator_gsplat_positions_method_ = python_system.GetAttr(*mesh_generator_, "GSplatPositions");
+                mesh_generator_gsplat_scales_method_ = python_system.GetAttr(*mesh_generator_, "GSplatScales");
+                mesh_generator_gsplat_rotations_method_ = python_system.GetAttr(*mesh_generator_, "GSplatRotations");
+                mesh_generator_gsplat_shs_method_ = python_system.GetAttr(*mesh_generator_, "GSplatShs");
+                mesh_generator_gsplat_opacities_method_ = python_system.GetAttr(*mesh_generator_, "GSplatOpacities");
             });
 
             auto& gpu_system = aihi_.GpuSystemInstance();
@@ -263,6 +272,13 @@ namespace AIHoloImager
             python_system.CallObject(*mesh_generator_destroy_method);
 
             mesh_generator_destroy_method.reset();
+            mesh_generator_gsplat_num_gaussians_method_.reset();
+            mesh_generator_gsplat_sh_coefficients_method_.reset();
+            mesh_generator_gsplat_positions_method_.reset();
+            mesh_generator_gsplat_scales_method_.reset();
+            mesh_generator_gsplat_rotations_method_.reset();
+            mesh_generator_gsplat_shs_method_.reset();
+            mesh_generator_gsplat_opacities_method_.reset();
             mesh_generator_color_features_method_.reset();
             mesh_generator_deformation_features_method_.reset();
             mesh_generator_density_features_method_.reset();
@@ -316,18 +332,20 @@ namespace AIHoloImager
 #endif
             }
 
-            GpuTexture3D color_vol_tex;
             Mesh mesh;
             Mesh pos_color_mesh;
+            Gaussians gaussians;
             {
                 std::cout << "Generating mesh from images...\n";
 
                 PerfRegion gen_mesh_perf(profiler, "Generate mesh");
 
-                mesh = this->GenMesh(rotated_images, color_vol_tex);
+                GpuTexture3D color_vol_tex;
+                mesh = this->GenMesh(rotated_images, color_vol_tex, gaussians);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
+                SavePointCloud(gpu_system, gaussians, output_dir / "AiMeshGaussians.ply");
 #endif
 
                 pos_color_mesh = this->ApplyVertexColor(mesh, color_vol_tex);
@@ -481,14 +499,116 @@ namespace AIHoloImager
                 mesh = mesh.UnwrapUv(texture_size, 2);
             }
 
-            TextureReconstruction::Result texture_result;
+            TextureReconstruction::Result gsplat_texture_result;
             {
-                std::cout << "Generating texture...\n";
+                std::cout << "Generating texture from Gaussian splatting...\n";
 
-                PerfRegion texturing_perf(profiler, "Generate texture");
+                PerfRegion gsplat_texturing_perf(profiler, "Generate GSplat texture");
+
+                constexpr uint32_t GSplatNumViews = 8;
+                constexpr uint32_t GSplatRenderedSize = 1024;
+                auto gsplat_texs = std::make_unique<GpuTexture2D[]>(GSplatNumViews);
+                auto gsplat_view_mtxs = std::make_unique<glm::mat4x4[]>(GSplatNumViews);
+                auto gsplat_proj_mtxs = std::make_unique<glm::mat4x4[]>(GSplatNumViews);
+                for (uint32_t i = 0; i < GSplatNumViews; ++i)
+                {
+                    auto& rendered_tex = gsplat_texs[i];
+                    auto& view_mtx = gsplat_view_mtxs[i];
+                    auto& proj_mtx = gsplat_proj_mtxs[i];
+
+                    rendered_tex = GpuTexture2D(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm,
+                        GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, std::format("gsplat_rendered_{}", i));
+
+                    const glm::vec2 angle = SphereHammersleySequence(i, GSplatNumViews);
+                    const glm::vec3 camera_pos = SphericalCameraPose(angle.x, angle.y, 1.5f);
+                    const glm::vec3 camera_dir = -glm::normalize(camera_pos);
+                    glm::vec3 camera_up_vec;
+                    if (std::abs(camera_dir.z) > 0.95f)
+                    {
+                        camera_up_vec = glm::vec3(1, 0, 0);
+                    }
+                    else
+                    {
+                        camera_up_vec = glm::vec3(0, 0, 1);
+                    }
+
+                    view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), camera_up_vec);
+                    proj_mtx = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.5f, 2.5f);
+
+                    {
+                        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                        GpuRenderTargetView rendered_tex_rtv(gpu_system, rendered_tex);
+
+                        const float bg_clr[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                        cmd_list.Clear(rendered_tex_rtv, bg_clr);
+
+                        gpu_system.Execute(std::move(cmd_list));
+                    }
+
+                    gsplat_.Render(gaussians, view_mtx, proj_mtx, 0.1f, rendered_tex);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    {
+                        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                        const uint32_t width = rendered_tex.Width(0);
+                        const uint32_t height = rendered_tex.Height(0);
+                        Texture gsplat_rb_tex(width, height, ElementFormat::RGBA8_UNorm);
+                        auto rb_future = cmd_list.ReadBackAsync(rendered_tex, 0, gsplat_rb_tex.Data(), gsplat_rb_tex.DataSize());
+                        gpu_system.Execute(std::move(cmd_list));
+
+                        rb_future.wait();
+
+                        SaveTexture(gsplat_rb_tex, output_dir / std::format("RenderedGSplat_{}.png", i));
+                    }
+#endif
+                }
+
+                auto gsplat_projections = std::make_unique<TextureReconstruction::ProjectionDesc[]>(GSplatNumViews);
+                for (uint32_t i = 0; i < GSplatNumViews; ++i)
+                {
+                    auto& projection = gsplat_projections[i];
+
+                    projection.image = &gsplat_texs[i];
+
+                    projection.view_mtx = gsplat_view_mtxs[i];
+                    projection.proj_mtx = gsplat_proj_mtxs[i];
+
+                    projection.full_width = GSplatRenderedSize;
+                    projection.full_height = GSplatRenderedSize;
+
+                    projection.vp_offset = glm::vec2(0, 0);
+                    projection.image_offset = glm::uvec2(0, 0);
+                }
+                gsplat_texture_result = texture_recon_.Process(mesh, glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(0.5f)),
+                    std::span(gsplat_projections.get(), gsplat_projections.get() + GSplatNumViews), texture_size);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                    Texture rb_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                    auto rb_future = cmd_list.ReadBackAsync(gsplat_texture_result.color_tex, 0, rb_tex.Data(), rb_tex.DataSize());
+
+                    gpu_system.Execute(std::move(cmd_list));
+
+                    rb_future.wait();
+
+                    mesh.AlbedoTexture() = std::move(rb_tex);
+                    SaveMesh(mesh, output_dir / "AiMeshGSplat.glb");
+                }
+#endif
+            }
+
+            TextureReconstruction::Result photo_texture_result;
+            {
+                std::cout << "Generating texture from photos...\n";
+
+                PerfRegion photo_texturing_perf(profiler, "Generate photo texture");
 
                 const Obb world_obb = Obb::Transform(obb, model_mtx);
-                std::vector<TextureReconstruction::ProjectionDesc> projections(sfm_input.views.size());
+                auto projections = std::make_unique<TextureReconstruction::ProjectionDesc[]>(sfm_input.views.size());
                 for (size_t i = 0; i < sfm_input.views.size(); ++i)
                 {
                     auto& projection = projections[i];
@@ -508,7 +628,8 @@ namespace AIHoloImager
                     projection.vp_offset = CalcViewportOffset(intrinsic);
                     projection.image_offset = view.delighted_offset;
                 }
-                texture_result = texture_recon_.Process(mesh, model_mtx, projections, texture_size);
+                photo_texture_result = texture_recon_.Process(
+                    mesh, model_mtx, std::span(projections.get(), projections.get() + sfm_input.views.size()), texture_size);
             }
 
             Texture mask_tex(texture_size, texture_size, ElementFormat::R8_UNorm);
@@ -521,7 +642,7 @@ namespace AIHoloImager
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-                    this->MergeTexture(cmd_list, color_vol_tex, texture_result.pos_tex, model_mtx, texture_result.color_tex);
+                    this->MergeTexture(cmd_list, gsplat_texture_result.color_tex, photo_texture_result.color_tex);
 
                     std::future<void> mask_rb_future;
                     {
@@ -530,7 +651,7 @@ namespace AIHoloImager
                         GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
                             GpuResourceFlag::UnorderedAccess, "mask_gpu_tex");
 
-                        GpuShaderResourceView input_srv(gpu_system, texture_result.color_tex);
+                        GpuShaderResourceView input_srv(gpu_system, photo_texture_result.color_tex);
                         GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
 
                         auto extract_mask_cb = GpuConstantBufferOfType<ExtractMaskConstantBuffer>(gpu_system, "extract_mask_cb");
@@ -555,10 +676,11 @@ namespace AIHoloImager
                         gpu_system.ExecuteAndReset(cmd_list);
                     }
 
-                    GpuTexture2D dilated_tmp_gpu_tex(gpu_system, texture_result.color_tex.Width(0), texture_result.color_tex.Height(0), 1,
-                        texture_result.color_tex.Format(), GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
+                    GpuTexture2D dilated_tmp_gpu_tex(gpu_system, photo_texture_result.color_tex.Width(0),
+                        photo_texture_result.color_tex.Height(0), 1, photo_texture_result.color_tex.Format(),
+                        GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
 
-                    GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, texture_result.color_tex, dilated_tmp_gpu_tex);
+                    GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, photo_texture_result.color_tex, dilated_tmp_gpu_tex);
 
                     const auto dilated_rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
@@ -1077,7 +1199,7 @@ namespace AIHoloImager
             return rotated_images;
         }
 
-        Mesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex)
+        Mesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex, Gaussians& gaussians)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -1161,6 +1283,32 @@ namespace AIHoloImager
                 const auto py_color_features = python_system.CallObject(*mesh_generator_color_features_method_);
                 tensor_converter.ConvertPy(
                     cmd_list, *py_color_features, color_features_buff, GpuHeap::Default, GpuResourceFlag::None, "color_features_buff");
+
+                const auto py_num_gaussians = python_system.CallObject(*mesh_generator_gsplat_num_gaussians_method_);
+                gaussians.num_gaussians = python_system.Cast<uint32_t>(*py_num_gaussians);
+
+                const auto py_sh_coefficients = python_system.CallObject(*mesh_generator_gsplat_sh_coefficients_method_);
+                gaussians.sh_degrees = static_cast<uint32_t>(std::round(std::sqrt(python_system.Cast<uint32_t>(*py_sh_coefficients)))) - 1;
+
+                const auto py_gsplat_positions = python_system.CallObject(*mesh_generator_gsplat_positions_method_);
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_gsplat_positions, gaussians.positions, GpuHeap::Default, GpuResourceFlag::None, "gsplat_positions_buff");
+
+                const auto py_gsplat_scales = python_system.CallObject(*mesh_generator_gsplat_scales_method_);
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_gsplat_scales, gaussians.scales, GpuHeap::Default, GpuResourceFlag::None, "gsplat_scales_buff");
+
+                const auto py_gsplat_rotations = python_system.CallObject(*mesh_generator_gsplat_rotations_method_);
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_gsplat_rotations, gaussians.rotations, GpuHeap::Default, GpuResourceFlag::None, "gsplat_rotations_buff");
+
+                const auto py_gsplat_shs = python_system.CallObject(*mesh_generator_gsplat_shs_method_);
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_gsplat_shs, gaussians.shs, GpuHeap::Default, GpuResourceFlag::None, "gsplat_shs_buff");
+
+                const auto py_gsplat_opacities = python_system.CallObject(*mesh_generator_gsplat_opacities_method_);
+                tensor_converter.ConvertPy(
+                    cmd_list, *py_gsplat_opacities, gaussians.opacities, GpuHeap::Default, GpuResourceFlag::None, "gsplat_opacities_buff");
             }
 
             const GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);
@@ -1785,9 +1933,10 @@ namespace AIHoloImager
             }
         }
 
-        void MergeTexture(GpuCommandList& cmd_list, const GpuTexture3D& color_vol_tex, const GpuTexture2D& pos_tex,
-            const glm::mat4x4& model_mtx, GpuTexture2D& merged_tex)
+        void MergeTexture(GpuCommandList& cmd_list, const GpuTexture2D& gsplat_color_tex, GpuTexture2D& merged_tex)
         {
+            assert((gsplat_color_tex.Width(0) == merged_tex.Width(0)) && (gsplat_color_tex.Height(0) == merged_tex.Height(0)));
+
             auto& gpu_system = aihi_.GpuSystemInstance();
 
             GpuUnorderedAccessView merged_uav(gpu_system, merged_tex);
@@ -1796,14 +1945,11 @@ namespace AIHoloImager
             const uint32_t texture_height = merged_tex.Height(0);
 
             GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, "merge_texture_cb");
-            merge_texture_cb->inv_scale = 1 / GridScale;
-            merge_texture_cb->inv_model = glm::transpose(glm::inverse(model_mtx));
             merge_texture_cb->texture_size = glm::uvec2(texture_width, texture_height);
             merge_texture_cb.UploadStaging();
 
             const GpuConstantBufferView merge_texture_cbv(gpu_system, merge_texture_cb);
-            const GpuShaderResourceView pos_srv(gpu_system, pos_tex);
-            const GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
+            const GpuShaderResourceView gsplat_color_srv(gpu_system, gsplat_color_tex);
 
             constexpr uint32_t BlockDim = 16;
 
@@ -1811,8 +1957,7 @@ namespace AIHoloImager
                 {"param_cb", &merge_texture_cbv},
             };
             std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
-                {"color_vol_tex", &color_vol_srv},
-                {"pos_tex", &pos_srv},
+                {"gsplat_color_tex", &gsplat_color_srv},
             };
             std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                 {"merged_tex", &merged_uav},
@@ -1899,11 +2044,19 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_density_features_method_;
         PyObjectPtr mesh_generator_deformation_features_method_;
         PyObjectPtr mesh_generator_color_features_method_;
+        PyObjectPtr mesh_generator_gsplat_num_gaussians_method_;
+        PyObjectPtr mesh_generator_gsplat_sh_coefficients_method_;
+        PyObjectPtr mesh_generator_gsplat_positions_method_;
+        PyObjectPtr mesh_generator_gsplat_scales_method_;
+        PyObjectPtr mesh_generator_gsplat_rotations_method_;
+        PyObjectPtr mesh_generator_gsplat_shs_method_;
+        PyObjectPtr mesh_generator_gsplat_opacities_method_;
         std::future<void> py_init_future_;
 
         InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;
         TextureReconstruction texture_recon_;
+        GaussianSplatting gsplat_;
 
         DiffOptimizer optimizer_;
 
@@ -1948,11 +2101,8 @@ namespace AIHoloImager
 
         struct MergeTextureConstantBuffer
         {
-            glm::mat4x4 inv_model;
-
             glm::uvec2 texture_size;
-            float inv_scale;
-            uint32_t padding[1];
+            uint32_t padding[2];
         };
         GpuComputePipeline merge_texture_pipeline_;
 

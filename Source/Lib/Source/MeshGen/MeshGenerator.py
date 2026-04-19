@@ -33,7 +33,7 @@ class MeshGenerator:
         images = torch.stack(torch_images).contiguous()
 
         steps = max(images.shape[0] * 3, 25)
-        sparse_volume = self.pipeline.Run(
+        decoded = self.pipeline.Run(
             self.gpu_system,
             images,
             sparse_structure_sampler_params = {
@@ -44,7 +44,9 @@ class MeshGenerator:
                 "steps" : steps,
                 "cfg_strength" : 3,
             },
-        )[0]
+        )
+
+        sparse_volume = decoded["mesh"][0]
 
         self.resolution = sparse_volume.resolution
         self.coords = sparse_volume.coords
@@ -74,6 +76,13 @@ class MeshGenerator:
         indices = torch.tensor(indices, device = self.device)
         self.color_features = torch.index_select(sparse_volume.feats, -1, indices)
 
+        gsplat = decoded["gaussian"][0]
+        self.gsplat_positions = gsplat.get_xyz
+        self.gsplat_scales = gsplat.get_scaling
+        self.gsplat_rotations = gsplat.get_rotation
+        self.gsplat_shs = gsplat.get_features
+        self.gsplat_opacities = gsplat.get_opacity
+
         DeviceSync(self.device)
 
     def Resolution(self):
@@ -90,3 +99,24 @@ class MeshGenerator:
 
     def ColorFeatures(self) -> torch.Tensor:
         return self.color_features
+
+    def GSplatNumGaussians(self):
+        return self.gsplat_positions.shape[0]
+
+    def GSplatShCoefficients(self):
+        return self.gsplat_shs.shape[1]
+
+    def GSplatPositions(self) -> torch.Tensor:
+        return self.gsplat_positions
+
+    def GSplatScales(self) -> torch.Tensor:
+        return self.gsplat_scales
+
+    def GSplatRotations(self) -> torch.Tensor:
+        return self.gsplat_rotations
+
+    def GSplatShs(self) -> torch.Tensor:
+        return self.gsplat_shs
+
+    def GSplatOpacities(self) -> torch.Tensor:
+        return self.gsplat_opacities

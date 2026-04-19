@@ -73,7 +73,7 @@ class TrellisImageTo3DPipeline:
 
         models = {}
         for key, value in args["models"].items():
-            if key not in ("slat_decoder_rf", "slat_decoder_gs"):
+            if key not in ("slat_decoder_rf", ):
                 models[key] = Models.FromPretrained(f"{path}/{value}")
 
         sparse_structure_sampler = getattr(Samplers, args["sparse_structure_sampler"]["name"])(**args["sparse_structure_sampler"]["args"])
@@ -174,7 +174,8 @@ class TrellisImageTo3DPipeline:
         self,
         gpu_system,
         slat: sp.SparseTensor,
-    ) -> list:
+        output_types: list[str] = ["mesh", "gaussian"],
+    ) -> dict:
         """
         Decode the structured latent.
 
@@ -185,9 +186,15 @@ class TrellisImageTo3DPipeline:
             list: A list of decoded structured latent.
         """
 
-        decoder_model = self.models["slat_decoder_mesh"]
-        decoder_model.SetGpuSystem(gpu_system)
-        return decoder_model(slat)
+        ret = {}
+        if "mesh" in output_types:
+            decoder_model = self.models["slat_decoder_mesh"]
+            decoder_model.SetGpuSystem(gpu_system)
+            ret["mesh"] = decoder_model(slat)
+        if "gaussian" in output_types:
+            decoder_model = self.models["slat_decoder_gs"]
+            ret["gaussian"] = decoder_model(slat)
+        return ret
 
     def SampleSlat(
         self,
@@ -293,6 +300,7 @@ class TrellisImageTo3DPipeline:
         num_samples: Optional[int] = 1,
         sparse_structure_sampler_params: Optional[dict] = {},
         slat_sampler_params: Optional[dict] = {},
+        output_types: list[str] = ["mesh", "gaussian"],
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
     ) -> list:
         """
@@ -322,4 +330,4 @@ class TrellisImageTo3DPipeline:
             with self.InjectSamplerMultiImage("slat_sampler", num_images, slat_steps, mode = mode):
                 slat = self.SampleSlat(gpu_system, cond, neg_cond, coords, slat_sampler_params)
 
-        return self.DecodeSlat(gpu_system, slat)
+        return self.DecodeSlat(gpu_system, slat, output_types)
