@@ -140,6 +140,16 @@ namespace AIHoloImager
         Impl(PerfProfiler& profiler, std::string_view name, GpuCommandList* gpu_cmd_list) noexcept
             : profiler_(profiler), name_(std::move(name)), gpu_cmd_list_(gpu_cmd_list)
         {
+            this->Begin(gpu_cmd_list_);
+        }
+
+        ~Impl()
+        {
+            this->End();
+        }
+
+        void Begin(GpuCommandList* gpu_cmd_list)
+        {
             profiler_.impl_->EnterRegion(name_);
             start_time_ = profiler_.impl_->CpuTimer().Now();
             if (gpu_cmd_list_ != nullptr)
@@ -147,17 +157,23 @@ namespace AIHoloImager
                 gpu_timer_query_ = GpuTimerQuery(gpu_cmd_list->GpuSys());
                 gpu_timer_query_.Begin(*gpu_cmd_list_);
             }
-        }
 
-        ~Impl()
+            ended_ = false;
+        }
+        void End()
         {
-            const auto end_time = profiler_.impl_->CpuTimer().Now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time_);
-            if (gpu_cmd_list_ != nullptr)
+            if (!ended_)
             {
-                gpu_timer_query_.End(*gpu_cmd_list_);
+                const auto end_time = profiler_.impl_->CpuTimer().Now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time_);
+                if (gpu_cmd_list_ != nullptr)
+                {
+                    gpu_timer_query_.End(*gpu_cmd_list_);
+                }
+                profiler_.impl_->LeaveRegion(name_, std::move(duration), std::move(gpu_timer_query_));
+
+                ended_ = true;
             }
-            profiler_.impl_->LeaveRegion(name_, std::move(duration), std::move(gpu_timer_query_));
         }
 
     private:
@@ -166,6 +182,7 @@ namespace AIHoloImager
         std::chrono::high_resolution_clock::time_point start_time_;
         GpuCommandList* gpu_cmd_list_;
         GpuTimerQuery gpu_timer_query_;
+        bool ended_ = false;
     };
 
     PerfRegion::PerfRegion(PerfProfiler& profiler, std::string_view name, GpuCommandList* gpu_cmd_list)
@@ -174,4 +191,13 @@ namespace AIHoloImager
     }
 
     PerfRegion::~PerfRegion() = default;
+
+    void PerfRegion::Begin(GpuCommandList* gpu_cmd_list)
+    {
+        impl_->Begin(gpu_cmd_list);
+    }
+    void PerfRegion::End()
+    {
+        impl_->End();
+    }
 } // namespace AIHoloImager

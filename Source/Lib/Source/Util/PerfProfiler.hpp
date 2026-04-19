@@ -38,6 +38,9 @@ namespace AIHoloImager
         PerfRegion(PerfProfiler& profiler, std::string_view name, GpuCommandList* gpu_cmd_list = nullptr);
         ~PerfRegion();
 
+        void Begin(GpuCommandList* gpu_cmd_list = nullptr);
+        void End();
+
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

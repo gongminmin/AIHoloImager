@@ -99,6 +99,8 @@ namespace AIHoloImager
 
             auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
+            PerfRegion texture_perf(aihi_.PerfProfilerInstance(), "TextureReconstruction Process", &cmd_list);
+
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
                 GpuResourceFlag::None, "mesh_vb");
             cmd_list.Upload(mesh_vb, mesh.VertexBuffer().data(), mesh_vb.Size());
@@ -131,7 +133,7 @@ namespace AIHoloImager
 #endif
 
             TextureReconstruction::Result result;
-            result.color_tex = this->GenTextureFromPhotos(
+            result.color_tex = this->GenTextureByProjection(
                 cmd_list, mesh_vb, mesh_ib, model_mtx, flatten_pos_tex, flatten_normal_tex, std::move(projections), texture_size);
             result.pos_tex = std::move(flatten_pos_tex);
 
@@ -151,6 +153,7 @@ namespace AIHoloImager
             result.pos_tex.Transition(cmd_list, GpuResourceState::Common);
 #endif
 
+            texture_perf.End();
             gpu_system_.Execute(std::move(cmd_list));
             return result;
         }
@@ -159,6 +162,8 @@ namespace AIHoloImager
         void FlattenMesh(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib, const glm::mat4x4& model_mtx,
             uint32_t texture_size, GpuTexture2D& flatten_pos_tex, GpuTexture2D& flatten_normal_tex)
         {
+            PerfRegion perf(aihi_.PerfProfilerInstance(), "Flatten mesh", &cmd_list);
+
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             flatten_pos_tex =
@@ -199,10 +204,12 @@ namespace AIHoloImager
                 flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
         }
 
-        GpuTexture2D GenTextureFromPhotos(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
+        GpuTexture2D GenTextureByProjection(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
             const glm::mat4x4& model_mtx, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
             std::span<const ProjectionDesc> projections, uint32_t texture_size)
         {
+            PerfRegion perf(aihi_.PerfProfilerInstance(), "Projection", &cmd_list);
+
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
             GpuTexture2D accum_color_tex(
@@ -320,6 +327,8 @@ namespace AIHoloImager
 
         GpuTexture2D ResolveTexture(GpuCommandList& cmd_list, uint32_t texture_size, const GpuTexture2D& accum_color_tex)
         {
+            PerfRegion perf(aihi_.PerfProfilerInstance(), "Resolve texture", &cmd_list);
+
             constexpr uint32_t BlockDim = 16;
 
             GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "color_tex");
