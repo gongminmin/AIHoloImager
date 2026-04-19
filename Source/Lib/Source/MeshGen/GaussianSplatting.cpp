@@ -81,35 +81,27 @@ namespace AIHoloImager
 
             PerfRegion gsplat_perf(aihi_.PerfProfilerInstance(), "GaussianSplatting Render", &cmd_list);
 
-            struct GeometryState
+            if (geom_state_.num_gaussians_allocated < gaussians.num_gaussians)
             {
-                GpuBuffer depth;
-                GpuBuffer screen_pos;
-                GpuBuffer conic_opacity;
-                GpuBuffer color;
-                GpuBuffer point_offset;
-                GpuBuffer radius;
-                GpuBuffer tiles_touched;
-                GpuBuffer num_rendered;
-            };
+                geom_state_.depth = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(float), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.depth");
+                geom_state_.screen_pos = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec2), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.screen_pos");
+                geom_state_.conic_opacity = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.conic_opacity");
+                geom_state_.color = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.color");
+                geom_state_.point_offset = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.point_offset");
+                geom_state_.radius = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.radius");
+                geom_state_.tiles_touched = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.geom_state_.tiles_touched");
+                geom_state_.num_rendered_rb =
+                    GpuBuffer(gpu_system, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::None, "gsplat.geom_state_.num_rendered_rb");
 
-            GeometryState geom_state;
-            geom_state.depth = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(float), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.depth");
-            geom_state.screen_pos = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec2), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.screen_pos");
-            geom_state.conic_opacity = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.conic_opacity");
-            geom_state.color = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.color");
-            geom_state.point_offset = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.point_offset");
-            geom_state.radius = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.radius");
-            geom_state.tiles_touched = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.geom_state.tiles_touched");
-            geom_state.num_rendered =
-                GpuBuffer(gpu_system, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::None, "geom_state.num_rendered");
+                geom_state_.num_gaussians_allocated = gaussians.num_gaussians;
+            }
 
             {
                 constexpr uint32_t BlockDim = 256;
@@ -134,12 +126,12 @@ namespace AIHoloImager
                 const GpuShaderResourceView sh_srv(gpu_system, gaussians.shs, GpuFormat::RGB32_Float);
                 const GpuShaderResourceView opacity_srv(gpu_system, gaussians.opacities, GpuFormat::R32_Float);
 
-                GpuUnorderedAccessView radius_buff_uav(gpu_system, geom_state.radius, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView tiles_touched_uav(gpu_system, geom_state.tiles_touched, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView color_uav(gpu_system, geom_state.color, GpuFormat::R32_Float);
-                GpuUnorderedAccessView conic_opacity_uav(gpu_system, geom_state.conic_opacity, GpuFormat::RGBA32_Float);
-                GpuUnorderedAccessView depth_uav(gpu_system, geom_state.depth, GpuFormat::R32_Float);
-                GpuUnorderedAccessView screen_pos_uav(gpu_system, geom_state.screen_pos, GpuFormat::RG32_Float);
+                GpuUnorderedAccessView radius_buff_uav(gpu_system, geom_state_.radius, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView tiles_touched_uav(gpu_system, geom_state_.tiles_touched, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView color_uav(gpu_system, geom_state_.color, GpuFormat::R32_Float);
+                GpuUnorderedAccessView conic_opacity_uav(gpu_system, geom_state_.conic_opacity, GpuFormat::RGBA32_Float);
+                GpuUnorderedAccessView depth_uav(gpu_system, geom_state_.depth, GpuFormat::R32_Float);
+                GpuUnorderedAccessView screen_pos_uav(gpu_system, geom_state_.screen_pos, GpuFormat::RG32_Float);
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &preprocess_cbv},
@@ -166,32 +158,34 @@ namespace AIHoloImager
             uint32_t num_rendered;
             {
                 prefix_sum_scanner_.Scan(
-                    cmd_list, geom_state.tiles_touched, geom_state.point_offset, gaussians.num_gaussians, GpuFormat::R32_Uint, false);
+                    cmd_list, geom_state_.tiles_touched, geom_state_.point_offset, gaussians.num_gaussians, GpuFormat::R32_Uint, false);
 
-                cmd_list.Copy(geom_state.num_rendered, 0, geom_state.point_offset, (gaussians.num_gaussians - 1) * sizeof(uint32_t),
+                cmd_list.Copy(geom_state_.num_rendered_rb, 0, geom_state_.point_offset, (gaussians.num_gaussians - 1) * sizeof(uint32_t),
                     sizeof(uint32_t));
 
-                auto rb_future = cmd_list.ReadBackAsync(geom_state.num_rendered, &num_rendered, sizeof(num_rendered));
+                auto rb_future = cmd_list.ReadBackAsync(geom_state_.num_rendered_rb, &num_rendered, sizeof(num_rendered));
 
                 gpu_system.ExecuteAndReset(cmd_list);
 
                 rb_future.wait();
-
-                geom_state.tiles_touched = GpuBuffer();
-                geom_state.num_rendered = GpuBuffer();
             }
 
-            struct BinningState
+            if (num_rendered == 0)
             {
-                GpuBuffer point_keys;
-                GpuBuffer point_ids;
-            };
+                gsplat_perf.End();
+                gpu_system.Execute(std::move(cmd_list));
+                return;
+            }
 
-            BinningState binning_state;
-            binning_state.point_keys = GpuBuffer(gpu_system, num_rendered * sizeof(uint64_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.binning_state.point_keys");
-            binning_state.point_ids = GpuBuffer(gpu_system, num_rendered * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.binning_state.point_ids");
+            if (geom_state_.num_rendered_allocated < num_rendered)
+            {
+                binning_state_.point_keys = GpuBuffer(gpu_system, num_rendered * sizeof(uint64_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.binning_state_.point_keys");
+                binning_state_.point_ids = GpuBuffer(gpu_system, num_rendered * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.binning_state_.point_ids");
+
+                geom_state_.num_rendered_allocated = num_rendered;
+            }
 
             {
                 constexpr uint32_t BlockDim = 256;
@@ -202,13 +196,13 @@ namespace AIHoloImager
                 dup_with_keys_cb.UploadStaging();
                 const GpuConstantBufferView dup_with_keys_cbv(gpu_system, dup_with_keys_cb);
 
-                const GpuShaderResourceView screen_pos_srv(gpu_system, geom_state.screen_pos, GpuFormat::RG32_Float);
-                const GpuShaderResourceView depth_srv(gpu_system, geom_state.depth, GpuFormat::R32_Float);
-                const GpuShaderResourceView point_offset_srv(gpu_system, geom_state.point_offset, GpuFormat::R32_Uint);
-                const GpuShaderResourceView radius_buff_srv(gpu_system, geom_state.radius, GpuFormat::R32_Uint);
+                const GpuShaderResourceView screen_pos_srv(gpu_system, geom_state_.screen_pos, GpuFormat::RG32_Float);
+                const GpuShaderResourceView depth_srv(gpu_system, geom_state_.depth, GpuFormat::R32_Float);
+                const GpuShaderResourceView point_offset_srv(gpu_system, geom_state_.point_offset, GpuFormat::R32_Uint);
+                const GpuShaderResourceView radius_buff_srv(gpu_system, geom_state_.radius, GpuFormat::R32_Uint);
 
-                GpuUnorderedAccessView point_keys_unsorted_uav(gpu_system, binning_state.point_keys, GpuFormat::RG32_Uint);
-                GpuUnorderedAccessView point_ids_unsorted_uav(gpu_system, binning_state.point_ids, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView point_keys_unsorted_uav(gpu_system, binning_state_.point_keys, GpuFormat::RG32_Uint);
+                GpuUnorderedAccessView point_ids_unsorted_uav(gpu_system, binning_state_.point_ids, GpuFormat::R32_Uint);
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &dup_with_keys_cbv},
@@ -225,35 +219,30 @@ namespace AIHoloImager
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(dup_with_keys_pipeline_, DivUp(gaussians.num_gaussians, BlockDim), 1, 1, shader_binding);
-
-                geom_state.depth = GpuBuffer();
-                geom_state.point_offset = GpuBuffer();
-                geom_state.radius = GpuBuffer();
             }
 
+            const uint32_t num_tiles = tile_grid.x * tile_grid.y;
+
             {
-                const uint32_t bits = 32 - std::countl_zero(tile_grid.x * tile_grid.y);
-                sorter_.RadixSort(cmd_list, binning_state.point_keys, GpuFormat::RG32_Uint, binning_state.point_ids, GpuFormat::R32_Uint,
-                    num_rendered, binning_state.point_keys, binning_state.point_ids, 32 + bits);
+                const uint32_t bits = 32 - std::countl_zero(num_tiles);
+                sorter_.RadixSort(cmd_list, binning_state_.point_keys, GpuFormat::RG32_Uint, binning_state_.point_ids, GpuFormat::R32_Uint,
+                    num_rendered, binning_state_.point_keys, binning_state_.point_ids, 32 + bits);
             }
 
-            struct ImageState
+            if (img_state_.num_tiles_allocated < num_tiles)
             {
-                GpuBuffer ranges;
-                GpuUnorderedAccessView ranges_uav;
-            };
+                img_state_.ranges = GpuBuffer(gpu_system, num_tiles * sizeof(glm::uvec2), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "gsplat.img_state_.ranges");
+                img_state_.ranges_uav = GpuUnorderedAccessView(gpu_system, img_state_.ranges, GpuFormat::R32_Uint);
 
-            ImageState img_state;
-            img_state.ranges = GpuBuffer(gpu_system, tile_grid.x * tile_grid.y * sizeof(glm::uvec2), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "gsplat.img_state.ranges");
-            img_state.ranges_uav = GpuUnorderedAccessView(gpu_system, img_state.ranges, GpuFormat::R32_Uint);
+                img_state_.num_tiles_allocated = num_tiles;
+            }
 
             {
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
-                cmd_list.Clear(img_state.ranges_uav, clear_clr);
+                cmd_list.Clear(img_state_.ranges_uav, clear_clr);
             }
 
-            if (num_rendered > 0)
             {
                 constexpr uint32_t BlockDim = 256;
 
@@ -262,7 +251,7 @@ namespace AIHoloImager
                 identify_tile_ranges_cb.UploadStaging();
                 const GpuConstantBufferView identify_tile_ranges_cbv(gpu_system, identify_tile_ranges_cb);
 
-                const GpuShaderResourceView point_keys_srv(gpu_system, binning_state.point_keys, GpuFormat::RG32_Uint);
+                const GpuShaderResourceView point_keys_srv(gpu_system, binning_state_.point_keys, GpuFormat::RG32_Uint);
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &identify_tile_ranges_cbv},
@@ -271,7 +260,7 @@ namespace AIHoloImager
                     {"point_keys_buff", &point_keys_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                    {"ranges_buff", &img_state.ranges_uav},
+                    {"ranges_buff", &img_state_.ranges_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(identify_tile_ranges_pipeline_, DivUp(num_rendered, BlockDim), 1, 1, shader_binding);
@@ -283,12 +272,12 @@ namespace AIHoloImager
                 render_cb.UploadStaging();
                 const GpuConstantBufferView render_cbv(gpu_system, render_cb);
 
-                const GpuShaderResourceView ranges_srv(gpu_system, img_state.ranges, GpuFormat::RG32_Uint);
-                const GpuShaderResourceView point_ids_srv(gpu_system, binning_state.point_ids, GpuFormat::R32_Uint);
-                const GpuShaderResourceView screen_pos_srv(gpu_system, geom_state.screen_pos, GpuFormat::RG32_Float);
-                const GpuShaderResourceView point_colors_srv(gpu_system, geom_state.color,
+                const GpuShaderResourceView ranges_srv(gpu_system, img_state_.ranges, GpuFormat::RG32_Uint);
+                const GpuShaderResourceView point_ids_srv(gpu_system, binning_state_.point_ids, GpuFormat::R32_Uint);
+                const GpuShaderResourceView screen_pos_srv(gpu_system, geom_state_.screen_pos, GpuFormat::RG32_Float);
+                const GpuShaderResourceView point_colors_srv(gpu_system, geom_state_.color,
                     GpuFormat::R32_Float); // Vulkan doesn't support a buffer with RGB32_Float of both SRV and UAV
-                const GpuShaderResourceView conic_opacity_srv(gpu_system, geom_state.conic_opacity, GpuFormat::RGBA32_Float);
+                const GpuShaderResourceView conic_opacity_srv(gpu_system, geom_state_.conic_opacity, GpuFormat::RGBA32_Float);
 
                 GpuUnorderedAccessView rendered_image_uav(gpu_system, rendered_image, 0);
 
@@ -362,6 +351,38 @@ namespace AIHoloImager
 
         PrefixSumScanner prefix_sum_scanner_;
         Sorter sorter_;
+
+        struct GeometryState
+        {
+            GpuBuffer depth;
+            GpuBuffer screen_pos;
+            GpuBuffer conic_opacity;
+            GpuBuffer color;
+            GpuBuffer point_offset;
+            GpuBuffer radius;
+            GpuBuffer tiles_touched;
+            GpuBuffer num_rendered_rb;
+
+            uint32_t num_gaussians_allocated = 0;
+            uint32_t num_rendered_allocated = 0;
+        };
+        GeometryState geom_state_;
+
+        struct BinningState
+        {
+            GpuBuffer point_keys;
+            GpuBuffer point_ids;
+        };
+        BinningState binning_state_;
+
+        struct ImageState
+        {
+            GpuBuffer ranges;
+            GpuUnorderedAccessView ranges_uav;
+
+            uint32_t num_tiles_allocated = 0;
+        };
+        ImageState img_state_;
     };
 
     GaussianSplatting::GaussianSplatting() noexcept = default;
