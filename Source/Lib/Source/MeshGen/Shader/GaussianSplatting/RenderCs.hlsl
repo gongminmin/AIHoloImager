@@ -98,13 +98,13 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID,
             }
 
             // Eq. 2
-            const float alpha = min(0.99f, conic_opacity.w * exp(power));
-            if (alpha < 1 / 255.0f)
+            const float gaussian_alpha = min(0.99f, conic_opacity.w * exp(power));
+            if (gaussian_alpha < 1 / 255.0f)
             {
                 continue;
             }
 
-            const float new_transparency = transparency * (1 - alpha);
+            const float new_transparency = transparency * (1 - gaussian_alpha);
             if (new_transparency < 1e-4f)
             {
                 done = true;
@@ -115,7 +115,7 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID,
             {
                 const uint32_t point_id = group_point_id[j];
                 const float3 point_color = {point_colors_buff[point_id * 3 + 0], point_colors_buff[point_id * 3 + 1], point_colors_buff[point_id * 3 + 2]};
-                color += point_color * alpha * transparency;
+                color += point_color * gaussian_alpha * transparency;
             }
 
             transparency = new_transparency;
