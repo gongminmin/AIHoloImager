@@ -293,18 +293,55 @@ namespace AIHoloImager
                 throw std::runtime_error("Not supported yet");
             }
         }
+
+        pso_desc.BlendState.IndependentBlendEnable = (states.rtv_formats.size() > 1) && (states.blend_states.render_targets.size() > 1);
         for (uint32_t i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
         {
-            pso_desc.BlendState.RenderTarget[i] = {
-                .SrcBlend = D3D12_BLEND_ONE,
-                .DestBlend = D3D12_BLEND_ZERO,
-                .BlendOp = D3D12_BLEND_OP_ADD,
-                .SrcBlendAlpha = D3D12_BLEND_ONE,
-                .DestBlendAlpha = D3D12_BLEND_ZERO,
-                .BlendOpAlpha = D3D12_BLEND_OP_ADD,
-                .LogicOp = D3D12_LOGIC_OP_NOOP,
-                .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
-            };
+            size_t blend_state_index = static_cast<size_t>(~0ULL);
+            if (pso_desc.BlendState.IndependentBlendEnable)
+            {
+                if (i < states.blend_states.render_targets.size())
+                {
+                    blend_state_index = i;
+                }
+            }
+            else
+            {
+                if (!states.blend_states.render_targets.empty())
+                {
+                    blend_state_index = 0;
+                }
+            }
+
+            if (blend_state_index == static_cast<size_t>(~0ULL))
+            {
+                pso_desc.BlendState.RenderTarget[i] = {
+                    .SrcBlend = D3D12_BLEND_ONE,
+                    .DestBlend = D3D12_BLEND_ZERO,
+                    .BlendOp = D3D12_BLEND_OP_ADD,
+                    .SrcBlendAlpha = D3D12_BLEND_ONE,
+                    .DestBlendAlpha = D3D12_BLEND_ZERO,
+                    .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+                    .LogicOp = D3D12_LOGIC_OP_NOOP,
+                    .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+                };
+            }
+            else
+            {
+                const auto& blend_desc = states.blend_states.render_targets[blend_state_index];
+                pso_desc.BlendState.RenderTarget[i] = {
+                    .BlendEnable = blend_desc.blend_enable,
+                    .LogicOpEnable = FALSE,
+                    .SrcBlend = ToD3D12Blend(blend_desc.src_color_blend_factor),
+                    .DestBlend = ToD3D12Blend(blend_desc.dst_color_blend_factor),
+                    .BlendOp = ToD3D12BlendOp(blend_desc.color_blend_op),
+                    .SrcBlendAlpha = ToD3D12Blend(blend_desc.src_alpha_blend_factor),
+                    .DestBlendAlpha = ToD3D12Blend(blend_desc.dst_alpha_blend_factor),
+                    .BlendOpAlpha = ToD3D12BlendOp(blend_desc.alpha_blend_op),
+                    .LogicOp = D3D12_LOGIC_OP_NOOP,
+                    .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+                };
+            }
         }
         pso_desc.SampleMask = UINT_MAX;
         pso_desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;

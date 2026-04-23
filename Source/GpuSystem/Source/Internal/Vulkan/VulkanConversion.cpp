@@ -372,4 +372,54 @@ namespace AIHoloImager
         }
         return aspect_mask;
     }
+
+    VkBlendFactor ToVulkanBlendFactor(GpuRenderPipeline::BlendFactor blend) noexcept
+    {
+        switch (blend)
+        {
+        case GpuRenderPipeline::BlendFactor::Zero:
+            return VK_BLEND_FACTOR_ZERO;
+        case GpuRenderPipeline::BlendFactor::One:
+            return VK_BLEND_FACTOR_ONE;
+        case GpuRenderPipeline::BlendFactor::SrcColor:
+            return VK_BLEND_FACTOR_SRC_COLOR;
+        case GpuRenderPipeline::BlendFactor::InvSrcColor:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case GpuRenderPipeline::BlendFactor::SrcAlpha:
+            return VK_BLEND_FACTOR_SRC_ALPHA;
+        case GpuRenderPipeline::BlendFactor::InvSrcAlpha:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case GpuRenderPipeline::BlendFactor::DstAlpha:
+            return VK_BLEND_FACTOR_DST_ALPHA;
+        case GpuRenderPipeline::BlendFactor::InvDstAlpha:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        case GpuRenderPipeline::BlendFactor::DstColor:
+            return VK_BLEND_FACTOR_DST_COLOR;
+        case GpuRenderPipeline::BlendFactor::InvDstColor:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+
+        default:
+            Unreachable("Invalid blend factor");
+        }
+    }
+
+    VkBlendOp ToDVulkanBlendOp(GpuRenderPipeline::BlendOp blend_op) noexcept
+    {
+        switch (blend_op)
+        {
+        case GpuRenderPipeline::BlendOp::Add:
+            return VK_BLEND_OP_ADD;
+        case GpuRenderPipeline::BlendOp::Sub:
+            return VK_BLEND_OP_SUBTRACT;
+        case GpuRenderPipeline::BlendOp::RevSub:
+            return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case GpuRenderPipeline::BlendOp::Min:
+            return VK_BLEND_OP_MIN;
+        case GpuRenderPipeline::BlendOp::Max:
+            return VK_BLEND_OP_MAX;
+
+        default:
+            Unreachable("Invalid blend operation");
+        }
+    }
 } // namespace AIHoloImager

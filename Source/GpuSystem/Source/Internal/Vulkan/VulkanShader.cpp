@@ -274,19 +274,55 @@ namespace AIHoloImager
             .depthCompareOp = VK_COMPARE_OP_LESS,
         };
 
+        const bool independent_blend = (states.rtv_formats.size() > 1) && (states.blend_states.render_targets.size() > 1);
         auto blend_attachment_states = std::make_unique<VkPipelineColorBlendAttachmentState[]>(states.rtv_formats.size());
         for (size_t i = 0; i < states.rtv_formats.size(); ++i)
         {
-            blend_attachment_states[i] = VkPipelineColorBlendAttachmentState{
-                .blendEnable = VK_FALSE,
-                .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-                .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
-                .colorBlendOp = VK_BLEND_OP_ADD,
-                .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-                .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-                .alphaBlendOp = VK_BLEND_OP_ADD,
-                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-            };
+            size_t blend_state_index = static_cast<size_t>(~0ULL);
+            if (independent_blend)
+            {
+                if (i < states.blend_states.render_targets.size())
+                {
+                    blend_state_index = i;
+                }
+            }
+            else
+            {
+                if (!states.blend_states.render_targets.empty())
+                {
+                    blend_state_index = 0;
+                }
+            }
+
+            if (blend_state_index == static_cast<size_t>(~0ULL))
+            {
+                blend_attachment_states[i] = VkPipelineColorBlendAttachmentState{
+                    .blendEnable = VK_FALSE,
+                    .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+                    .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+                    .colorBlendOp = VK_BLEND_OP_ADD,
+                    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+                    .alphaBlendOp = VK_BLEND_OP_ADD,
+                    .colorWriteMask =
+                        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                };
+            }
+            else
+            {
+                const auto& blend_desc = states.blend_states.render_targets[blend_state_index];
+                blend_attachment_states[i] = {
+                    .blendEnable = blend_desc.blend_enable,
+                    .srcColorBlendFactor = ToVulkanBlendFactor(blend_desc.src_color_blend_factor),
+                    .dstColorBlendFactor = ToVulkanBlendFactor(blend_desc.dst_color_blend_factor),
+                    .colorBlendOp = ToDVulkanBlendOp(blend_desc.color_blend_op),
+                    .srcAlphaBlendFactor = ToVulkanBlendFactor(blend_desc.src_alpha_blend_factor),
+                    .dstAlphaBlendFactor = ToVulkanBlendFactor(blend_desc.dst_alpha_blend_factor),
+                    .alphaBlendOp = ToDVulkanBlendOp(blend_desc.alpha_blend_op),
+                    .colorWriteMask =
+                        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                };
+            }
         }
 
         const VkPipelineColorBlendStateCreateInfo color_blend_state_create_info{

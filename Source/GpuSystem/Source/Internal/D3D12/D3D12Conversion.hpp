@@ -30,4 +30,7 @@ namespace AIHoloImager
     D3D12_RESOURCE_DIMENSION ToD3D12ResourceDimension(GpuResourceType type);
 
     D3D_PRIMITIVE_TOPOLOGY ToD3D12PrimitiveTopology(GpuRenderPipeline::PrimitiveTopology topology) noexcept;
+
+    D3D12_BLEND ToD3D12Blend(GpuRenderPipeline::BlendFactor blend) noexcept;
+    D3D12_BLEND_OP ToD3D12BlendOp(GpuRenderPipeline::BlendOp blend_op) noexcept;
 } // namespace AIHoloImager

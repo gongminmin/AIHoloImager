@@ -9,6 +9,7 @@
 
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
+#include "Gpu/GpuShader.hpp"
 
 namespace AIHoloImager
 {
@@ -28,4 +29,7 @@ namespace AIHoloImager
     std::tuple<VkAccessFlags, VkAccessFlags> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout);
 
     VkImageAspectFlags ToVulkanAspectMask(GpuFormat fmt) noexcept;
+
+    VkBlendFactor ToVulkanBlendFactor(GpuRenderPipeline::BlendFactor blend) noexcept;
+    VkBlendOp ToDVulkanBlendOp(GpuRenderPipeline::BlendOp blend_op) noexcept;
 } // namespace AIHoloImager

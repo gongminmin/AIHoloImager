@@ -82,6 +82,47 @@ namespace AIHoloImager
             CounterClockWise,
         };
 
+        enum class BlendFactor
+        {
+            Zero,
+            One,
+            SrcColor,
+            InvSrcColor,
+            SrcAlpha,
+            InvSrcAlpha,
+            DstAlpha,
+            InvDstAlpha,
+            DstColor,
+            InvDstColor,
+        };
+
+        enum class BlendOp
+        {
+            Add,
+            Sub,
+            RevSub,
+            Min,
+            Max,
+        };
+
+        // TODO: Support more states
+        struct RenderTargetBlendDesc
+        {
+            bool blend_enable = false;
+            BlendFactor src_color_blend_factor = BlendFactor::One;
+            BlendFactor dst_color_blend_factor = BlendFactor::Zero;
+            BlendOp color_blend_op = BlendOp::Add;
+            BlendFactor src_alpha_blend_factor = BlendFactor::One;
+            BlendFactor dst_alpha_blend_factor = BlendFactor::Zero;
+            BlendOp alpha_blend_op = BlendOp::Add;
+        };
+
+        // TODO: Support more states
+        struct BlendStates
+        {
+            std::span<const RenderTargetBlendDesc> render_targets;
+        };
+
         // TODO: Support more states
         struct States
         {
@@ -90,6 +131,7 @@ namespace AIHoloImager
             bool depth_enable = false;
             std::span<const GpuFormat> rtv_formats;
             GpuFormat dsv_format = GpuFormat::Unknown;
+            BlendStates blend_states;
         };
 
         // TODO: Support more topology

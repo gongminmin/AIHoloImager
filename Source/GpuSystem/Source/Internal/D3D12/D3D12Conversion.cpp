@@ -318,4 +318,54 @@ namespace AIHoloImager
             Unreachable("Invalid primitive topology");
         }
     }
+
+    D3D12_BLEND ToD3D12Blend(GpuRenderPipeline::BlendFactor blend) noexcept
+    {
+        switch (blend)
+        {
+        case GpuRenderPipeline::BlendFactor::Zero:
+            return D3D12_BLEND_ZERO;
+        case GpuRenderPipeline::BlendFactor::One:
+            return D3D12_BLEND_ONE;
+        case GpuRenderPipeline::BlendFactor::SrcColor:
+            return D3D12_BLEND_SRC_COLOR;
+        case GpuRenderPipeline::BlendFactor::InvSrcColor:
+            return D3D12_BLEND_INV_SRC_COLOR;
+        case GpuRenderPipeline::BlendFactor::SrcAlpha:
+            return D3D12_BLEND_SRC_ALPHA;
+        case GpuRenderPipeline::BlendFactor::InvSrcAlpha:
+            return D3D12_BLEND_INV_SRC_ALPHA;
+        case GpuRenderPipeline::BlendFactor::DstAlpha:
+            return D3D12_BLEND_DEST_ALPHA;
+        case GpuRenderPipeline::BlendFactor::InvDstAlpha:
+            return D3D12_BLEND_INV_DEST_ALPHA;
+        case GpuRenderPipeline::BlendFactor::DstColor:
+            return D3D12_BLEND_DEST_COLOR;
+        case GpuRenderPipeline::BlendFactor::InvDstColor:
+            return D3D12_BLEND_INV_DEST_COLOR;
+
+        default:
+            Unreachable("Invalid blend factor");
+        }
+    }
+
+    D3D12_BLEND_OP ToD3D12BlendOp(GpuRenderPipeline::BlendOp blend_op) noexcept
+    {
+        switch (blend_op)
+        {
+        case GpuRenderPipeline::BlendOp::Add:
+            return D3D12_BLEND_OP_ADD;
+        case GpuRenderPipeline::BlendOp::Sub:
+            return D3D12_BLEND_OP_SUBTRACT;
+        case GpuRenderPipeline::BlendOp::RevSub:
+            return D3D12_BLEND_OP_REV_SUBTRACT;
+        case GpuRenderPipeline::BlendOp::Min:
+            return D3D12_BLEND_OP_MIN;
+        case GpuRenderPipeline::BlendOp::Max:
+            return D3D12_BLEND_OP_MAX;
+
+        default:
+            Unreachable("Invalid blend operation");
+        }
+    }
 } // namespace AIHoloImager
