@@ -458,16 +458,16 @@ namespace AIHoloImager
 
         const uint32_t num_coeffs = NumCoefficientsFromShDegrees(ret.sh_degrees);
 
-        ret.positions = GpuBuffer(
-            gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gaussians.positions");
-        ret.scales = GpuBuffer(
-            gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gaussians.scales");
-        ret.rotations = GpuBuffer(
-            gpu_system, ret.num_gaussians * sizeof(glm::vec4), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gaussians.rotations");
-        ret.shs = GpuBuffer(gpu_system, ret.num_gaussians * num_coeffs * sizeof(glm::vec3), GpuHeap::Default,
-            GpuResourceFlag::UnorderedAccess, "gaussians.shs");
-        ret.opacities = GpuBuffer(
-            gpu_system, ret.num_gaussians * sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gaussians.opacities");
+        ret.positions =
+            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.positions");
+        ret.scales =
+            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.scales");
+        ret.rotations =
+            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec4), GpuHeap::Default, GpuResourceFlag::None, "gaussians.rotations");
+        ret.shs = GpuBuffer(
+            gpu_system, ret.num_gaussians * num_coeffs * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.shs");
+        ret.opacities =
+            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(float), GpuHeap::Default, GpuResourceFlag::None, "gaussians.opacities");
 
         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
