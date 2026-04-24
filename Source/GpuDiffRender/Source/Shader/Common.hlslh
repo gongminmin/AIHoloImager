@@ -5,7 +5,7 @@
 
 #include "Platform.hlslh"
 
-void AtomicAdd(RWBuffer<uint32_t> buff, uint addr, float value)
+void AtomicAdd(RWBuffer<uint32_t> buff, uint32_t addr, float value)
 {
     uint32_t cmp_val = buff[addr];
     ALLOW_UAV_CONDITION

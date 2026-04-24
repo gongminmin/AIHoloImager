@@ -9,7 +9,7 @@ struct GsInput
 struct PsInput
 {
     float2 bc : TEXCOORD0;
-    nointerpolation uint prim_id : PRIMITIVE_ID;
+    nointerpolation uint32_t prim_id : PRIMITIVE_ID;
 #if ENABLE_DERIVATIVE_BC
     float4 position : TEXCOORD1;
 #endif
