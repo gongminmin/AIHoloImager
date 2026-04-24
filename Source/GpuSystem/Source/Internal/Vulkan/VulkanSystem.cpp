@@ -255,39 +255,34 @@ namespace AIHoloImager
             .geometryShader = VK_TRUE,
         };
 
-        VkPhysicalDeviceShaderFloat16Int8Features shader_float16_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES,
-            .shaderFloat16 = VK_TRUE,
+        VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
+            .nullDescriptor = VK_TRUE,
         };
 
-        VkPhysicalDevice16BitStorageFeatures storage_16_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
-            .pNext = &shader_float16_feature,
+        VkPhysicalDeviceVulkan11Features enable_vulkan11_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+            .pNext = &robustness_2_feature,
             .storageBuffer16BitAccess = VK_TRUE,
             .uniformAndStorageBuffer16BitAccess = VK_TRUE,
         };
 
-        VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
-            .pNext = &storage_16_feature,
+        VkPhysicalDeviceVulkan12Features enable_vulkan12_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = &enable_vulkan11_features,
+            .shaderFloat16 = VK_TRUE,
             .timelineSemaphore = VK_TRUE,
         };
 
-        VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
-            .pNext = &timeline_semaphore_feature,
-            .nullDescriptor = VK_TRUE,
-        };
-
-        VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering_feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-            .pNext = &robustness_2_feature,
-            .dynamicRendering = VK_TRUE,
+        VkPhysicalDeviceVulkan13Features enable_vulkan13_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+            .pNext = &enable_vulkan12_features,
+            .dynamicRendering = TRUE,
         };
 
         VkDeviceCreateInfo device_create_info{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .pNext = &dynamic_rendering_feature,
+            .pNext = &enable_vulkan13_features,
             .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
             .pQueueCreateInfos = queue_create_infos.data(),
             .pEnabledFeatures = &enable_features,
