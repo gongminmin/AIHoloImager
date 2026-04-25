@@ -37,10 +37,10 @@ namespace AIHoloImager
             {
                 ++iter->second.level;
             }
-            iter->second.regions.emplace_back(iter->second.level, std::string(std::move(name)), std::chrono::milliseconds{});
+            iter->second.regions.emplace_back(iter->second.level, std::string(std::move(name)), std::chrono::microseconds{});
         }
 
-        void LeaveRegion(std::string_view name, std::chrono::milliseconds duration, GpuTimerQuery gpu_timer_query)
+        void LeaveRegion(std::string_view name, std::chrono::microseconds duration, GpuTimerQuery gpu_timer_query)
         {
             std::lock_guard lock(perf_mutex_);
 
@@ -65,14 +65,14 @@ namespace AIHoloImager
         {
             std::lock_guard lock(perf_mutex_);
 
-            auto format_duration = [](std::chrono::milliseconds duration) {
+            auto format_duration = [](std::chrono::microseconds duration) {
                 if (duration > std::chrono::seconds(1))
                 {
                     return std::format("{:.3f} s", std::chrono::duration_cast<std::chrono::duration<float>>(duration).count());
                 }
                 else
                 {
-                    return std::format("{} ms", duration.count());
+                    return std::format("{:.3f} ms", std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(duration).count());
                 }
             };
 
@@ -93,7 +93,7 @@ namespace AIHoloImager
                     os << "CPU " << format_duration(region.duration);
                     if (region.gpu_timer_query)
                     {
-                        const auto gpu_duration = std::chrono::duration_cast<std::chrono::milliseconds>(region.gpu_timer_query.Elapsed());
+                        const auto gpu_duration = std::chrono::duration_cast<std::chrono::microseconds>(region.gpu_timer_query.Elapsed());
                         os << "  GPU " << format_duration(gpu_duration);
                     }
 
@@ -111,7 +111,7 @@ namespace AIHoloImager
         {
             uint32_t level = 0;
             std::string name;
-            std::chrono::milliseconds duration;
+            std::chrono::microseconds duration;
             GpuTimerQuery gpu_timer_query;
         };
         struct ThreadPerfInfo
@@ -165,7 +165,7 @@ namespace AIHoloImager
             if (!ended_)
             {
                 const auto end_time = profiler_.impl_->CpuTimer().Now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time_);
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_);
                 if (gpu_cmd_list_ != nullptr)
                 {
                     gpu_timer_query_.End(*gpu_cmd_list_);
