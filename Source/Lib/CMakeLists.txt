@@ -64,6 +64,7 @@ set(aihi_files
     Source/MeshGen/Shader/PrefixSumScanner/ApplySumCs.hlslh
     Source/MeshGen/Shader/PrefixSumScanner/ApplySumUint2Cs.hlsl
     Source/MeshGen/Shader/PrefixSumScanner/ApplySumUintCs.hlsl
+    Source/MeshGen/Shader/PrefixSumScanner/PrefixSumBlock.hlslh
     Source/MeshGen/Shader/PrefixSumScanner/PrefixSumCs.hlslh
     Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUint2Cs.hlsl
     Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUintCs.hlsl
