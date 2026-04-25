@@ -275,6 +275,36 @@ namespace AIHoloImager
 
         {
             const D3D12_INDIRECT_ARGUMENT_DESC indirect_param{
+                .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW,
+            };
+
+            const D3D12_COMMAND_SIGNATURE_DESC cmd_signature_desc{
+                .ByteStride = sizeof(D3D12_DRAW_ARGUMENTS),
+                .NumArgumentDescs = 1,
+                .pArgumentDescs = &indirect_param,
+                .NodeMask = 1,
+            };
+
+            TIFHR(device_->CreateCommandSignature(
+                &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), draw_indirect_signature_.PutVoid()));
+        }
+        {
+            const D3D12_INDIRECT_ARGUMENT_DESC indirect_param{
+                .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED,
+            };
+
+            const D3D12_COMMAND_SIGNATURE_DESC cmd_signature_desc{
+                .ByteStride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS),
+                .NumArgumentDescs = 1,
+                .pArgumentDescs = &indirect_param,
+                .NodeMask = 1,
+            };
+
+            TIFHR(device_->CreateCommandSignature(
+                &cmd_signature_desc, nullptr, UuidOf<ID3D12CommandSignature>(), draw_indexed_indirect_signature_.PutVoid()));
+        }
+        {
+            const D3D12_INDIRECT_ARGUMENT_DESC indirect_param{
                 .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH,
             };
 
@@ -685,7 +715,15 @@ namespace AIHoloImager
         return curr_fence_value;
     }
 
-    ID3D12CommandSignature* D3D12System::NativeDispatchIndirectSignature() const noexcept
+    ID3D12CommandSignature* D3D12System::DrawIndirectSignature() const noexcept
+    {
+        return draw_indirect_signature_.Get();
+    }
+    ID3D12CommandSignature* D3D12System::DrawIndexedIndirectSignature() const noexcept
+    {
+        return draw_indexed_indirect_signature_.Get();
+    }
+    ID3D12CommandSignature* D3D12System::DispatchIndirectSignature() const noexcept
     {
         return dispatch_indirect_signature_.Get();
     }

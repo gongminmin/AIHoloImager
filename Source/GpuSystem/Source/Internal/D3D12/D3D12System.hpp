@@ -73,7 +73,9 @@ namespace AIHoloImager
 
         void Recycle(ComPtr<ID3D12DeviceChild>&& resource, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
-        ID3D12CommandSignature* NativeDispatchIndirectSignature() const noexcept;
+        ID3D12CommandSignature* DrawIndirectSignature() const noexcept;
+        ID3D12CommandSignature* DrawIndexedIndirectSignature() const noexcept;
+        ID3D12CommandSignature* DispatchIndirectSignature() const noexcept;
         ComPtr<ID3D12ShaderReflection> ShaderReflect(std::span<const uint8_t> bytecode);
 
         uint32_t RtvDescSize() const noexcept;
@@ -191,6 +193,8 @@ namespace AIHoloImager
         };
         std::list<StallResourceInfo> stall_resources_;
 
+        ComPtr<ID3D12CommandSignature> draw_indirect_signature_;
+        ComPtr<ID3D12CommandSignature> draw_indexed_indirect_signature_;
         ComPtr<ID3D12CommandSignature> dispatch_indirect_signature_;
 
         ComPtr<IDxcUtils> dxc_utils_;

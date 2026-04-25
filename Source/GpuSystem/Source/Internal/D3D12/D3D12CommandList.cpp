@@ -283,6 +283,50 @@ namespace AIHoloImager
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
+        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, num]() {
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            if (ib != nullptr)
+            {
+                d3d12_cmd_list->DrawIndexedInstanced(num, 1, 0, 0, 0);
+            }
+            else
+            {
+                d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
+            }
+        });
+    }
+
+    void D3D12CommandList::RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+        const GpuCommandList::IndexBufferBinding* ib, const GpuBuffer& indirect_args,
+        std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+    {
+        const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
+        d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
+
+        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, &d3d12_indirect_args]() {
+            auto& d3d12_system = D3D12Imp(*gpu_system_);
+
+            ID3D12CommandSignature* cmd_signature;
+            if (ib != nullptr)
+            {
+                cmd_signature = d3d12_system.DrawIndexedIndirectSignature();
+            }
+            else
+            {
+                cmd_signature = d3d12_system.DrawIndirectSignature();
+            }
+
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->ExecuteIndirect(cmd_signature, 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
+        });
+    }
+
+    void D3D12CommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+        const GpuCommandList::IndexBufferBinding* ib, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects, std::function<void()> dispatch_call)
+    {
         const auto& d3d12_pipeline = D3D12Imp(pipeline);
         auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
 
@@ -605,14 +649,7 @@ namespace AIHoloImager
             d3d12_cmd_list->RSSetScissorRects(static_cast<uint32_t>(scissor_rects.size()), d3d12_scissor_rects.get());
         }
 
-        if (ib != nullptr)
-        {
-            d3d12_cmd_list->DrawIndexedInstanced(num, 1, 0, 0, 0);
-        }
-        else
-        {
-            d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
-        }
+        dispatch_call();
 
         // In case these resources are used in a compute command list, where color write and depth write are not available.
         for (auto* rtv : rtvs)
@@ -643,13 +680,13 @@ namespace AIHoloImager
     void D3D12CommandList::ComputeIndirect(
         const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const GpuCommandList::ShaderBinding& shader_binding)
     {
-        this->Compute(pipeline, shader_binding, [this, &indirect_args]() {
-            const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
-            d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
+        const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
+        d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
 
+        this->Compute(pipeline, shader_binding, [this, &d3d12_indirect_args]() {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
             d3d12_cmd_list->ExecuteIndirect(
-                D3D12Imp(*gpu_system_).NativeDispatchIndirectSignature(), 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
+                D3D12Imp(*gpu_system_).DispatchIndirectSignature(), 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
         });
     }
 

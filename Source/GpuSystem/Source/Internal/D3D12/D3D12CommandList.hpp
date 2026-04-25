@@ -66,6 +66,10 @@ namespace AIHoloImager
             const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
             std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
             std::span<const GpuRect> scissor_rects) override;
+        void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+            const GpuCommandList::IndexBufferBinding* ib, const GpuBuffer& indirect_args,
+            std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects) override;
         void Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
             const GpuCommandList::ShaderBinding& shader_binding) override;
         void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args,
@@ -99,6 +103,10 @@ namespace AIHoloImager
         void UpdateAccessInfo(uint64_t fence_value);
 
     private:
+        void Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+            const GpuCommandList::IndexBufferBinding* ib, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+            std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+            std::span<const GpuRect> scissor_rects, std::function<void()> dispatch_call);
         void Compute(
             const GpuComputePipeline& pipeline, const GpuCommandList::ShaderBinding& shader_binding, std::function<void()> dispatch_call);
 

@@ -48,6 +48,33 @@ namespace AIHoloImager
         uint32_t back;
     };
 
+    struct GpuRenderArguments
+    {
+        uint32_t num_vertices_per_instance;
+        uint32_t num_instances;
+        uint32_t first_vertex;
+        uint32_t first_instance;
+    };
+    static_assert(sizeof(GpuRenderArguments) == 16, "GpuRenderArguments size must be 16 bytes");
+
+    struct GpuRenderIndexedArguments
+    {
+        uint32_t num_indices_per_instance;
+        uint32_t num_instances;
+        uint32_t first_index;
+        int32_t vertex_offset;
+        uint32_t first_instance;
+    };
+    static_assert(sizeof(GpuRenderIndexedArguments) == 20, "GpuRenderIndexedArguments size must be 20 bytes");
+
+    struct GpuComputeArguments
+    {
+        uint32_t group_x;
+        uint32_t group_y;
+        uint32_t group_z;
+    };
+    static_assert(sizeof(GpuComputeArguments) == 12, "GpuComputeArguments size must be 12 bytes");
+
     class GpuCommandListInternal;
 
     class GpuCommandList
@@ -108,6 +135,9 @@ namespace AIHoloImager
         void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
             std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
             std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
+        void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
+            const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
+            GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
         void Compute(
             const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
         void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);

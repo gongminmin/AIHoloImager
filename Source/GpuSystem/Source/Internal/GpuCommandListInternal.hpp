@@ -38,6 +38,10 @@ namespace AIHoloImager
             const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
             std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
             std::span<const GpuRect> scissor_rects) = 0;
+        virtual void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+            const GpuCommandList::IndexBufferBinding* ib, const GpuBuffer& indirect_args,
+            std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects) = 0;
         virtual void Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
             const GpuCommandList::ShaderBinding& shader_binding) = 0;
         virtual void ComputeIndirect(

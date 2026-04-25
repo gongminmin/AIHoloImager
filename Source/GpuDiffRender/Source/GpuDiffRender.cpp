@@ -161,7 +161,7 @@ namespace AIHoloImager
         silhouette_counter_srv_ = GpuShaderResourceView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
         silhouette_counter_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
 
-        indirect_args_ = GpuBuffer(gpu_system_, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
+        indirect_args_ = GpuBuffer(gpu_system_, sizeof(GpuComputeArguments), GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
             "GpuDiffRender.AntiAliasBwd.indirect_args");
         indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, GpuFormat::R32_Uint);
     }

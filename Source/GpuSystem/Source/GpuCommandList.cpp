@@ -121,6 +121,16 @@ namespace AIHoloImager
             std::move(scissor_rects));
     }
 
+    void GpuCommandList::RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+        const IndexBufferBinding* ib, const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
+    {
+        assert(impl_);
+        impl_->Internal().RenderIndirect(pipeline, std::move(vbs), ib, indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
+            std::move(viewports), std::move(scissor_rects));
+    }
+
     void GpuCommandList::Compute(
         const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding)
     {
