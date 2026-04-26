@@ -81,30 +81,42 @@ namespace AIHoloImager
                 Unreachable("Unsupported key format");
             }
 
-            GpuBuffer ping_pong_keys[2];
-            GpuBuffer ping_pong_values[2];
-            for (size_t i = 0; i < std::size(ping_pong_keys); ++i)
+            if (intermediate_cache_.num_items_allocated < num_items)
             {
-                ping_pong_keys[i] = GpuBuffer(gpu_system_, num_items * key_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
-                    std::format("Sorter.ping_pong_keys_{}", i));
-                ping_pong_values[i] = GpuBuffer(gpu_system_, num_items * value_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
-                    std::format("Sorter.ping_pong_values_{}", i));
-            }
+                for (size_t i = 0; i < std::size(intermediate_cache_.ping_pong_keys); ++i)
+                {
+                    intermediate_cache_.ping_pong_keys[i] = GpuBuffer(gpu_system_, num_items * key_size, GpuHeap::Default,
+                        GpuResourceFlag::UnorderedAccess, std::format("Sorter.intermediate_cache_.ping_pong_keys_{}", i));
+                    intermediate_cache_.ping_pong_values[i] = GpuBuffer(gpu_system_, num_items * value_size, GpuHeap::Default,
+                        GpuResourceFlag::UnorderedAccess, std::format("Sorter.intermediate_cache_.ping_pong_values_{}", i));
+                }
 
-            GpuBuffer global_histogram(gpu_system_, key_size * NumDigitBins * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "Sorter.global_histogram");
-            const GpuShaderResourceView global_histogram_srv(gpu_system_, global_histogram, GpuFormat::R32_Uint);
-            GpuUnorderedAccessView global_histogram_uav(gpu_system_, global_histogram, GpuFormat::R32_Uint);
+                intermediate_cache_.partition_histogram = GpuBuffer(gpu_system_, num_partitions * NumDigitBins * sizeof(uint32_t),
+                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.partition_histogram");
+                intermediate_cache_.partition_histogram_srv =
+                    GpuShaderResourceView(gpu_system_, intermediate_cache_.partition_histogram, GpuFormat::R32_Uint);
+                intermediate_cache_.partition_histogram_uav =
+                    GpuUnorderedAccessView(gpu_system_, intermediate_cache_.partition_histogram, GpuFormat::R32_Uint);
+
+                intermediate_cache_.num_items_allocated = num_items;
+            }
+            if (intermediate_cache_.key_size < key_size)
+            {
+                intermediate_cache_.global_histogram = GpuBuffer(gpu_system_, key_size * NumDigitBins * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.global_histogram");
+
+                intermediate_cache_.global_histogram_srv =
+                    GpuShaderResourceView(gpu_system_, intermediate_cache_.global_histogram, GpuFormat::R32_Uint);
+                intermediate_cache_.global_histogram_uav =
+                    GpuUnorderedAccessView(gpu_system_, intermediate_cache_.global_histogram, GpuFormat::R32_Uint);
+
+                intermediate_cache_.key_size = key_size;
+            }
 
             {
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
-                cmd_list.Clear(global_histogram_uav, clear_clr);
+                cmd_list.Clear(intermediate_cache_.global_histogram_uav, clear_clr);
             }
-
-            GpuBuffer partition_histogram(gpu_system_, num_partitions * NumDigitBins * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "Sorter.partition_histogram");
-            const GpuShaderResourceView partition_histogram_srv(gpu_system_, partition_histogram, GpuFormat::R32_Uint);
-            GpuUnorderedAccessView partition_histogram_uav(gpu_system_, partition_histogram, GpuFormat::R32_Uint);
 
             const uint32_t num_passes = DivUp(bits, 8);
             for (uint32_t pass = 0; pass < num_passes; ++pass)
@@ -124,8 +136,8 @@ namespace AIHoloImager
                 }
                 else
                 {
-                    keys_srv = GpuShaderResourceView(gpu_system_, ping_pong_keys[input_index], key_format);
-                    values_srv = GpuShaderResourceView(gpu_system_, ping_pong_values[input_index], value_format);
+                    keys_srv = GpuShaderResourceView(gpu_system_, intermediate_cache_.ping_pong_keys[input_index], key_format);
+                    values_srv = GpuShaderResourceView(gpu_system_, intermediate_cache_.ping_pong_values[input_index], value_format);
                 }
 
                 {
@@ -147,8 +159,8 @@ namespace AIHoloImager
                         {"keys", &keys_srv},
                     };
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                        {"global_hist", &global_histogram_uav},
-                        {"partition_hist", &partition_histogram_uav},
+                        {"global_hist", &intermediate_cache_.global_histogram_uav},
+                        {"partition_hist", &intermediate_cache_.partition_histogram_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(*upsweep_pipeline, DivUp(num_partitions * WorksetSize, BlockDim), 1, 1, shader_binding);
@@ -165,8 +177,8 @@ namespace AIHoloImager
                         {"param_cb", &scan_cbv},
                     };
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                        {"global_hist", &global_histogram_uav},
-                        {"partition_hist", &partition_histogram_uav},
+                        {"global_hist", &intermediate_cache_.global_histogram_uav},
+                        {"partition_hist", &intermediate_cache_.partition_histogram_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, {}, uavs};
                     cmd_list.Compute(*scan_pipeline, NumDigitBins, 1, 1, shader_binding);
@@ -181,8 +193,9 @@ namespace AIHoloImager
                     }
                     else
                     {
-                        output_keys_uav = GpuUnorderedAccessView(gpu_system_, ping_pong_keys[output_index], key_format);
-                        output_values_uav = GpuUnorderedAccessView(gpu_system_, ping_pong_values[output_index], value_format);
+                        output_keys_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.ping_pong_keys[output_index], key_format);
+                        output_values_uav =
+                            GpuUnorderedAccessView(gpu_system_, intermediate_cache_.ping_pong_values[output_index], value_format);
                     }
 
                     GpuConstantBufferOfType<DownsweepConstantBuffer> downsweep_cb(gpu_system_, "downsweep_cb");
@@ -200,8 +213,8 @@ namespace AIHoloImager
                     std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
                         {"keys", &keys_srv},
                         {"values", &values_srv},
-                        {"global_hist", &global_histogram_srv},
-                        {"partition_hist", &partition_histogram_srv},
+                        {"global_hist", &intermediate_cache_.global_histogram_srv},
+                        {"partition_hist", &intermediate_cache_.partition_histogram_srv},
                     };
                     std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                         {"output_keys", &output_keys_uav},
@@ -244,6 +257,24 @@ namespace AIHoloImager
         };
         GpuComputePipeline downsweep_uint2_uint_pipeline_;
         GpuComputePipeline downsweep_uint_uint_pipeline_;
+
+        struct IntermediateCache
+        {
+            uint32_t num_items_allocated = 0;
+            uint32_t key_size = 0;
+
+            GpuBuffer ping_pong_keys[2];
+            GpuBuffer ping_pong_values[2];
+
+            GpuBuffer global_histogram;
+            GpuShaderResourceView global_histogram_srv;
+            GpuUnorderedAccessView global_histogram_uav;
+
+            GpuBuffer partition_histogram;
+            GpuShaderResourceView partition_histogram_srv;
+            GpuUnorderedAccessView partition_histogram_uav;
+        };
+        IntermediateCache intermediate_cache_;
     };
 
     Sorter::Sorter() noexcept = default;
