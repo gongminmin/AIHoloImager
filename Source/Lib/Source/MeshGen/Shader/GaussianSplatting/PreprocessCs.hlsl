@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
-#include "GSplatUtils.hlslh"
-#include "Utils.hlslh"
-
 static const uint32_t BlockDim = 256;
+static const float AlphaThreshold = 1 / 255.0f;
+
+#define DATA_TYPE uint32_t
+#include "../PrefixSumScanner/PrefixSumBlock.hlslh"
 
 cbuffer param_cb
 {
@@ -14,13 +15,12 @@ cbuffer param_cb
     float kernel_size;
 
     float4x4 view_mtx;
-    float4x4 proj_mtx;
+    float4x4 view_proj_mtx;
 
     float2 focal;
     float2 tan_fov;
 
     uint32_t2 width_height;
-    uint32_t2 tile_grid;
 };
 
 Buffer<float3> pos_buff;
@@ -29,16 +29,22 @@ Buffer<float4> rotation_buff;
 Buffer<float3> sh_buff;
 Buffer<float> opacity_buff;
 
-RWBuffer<uint32_t> radius_buff;
-RWBuffer<uint32_t> tiles_touched_buff;
 RWBuffer<float> color_buff;
 RWBuffer<float4> conic_opacity_buff;
-RWBuffer<float> depth_buff;
-RWBuffer<float2> screen_pos_buff;
+RWBuffer<float4> screen_pos_extents_buff;
+RWBuffer<uint32_t> num_visible_gaussians_buff;
+RWBuffer<uint32_t> visible_key_buff;
+RWBuffer<uint32_t> visible_id_buff;
 
 float2 Ndc2Screen(float4 ndc, uint32_t2 size)
 {
-    return (ndc.xy * 0.5f + 0.5f) * size - 0.5f;
+    return (float2(ndc.x, -ndc.y) * 0.5f + 0.5f) * size;
+}
+
+template <typename T>
+bool RectOverlap(T rect1, T rect2)
+{
+    return (rect1.x < rect2.z) && (rect1.z > rect2.x) && (rect1.y < rect2.w) && (rect1.w > rect2.y);
 }
 
 float4 ComputeCov2D(float3 pos, float2 focal, float2 tan_fov, float kernel_size, float cov_3d[6], float4x4 view_mtx)
@@ -54,8 +60,8 @@ float4 ComputeCov2D(float3 pos, float2 focal, float2 tan_fov, float kernel_size,
     t.y = min(lim_y, max(-lim_y, ty_tz)) * t.z;
 
     const float3x3 j_mtx = {
-        focal.x / t.z, 0.0f, -(focal.x * t.x) / (t.z * t.z),
-        0.0f, focal.y / t.z, -(focal.y * t.y) / (t.z * t.z),
+        focal.x / t.z, 0, -(focal.x * t.x) / (t.z * t.z),
+        0, focal.y / t.z, -(focal.y * t.y) / (t.z * t.z),
         0, 0, 0,
     };
 
@@ -70,7 +76,7 @@ float4 ComputeCov2D(float3 pos, float2 focal, float2 tan_fov, float kernel_size,
     };
 
     // Eq 5
-    const float3x3 cov = mul(mul(t_mtx, transpose(vrk)), transpose(t_mtx));
+    const float3x3 cov = mul(mul(t_mtx, vrk), transpose(t_mtx));
 
     const float det_0 = max(1e-6f, cov[0].x * cov[1].y - cov[0].y * cov[0].y);
     const float det_1 = max(1e-6f, (cov[0].x + kernel_size) * (cov[1].y + kernel_size) - cov[0].y * cov[0].y);
@@ -91,16 +97,11 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
         0, 0, scale.z,
     };
 
-    const float4 q = normalize(rot);
-    float r = q.x;
-    float x = q.y;
-    float y = q.z;
-    float z = q.w;
-
+    rot = normalize(rot).yzwx;
     const float3x3 rot_mtx = {
-        1 - 2 * (y * y + z * z), 2 * (x * y - r * z), 2 * (x * z + r * y),
-        2 * (x * y + r * z), 1 - 2.f * (x * x + z * z), 2 * (y * z - r * x),
-        2 * (x * z - r * y), 2 * (y * z + r * x), 1 - 2 * (x * x + y * y),
+        1 - 2 * (rot.y * rot.y + rot.z * rot.z), 2 * (rot.x * rot.y - rot.w * rot.z), 2 * (rot.x * rot.z + rot.w * rot.y),
+        2 * (rot.x * rot.y + rot.w * rot.z), 1 - 2 * (rot.x * rot.x + rot.z * rot.z), 2 * (rot.y * rot.z - rot.w * rot.x),
+        2 * (rot.x * rot.z - rot.w * rot.y), 2 * (rot.y * rot.z + rot.w * rot.x), 1 - 2 * (rot.x * rot.x + rot.y * rot.y),
     };
 
     // Eq 6
@@ -120,80 +121,99 @@ float3 ComputeColorFromSh(uint32_t index, uint32_t degrees, uint32_t num_coeffs,
     static const float Sh_C0 = 0.28209479177387814f;
 
     const float3 sh = sh_buff[index * num_coeffs + 0];
-    float3 result = Sh_C0 * sh;
-    result += 0.5f;
-
-    return max(result, float3(0.0f, 0.0f, 0.0f));
+    return max(Sh_C0 * sh + 0.5f, 0);
 }
 
+groupshared uint32_t group_offset;
+
 [numthreads(BlockDim, 1, 1)]
-void main(uint32_t3 dtid : SV_DispatchThreadID)
+void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
 {
-    [branch]
-    if (dtid.x >= num_gaussians)
-    {
-        return;
-    }
+    uint32_t visible = 0;
+    float depth;
+    float4 screen_pos_extents;
+    float3 color;
+    float4 conic_opacity;
 
     const uint32_t index = dtid.x;
 
-    radius_buff[index] = 0;
-    tiles_touched_buff[index] = 0;
-
-    const float3 pos_os = pos_buff[index];
-
-    float4 pos_es = mul(float4(pos_os, 1), view_mtx);
-    float4 pos_ps = mul(pos_es, proj_mtx);
-    pos_ps /= pos_ps.w;
-
-    const float depth = -pos_es.z / pos_es.w;
+    if (index == 0)
+    {
+        num_visible_gaussians_buff[1] = 1;
+    }
 
     [branch]
-    if ((depth <= 0.2f) || any(abs(pos_ps.xy) > 1.3f))
+    if (index < num_gaussians)
     {
-        return;
+        const float3 pos_os = pos_buff[index];
+        const float4 pos_ps = mul(float4(pos_os, 1), view_proj_mtx);
+
+        depth = pos_ps.w;
+
+        [branch]
+        if ((depth > 0.2f) && all(bool4(abs(pos_ps.xy) < abs(1.3f * pos_ps.w), pos_ps.z >= 0, pos_ps.z <= pos_ps.w)))
+        {
+            float cov_3d[6];
+            ComputeCov3D(scale_buff[index], rotation_buff[index], cov_3d);
+
+            const float4 cov = ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, view_mtx);
+
+            const float det = cov.x * cov.z - cov.y * cov.y;
+            [branch]
+            if (det > 0)
+            {
+                const float mid = 0.5f * (cov.x + cov.z);
+                const float extent = sqrt(max(0.1f, mid * mid - det));
+                const float lambda_1 = mid + extent;
+                const float lambda_2 = mid - extent;
+                const float radius = 3 * sqrt(max(lambda_1, lambda_2));
+                [branch]
+                if (radius > 1e-6f)
+                {
+                    const float opacity = opacity_buff[index] * cov.w;
+                    const float inv_coeff_low = opacity / AlphaThreshold;
+                    [branch]
+                    if (inv_coeff_low >= 1)
+                    {
+                        // "AdR-Gaussian: Accelerating Gaussian Splatting with Adaptive Radius" by Xinzhe Wang et al., 2024, Eq 10
+                        const float coeff_ln = 2 * log(inv_coeff_low);
+                        const float2 xy_max = sqrt(cov.xz * coeff_ln);
+                        const float2 adaptive_radius = min(radius, xy_max);
+
+                        const float2 screen_pos = Ndc2Screen(pos_ps / pos_ps.w, width_height);
+
+                        [branch]
+                        if (RectOverlap(float4(screen_pos - adaptive_radius, screen_pos + adaptive_radius), float4(0, 0, width_height)))
+                        {
+                            visible = 1;
+
+                            screen_pos_extents = float4(screen_pos, adaptive_radius);
+                            color = ComputeColorFromSh(index, sh_degrees, num_coeffs, pos_os, sh_buff);
+                            conic_opacity = float4(cov.zyx / det, opacity);
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    float cov_3d[6];
-    ComputeCov3D(scale_buff[index], rotation_buff[index], cov_3d);
-
-    const float4 cov = ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, view_mtx);
-
-    const float det = cov.x * cov.z - cov.y * cov.y;
-    [branch]
-    if (det == 0.0f)
+    const uint32_t prefix_sum = ScanBlock(group_index, visible);
+    if (group_index == BlockDim - 1)
     {
-        return;
+        InterlockedAdd(num_visible_gaussians_buff[0], prefix_sum + visible, group_offset);
     }
+    GroupMemoryBarrierWithGroupSync();
 
-    const float inv_det = 1 / det;
-    const float3 conic = float3(cov.z, -cov.y, cov.x) * inv_det;
-
-    const float mid = 0.5f * (cov.x + cov.z);
-    const float extent = sqrt(max(0.1f, mid * mid - det));
-    const float lambda_1 = mid + extent;
-    const float lambda_2 = mid - extent;
-    const float radius = ceil(3 * sqrt(max(lambda_1, lambda_2)));
-    const float2 screen_pos = Ndc2Screen(pos_ps, width_height);
-    uint32_t2 rect_min, rect_max;
-    GetRect(screen_pos, radius, rect_min, rect_max, tile_grid);
-    const uint32_t tiles_touched = (rect_max.x - rect_min.x) * (rect_max.y - rect_min.y);
-    [branch]
-    if (tiles_touched == 0)
+    if (visible)
     {
-        return;
-    }
+        const uint32_t offset = group_offset + prefix_sum;
+        visible_key_buff[offset] = asuint(depth);
+        visible_id_buff[offset] = offset;
 
-    {
-        const float3 result = ComputeColorFromSh(index, sh_degrees, num_coeffs, pos_os, sh_buff);
-        color_buff[index * 3 + 0] = result.x;
-        color_buff[index * 3 + 1] = result.y;
-        color_buff[index * 3 + 2] = result.z;
+        screen_pos_extents_buff[offset] = screen_pos_extents;
+        conic_opacity_buff[offset] = conic_opacity;
+        color_buff[offset * 3 + 0] = color.x;
+        color_buff[offset * 3 + 1] = color.y;
+        color_buff[offset * 3 + 2] = color.z;
     }
-
-    depth_buff[index] = depth;
-    radius_buff[index] = radius;
-    screen_pos_buff[index] = screen_pos;
-    conic_opacity_buff[index] = float4(conic.xyz, opacity_buff[index] * cov.w);
-    tiles_touched_buff[index] = tiles_touched;
 }
