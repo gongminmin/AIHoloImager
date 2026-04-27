@@ -277,6 +277,7 @@ namespace AIHoloImager
         VkPhysicalDeviceVulkan13Features enable_vulkan13_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = &enable_vulkan12_features,
+            .shaderDemoteToHelperInvocation = VK_TRUE,
             .dynamicRendering = TRUE,
         };
 

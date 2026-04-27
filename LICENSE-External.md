@@ -14,13 +14,6 @@ This project uses the following open-source libraries and tools. We are grateful
 - **License**: [MIT License](https://github.com/jarro2783/cxxopts/blob/master/LICENSE)
 - **Copyright**: Jarryd Beck
 
-### diff-gaussian-rasterization
-- **Repository**: https://github.com/graphdeco-inria/diff-gaussian-rasterization
-- **License**: [Gaussian-Splatting License](https://github.com/graphdeco-inria/diff-gaussian-rasterization/blob/main/LICENSE.md) (Non-commercial only)
-- **Copyright**: INRIA
-
-**Note**, we reimplement a compute shader based inference process in our code base, by taking the original code as a reference.
-
 ### dinov2
 - **Repository**: https://github.com/facebookresearch/dinov2
 - **Code & Pretrained Model License**: [Apache License 2.0](https://github.com/facebookresearch/dinov2/blob/main/LICENSE)

@@ -47,11 +47,11 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
     Source/MaskGen/U2Net.py
-    Source/MeshGen/Shader/GaussianSplatting/DupWithKeysCs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/GSplatUtils.hlslh
-    Source/MeshGen/Shader/GaussianSplatting/IdentifyTileRangesCs.hlsl
+    Source/MeshGen/Shader/GaussianSplatting/BlendCs.hlsl
     Source/MeshGen/Shader/GaussianSplatting/PreprocessCs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/RenderCs.hlsl
+    Source/MeshGen/Shader/GaussianSplatting/RenderGs.hlsl
+    Source/MeshGen/Shader/GaussianSplatting/RenderPs.hlsl
+    Source/MeshGen/Shader/GaussianSplatting/RenderVs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl
@@ -198,10 +198,11 @@ AddShaderFile(Source/MaskGen/Shader/NormalizeImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/DupWithKeysCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/IdentifyTileRangesCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/PreprocessCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderVs.hlsl "vs" "main")
+AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderGs.hlsl "gs" "main")
+AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderPs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl "ps" "main")
