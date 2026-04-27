@@ -62,7 +62,7 @@ namespace AIHoloImager
                     {"mip_sampler", &sampler},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs, samplers};
-                cmd_list.Compute(gen_mipmap_pipeline_, DivUp(this_width, BlockDim), DivUp(this_height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(gen_mipmap_pipeline_, {DivUp(this_width, BlockDim), DivUp(this_height, BlockDim), 1}, shader_binding);
             }
         }
 

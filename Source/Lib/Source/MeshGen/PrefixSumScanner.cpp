@@ -98,7 +98,7 @@ namespace AIHoloImager
                     {"sum_output", &sum_output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(*prefix_sum_pipeline, DivUp(buff_sizes[i], BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(*prefix_sum_pipeline, {DivUp(buff_sizes[i], BlockDim), 1, 1}, shader_binding);
             }
 
             for (int i = static_cast<int>(scan_scanned_buffers.size() - 2); i >= 0; --i)
@@ -128,7 +128,7 @@ namespace AIHoloImager
                 };
 
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(*apply_sum_pipeline, DivUp(buff_sizes[i], BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(*apply_sum_pipeline, {DivUp(buff_sizes[i], BlockDim), 1, 1}, shader_binding);
             }
         }
 

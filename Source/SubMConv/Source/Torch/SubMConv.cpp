@@ -73,7 +73,7 @@ namespace AIHoloImager
                 {"hash_table", &coord_hash_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(build_coord_hash_pipeline_, DivUp(num_coords_, BlockDim), 1, 1, shader_binding);
+            cmd_list.Compute(build_coord_hash_pipeline_, {DivUp(num_coords_, BlockDim), 1, 1}, shader_binding);
         }
 
         gpu_system_.Execute(std::move(cmd_list));
@@ -148,7 +148,7 @@ namespace AIHoloImager
                 {"nei_indices_count", &nei_indices_count_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(find_available_neighbors_pipeline_, DivUp(num_coords_, BlockDim), num_offsets, 1, shader_binding);
+            cmd_list.Compute(find_available_neighbors_pipeline_, {DivUp(num_coords_, BlockDim), num_offsets, 1}, shader_binding);
         }
 
         torch::Tensor nei_indices = tensor_converter_.Convert(

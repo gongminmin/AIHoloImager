@@ -670,7 +670,7 @@ namespace AIHoloImager
                         };
                         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                         cmd_list.Compute(
-                            extract_mask_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, shader_binding);
+                            extract_mask_pipeline_, {DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1}, shader_binding);
 
                         mask_rb_future = cmd_list.ReadBackAsync(mask_gpu_tex, 0, mask_tex.Data(), mask_tex.DataSize());
                         gpu_system.ExecuteAndReset(cmd_list);
@@ -836,8 +836,8 @@ namespace AIHoloImager
                                 {"output_tex", &erosion_uav},
                             };
                             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(delighted_width, BlockDim),
-                                DivUp(delighted_height, BlockDim), 1, shader_binding);
+                            cmd_list.Compute(erosion_dilation_mask_pipeline_,
+                                {DivUp(delighted_width, BlockDim), DivUp(delighted_height, BlockDim), 1}, shader_binding);
                         }
 
                         erosion_rb_future =
@@ -881,8 +881,8 @@ namespace AIHoloImager
                                 {"output_tex", &dilation_uav},
                             };
                             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_, DivUp(delighted_width, BlockDim),
-                                DivUp(delighted_height, BlockDim), 1, shader_binding);
+                            cmd_list.Compute(erosion_dilation_mask_pipeline_,
+                                {DivUp(delighted_width, BlockDim), DivUp(delighted_height, BlockDim), 1}, shader_binding);
                         }
 
                         dilation_rb_future = cmd_list.ReadBackAsync(
@@ -1122,7 +1122,7 @@ namespace AIHoloImager
                     GpuRenderTargetView* rtvs[] = {&rotated_roi_rtv};
 
                     const GpuViewport viewport = {0.0f, 0.0f, static_cast<float>(rotated_size), static_cast<float>(rotated_size)};
-                    cmd_list.Render(rotate_pipeline_, {}, nullptr, 4, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
+                    cmd_list.Render(rotate_pipeline_, {}, {4}, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
                 }
 
                 const uint32_t rotated_width = rotated_roi_tex.Width(0);
@@ -1158,7 +1158,7 @@ namespace AIHoloImager
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
-                        resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(rotated_height, BlockDim), 1, shader_binding);
+                        resize_pipeline_, {DivUp(ResizedImageSize, BlockDim), DivUp(rotated_height, BlockDim), 1}, shader_binding);
                 }
                 {
                     constexpr uint32_t BlockDim = 16;
@@ -1185,7 +1185,7 @@ namespace AIHoloImager
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
-                        resize_pipeline_, DivUp(ResizedImageSize, BlockDim), DivUp(ResizedImageSize, BlockDim), 1, shader_binding);
+                        resize_pipeline_, {DivUp(ResizedImageSize, BlockDim), DivUp(ResizedImageSize, BlockDim), 1}, shader_binding);
                 }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -1269,7 +1269,7 @@ namespace AIHoloImager
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
 
-                    cmd_list.Compute(scatter_index_pipeline_, DivUp(num_features, BlockDim), 1, 1, shader_binding);
+                    cmd_list.Compute(scatter_index_pipeline_, {DivUp(num_features, BlockDim), 1, 1}, shader_binding);
                 }
 
                 const auto py_density_features = python_system.CallObject(*mesh_generator_density_features_method_);
@@ -1352,7 +1352,7 @@ namespace AIHoloImager
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
 
-                cmd_list.Compute(gather_volume_pipeline_, DivUp(size, BlockDim), DivUp(size, BlockDim), size, shader_binding);
+                cmd_list.Compute(gather_volume_pipeline_, {DivUp(size, BlockDim), DivUp(size, BlockDim), size}, shader_binding);
             }
 
             GpuTexture3D dilated_3d_tmp_gpu_tex(gpu_system, color_tex.Width(0), color_tex.Height(0), color_tex.Depth(0), 1,
@@ -1645,7 +1645,7 @@ namespace AIHoloImager
                 {"color_vertex_buff", &color_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(apply_vertex_color_pipeline_, DivUp(num_vertices, BlockDim), 1, 1, shader_binding);
+            cmd_list.Compute(apply_vertex_color_pipeline_, {DivUp(num_vertices, BlockDim), 1, 1}, shader_binding);
 
             const VertexAttrib pos_color_vertex_attribs[] = {
                 {VertexAttrib::Semantic::Position, 0, 3},
@@ -1963,7 +1963,7 @@ namespace AIHoloImager
                 {"merged_tex", &merged_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(merge_texture_pipeline_, DivUp(texture_width, BlockDim), DivUp(texture_height, BlockDim), 1, shader_binding);
+            cmd_list.Compute(merge_texture_pipeline_, {DivUp(texture_width, BlockDim), DivUp(texture_height, BlockDim), 1}, shader_binding);
         }
 
         glm::mat4x4 GuessModelMatrix(const Obb& obb, const Aabb& obj_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
@@ -2018,8 +2018,8 @@ namespace AIHoloImager
                     {"dilated_tex", tex_uavs[dst]},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(dilate_pipeline, DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim),
-                    texs[dst]->Depth(0), shader_binding);
+                cmd_list.Compute(dilate_pipeline,
+                    {DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), texs[dst]->Depth(0)}, shader_binding);
             }
 
             if (dilate_times & 1)

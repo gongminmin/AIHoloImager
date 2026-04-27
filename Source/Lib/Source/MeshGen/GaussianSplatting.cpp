@@ -175,7 +175,7 @@ namespace AIHoloImager
                     {"visible_id_buff", &visible_id_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(preprocess_pipeline_, DivUp(gaussians.num_gaussians, BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(preprocess_pipeline_, {DivUp(gaussians.num_gaussians, BlockDim), 1, 1}, shader_binding);
             }
 
             {
@@ -215,8 +215,8 @@ namespace AIHoloImager
                 GpuRenderTargetView* rtvs[] = {&gsplat_image_rtv};
 
                 const GpuViewport viewport = {0, 0, static_cast<float>(width), static_cast<float>(height)};
-                cmd_list.RenderIndirect(render_pipeline_, vb_bindings, &ib_binding, intermediate_cache_.num_visible_gaussians_indirect_args,
-                    shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
+                cmd_list.RenderIndexedIndirect(render_pipeline_, vb_bindings, ib_binding,
+                    intermediate_cache_.num_visible_gaussians_indirect_args, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
             }
 
             {
@@ -241,7 +241,7 @@ namespace AIHoloImager
                     {"rendered_image", &rendered_image_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(blend_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(blend_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
             }
 
 #ifdef AIHI_KEEP_INTERMEDIATES

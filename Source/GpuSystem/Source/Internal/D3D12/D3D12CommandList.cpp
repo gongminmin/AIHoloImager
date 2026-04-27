@@ -279,44 +279,56 @@ namespace AIHoloImager
     }
 
     void D3D12CommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
-        const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        const GpuRenderArguments& args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
-        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, num]() {
+        this->Render(pipeline, vbs, nullptr, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &args]() {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            if (ib != nullptr)
-            {
-                d3d12_cmd_list->DrawIndexedInstanced(num, 1, 0, 0, 0);
-            }
-            else
-            {
-                d3d12_cmd_list->DrawInstanced(num, 1, 0, 0);
-            }
+            d3d12_cmd_list->DrawInstanced(args.num_vertices_per_instance, args.num_instances, args.first_vertex, args.first_instance);
         });
     }
 
     void D3D12CommandList::RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
-        const GpuCommandList::IndexBufferBinding* ib, const GpuBuffer& indirect_args,
-        std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
-        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+        const GpuBuffer& indirect_args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
     {
         const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
         d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
 
-        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, &d3d12_indirect_args]() {
+        this->Render(pipeline, vbs, nullptr, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &d3d12_indirect_args]() {
             auto& d3d12_system = D3D12Imp(*gpu_system_);
+            ID3D12CommandSignature* cmd_signature = d3d12_system.DrawIndirectSignature();
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->ExecuteIndirect(cmd_signature, 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
+        });
+    }
 
-            ID3D12CommandSignature* cmd_signature;
-            if (ib != nullptr)
-            {
-                cmd_signature = d3d12_system.DrawIndexedIndirectSignature();
-            }
-            else
-            {
-                cmd_signature = d3d12_system.DrawIndirectSignature();
-            }
+    void D3D12CommandList::RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+        const GpuCommandList::IndexBufferBinding& ib, const GpuRenderIndexedArguments& args,
+        std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+    {
+        this->Render(pipeline, vbs, &ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &ib, &args]() {
+            auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
+            d3d12_cmd_list->DrawIndexedInstanced(
+                args.num_indices_per_instance, args.num_instances, args.first_index, args.vertex_offset, args.first_instance);
+        });
+    }
 
+    void D3D12CommandList::RenderIndexedIndirect(const GpuRenderPipeline& pipeline,
+        std::span<const GpuCommandList::VertexBufferBinding> vbs, const GpuCommandList::IndexBufferBinding& ib,
+        const GpuBuffer& indirect_args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
+    {
+        const auto& d3d12_indirect_args = D3D12Imp(indirect_args);
+        d3d12_indirect_args.Transition(*this, GpuResourceState::Common);
+
+        this->Render(pipeline, vbs, &ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &ib, &d3d12_indirect_args]() {
+            auto& d3d12_system = D3D12Imp(*gpu_system_);
+            ID3D12CommandSignature* cmd_signature = d3d12_system.DrawIndexedIndirectSignature();
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
             d3d12_cmd_list->ExecuteIndirect(cmd_signature, 1, d3d12_indirect_args.Resource(), 0, nullptr, 0);
         });
@@ -668,12 +680,12 @@ namespace AIHoloImager
         d3d12_system.DeallocShaderVisibleSamplerDescBlock(std::move(sampler_desc_block));
     }
 
-    void D3D12CommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
-        const GpuCommandList::ShaderBinding& shader_binding)
+    void D3D12CommandList::Compute(
+        const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const GpuCommandList::ShaderBinding& shader_binding)
     {
-        this->Compute(pipeline, shader_binding, [this, group_x, group_y, group_z]() {
+        this->Compute(pipeline, shader_binding, [this, &args]() {
             auto* d3d12_cmd_list = this->NativeCommandList<ID3D12GraphicsCommandList>();
-            d3d12_cmd_list->Dispatch(group_x, group_y, group_z);
+            d3d12_cmd_list->Dispatch(args.group_x, args.group_y, args.group_z);
         });
     }
 

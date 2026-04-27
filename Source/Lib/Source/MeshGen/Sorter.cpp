@@ -163,7 +163,7 @@ namespace AIHoloImager
                         {"partition_hist", &intermediate_cache_.partition_histogram_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(*upsweep_pipeline, DivUp(num_partitions * WorksetSize, BlockDim), 1, 1, shader_binding);
+                    cmd_list.Compute(*upsweep_pipeline, {DivUp(num_partitions * WorksetSize, BlockDim), 1, 1}, shader_binding);
                 }
                 {
                     GpuConstantBufferOfType<ScanConstantBuffer> scan_cb(gpu_system_, "scan_cb");
@@ -181,7 +181,7 @@ namespace AIHoloImager
                         {"partition_hist", &intermediate_cache_.partition_histogram_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, {}, uavs};
-                    cmd_list.Compute(*scan_pipeline, NumDigitBins, 1, 1, shader_binding);
+                    cmd_list.Compute(*scan_pipeline, {NumDigitBins, 1, 1}, shader_binding);
                 }
                 {
                     GpuUnorderedAccessView output_keys_uav;
@@ -221,7 +221,7 @@ namespace AIHoloImager
                         {"output_values", &output_values_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(*downsweep_pipeline, num_partitions, 1, 1, shader_binding);
+                    cmd_list.Compute(*downsweep_pipeline, {num_partitions, 1, 1}, shader_binding);
                 }
             }
         }

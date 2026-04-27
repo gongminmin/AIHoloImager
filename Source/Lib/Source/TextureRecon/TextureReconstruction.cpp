@@ -198,8 +198,8 @@ namespace AIHoloImager
             const GpuViewport viewports[] = {{0, 0, static_cast<float>(texture_size), static_cast<float>(texture_size)}};
             const GpuRect scissor_rcs[] = {{0, 0, static_cast<int32_t>(texture_size), static_cast<int32_t>(texture_size)}};
 
-            cmd_list.Render(
-                flatten_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
+            cmd_list.RenderIndexed(
+                flatten_pipeline_, vb_bindings, ib_binding, {num_indices}, shader_bindings, rtvs, nullptr, viewports, scissor_rcs);
         }
 
         GpuTexture2D GenTextureByProjection(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
@@ -281,7 +281,7 @@ namespace AIHoloImager
             const GpuViewport viewport = {projection.vp_offset.x, projection.vp_offset.y, static_cast<float>(projection.full_width),
                 static_cast<float>(projection.full_height)};
 
-            cmd_list.Render(gen_shadow_map_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, {}, &shadow_map_dsv,
+            cmd_list.RenderIndexed(gen_shadow_map_pipeline_, vb_bindings, ib_binding, {num_indices}, shader_bindings, {}, &shadow_map_dsv,
                 std::span(&viewport, 1), {});
         }
 
@@ -320,7 +320,8 @@ namespace AIHoloImager
             };
 
             const GpuCommandList::ShaderBinding cs_shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(project_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
+            cmd_list.Compute(
+                project_texture_pipeline_, {DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1}, cs_shader_binding);
         }
 
         GpuTexture2D ResolveTexture(GpuCommandList& cmd_list, uint32_t texture_size, const GpuTexture2D& accum_color_tex)
@@ -350,7 +351,8 @@ namespace AIHoloImager
             };
 
             const GpuCommandList::ShaderBinding cs_shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(resolve_texture_pipeline_, DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1, cs_shader_binding);
+            cmd_list.Compute(
+                resolve_texture_pipeline_, {DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1}, cs_shader_binding);
 
             return color_tex;
         }

@@ -1110,7 +1110,7 @@ namespace AIHoloImager
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(
-                undistort_pipeline_, DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1, shader_binding);
+                undistort_pipeline_, {DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1}, shader_binding);
         }
 
         GpuTexture2D CropImage(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset)

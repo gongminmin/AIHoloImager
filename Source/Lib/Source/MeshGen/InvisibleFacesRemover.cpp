@@ -188,8 +188,8 @@ namespace AIHoloImager
 
             const GpuViewport viewport = {0, 0, static_cast<float>(face_id_tex_.Width(0)), static_cast<float>(face_id_tex_.Height(0))};
 
-            cmd_list.Render(
-                render_pipeline_, vb_bindings, &ib_binding, num_indices, shader_bindings, rtvs, &dsv_, std::span(&viewport, 1), {});
+            cmd_list.RenderIndexed(
+                render_pipeline_, vb_bindings, ib_binding, {num_indices}, shader_bindings, rtvs, &dsv_, std::span(&viewport, 1), {});
         }
 
         void AccumulateFaces(GpuCommandList& cmd_list, uint32_t num_faces)
@@ -215,7 +215,7 @@ namespace AIHoloImager
                     {"face_mark_buff", &face_mark_uav_},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(mark_faces_pipeline_, DivUp(face_id_tex_.Width(0), BlockDim), DivUp(face_id_tex_.Height(0), BlockDim), 1,
+                cmd_list.Compute(mark_faces_pipeline_, {DivUp(face_id_tex_.Width(0), BlockDim), DivUp(face_id_tex_.Height(0), BlockDim), 1},
                     shader_binding);
             }
             {
@@ -236,7 +236,7 @@ namespace AIHoloImager
                     {"view_counter_buff", &view_counter_uav_},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(accum_faces_pipeline_, DivUp(num_faces, BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(accum_faces_pipeline_, {DivUp(num_faces, BlockDim), 1, 1}, shader_binding);
             }
         }
 
@@ -265,7 +265,7 @@ namespace AIHoloImager
                 {"counter", &filtered_counter_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(filter_faces_pipeline_, DivUp(num_faces, BlockDim), 1, 1, shader_binding);
+            cmd_list.Compute(filter_faces_pipeline_, {DivUp(num_faces, BlockDim), 1, 1}, shader_binding);
         }
 
     private:

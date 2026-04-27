@@ -399,7 +399,7 @@ namespace AIHoloImager
                     {"counter", &counter_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(calc_cube_indices_pipeline_, group_x, group_y, group_z, shader_binding);
+                cmd_list.Compute(calc_cube_indices_pipeline_, {group_x, group_y, group_z}, shader_binding);
             }
 
             glm::uvec3 counter(0, 0, 0);
@@ -452,7 +452,7 @@ namespace AIHoloImager
                     {"counter", &counter_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(process_non_empty_cubes_pipeline_, group_x, group_y, group_z, shader_binding);
+                cmd_list.Compute(process_non_empty_cubes_pipeline_, {group_x, group_y, group_z}, shader_binding);
             }
 
             rb_future = cmd_list.ReadBackAsync(counter_buff, &counter, sizeof(counter));
@@ -510,7 +510,7 @@ namespace AIHoloImager
                     {"mesh_indices", &mesh_indices_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(gen_vertices_indices_pipeline_, DivUp(num_non_empty_cubes, BlockDim), 1, 1, shader_binding);
+                cmd_list.Compute(gen_vertices_indices_pipeline_, {DivUp(num_non_empty_cubes, BlockDim), 1, 1}, shader_binding);
 
                 vertex_rb_future = cmd_list.ReadBackAsync(mesh_vertices_buff, mesh.VertexBuffer().data(), mesh.VertexBuffer().size_bytes());
                 index_rb_future = cmd_list.ReadBackAsync(mesh_indices_buff, mesh.IndexBuffer().data(), mesh.IndexBuffer().size_bytes());

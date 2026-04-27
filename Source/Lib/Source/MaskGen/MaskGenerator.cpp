@@ -175,7 +175,7 @@ namespace AIHoloImager
                         {"bounding_box_buff", &bbox_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(calc_bbox_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+                    cmd_list.Compute(calc_bbox_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
                 }
 
                 // TODO: Use indirect dispatch to avoid the read back
@@ -232,7 +232,7 @@ namespace AIHoloImager
                     {"output_tex", &output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(downsample_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(downsample_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_x_gpu_tex_);
@@ -260,7 +260,7 @@ namespace AIHoloImager
                     {"output_tex", &output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(downsample_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
+                cmd_list.Compute(downsample_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
 
             {
@@ -283,7 +283,7 @@ namespace AIHoloImager
                     {"max_buff", &max_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(stat_image_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
+                cmd_list.Compute(stat_image_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
@@ -307,7 +307,7 @@ namespace AIHoloImager
                     {"output_tex", &normalized_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(normalize_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
+                cmd_list.Compute(normalize_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
 
             auto& tensor_converter = aihi_.TensorConverterInstance();
@@ -352,7 +352,7 @@ namespace AIHoloImager
                     {"min_max_buff", &min_max_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(stat_pred_pipeline_, DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
+                cmd_list.Compute(stat_pred_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
 
             {
@@ -383,7 +383,7 @@ namespace AIHoloImager
                     {"output_tex", &output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(upsample_pipeline_, DivUp(roi_width, BlockDim), DivUp(U2NetInputDim, BlockDim), 1, shader_binding);
+                cmd_list.Compute(upsample_pipeline_, {DivUp(roi_width, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
@@ -412,7 +412,7 @@ namespace AIHoloImager
                     {"output_tex", &output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(upsample_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(upsample_pipeline_, {DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
             }
 
             {
@@ -453,7 +453,7 @@ namespace AIHoloImager
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
-                        erosion_dilation_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                        erosion_dilation_pipeline_, {DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
                 }
                 {
                     const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
@@ -486,7 +486,7 @@ namespace AIHoloImager
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                     cmd_list.Compute(
-                        erosion_dilation_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                        erosion_dilation_pipeline_, {DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
                 }
             }
 
@@ -521,7 +521,7 @@ namespace AIHoloImager
                         {"output_tex", &output_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(gaussian_blur_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                    cmd_list.Compute(gaussian_blur_pipeline_, {DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
                 }
                 {
                     const GpuShaderResourceView input_srv(gpu_system, mask_pingpong_gpu_tex_);
@@ -548,7 +548,7 @@ namespace AIHoloImager
                         {"output_tex", &output_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(gaussian_blur_pipeline_, DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1, shader_binding);
+                    cmd_list.Compute(gaussian_blur_pipeline_, {DivUp(roi_width, BlockDim), DivUp(roi_height, BlockDim), 1}, shader_binding);
                 }
             }
 
@@ -576,7 +576,7 @@ namespace AIHoloImager
                     {"output_tex", &output_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(merge_mask_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(merge_mask_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
             }
         }
 

@@ -255,7 +255,7 @@ namespace AIHoloImager
 
             GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv, &derivative_barycentric_rtv};
 
-            cmd_list.Render(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t),
+            cmd_list.RenderIndexed(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, ib_binding, {indices.Size() / sizeof(uint32_t)},
                 shader_bindings, rtvs, &depth_dsv_, std::span(&viewport, 1), {});
         }
         else
@@ -268,8 +268,8 @@ namespace AIHoloImager
 
             GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
 
-            cmd_list.Render(rasterize_fwd_pipeline_, vb_bindings, &ib_binding, indices.Size() / sizeof(uint32_t), shader_bindings, rtvs,
-                &depth_dsv_, std::span(&viewport, 1), {});
+            cmd_list.RenderIndexed(rasterize_fwd_pipeline_, vb_bindings, ib_binding, {indices.Size() / sizeof(uint32_t)}, shader_bindings,
+                rtvs, &depth_dsv_, std::span(&viewport, 1), {});
         }
     }
 
@@ -330,7 +330,7 @@ namespace AIHoloImager
         };
         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
         cmd_list.Compute(needs_derivative_barycentric ? rasterize_bwd_derivative_bc_pipeline_ : rasterize_bwd_pipeline_,
-            DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+            {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
     }
 
     void GpuDiffRender::InterpolateFwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
@@ -411,8 +411,8 @@ namespace AIHoloImager
             {"derivative_shading", &derivative_shading_uav},
         };
         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-        cmd_list.Compute(needs_dbc ? interpolate_fwd_derivative_attribs_pipeline_ : interpolate_fwd_pipeline_, DivUp(width, BlockDim),
-            DivUp(height, BlockDim), 1, shader_binding);
+        cmd_list.Compute(needs_dbc ? interpolate_fwd_derivative_attribs_pipeline_ : interpolate_fwd_pipeline_,
+            {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
     }
 
     void GpuDiffRender::InterpolateBwd(GpuCommandList& cmd_list, const GpuBuffer& vtx_attribs, uint32_t num_attribs_per_vtx,
@@ -515,8 +515,8 @@ namespace AIHoloImager
             {"grad_derivative_barycentric", &grad_derivative_barycentric_uav},
         };
         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-        cmd_list.Compute(needs_dbc ? interpolate_bwd_derivative_attribs_pipeline_ : interpolate_bwd_pipeline_, DivUp(width, BlockDim),
-            DivUp(height, BlockDim), 1, shader_binding);
+        cmd_list.Compute(needs_dbc ? interpolate_bwd_derivative_attribs_pipeline_ : interpolate_bwd_pipeline_,
+            {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
     }
 
     void GpuDiffRender::GenerateMipmaps(GpuCommandList& cmd_list, GpuTexture2D& texture, uint32_t mip_levels)
@@ -561,7 +561,7 @@ namespace AIHoloImager
                     {"texture_f32", &texture_mip_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(texture_copy_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+                cmd_list.Compute(texture_copy_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
             }
             else
             {
@@ -636,8 +636,8 @@ namespace AIHoloImager
             {"tex_sampler", &sampler},
         };
         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs, samplers};
-        cmd_list.Compute(mip_mode ? texture_fwd_mip_pipeline_ : texture_fwd_pipeline_, DivUp(gbuffer_width, BlockDim),
-            DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+        cmd_list.Compute(mip_mode ? texture_fwd_mip_pipeline_ : texture_fwd_pipeline_,
+            {DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1}, shader_binding);
     }
 
     void GpuDiffRender::TextureBwd(GpuCommandList& cmd_list, const GpuTexture2D& texture, const GpuTexture2D& prim_id, const GpuBuffer& uv,
@@ -760,8 +760,8 @@ namespace AIHoloImager
                 {"grad_derivative_uv", &grad_derivative_uv_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(mip_mode ? texture_bwd_mip_pipeline_ : texture_bwd_pipeline_, DivUp(gbuffer_width, BlockDim),
-                DivUp(gbuffer_height, BlockDim), 1, shader_binding);
+            cmd_list.Compute(mip_mode ? texture_bwd_mip_pipeline_ : texture_bwd_pipeline_,
+                {DivUp(gbuffer_width, BlockDim), DivUp(gbuffer_height, BlockDim), 1}, shader_binding);
         }
 
         if (mip_mode)
@@ -792,7 +792,7 @@ namespace AIHoloImager
                 {"grad_texture", &grad_texture_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(accum_grad_mips_pipeline_, DivUp(tex_width, BlockDim), DivUp(tex_height, BlockDim), 1, shader_binding);
+            cmd_list.Compute(accum_grad_mips_pipeline_, {DivUp(tex_width, BlockDim), DivUp(tex_height, BlockDim), 1}, shader_binding);
         }
     }
 
@@ -837,7 +837,7 @@ namespace AIHoloImager
                 {"hash_table", &opposite_vertices_hash_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(anti_alias_construct_oppo_vert_hash_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
+            cmd_list.Compute(anti_alias_construct_oppo_vert_hash_pipeline_, {DivUp(num_indices, BlockDim), 1, 1}, shader_binding);
         }
 
         if (opposite_vertices.Size() != indices.Size())
@@ -870,7 +870,7 @@ namespace AIHoloImager
                 {"oppo_vert", &oppo_vert_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(anti_alias_construct_oppo_vert_pipeline_, DivUp(num_indices, BlockDim), 1, 1, shader_binding);
+            cmd_list.Compute(anti_alias_construct_oppo_vert_pipeline_, {DivUp(num_indices, BlockDim), 1, 1}, shader_binding);
         }
     }
 
@@ -941,7 +941,7 @@ namespace AIHoloImager
                 {"silhouette_info", &silhouette_info_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(anti_alias_fwd_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+            cmd_list.Compute(anti_alias_fwd_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
         }
     }
 
@@ -966,7 +966,7 @@ namespace AIHoloImager
                 {"indirect_args", &indirect_args_uav_},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(anti_alias_indirect_pipeline_, 1, 1, 1, shader_binding);
+            cmd_list.Compute(anti_alias_indirect_pipeline_, {1, 1, 1}, shader_binding);
         }
 
         if (grad_shading.Size() != shading.Size())

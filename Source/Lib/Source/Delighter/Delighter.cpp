@@ -115,7 +115,7 @@ namespace AIHoloImager
                         {"delighted_tex", &delighted_uav},
                     };
                     const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                    cmd_list.Compute(merge_mask_pipeline_, DivUp(width, BlockDim), DivUp(height, BlockDim), 1, shader_binding);
+                    cmd_list.Compute(merge_mask_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
                 }
             }
 

@@ -50,28 +50,28 @@ namespace AIHoloImager
 
     struct GpuRenderArguments
     {
-        uint32_t num_vertices_per_instance;
-        uint32_t num_instances;
-        uint32_t first_vertex;
-        uint32_t first_instance;
+        uint32_t num_vertices_per_instance = 0;
+        uint32_t num_instances = 1;
+        uint32_t first_vertex = 0;
+        uint32_t first_instance = 0;
     };
     static_assert(sizeof(GpuRenderArguments) == 16, "GpuRenderArguments size must be 16 bytes");
 
     struct GpuRenderIndexedArguments
     {
-        uint32_t num_indices_per_instance;
-        uint32_t num_instances;
-        uint32_t first_index;
-        int32_t vertex_offset;
-        uint32_t first_instance;
+        uint32_t num_indices_per_instance = 0;
+        uint32_t num_instances = 1;
+        uint32_t first_index = 0;
+        int32_t vertex_offset = 0;
+        uint32_t first_instance = 0;
     };
     static_assert(sizeof(GpuRenderIndexedArguments) == 20, "GpuRenderIndexedArguments size must be 20 bytes");
 
     struct GpuComputeArguments
     {
-        uint32_t group_x;
-        uint32_t group_y;
-        uint32_t group_z;
+        uint32_t group_x = 0;
+        uint32_t group_y = 1;
+        uint32_t group_z = 1;
     };
     static_assert(sizeof(GpuComputeArguments) == 12, "GpuComputeArguments size must be 12 bytes");
 
@@ -132,14 +132,20 @@ namespace AIHoloImager
         void ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil);
         void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
 
-        void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib, uint32_t num,
+        void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuRenderArguments& args,
             std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
             std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
-        void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
-            const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
+        void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuBuffer& indirect_args,
+            std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
+        void RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding& ib,
+            const GpuRenderIndexedArguments& args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
             GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
-        void Compute(
-            const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding);
+        void RenderIndexedIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+            const IndexBufferBinding& ib, const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings,
+            std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+            std::span<const GpuRect> scissor_rects);
+        void Compute(const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const ShaderBinding& shader_binding);
         void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);
         void Copy(GpuBuffer& dest, const GpuBuffer& src);
         void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);

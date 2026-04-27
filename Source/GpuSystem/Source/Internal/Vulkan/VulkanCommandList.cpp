@@ -194,40 +194,49 @@ namespace AIHoloImager
     }
 
     void VulkanCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
-        const GpuCommandList::IndexBufferBinding* ib, uint32_t num, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        const GpuRenderArguments& args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
-        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, num]() {
-            if (ib != nullptr)
-            {
-                vkCmdDrawIndexed(cmd_buff_, num, 1, 0, 0, 0);
-            }
-            else
-            {
-                vkCmdDraw(cmd_buff_, num, 1, 0, 0);
-            }
+        this->Render(pipeline, vbs, nullptr, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &args]() {
+            vkCmdDraw(cmd_buff_, args.num_vertices_per_instance, args.num_instances, args.first_vertex, args.first_instance);
         });
     }
 
     void VulkanCommandList::RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
-        const GpuCommandList::IndexBufferBinding* ib, const GpuBuffer& indirect_args,
-        std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
-        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+        const GpuBuffer& indirect_args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
     {
         const auto& vulkan_indirect_args = VulkanImp(indirect_args);
         vulkan_indirect_args.Transition(*this, GpuResourceState::Common);
 
-        this->Render(pipeline, vbs, ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, ib, &vulkan_indirect_args]() {
-            if (ib != nullptr)
-            {
-                vkCmdDrawIndexedIndirect(cmd_buff_, vulkan_indirect_args.Buffer(), 0, 1, 0);
-            }
-            else
-            {
-                vkCmdDrawIndirect(cmd_buff_, vulkan_indirect_args.Buffer(), 0, 1, 0);
-            }
+        this->Render(pipeline, vbs, nullptr, shader_bindings, rtvs, dsv, viewports, scissor_rects,
+            [this, &vulkan_indirect_args]() { vkCmdDrawIndirect(cmd_buff_, vulkan_indirect_args.Buffer(), 0, 1, 0); });
+    }
+
+    void VulkanCommandList::RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
+        const GpuCommandList::IndexBufferBinding& ib, const GpuRenderIndexedArguments& args,
+        std::span<const GpuCommandList::ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+        std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+    {
+        this->Render(pipeline, vbs, &ib, shader_bindings, rtvs, dsv, viewports, scissor_rects, [this, &ib, &args]() {
+            vkCmdDrawIndexed(
+                cmd_buff_, args.num_indices_per_instance, args.num_instances, args.first_index, args.vertex_offset, args.first_instance);
         });
+    }
+
+    void VulkanCommandList::RenderIndexedIndirect(const GpuRenderPipeline& pipeline,
+        std::span<const GpuCommandList::VertexBufferBinding> vbs, const GpuCommandList::IndexBufferBinding& ib,
+        const GpuBuffer& indirect_args, std::span<const GpuCommandList::ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
+    {
+        const auto& vulkan_indirect_args = VulkanImp(indirect_args);
+        vulkan_indirect_args.Transition(*this, GpuResourceState::Common);
+
+        this->Render(pipeline, vbs, &ib, shader_bindings, rtvs, dsv, viewports, scissor_rects,
+            [this, &ib, &vulkan_indirect_args]() { vkCmdDrawIndexedIndirect(cmd_buff_, vulkan_indirect_args.Buffer(), 0, 1, 0); });
     }
 
     void VulkanCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,
@@ -456,11 +465,10 @@ namespace AIHoloImager
         }
     }
 
-    void VulkanCommandList::Compute(const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z,
-        const GpuCommandList::ShaderBinding& shader_binding)
+    void VulkanCommandList::Compute(
+        const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const GpuCommandList::ShaderBinding& shader_binding)
     {
-        this->Compute(
-            pipeline, shader_binding, [this, group_x, group_y, group_z]() { vkCmdDispatch(cmd_buff_, group_x, group_y, group_z); });
+        this->Compute(pipeline, shader_binding, [this, &args]() { vkCmdDispatch(cmd_buff_, args.group_x, args.group_y, args.group_z); });
     }
 
     void VulkanCommandList::ComputeIndirect(

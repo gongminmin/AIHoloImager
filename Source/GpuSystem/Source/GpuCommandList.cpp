@@ -112,30 +112,48 @@ namespace AIHoloImager
         impl_->Internal().ClearDepthStencil(dsv, depth, stencil);
     }
 
-    void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding* ib,
-        uint32_t num, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
+    void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuRenderArguments& args,
+        std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
         std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().Render(pipeline, std::move(vbs), ib, num, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),
+        impl_->Internal().Render(pipeline, std::move(vbs), args, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),
             std::move(scissor_rects));
     }
 
     void GpuCommandList::RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
-        const IndexBufferBinding* ib, const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings,
+        const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
+        GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
+    {
+        assert(impl_);
+        impl_->Internal().RenderIndirect(pipeline, std::move(vbs), indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
+            std::move(viewports), std::move(scissor_rects));
+    }
+
+    void GpuCommandList::RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+        const IndexBufferBinding& ib, const GpuRenderIndexedArguments& args, std::span<const ShaderBinding> shader_bindings,
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().RenderIndirect(pipeline, std::move(vbs), ib, indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
+        impl_->Internal().RenderIndexed(pipeline, std::move(vbs), ib, args, std::move(shader_bindings), std::move(rtvs), dsv,
             std::move(viewports), std::move(scissor_rects));
     }
 
-    void GpuCommandList::Compute(
-        const GpuComputePipeline& pipeline, uint32_t group_x, uint32_t group_y, uint32_t group_z, const ShaderBinding& shader_binding)
+    void GpuCommandList::RenderIndexedIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+        const IndexBufferBinding& ib, const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings,
+        std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+        std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().Compute(pipeline, group_x, group_y, group_z, shader_binding);
+        impl_->Internal().RenderIndexedIndirect(pipeline, std::move(vbs), ib, indirect_args, std::move(shader_bindings), std::move(rtvs),
+            dsv, std::move(viewports), std::move(scissor_rects));
+    }
+
+    void GpuCommandList::Compute(const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const ShaderBinding& shader_binding)
+    {
+        assert(impl_);
+        impl_->Internal().Compute(pipeline, args, shader_binding);
     }
 
     void GpuCommandList::ComputeIndirect(
