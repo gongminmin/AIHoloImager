@@ -137,40 +137,45 @@ namespace AIHoloImager
         std::vector<VkPhysicalDevice> physical_devices(gpu_count);
         TIFVK(vkEnumeratePhysicalDevices(instance_, &gpu_count, physical_devices.data()));
 
-        const auto support_timeline_semaphore = [](VkPhysicalDevice physical_device) -> bool {
-            VkPhysicalDeviceTimelineSemaphoreFeatures timeline_features{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+        const auto support_necessary_features = [](VkPhysicalDevice physical_device) -> bool {
+            VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
+            };
+
+            VkPhysicalDeviceVulkan11Features enable_vulkan11_features = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+                .pNext = &robustness_2_feature,
+            };
+
+            VkPhysicalDeviceVulkan12Features enable_vulkan12_features = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+                .pNext = &enable_vulkan11_features,
+            };
+
+            VkPhysicalDeviceVulkan13Features enable_vulkan13_features = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+                .pNext = &enable_vulkan12_features,
             };
 
             VkPhysicalDeviceFeatures2 physical_features{
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                .pNext = &timeline_features,
+                .pNext = &enable_vulkan13_features,
             };
 
             vkGetPhysicalDeviceFeatures2(physical_device, &physical_features);
 
-            return timeline_features.timelineSemaphore == VK_TRUE;
-        };
-
-        const auto support_robustness_2 = [](VkPhysicalDevice physical_device) -> bool {
-            VkPhysicalDeviceRobustness2FeaturesEXT robustness_2_features{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
-            };
-
-            VkPhysicalDeviceFeatures2 physical_features{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                .pNext = &robustness_2_features,
-            };
-
-            vkGetPhysicalDeviceFeatures2(physical_device, &physical_features);
-
-            return robustness_2_features.nullDescriptor == VK_TRUE;
+            return (physical_features.features.geometryShader == VK_TRUE) && (robustness_2_feature.nullDescriptor == VK_TRUE) &&
+                   (enable_vulkan11_features.storageBuffer16BitAccess == VK_TRUE) &&
+                   (enable_vulkan11_features.uniformAndStorageBuffer16BitAccess == VK_TRUE) &&
+                   (enable_vulkan12_features.shaderFloat16 == VK_TRUE) && (enable_vulkan12_features.timelineSemaphore == VK_TRUE) &&
+                   (enable_vulkan13_features.shaderDemoteToHelperInvocation == VK_TRUE) &&
+                   (enable_vulkan13_features.dynamicRendering == TRUE);
         };
 
         physical_device_ = VK_NULL_HANDLE;
         for (auto& physical_device : physical_devices)
         {
-            if (support_timeline_semaphore(physical_device) && support_robustness_2(physical_device) &&
+            if (support_necessary_features(physical_device) &&
                 (!confirm_device || confirm_device(GpuSystem::Api::Vulkan, reinterpret_cast<void*>(physical_device))))
             {
                 physical_device_ = physical_device;
