@@ -3,6 +3,7 @@
 
 #include "VulkanSystem.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <format>
 #include <iostream>
@@ -142,40 +143,86 @@ namespace AIHoloImager
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
             };
 
-            VkPhysicalDeviceVulkan11Features enable_vulkan11_features = {
+            VkPhysicalDeviceVulkan11Features vulkan11_features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
                 .pNext = &robustness_2_feature,
             };
 
-            VkPhysicalDeviceVulkan12Features enable_vulkan12_features = {
+            VkPhysicalDeviceVulkan12Features vulkan12_features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-                .pNext = &enable_vulkan11_features,
+                .pNext = &vulkan11_features,
             };
 
-            VkPhysicalDeviceVulkan13Features enable_vulkan13_features = {
+            VkPhysicalDeviceVulkan13Features vulkan13_features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-                .pNext = &enable_vulkan12_features,
+                .pNext = &vulkan12_features,
             };
 
             VkPhysicalDeviceFeatures2 physical_features{
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                .pNext = &enable_vulkan13_features,
+                .pNext = &vulkan13_features,
             };
 
             vkGetPhysicalDeviceFeatures2(physical_device, &physical_features);
 
-            return (physical_features.features.independentBlend == VK_TRUE) && (physical_features.features.geometryShader == VK_TRUE) &&
-                   (robustness_2_feature.nullDescriptor == VK_TRUE) && (enable_vulkan11_features.storageBuffer16BitAccess == VK_TRUE) &&
-                   (enable_vulkan11_features.uniformAndStorageBuffer16BitAccess == VK_TRUE) &&
-                   (enable_vulkan12_features.shaderFloat16 == VK_TRUE) && (enable_vulkan12_features.timelineSemaphore == VK_TRUE) &&
-                   (enable_vulkan13_features.shaderDemoteToHelperInvocation == VK_TRUE) &&
-                   (enable_vulkan13_features.dynamicRendering == VK_TRUE);
+            const VkBool32 requires_bits[] = {
+                physical_features.features.independentBlend,
+                physical_features.features.geometryShader,
+                robustness_2_feature.nullDescriptor,
+                vulkan11_features.storageBuffer16BitAccess,
+                vulkan11_features.uniformAndStorageBuffer16BitAccess,
+                vulkan12_features.shaderFloat16,
+                vulkan12_features.timelineSemaphore,
+                vulkan13_features.shaderDemoteToHelperInvocation,
+                vulkan13_features.dynamicRendering,
+            };
+
+            return std::all_of(std::begin(requires_bits), std::end(requires_bits), [](VkBool32 bit) { return bit == VK_TRUE; });
+        };
+
+        std::vector<const char*> enable_device_exts = {
+            VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+            VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
+        };
+        if (enable_sharing)
+        {
+            enable_device_exts.insert(enable_device_exts.end(), {
+                                                                    VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+                                                                    VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+                                                                });
+        }
+
+        const auto support_required_extensions = [&enable_device_exts](VkPhysicalDevice physical_device) -> bool {
+            uint32_t device_ext_count = 0;
+            vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &device_ext_count, nullptr);
+            if (device_ext_count == 0)
+            {
+                return false;
+            }
+
+            std::vector<VkExtensionProperties> supported_exts(device_ext_count);
+            if (vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &device_ext_count, supported_exts.data()) != VK_SUCCESS)
+            {
+                return false;
+            }
+
+            for (const auto* required_ext : enable_device_exts)
+            {
+                auto iter = std::find_if(supported_exts.begin(), supported_exts.end(),
+                    [required_ext](const VkExtensionProperties& ext) { return std::string_view(required_ext) == ext.extensionName; });
+                if (iter == supported_exts.end())
+                {
+                    return false;
+                }
+            }
+
+            return true;
         };
 
         physical_device_ = VK_NULL_HANDLE;
         for (auto& physical_device : physical_devices)
         {
-            if (support_necessary_features(physical_device) &&
+            if (support_necessary_features(physical_device) && support_required_extensions(physical_device) &&
                 (!confirm_device || confirm_device(GpuSystem::Api::Vulkan, reinterpret_cast<void*>(physical_device))))
             {
                 physical_device_ = physical_device;
@@ -204,20 +251,6 @@ namespace AIHoloImager
         assert(queue_family_count > 0);
         auto queue_family_props = std::make_unique<VkQueueFamilyProperties[]>(queue_family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &queue_family_count, queue_family_props.get());
-
-        uint32_t device_ext_count = 0;
-        vkEnumerateDeviceExtensionProperties(physical_device_, nullptr, &device_ext_count, nullptr);
-        if (device_ext_count > 0)
-        {
-            std::vector<VkExtensionProperties> extensions(device_ext_count);
-            if (vkEnumerateDeviceExtensionProperties(physical_device_, nullptr, &device_ext_count, extensions.data()) == VK_SUCCESS)
-            {
-                for (const auto& ext : extensions)
-                {
-                    supported_exts_.push_back(ext.extensionName);
-                }
-            }
-        }
 
         std::set<uint32_t> queue_family_indices;
         for (uint32_t i = 0; i < queue_family_count; ++i)
@@ -252,13 +285,12 @@ namespace AIHoloImager
         const float default_queue_priority = 0;
         for (const auto& index : queue_family_indices)
         {
-            auto& queue_info = queue_create_infos.emplace_back();
-            queue_info = VkDeviceQueueCreateInfo{
+            queue_create_infos.emplace_back(VkDeviceQueueCreateInfo{
                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                 .queueFamilyIndex = index,
                 .queueCount = 1,
                 .pQueuePriorities = &default_queue_priority,
-            };
+            });
         }
 
         const VkPhysicalDeviceFeatures enable_features{
@@ -266,14 +298,14 @@ namespace AIHoloImager
             .geometryShader = VK_TRUE,
         };
 
-        VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
+        VkPhysicalDeviceRobustness2FeaturesKHR enable_robustness_2_feature{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
             .nullDescriptor = VK_TRUE,
         };
 
         VkPhysicalDeviceVulkan11Features enable_vulkan11_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-            .pNext = &robustness_2_feature,
+            .pNext = &enable_robustness_2_feature,
             .storageBuffer16BitAccess = VK_TRUE,
             .uniformAndStorageBuffer16BitAccess = VK_TRUE,
         };
@@ -297,38 +329,10 @@ namespace AIHoloImager
             .pNext = &enable_vulkan13_features,
             .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
             .pQueueCreateInfos = queue_create_infos.data(),
+            .enabledExtensionCount = static_cast<uint32_t>(enable_device_exts.size()),
+            .ppEnabledExtensionNames = enable_device_exts.data(),
             .pEnabledFeatures = &enable_features,
         };
-
-        std::vector<const char*> device_exts = {
-            VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
-            VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
-        };
-        if (enable_sharing)
-        {
-            device_exts.insert(device_exts.end(), {
-                                                      VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
-                                                      VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
-                                                  });
-        }
-
-        for (auto iter = device_exts.begin(); iter != device_exts.end();)
-        {
-            if (std::find(supported_exts_.begin(), supported_exts_.end(), *iter) == supported_exts_.end())
-            {
-                iter = device_exts.erase(iter);
-            }
-            else
-            {
-                ++iter;
-            }
-        }
-
-        if (!device_exts.empty())
-        {
-            device_create_info.enabledExtensionCount = static_cast<uint32_t>(device_exts.size());
-            device_create_info.ppEnabledExtensionNames = device_exts.data();
-        }
 
         TIFVK(vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_));
         volkLoadDevice(device_);

@@ -170,6 +170,7 @@ namespace AIHoloImager
 
     private:
         GpuSystem* gpu_system_ = nullptr;
+        bool enable_sharing_;
 
         VkInstance instance_ = VK_NULL_HANDLE;
         std::vector<std::string> supported_instance_exts_;
@@ -182,11 +183,7 @@ namespace AIHoloImager
         float max_extra_primitive_overestimation_size_ = 0;
 
         VkDevice device_ = VK_NULL_HANDLE;
-        std::vector<std::string> supported_exts_{};
         uint32_t queue_family_indices_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-
-        bool enable_sharing_;
-
         CmdQueue cmd_queues_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
         struct StallResourceInfo
