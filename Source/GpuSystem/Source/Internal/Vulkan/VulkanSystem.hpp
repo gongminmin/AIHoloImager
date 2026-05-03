@@ -88,6 +88,7 @@ namespace AIHoloImager
         void Recycle(VkQueryPool query_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
+        float MaxExtraPrimitiveOverestimationSize() const noexcept;
 
         VulkanRecyclableObject<VkDescriptorSet>& AllocDescSet(VkDescriptorSetLayout layout);
         void DeallocDescSet(VkDescriptorSet desc_set);
@@ -178,6 +179,7 @@ namespace AIHoloImager
         VkPhysicalDeviceIDProperties device_id_props_{};
         VkPhysicalDeviceProperties2 device_props_{};
         VkPhysicalDeviceMemoryProperties mem_props_{};
+        float max_extra_primitive_overestimation_size_ = 0;
 
         VkDevice device_ = VK_NULL_HANDLE;
         std::vector<std::string> supported_exts_{};

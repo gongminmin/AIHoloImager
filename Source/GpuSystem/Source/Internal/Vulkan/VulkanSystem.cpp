@@ -184,8 +184,12 @@ namespace AIHoloImager
         }
         Verify(physical_device_ != VK_NULL_HANDLE);
 
+        VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservative_raster_props{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT,
+        };
         device_id_props_ = VkPhysicalDeviceIDProperties{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES,
+            .pNext = &conservative_raster_props,
         };
         device_props_ = VkPhysicalDeviceProperties2{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
@@ -193,6 +197,7 @@ namespace AIHoloImager
         };
         vkGetPhysicalDeviceProperties2(physical_device_, &device_props_);
         vkGetPhysicalDeviceMemoryProperties(physical_device_, &mem_props_);
+        max_extra_primitive_overestimation_size_ = conservative_raster_props.maxExtraPrimitiveOverestimationSize;
 
         uint32_t queue_family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &queue_family_count, nullptr);
@@ -1102,6 +1107,11 @@ namespace AIHoloImager
         }
 
         return static_cast<uint32_t>(-1);
+    }
+
+    float VulkanSystem::MaxExtraPrimitiveOverestimationSize() const noexcept
+    {
+        return max_extra_primitive_overestimation_size_;
     }
 
     VulkanRecyclableObject<VkDescriptorSet>& VulkanSystem::AllocDescSet(VkDescriptorSetLayout layout)

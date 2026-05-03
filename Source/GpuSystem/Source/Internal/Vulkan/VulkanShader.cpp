@@ -243,19 +243,10 @@ namespace AIHoloImager
         VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_raster_state_create_info;
         if (states.conservative_raster)
         {
-            VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservative_raster_props{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT,
-            };
-            VkPhysicalDeviceProperties2KHR device_props{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR,
-                .pNext = &conservative_raster_props,
-            };
-            vkGetPhysicalDeviceProperties2(vulkan_system.PhysicalDevice(), &device_props);
-
             conservative_raster_state_create_info = VkPipelineRasterizationConservativeStateCreateInfoEXT{
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT,
                 .conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT,
-                .extraPrimitiveOverestimationSize = conservative_raster_props.maxExtraPrimitiveOverestimationSize,
+                .extraPrimitiveOverestimationSize = vulkan_system.MaxExtraPrimitiveOverestimationSize(),
             };
 
             rasterization_state_create_info.pNext = &conservative_raster_state_create_info;
