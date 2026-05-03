@@ -96,6 +96,11 @@ namespace AIHoloImager
 
                 vkGetPhysicalDeviceProperties2(reinterpret_cast<VkPhysicalDevice>(device), &device_properties);
 
+                if (device_properties.properties.limits.maxColorAttachments < 3)
+                {
+                    return false;
+                }
+
                 if (((subgroup_properties.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0) ||
                     (subgroup_properties.subgroupSize < 16))
                 {
