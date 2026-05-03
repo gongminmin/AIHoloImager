@@ -122,7 +122,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
     {
-        Verify((buffer.Flags() & GpuResourceFlag::Structured) == GpuResourceFlag::None);
+        Verify(!EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size)
@@ -135,7 +135,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(
               gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, element_size).release()))
     {
-        Verify((buffer.Flags() & GpuResourceFlag::Structured) != GpuResourceFlag::None);
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuShaderResourceView::~GpuShaderResourceView() = default;
@@ -169,6 +169,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateRenderTargetView(texture, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuRenderTargetViewInternal));
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::RenderTarget));
     }
 
     GpuRenderTargetView::~GpuRenderTargetView() = default;
@@ -207,6 +208,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateDepthStencilView(texture, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuDepthStencilViewInternal));
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::DepthStencil));
     }
 
     GpuDepthStencilView::~GpuDepthStencilView() = default;
@@ -256,6 +258,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture, sub_resource, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuUnorderedAccessViewInternal));
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::UnorderedAccess));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array)
@@ -277,6 +280,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture_array, sub_resource, format).release()))
     {
+        Verify(EnumHasAny(texture_array.Flags(), GpuResourceFlag::UnorderedAccess));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture)
@@ -297,6 +301,7 @@ namespace AIHoloImager
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(texture, sub_resource, format).release()))
     {
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::UnorderedAccess));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format)
@@ -308,7 +313,8 @@ namespace AIHoloImager
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, format).release()))
     {
-        Verify((buffer.Flags() & GpuResourceFlag::Structured) == GpuResourceFlag::None);
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::UnorderedAccess));
+        Verify(!EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)
@@ -321,7 +327,8 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(
               gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, element_size).release()))
     {
-        Verify((buffer.Flags() & GpuResourceFlag::Structured) != GpuResourceFlag::None);
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::UnorderedAccess));
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuUnorderedAccessView::~GpuUnorderedAccessView() = default;

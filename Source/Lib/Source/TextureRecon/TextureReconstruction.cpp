@@ -102,11 +102,11 @@ namespace AIHoloImager
             PerfRegion texture_perf(aihi_.PerfProfilerInstance(), "TextureReconstruction Process", &cmd_list);
 
             GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::None, "mesh_vb");
+                GpuResourceFlag::None, "TextureReconstruction.mesh_vb");
             cmd_list.Upload(mesh_vb, mesh.VertexBuffer().data(), mesh_vb.Size());
 
             GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::None, "mesh_ib");
+                GpuResourceFlag::None, "TextureReconstruction.mesh_ib");
             cmd_list.Upload(mesh_ib, mesh.IndexBuffer().data(), mesh_ib.Size());
 
             GpuTexture2D flatten_pos_tex;
@@ -164,10 +164,10 @@ namespace AIHoloImager
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            flatten_pos_tex =
-                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, GpuResourceFlag::RenderTarget, "flatten_pos_tex");
-            flatten_normal_tex =
-                GpuTexture2D(gpu_system_, texture_size, texture_size, 1, NormalFmt, GpuResourceFlag::RenderTarget, "flatten_normal_tex");
+            flatten_pos_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, PositionFmt, GpuResourceFlag::RenderTarget,
+                "TextureReconstruction.flatten_pos_tex");
+            flatten_normal_tex = GpuTexture2D(gpu_system_, texture_size, texture_size, 1, NormalFmt, GpuResourceFlag::RenderTarget,
+                "TextureReconstruction.flatten_normal_tex");
 
             GpuRenderTargetView pos_rtv(gpu_system_, flatten_pos_tex);
             GpuRenderTargetView normal_rtv(gpu_system_, flatten_normal_tex);
@@ -210,8 +210,8 @@ namespace AIHoloImager
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            GpuTexture2D accum_color_tex(
-                gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "accum_color_tex");
+            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+                GpuResourceFlag::UnorderedAccess, "TextureReconstruction.accum_color_tex");
             GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
 
             {
@@ -229,7 +229,7 @@ namespace AIHoloImager
                 const auto& projection = projections[i];
 
                 GpuTexture2D shadow_map_tex(gpu_system_, projection.full_width, projection.full_height, 1, GpuFormat::D32_Float,
-                    GpuResourceFlag::DepthStencil, "shadow_map_tex");
+                    GpuResourceFlag::DepthStencil, "TextureReconstruction.shadow_map_tex");
                 const GpuShaderResourceView shadow_map_srv(gpu_system_, shadow_map_tex, GpuFormat::R32_Float);
                 GpuDepthStencilView shadow_map_dsv(gpu_system_, shadow_map_tex, DepthFmt);
 
@@ -330,7 +330,8 @@ namespace AIHoloImager
 
             constexpr uint32_t BlockDim = 16;
 
-            GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "color_tex");
+            GpuTexture2D color_tex(
+                gpu_system_, texture_size, texture_size, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "TextureReconstruction.color_tex");
             GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
 
             const GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);

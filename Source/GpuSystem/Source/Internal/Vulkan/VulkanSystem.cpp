@@ -169,7 +169,7 @@ namespace AIHoloImager
                    (enable_vulkan11_features.uniformAndStorageBuffer16BitAccess == VK_TRUE) &&
                    (enable_vulkan12_features.shaderFloat16 == VK_TRUE) && (enable_vulkan12_features.timelineSemaphore == VK_TRUE) &&
                    (enable_vulkan13_features.shaderDemoteToHelperInvocation == VK_TRUE) &&
-                   (enable_vulkan13_features.dynamicRendering == TRUE);
+                   (enable_vulkan13_features.dynamicRendering == VK_TRUE);
         };
 
         physical_device_ = VK_NULL_HANDLE;
@@ -283,7 +283,7 @@ namespace AIHoloImager
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = &enable_vulkan12_features,
             .shaderDemoteToHelperInvocation = VK_TRUE,
-            .dynamicRendering = TRUE,
+            .dynamicRendering = VK_TRUE,
         };
 
         VkDeviceCreateInfo device_create_info{

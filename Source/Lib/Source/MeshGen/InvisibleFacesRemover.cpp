@@ -120,15 +120,15 @@ namespace AIHoloImager
             {
                 const glm::vec2 angle = SphereHammersleySequence(i, NumViews);
 
-                RenderFaceId(cmd_list, vb, ib, num_indices, angle.x, angle.y, CameraDist);
-                AccumulateFaces(cmd_list, num_faces);
+                this->RenderFaceId(cmd_list, vb, ib, num_indices, angle.x, angle.y, CameraDist);
+                this->AccumulateFaces(cmd_list, num_faces);
 
                 gpu_system_.ExecuteAndReset(cmd_list);
             }
 
             GpuBuffer filtered_index_buff(
                 gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "filtered_index_buff");
-            FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
+            this->FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
 
             auto filtered_indices = std::make_unique<uint32_t[]>(num_indices);
             const auto index_rb_future =
