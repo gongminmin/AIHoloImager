@@ -164,8 +164,8 @@ namespace AIHoloImager
 
             vkGetPhysicalDeviceFeatures2(physical_device, &physical_features);
 
-            return (physical_features.features.geometryShader == VK_TRUE) && (robustness_2_feature.nullDescriptor == VK_TRUE) &&
-                   (enable_vulkan11_features.storageBuffer16BitAccess == VK_TRUE) &&
+            return (physical_features.features.independentBlend == VK_TRUE) && (physical_features.features.geometryShader == VK_TRUE) &&
+                   (robustness_2_feature.nullDescriptor == VK_TRUE) && (enable_vulkan11_features.storageBuffer16BitAccess == VK_TRUE) &&
                    (enable_vulkan11_features.uniformAndStorageBuffer16BitAccess == VK_TRUE) &&
                    (enable_vulkan12_features.shaderFloat16 == VK_TRUE) && (enable_vulkan12_features.timelineSemaphore == VK_TRUE) &&
                    (enable_vulkan13_features.shaderDemoteToHelperInvocation == VK_TRUE) &&
@@ -262,6 +262,7 @@ namespace AIHoloImager
         }
 
         const VkPhysicalDeviceFeatures enable_features{
+            .independentBlend = VK_TRUE,
             .geometryShader = VK_TRUE,
         };
 
