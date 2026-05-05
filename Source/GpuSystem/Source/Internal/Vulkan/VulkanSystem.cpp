@@ -262,13 +262,14 @@ namespace AIHoloImager
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT))
+                (queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) = i;
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Copy) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_TRANSFER_BIT))
+                (queue_family_props[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) &&
+                !(queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Copy) = i;
                 queue_family_indices.insert(i);
@@ -536,21 +537,7 @@ namespace AIHoloImager
                     wait_fence_values[num_waits] = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
                                                                                                            : wait_fences.fence_values[i];
                     wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
-                    switch (queue_type)
-                    {
-                    case GpuSystem::CmdQueueType::Render:
-                        wait_stages[num_waits] = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::Compute:
-                        wait_stages[num_waits] = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::Copy:
-                        wait_stages[num_waits] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::VideoEncode:
-                        wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-                        break;
-                    }
+                    wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
                     if (target_queue_type == queue_type)
                     {
@@ -848,21 +835,7 @@ namespace AIHoloImager
                 {
                     compact_wait_fence_values[num_waits] = fence_value;
                     compact_wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
-                    switch (queue_type)
-                    {
-                    case GpuSystem::CmdQueueType::Render:
-                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::Compute:
-                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::Copy:
-                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-                        break;
-                    case GpuSystem::CmdQueueType::VideoEncode:
-                        compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-                        break;
-                    }
+                    compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
                     ++num_waits;
                 }
