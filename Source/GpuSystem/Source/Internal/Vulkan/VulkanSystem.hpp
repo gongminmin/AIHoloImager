@@ -7,7 +7,7 @@
 
 #include <volk.h>
 
-#include "Base/SmartPtrHelper.hpp"
+#include "Gpu/GpuFence.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandListInternal.hpp"
@@ -85,6 +85,7 @@ namespace AIHoloImager
         void Recycle(VkDeviceMemory memory, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkRenderPass render_pass, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkQueryPool query_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkSemaphore semaphore, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
         float MaxExtraPrimitiveOverestimationSize() const noexcept;
@@ -146,6 +147,8 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuTimerQueryInternal> CreateTimerQuery() const override;
 
+        std::unique_ptr<GpuFenceInternal> CreateFence(uint64_t init_val, bool enable_sharing) const override;
+
     private:
         struct CmdQueue
         {
@@ -153,9 +156,8 @@ namespace AIHoloImager
             std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
 
-            VkSemaphore timeline_semaphore = VK_NULL_HANDLE;
+            GpuFence fence;
             uint64_t fence_val = 0;
-            Win32UniqueHandle shared_fence_handle;
         };
 
     private:

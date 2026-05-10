@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -23,6 +23,8 @@ namespace AIHoloImager
         using ResourceType = ID3D12Resource*;
         using BufferType = ID3D12Resource*;
         using TextureType = ID3D12Resource*;
+
+        using FenceType = ID3D12Fence*;
 
         using SharedHandleType = HANDLE;
     };

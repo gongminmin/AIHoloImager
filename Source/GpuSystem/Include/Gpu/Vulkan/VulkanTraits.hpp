@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -20,6 +20,8 @@ namespace AIHoloImager
         using ResourceType = VkDeviceMemory;
         using BufferType = VkBuffer;
         using TextureType = VkImage;
+
+        using FenceType = VkSemaphore;
 
         using SharedHandleType = HANDLE;
     };

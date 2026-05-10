@@ -16,6 +16,7 @@
 #include "VulkanCommandList.hpp"
 #include "VulkanCommandPool.hpp"
 #include "VulkanErrorHandling.hpp"
+#include "VulkanFence.hpp"
 #include "VulkanQuery.hpp"
 #include "VulkanResourceViews.hpp"
 #include "VulkanSampler.hpp"
@@ -353,8 +354,7 @@ namespace AIHoloImager
                 cmd_queue.cmd_pools.clear();
                 cmd_queue.cmd_queue = VK_NULL_HANDLE;
 
-                vkDestroySemaphore(device_, cmd_queue.timeline_semaphore, nullptr);
-                cmd_queue.timeline_semaphore = VK_NULL_HANDLE;
+                cmd_queue.fence = {};
             }
         }
 
@@ -430,7 +430,7 @@ namespace AIHoloImager
     void* VulkanSystem::SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept
     {
         auto* cmd_queue = this->GetCommandQueue(type);
-        return cmd_queue ? cmd_queue->shared_fence_handle.get() : nullptr;
+        return cmd_queue ? cmd_queue->fence.SharedFenceHandle() : nullptr;
     }
 
     GpuCommandList VulkanSystem::CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name)
@@ -498,20 +498,9 @@ namespace AIHoloImager
             {
                 const uint64_t wait_fence_value =
                     wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1 : wait_fences.fence_values[i];
-                uint64_t completed_value;
-                if (vkGetSemaphoreCounterValue(device_, wait_cmd_queue->timeline_semaphore, &completed_value) == VK_SUCCESS)
+                if (wait_cmd_queue->fence.CompletedValue() < wait_fence_value)
                 {
-                    if (completed_value < wait_fence_value)
-                    {
-                        const VkSemaphoreWaitInfo wait_info{
-                            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-                            .flags = 0,
-                            .semaphoreCount = 1,
-                            .pSemaphores = &wait_cmd_queue->timeline_semaphore,
-                            .pValues = &wait_fence_value,
-                        };
-                        vkWaitSemaphores(device_, &wait_info, ~0ULL);
-                    }
+                    wait_cmd_queue->fence.CpuWait(wait_fence_value);
                 }
             }
         }
@@ -536,7 +525,7 @@ namespace AIHoloImager
                 {
                     wait_fence_values[num_waits] = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
                                                                                                            : wait_fences.fence_values[i];
-                    wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
+                    wait_semaphores[num_waits] = VulkanImp(wait_cmd_queue->fence).Fence();
                     wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
                     if (target_queue_type == queue_type)
@@ -578,14 +567,7 @@ namespace AIHoloImager
     uint64_t VulkanSystem::CompletedFenceValue(GpuSystem::CmdQueueType type) const
     {
         auto* cmd_queue = this->GetCommandQueue(type);
-        if (cmd_queue != nullptr)
-        {
-            uint64_t value;
-            TIFVK(vkGetSemaphoreCounterValue(device_, cmd_queue->timeline_semaphore, &value));
-            return value;
-        }
-
-        return 0;
+        return cmd_queue ? cmd_queue->fence.CompletedValue() : 0;
     }
 
     void VulkanSystem::HandleDeviceLost()
@@ -598,8 +580,7 @@ namespace AIHoloImager
                 cmd_queue.cmd_pools.clear();
                 cmd_queue.free_cmd_lists.clear();
 
-                vkDestroySemaphore(device_, cmd_queue.timeline_semaphore, nullptr);
-                cmd_queue.timeline_semaphore = VK_NULL_HANDLE;
+                cmd_queue.fence = {};
             }
         }
 
@@ -673,6 +654,11 @@ namespace AIHoloImager
         stall_resources_.emplace_back(
             query_pool, [this, query_pool]() { vkDestroyQueryPool(device_, query_pool, nullptr); }, std::move(wait_fences));
     }
+    void VulkanSystem::Recycle(VkSemaphore semaphore, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
+    {
+        stall_resources_.emplace_back(
+            semaphore, [this, semaphore]() { vkDestroySemaphore(device_, semaphore, nullptr); }, std::move(wait_fences));
+    }
 
     void VulkanSystem::ClearStallResources()
     {
@@ -725,44 +711,8 @@ namespace AIHoloImager
             const std::string debug_name = std::format("cmd_queue {}", static_cast<uint32_t>(type));
             SetName(*this, cmd_queue.cmd_queue, VK_OBJECT_TYPE_QUEUE, debug_name);
 
-            VkSemaphoreTypeCreateInfo timeline_create_info{
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-                .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-                .initialValue = cmd_queue.fence_val,
-            };
-
-            VkExportSemaphoreCreateInfo export_info;
-            if (enable_sharing_)
-            {
-                export_info = {
-                    .sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
-                    .handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT,
-                };
-
-                timeline_create_info.pNext = &export_info;
-            }
-
-            const VkSemaphoreCreateInfo semaphore_create_info{
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                .pNext = &timeline_create_info,
-                .flags = 0,
-            };
-            TIFVK(vkCreateSemaphore(device_, &semaphore_create_info, nullptr, &cmd_queue.timeline_semaphore));
-
+            cmd_queue.fence = GpuFence(*gpu_system_, cmd_queue.fence_val, enable_sharing_);
             ++cmd_queue.fence_val;
-
-            if (enable_sharing_)
-            {
-                const VkSemaphoreGetWin32HandleInfoKHR get_handle_info{
-                    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR,
-                    .semaphore = cmd_queue.timeline_semaphore,
-                    .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT,
-                };
-
-                HANDLE shared_handle;
-                TIFVK(vkGetSemaphoreWin32HandleKHR(device_, &get_handle_info, &shared_handle));
-                cmd_queue.shared_fence_handle.reset(shared_handle);
-            }
         }
 
         return cmd_queue;
@@ -786,8 +736,7 @@ namespace AIHoloImager
     GpuCommandPool& VulkanSystem::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
-        uint64_t completed_fence;
-        TIFVK(vkGetSemaphoreCounterValue(device_, cmd_queue.timeline_semaphore, &completed_fence));
+        const uint64_t completed_fence = cmd_queue.fence.CompletedValue();
         for (auto& pool : cmd_queue.cmd_pools)
         {
             auto& vulkan_pool = VulkanImp(*pool);
@@ -834,7 +783,7 @@ namespace AIHoloImager
                 if (fence_value != 0)
                 {
                     compact_wait_fence_values[num_waits] = fence_value;
-                    compact_wait_semaphores[num_waits] = wait_cmd_queue->timeline_semaphore;
+                    compact_wait_semaphores[num_waits] = VulkanImp(wait_cmd_queue->fence).Fence();
                     compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
                     ++num_waits;
@@ -847,6 +796,7 @@ namespace AIHoloImager
         ++cmd_queue->fence_val;
 
         const VkCommandBuffer cmd_buffs[] = {cmd_list.CommandBuffer()};
+        const VkSemaphore semaphores[] = {VulkanImp(cmd_queue->fence).Fence()};
 
         VkTimelineSemaphoreSubmitInfo timeline_info{
             .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
@@ -859,8 +809,8 @@ namespace AIHoloImager
             .pNext = &timeline_info,
             .commandBufferCount = static_cast<uint32_t>(std::size(cmd_buffs)),
             .pCommandBuffers = cmd_buffs,
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &cmd_queue->timeline_semaphore,
+            .signalSemaphoreCount = static_cast<uint32_t>(std::size(semaphores)),
+            .pSignalSemaphores = semaphores,
         };
 
         if (num_waits > 0)
@@ -1015,6 +965,11 @@ namespace AIHoloImager
     std::unique_ptr<GpuTimerQueryInternal> VulkanSystem::CreateTimerQuery() const
     {
         return std::make_unique<VulkanTimerQuery>(*gpu_system_);
+    }
+
+    std::unique_ptr<GpuFenceInternal> VulkanSystem::CreateFence(uint64_t init_val, bool enable_sharing) const
+    {
+        return std::make_unique<VulkanFence>(*gpu_system_, init_val, enable_sharing);
     }
 
     VkBool32 VulkanSystem::DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

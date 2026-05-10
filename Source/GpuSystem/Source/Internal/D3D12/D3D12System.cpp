@@ -11,7 +11,6 @@
 #include <dxgidebug.h>
 
 #include "Base/ErrorHandling.hpp"
-#include "Base/SmartPtrHelper.hpp"
 #include "Base/Util.hpp"
 #include "Base/Uuid.hpp"
 #include "Gpu/GpuCommandList.hpp"
@@ -20,6 +19,7 @@
 #include "D3D12CommandList.hpp"
 #include "D3D12CommandPool.hpp"
 #include "D3D12DescriptorHeap.hpp"
+#include "D3D12Fence.hpp"
 #include "D3D12ImpDefine.hpp"
 #include "D3D12Query.hpp"
 #include "D3D12ResourceViews.hpp"
@@ -41,7 +41,6 @@ DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
 DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedData1);
 DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedDataSettings1);
-DEFINE_UUID_OF(ID3D12Fence);
 DEFINE_UUID_OF(ID3D12InfoQueue1);
 DEFINE_UUID_OF(ID3D12PipelineState);
 DEFINE_UUID_OF(ID3D12Resource);
@@ -340,8 +339,7 @@ namespace AIHoloImager
             cmd_queue.cmd_pools.clear();
             cmd_queue.cmd_queue = nullptr;
 
-            cmd_queue.fence_event.reset();
-            cmd_queue.fence = nullptr;
+            cmd_queue.fence = {};
         }
 
         if (auto d3d_info_queue = device_.TryAs<ID3D12InfoQueue1>())
@@ -390,7 +388,7 @@ namespace AIHoloImager
     void* D3D12System::SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept
     {
         auto* cmd_queue = this->GetCommandQueue(type);
-        return cmd_queue ? cmd_queue->shared_fence_handle.get() : nullptr;
+        return cmd_queue ? cmd_queue->fence.SharedFenceHandle() : nullptr;
     }
 
     GpuCommandList D3D12System::CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name)
@@ -457,12 +455,9 @@ namespace AIHoloImager
             {
                 const uint64_t wait_fence_value =
                     wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1 : wait_fences.fence_values[i];
-                if (wait_cmd_queue->fence->GetCompletedValue() < wait_fence_value)
+                if (wait_cmd_queue->fence.CompletedValue() < wait_fence_value)
                 {
-                    if (SUCCEEDED(wait_cmd_queue->fence->SetEventOnCompletion(wait_fence_value, wait_cmd_queue->fence_event.get())))
-                    {
-                        ::WaitForSingleObjectEx(wait_cmd_queue->fence_event.get(), INFINITE, FALSE);
-                    }
+                    wait_cmd_queue->fence.CpuWait(wait_fence_value);
                 }
             }
         }
@@ -484,7 +479,7 @@ namespace AIHoloImager
                     const uint64_t wait_fence_value = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue
                                                           ? wait_cmd_queue->fence_val - 1
                                                           : wait_fences.fence_values[i];
-                    target_cmd_queue->cmd_queue->Wait(wait_cmd_queue->fence.Get(), wait_fence_value);
+                    target_cmd_queue->cmd_queue->Wait(D3D12Imp(wait_cmd_queue->fence).Fence(), wait_fence_value);
                     if (target_queue_type == queue_type)
                     {
                         target_cmd_queue->fence_val = std::max(target_cmd_queue->fence_val, wait_fence_value) + 1;
@@ -503,7 +498,7 @@ namespace AIHoloImager
     uint64_t D3D12System::CompletedFenceValue(GpuSystem::CmdQueueType type) const
     {
         auto* cmd_queue = this->GetCommandQueue(type);
-        return cmd_queue ? cmd_queue->fence->GetCompletedValue() : 0;
+        return cmd_queue ? cmd_queue->fence.CompletedValue() : 0;
     }
 
     void D3D12System::HandleDeviceLost()
@@ -521,7 +516,7 @@ namespace AIHoloImager
             cmd_queue.cmd_pools.clear();
             cmd_queue.free_cmd_lists.clear();
 
-            cmd_queue.fence.Reset();
+            cmd_queue.fence = {};
         }
 
         device_.Reset();
@@ -618,19 +613,8 @@ namespace AIHoloImager
             TIFHR(device_->CreateCommandQueue(&queue_desc, UuidOf<ID3D12CommandQueue>(), cmd_queue.cmd_queue.PutVoid()));
             SetName(*cmd_queue.cmd_queue, std::format("cmd_queue {}", static_cast<uint32_t>(type)));
 
-            TIFHR(device_->CreateFence(cmd_queue.fence_val, enable_sharing_ ? D3D12_FENCE_FLAG_SHARED : D3D12_FENCE_FLAG_NONE,
-                UuidOf<ID3D12Fence>(), cmd_queue.fence.PutVoid()));
+            cmd_queue.fence = GpuFence(*gpu_system_, cmd_queue.fence_val, enable_sharing_);
             ++cmd_queue.fence_val;
-
-            cmd_queue.fence_event = MakeWin32UniqueHandle(::CreateEvent(nullptr, FALSE, FALSE, nullptr));
-            Verify(cmd_queue.fence_event.get() != INVALID_HANDLE_VALUE);
-
-            if (enable_sharing_)
-            {
-                HANDLE shared_handle;
-                TIFHR(device_->CreateSharedHandle(cmd_queue.fence.Get(), nullptr, GENERIC_ALL, nullptr, &shared_handle));
-                cmd_queue.shared_fence_handle.reset(shared_handle);
-            }
         }
 
         return cmd_queue;
@@ -654,7 +638,7 @@ namespace AIHoloImager
     GpuCommandPool& D3D12System::CurrentCommandPool(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = this->GetOrCreateCommandQueue(type);
-        const uint64_t completed_fence = cmd_queue.fence->GetCompletedValue();
+        const uint64_t completed_fence = cmd_queue.fence.CompletedValue();
         for (auto& pool : cmd_queue.cmd_pools)
         {
             auto& d3d12_pool = D3D12Imp(*pool);
@@ -694,7 +678,7 @@ namespace AIHoloImager
                 }
                 if (fence_value != 0)
                 {
-                    d3d12_cmd_queue->Wait(wait_cmd_queue->fence.Get(), fence_value);
+                    d3d12_cmd_queue->Wait(D3D12Imp(wait_cmd_queue->fence).Fence(), fence_value);
                 }
             }
         }
@@ -704,7 +688,7 @@ namespace AIHoloImager
 
         const uint64_t curr_fence_value = cmd_queue->fence_val;
         cmd_list.UpdateAccessInfo(curr_fence_value);
-        TIFHR(d3d12_cmd_queue->Signal(cmd_queue->fence.Get(), curr_fence_value));
+        TIFHR(d3d12_cmd_queue->Signal(D3D12Imp(cmd_queue->fence).Fence(), curr_fence_value));
         cmd_queue->fence_val = curr_fence_value + 1;
 
         D3D12Imp(cmd_pool).FenceValue(cmd_queue->fence_val);
@@ -955,6 +939,11 @@ namespace AIHoloImager
     std::unique_ptr<GpuTimerQueryInternal> D3D12System::CreateTimerQuery() const
     {
         return std::make_unique<D3D12TimerQuery>(*gpu_system_);
+    }
+
+    std::unique_ptr<GpuFenceInternal> D3D12System::CreateFence(uint64_t init_val, bool enable_sharing) const
+    {
+        return std::make_unique<D3D12Fence>(*gpu_system_, init_val, enable_sharing);
     }
 
     void D3D12System::DebugMessageCallback(
