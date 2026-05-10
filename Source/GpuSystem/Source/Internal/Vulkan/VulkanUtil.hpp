@@ -74,7 +74,7 @@ namespace AIHoloImager
 
         explicit operator bool() const noexcept
         {
-            return static_cast<bool>(object_);
+            return object_ != VK_NULL_HANDLE;
         }
 
         auto& operator->() noexcept

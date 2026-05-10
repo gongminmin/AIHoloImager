@@ -10,7 +10,7 @@
 #include "Base/ErrorHandling.hpp"
 
 #include "VulkanConversion.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSampler.hpp"
 #include "VulkanSystem.hpp"
 #include "VulkanVertexLayout.hpp"

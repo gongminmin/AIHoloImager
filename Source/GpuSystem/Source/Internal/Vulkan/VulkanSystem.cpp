@@ -15,7 +15,7 @@
 #include "VulkanBuffer.hpp"
 #include "VulkanCommandList.hpp"
 #include "VulkanCommandPool.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanQuery.hpp"
 #include "VulkanResourceViews.hpp"
 #include "VulkanSampler.hpp"
@@ -325,7 +325,7 @@ namespace AIHoloImager
             .dynamicRendering = VK_TRUE,
         };
 
-        VkDeviceCreateInfo device_create_info{
+        const VkDeviceCreateInfo device_create_info{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext = &enable_vulkan13_features,
             .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),

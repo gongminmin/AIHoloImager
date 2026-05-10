@@ -7,7 +7,7 @@
 
 #include "VulkanBuffer.hpp"
 #include "VulkanConversion.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSystem.hpp"
 #include "VulkanTexture.hpp"
 

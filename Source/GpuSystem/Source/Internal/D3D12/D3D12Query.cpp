@@ -13,6 +13,8 @@ DEFINE_UUID_OF(ID3D12QueryHeap);
 
 namespace AIHoloImager
 {
+    D3D12_IMP_IMP(TimerQuery)
+
     D3D12TimerQuery::D3D12TimerQuery(GpuSystem& gpu_system) : gpu_system_(&gpu_system), timestamp_heap_(D3D12Imp(gpu_system), nullptr)
     {
         auto& d3d12_system = *timestamp_heap_.D3D12Sys();

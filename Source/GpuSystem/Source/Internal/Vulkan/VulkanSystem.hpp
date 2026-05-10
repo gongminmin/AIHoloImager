@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <array>
 #include <functional>
 
 #include <volk.h>

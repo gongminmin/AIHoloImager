@@ -14,7 +14,7 @@
 
 #include "VulkanBuffer.hpp"
 #include "VulkanCommandPool.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanResource.hpp"
 #include "VulkanResourceViews.hpp"
 #include "VulkanSampler.hpp"

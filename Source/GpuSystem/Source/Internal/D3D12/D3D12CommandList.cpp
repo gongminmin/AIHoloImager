@@ -91,7 +91,7 @@ namespace AIHoloImager
     D3D12CommandList& D3D12CommandList::operator=(D3D12CommandList&& other) noexcept = default;
     GpuCommandListInternal& D3D12CommandList::operator=(GpuCommandListInternal&& other) noexcept
     {
-        return this->operator=(static_cast<GpuCommandListInternal&&>(other));
+        return this->operator=(static_cast<D3D12CommandList&&>(other));
     }
 
     GpuSystem::CmdQueueType D3D12CommandList::Type() const noexcept

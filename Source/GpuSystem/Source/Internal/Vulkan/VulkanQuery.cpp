@@ -7,11 +7,13 @@
 
 #include "VulkanBuffer.hpp"
 #include "VulkanCommandList.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSystem.hpp"
 
 namespace AIHoloImager
 {
+    VULKAN_IMP_IMP(TimerQuery)
+
     VulkanTimerQuery::VulkanTimerQuery(GpuSystem& gpu_system) : timestamp_pool_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         auto& vulkan_system = *timestamp_pool_.VulkanSys();

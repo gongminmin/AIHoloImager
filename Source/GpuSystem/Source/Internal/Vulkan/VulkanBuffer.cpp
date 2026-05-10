@@ -7,7 +7,7 @@
 
 #include "VulkanCommandList.hpp"
 #include "VulkanConversion.hpp"
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSystem.hpp"
 
 namespace AIHoloImager

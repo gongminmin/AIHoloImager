@@ -3,7 +3,7 @@
 
 #include "VulkanCommandPool.hpp"
 
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSystem.hpp"
 
 namespace AIHoloImager

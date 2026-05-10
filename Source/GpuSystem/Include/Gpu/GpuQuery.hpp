@@ -4,7 +4,6 @@
 #pragma once
 
 #include <chrono>
-#include <future>
 #include <memory>
 
 #include "Base/Noncopyable.hpp"

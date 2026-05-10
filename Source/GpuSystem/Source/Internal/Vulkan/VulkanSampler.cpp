@@ -6,7 +6,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "VulkanErrorhandling.hpp"
+#include "VulkanErrorHandling.hpp"
 #include "VulkanSystem.hpp"
 
 namespace AIHoloImager
