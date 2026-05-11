@@ -9,6 +9,7 @@
 #include "GpuBufferInternal.hpp"
 #include "GpuCommandListInternal.hpp"
 #include "GpuCommandPoolInternal.hpp"
+#include "GpuCommandQueueInternal.hpp"
 #include "GpuFenceInternal.hpp"
 #include "GpuQueryInternal.hpp"
 #include "GpuResourceViewsInternal.hpp"
@@ -108,5 +109,7 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuTimerQueryInternal> CreateTimerQuery() const = 0;
 
         virtual std::unique_ptr<GpuFenceInternal> CreateFence(uint64_t init_val, bool enable_sharing) const = 0;
+
+        virtual std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const = 0;
     };
 } // namespace AIHoloImager

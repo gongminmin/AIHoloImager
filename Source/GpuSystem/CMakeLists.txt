@@ -12,6 +12,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuBuffer.hpp
     Include/Gpu/GpuCommandList.hpp
     Include/Gpu/GpuCommandPool.hpp
+    Include/Gpu/GpuCommandQueue.hpp
     Include/Gpu/GpuConstantBuffer.hpp
     Include/Gpu/GpuFence.hpp
     Include/Gpu/GpuFormat.hpp
@@ -32,6 +33,8 @@ set(aihi_gpu_system_files
     Source/Internal/GpuCommandListInternal.hpp
     Source/Internal/GpuCommandPoolInternal.cpp
     Source/Internal/GpuCommandPoolInternal.hpp
+    Source/Internal/GpuCommandQueueInternal.cpp
+    Source/Internal/GpuCommandQueueInternal.hpp
     Source/Internal/GpuFenceInternal.cpp
     Source/Internal/GpuFenceInternal.hpp
     Source/Internal/GpuQueryInternal.cpp
@@ -57,6 +60,7 @@ set(aihi_gpu_system_files
     Source/GpuBuffer.cpp
     Source/GpuCommandList.cpp
     Source/GpuCommandPool.cpp
+    Source/GpuCommandQueue.cpp
     Source/GpuConstantBuffer.cpp
     Source/GpuFence.cpp
     Source/GpuFormat.cpp
@@ -82,6 +86,8 @@ if(enable_d3d12)
         Source/Internal/D3D12/D3D12CommandList.hpp
         Source/Internal/D3D12/D3D12CommandPool.cpp
         Source/Internal/D3D12/D3D12CommandPool.hpp
+        Source/Internal/D3D12/D3D12CommandQueue.cpp
+        Source/Internal/D3D12/D3D12CommandQueue.hpp
         Source/Internal/D3D12/D3D12Conversion.cpp
         Source/Internal/D3D12/D3D12Conversion.hpp
         Source/Internal/D3D12/D3D12DescriptorAllocator.cpp
@@ -120,6 +126,8 @@ if(enable_vulkan)
         Source/Internal/Vulkan/VulkanCommandList.hpp
         Source/Internal/Vulkan/VulkanCommandPool.cpp
         Source/Internal/Vulkan/VulkanCommandPool.hpp
+        Source/Internal/Vulkan/VulkanCommandQueue.cpp
+        Source/Internal/Vulkan/VulkanCommandQueue.hpp
         Source/Internal/Vulkan/VulkanConversion.cpp
         Source/Internal/Vulkan/VulkanConversion.hpp
         Source/Internal/Vulkan/VulkanDescriptorAllocator.cpp

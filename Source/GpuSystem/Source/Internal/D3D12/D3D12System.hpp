@@ -18,6 +18,7 @@
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12CommandQueue.hpp"
 #include "D3D12DescriptorAllocator.hpp"
 #include "D3D12ImpDefine.hpp"
 
@@ -157,10 +158,12 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuFenceInternal> CreateFence(uint64_t init_val, bool enable_sharing) const override;
 
+        std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const override;
+
     private:
         struct CmdQueue
         {
-            ComPtr<ID3D12CommandQueue> cmd_queue;
+            GpuCommandQueue cmd_queue;
             std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
 

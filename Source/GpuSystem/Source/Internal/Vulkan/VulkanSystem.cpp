@@ -348,11 +348,11 @@ namespace AIHoloImager
 
         for (auto& cmd_queue : cmd_queues_)
         {
-            if (cmd_queue.cmd_queue != VK_NULL_HANDLE)
+            if (cmd_queue.cmd_queue)
             {
                 cmd_queue.free_cmd_lists.clear();
                 cmd_queue.cmd_pools.clear();
-                cmd_queue.cmd_queue = VK_NULL_HANDLE;
+                cmd_queue.cmd_queue = {};
 
                 cmd_queue.fence = {};
             }
@@ -399,7 +399,7 @@ namespace AIHoloImager
 
     VkQueue VulkanSystem::CommandQueue(GpuSystem::CmdQueueType type) const noexcept
     {
-        return cmd_queues_[static_cast<uint32_t>(type)].cmd_queue;
+        return VulkanImp(cmd_queues_[static_cast<uint32_t>(type)].cmd_queue).CmdQueue();
     }
 
     void* VulkanSystem::NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept
@@ -513,48 +513,28 @@ namespace AIHoloImager
         auto* target_cmd_queue = this->GetCommandQueue(target_queue_type);
         if (target_cmd_queue != nullptr)
         {
-            uint64_t wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-            VkSemaphore wait_semaphores[std::size(wait_fence_values)];
-            VkPipelineStageFlags wait_stages[std::size(wait_fence_values)];
+            GpuCommandQueue::FenceInfo wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
             uint32_t num_waits = 0;
-            for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
+            for (size_t i = 0; i < std::size(wait_fence_values); ++i)
             {
                 const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
                 auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
                 if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0) && (wait_fences.fence_values[i] != 0))
                 {
-                    wait_fence_values[num_waits] = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
-                                                                                                           : wait_fences.fence_values[i];
-                    wait_semaphores[num_waits] = VulkanImp(wait_cmd_queue->fence).Fence();
-                    wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                    const uint64_t wait_value = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue->fence_val - 1
+                                                                                                        : wait_fences.fence_values[i];
+                    wait_fence_values[num_waits] = {&wait_cmd_queue->fence, wait_value};
 
                     if (target_queue_type == queue_type)
                     {
-                        target_cmd_queue->fence_val = std::max(target_cmd_queue->fence_val, wait_fence_values[num_waits]) + 1;
+                        target_cmd_queue->fence_val = std::max(target_cmd_queue->fence_val, wait_value) + 1;
                     }
 
                     ++num_waits;
                 }
             }
 
-            const VkTimelineSemaphoreSubmitInfo timeline_info{
-                .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-                .waitSemaphoreValueCount = num_waits,
-                .pWaitSemaphoreValues = wait_fence_values,
-                .signalSemaphoreValueCount = 0,
-            };
-
-            const VkSubmitInfo submit_info{
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                .pNext = &timeline_info,
-                .waitSemaphoreCount = num_waits,
-                .pWaitSemaphores = wait_semaphores,
-                .pWaitDstStageMask = wait_stages,
-                .commandBufferCount = 0,
-                .signalSemaphoreCount = 0,
-            };
-
-            TIFVK(vkQueueSubmit(target_cmd_queue->cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
+            target_cmd_queue->cmd_queue.GpuWait(std::span(wait_fence_values, num_waits));
         }
     }
 
@@ -574,9 +554,9 @@ namespace AIHoloImager
     {
         for (auto& cmd_queue : cmd_queues_)
         {
-            if (cmd_queue.cmd_queue != VK_NULL_HANDLE)
+            if (cmd_queue.cmd_queue)
             {
-                cmd_queue.cmd_queue = VK_NULL_HANDLE;
+                cmd_queue.cmd_queue = {};
                 cmd_queue.cmd_pools.clear();
                 cmd_queue.free_cmd_lists.clear();
 
@@ -659,6 +639,10 @@ namespace AIHoloImager
         stall_resources_.emplace_back(
             semaphore, [this, semaphore]() { vkDestroySemaphore(device_, semaphore, nullptr); }, std::move(wait_fences));
     }
+    void VulkanSystem::Recycle(VkQueue queue, std::shared_ptr<GpuSystem::WaitFences> wait_fences)
+    {
+        stall_resources_.emplace_back(queue, []() {}, std::move(wait_fences));
+    }
 
     void VulkanSystem::ClearStallResources()
     {
@@ -704,12 +688,10 @@ namespace AIHoloImager
     VulkanSystem::CmdQueue& VulkanSystem::GetOrCreateCommandQueue(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
-        if (cmd_queue.cmd_queue == VK_NULL_HANDLE)
+        if (!cmd_queue.cmd_queue)
         {
-            vkGetDeviceQueue(device_, this->QueueFamilyIndex(type), 0, &cmd_queue.cmd_queue);
-
             const std::string debug_name = std::format("cmd_queue {}", static_cast<uint32_t>(type));
-            SetName(*this, cmd_queue.cmd_queue, VK_OBJECT_TYPE_QUEUE, debug_name);
+            cmd_queue.cmd_queue = GpuCommandQueue(*gpu_system_, type, debug_name);
 
             cmd_queue.fence = GpuFence(*gpu_system_, cmd_queue.fence_val, enable_sharing_);
             ++cmd_queue.fence_val;
@@ -721,7 +703,7 @@ namespace AIHoloImager
     VulkanSystem::CmdQueue* VulkanSystem::GetCommandQueue(GpuSystem::CmdQueueType type)
     {
         auto& cmd_queue = cmd_queues_[static_cast<uint32_t>(type)];
-        if (cmd_queue.cmd_queue != VK_NULL_HANDLE)
+        if (cmd_queue.cmd_queue)
         {
             return &cmd_queue;
         }
@@ -758,19 +740,15 @@ namespace AIHoloImager
         const GpuSystem::CmdQueueType type = cmd_list.Type();
         auto* cmd_queue = this->GetCommandQueue(type);
         assert(cmd_queue != nullptr);
-        VkQueue vk_cmd_queue = cmd_queue->cmd_queue;
 
         GpuSystem::WaitFences dep_wait_fences;
         cmd_list.WaitForFences(dep_wait_fences);
 
-        uint64_t compact_wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-        VkSemaphore compact_wait_semaphores[std::size(compact_wait_fence_values)];
-        VkPipelineStageFlags compact_wait_stages[std::size(compact_wait_fence_values)];
+        GpuCommandQueue::FenceInfo compact_wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
         uint32_t num_waits = 0;
         for (size_t i = 0; i < std::size(dep_wait_fences.fence_values); ++i)
         {
-            const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
-            auto* wait_cmd_queue = this->GetCommandQueue(queue_type);
+            auto* wait_cmd_queue = this->GetCommandQueue(static_cast<GpuSystem::CmdQueueType>(i));
             if ((wait_cmd_queue != nullptr) && (wait_cmd_queue->fence_val != 0))
             {
                 uint64_t fence_value = dep_wait_fences.fence_values[i];
@@ -782,10 +760,7 @@ namespace AIHoloImager
                 }
                 if (fence_value != 0)
                 {
-                    compact_wait_fence_values[num_waits] = fence_value;
-                    compact_wait_semaphores[num_waits] = VulkanImp(wait_cmd_queue->fence).Fence();
-                    compact_wait_stages[num_waits] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
+                    compact_wait_fence_values[num_waits] = {&wait_cmd_queue->fence, fence_value};
                     ++num_waits;
                 }
             }
@@ -795,35 +770,8 @@ namespace AIHoloImager
         cmd_list.UpdateAccessInfo(curr_fence_value);
         ++cmd_queue->fence_val;
 
-        const VkCommandBuffer cmd_buffs[] = {cmd_list.CommandBuffer()};
-        const VkSemaphore semaphores[] = {VulkanImp(cmd_queue->fence).Fence()};
-
-        VkTimelineSemaphoreSubmitInfo timeline_info{
-            .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-            .signalSemaphoreValueCount = 1,
-            .pSignalSemaphoreValues = &curr_fence_value,
-        };
-
-        VkSubmitInfo submit_info{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .pNext = &timeline_info,
-            .commandBufferCount = static_cast<uint32_t>(std::size(cmd_buffs)),
-            .pCommandBuffers = cmd_buffs,
-            .signalSemaphoreCount = static_cast<uint32_t>(std::size(semaphores)),
-            .pSignalSemaphores = semaphores,
-        };
-
-        if (num_waits > 0)
-        {
-            timeline_info.waitSemaphoreValueCount = num_waits;
-            timeline_info.pWaitSemaphoreValues = compact_wait_fence_values;
-
-            submit_info.waitSemaphoreCount = num_waits;
-            submit_info.pWaitSemaphores = compact_wait_semaphores;
-            submit_info.pWaitDstStageMask = compact_wait_stages;
-        }
-
-        TIFVK(vkQueueSubmit(vk_cmd_queue, 1, &submit_info, VK_NULL_HANDLE));
+        VulkanImp(cmd_queue->cmd_queue)
+            .Execute(cmd_list, std::span(compact_wait_fence_values, num_waits), {&cmd_queue->fence, curr_fence_value});
 
         VulkanImp(cmd_pool).FenceValue(cmd_queue->fence_val);
 
@@ -970,6 +918,11 @@ namespace AIHoloImager
     std::unique_ptr<GpuFenceInternal> VulkanSystem::CreateFence(uint64_t init_val, bool enable_sharing) const
     {
         return std::make_unique<VulkanFence>(*gpu_system_, init_val, enable_sharing);
+    }
+
+    std::unique_ptr<GpuCommandQueueInternal> VulkanSystem::CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const
+    {
+        return std::make_unique<VulkanCommandQueue>(*gpu_system_, type, std::move(name));
     }
 
     VkBool32 VulkanSystem::DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

@@ -13,6 +13,7 @@
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
 #include "VulkanCommandList.hpp"
+#include "VulkanCommandQueue.hpp"
 #include "VulkanDescriptorAllocator.hpp"
 #include "VulkanImpDefine.hpp"
 
@@ -86,6 +87,7 @@ namespace AIHoloImager
         void Recycle(VkRenderPass render_pass, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkQueryPool query_pool, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
         void Recycle(VkSemaphore semaphore, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
+        void Recycle(VkQueue queue, std::shared_ptr<GpuSystem::WaitFences> wait_fences);
 
         uint32_t MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const;
         float MaxExtraPrimitiveOverestimationSize() const noexcept;
@@ -149,10 +151,12 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuFenceInternal> CreateFence(uint64_t init_val, bool enable_sharing) const override;
 
+        std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const override;
+
     private:
         struct CmdQueue
         {
-            VkQueue cmd_queue = VK_NULL_HANDLE;
+            GpuCommandQueue cmd_queue;
             std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
             std::list<GpuCommandList> free_cmd_lists;
 
