@@ -8,38 +8,20 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSystem.hpp"
 
+#include "Internal/GpuCommandListInternal.hpp"
 #include "Internal/GpuSystemInternal.hpp"
+#include "InternalImp.hpp"
 
 namespace AIHoloImager
 {
-    class GpuCommandList::Impl
-    {
-    public:
-        Impl(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
-            : gpu_system_(gpu_system), cmd_list_internal_(gpu_system.Internal().CreateCommandList(cmd_pool, type))
-        {
-        }
-
-        GpuSystem& GpuSys() noexcept
-        {
-            return gpu_system_;
-        }
-
-        GpuCommandListInternal& Internal() noexcept
-        {
-            return *cmd_list_internal_;
-        }
-
-    private:
-        GpuSystem& gpu_system_;
-        std::unique_ptr<GpuCommandListInternal> cmd_list_internal_;
-    };
+    EMPTY_IMP(GpuCommandList)
+    IMP_INTERNAL(GpuCommandList)
 
     GpuCommandList::GpuCommandList() noexcept = default;
-
     GpuCommandList::GpuCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type)
-        : impl_(std::make_unique<Impl>(gpu_system, cmd_pool, type))
+        : impl_(static_cast<Impl*>(gpu_system.Internal().CreateCommandList(cmd_pool, type).release()))
     {
+        static_assert(sizeof(Impl) == sizeof(GpuCommandListInternal));
     }
 
     GpuCommandList::~GpuCommandList() = default;
@@ -50,66 +32,66 @@ namespace AIHoloImager
     GpuSystem::CmdQueueType GpuCommandList::Type() const noexcept
     {
         assert(impl_);
-        return impl_->Internal().Type();
+        return impl_->Type();
     }
 
     void GpuCommandList::Name(std::string_view name)
     {
         assert(impl_);
-        return impl_->Internal().Name(std::move(name));
+        return impl_->Name(std::move(name));
     }
 
     GpuSystem& GpuCommandList::GpuSys() noexcept
     {
         assert(impl_);
-        return impl_->Internal().GpuSys();
+        return impl_->GpuSys();
     }
 
     GpuCommandList::operator bool() const noexcept
     {
-        return impl_ && static_cast<bool>(impl_->Internal());
+        return static_cast<bool>(impl_);
     }
 
     void* GpuCommandList::NativeCommandListBase() const noexcept
     {
         assert(impl_);
-        return impl_->Internal().NativeCommandListBase();
+        return impl_->NativeCommandListBase();
     }
 
     void GpuCommandList::Clear(GpuRenderTargetView& rtv, const float color[4])
     {
         assert(impl_);
-        impl_->Internal().Clear(rtv, color);
+        impl_->Clear(rtv, color);
     }
 
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const float color[4])
     {
         assert(impl_);
-        impl_->Internal().Clear(uav, color);
+        impl_->Clear(uav, color);
     }
 
     void GpuCommandList::Clear(GpuUnorderedAccessView& uav, const uint32_t color[4])
     {
         assert(impl_);
-        impl_->Internal().Clear(uav, color);
+        impl_->Clear(uav, color);
     }
 
     void GpuCommandList::ClearDepth(GpuDepthStencilView& dsv, float depth)
     {
         assert(impl_);
-        impl_->Internal().ClearDepth(dsv, depth);
+        impl_->ClearDepth(dsv, depth);
     }
 
     void GpuCommandList::ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil)
     {
         assert(impl_);
-        impl_->Internal().ClearStencil(dsv, stencil);
+        impl_->ClearStencil(dsv, stencil);
     }
 
     void GpuCommandList::ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil)
     {
         assert(impl_);
-        impl_->Internal().ClearDepthStencil(dsv, depth, stencil);
+        impl_->ClearDepthStencil(dsv, depth, stencil);
     }
 
     void GpuCommandList::Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuRenderArguments& args,
@@ -117,7 +99,7 @@ namespace AIHoloImager
         std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().Render(pipeline, std::move(vbs), args, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),
+        impl_->Render(pipeline, std::move(vbs), args, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),
             std::move(scissor_rects));
     }
 
@@ -126,7 +108,7 @@ namespace AIHoloImager
         GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().RenderIndirect(pipeline, std::move(vbs), indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
+        impl_->RenderIndirect(pipeline, std::move(vbs), indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
             std::move(viewports), std::move(scissor_rects));
     }
 
@@ -136,8 +118,8 @@ namespace AIHoloImager
         std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().RenderIndexed(pipeline, std::move(vbs), ib, args, std::move(shader_bindings), std::move(rtvs), dsv,
-            std::move(viewports), std::move(scissor_rects));
+        impl_->RenderIndexed(pipeline, std::move(vbs), ib, args, std::move(shader_bindings), std::move(rtvs), dsv, std::move(viewports),
+            std::move(scissor_rects));
     }
 
     void GpuCommandList::RenderIndexedIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
@@ -146,52 +128,52 @@ namespace AIHoloImager
         std::span<const GpuRect> scissor_rects)
     {
         assert(impl_);
-        impl_->Internal().RenderIndexedIndirect(pipeline, std::move(vbs), ib, indirect_args, std::move(shader_bindings), std::move(rtvs),
-            dsv, std::move(viewports), std::move(scissor_rects));
+        impl_->RenderIndexedIndirect(pipeline, std::move(vbs), ib, indirect_args, std::move(shader_bindings), std::move(rtvs), dsv,
+            std::move(viewports), std::move(scissor_rects));
     }
 
     void GpuCommandList::Compute(const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const ShaderBinding& shader_binding)
     {
         assert(impl_);
-        impl_->Internal().Compute(pipeline, args, shader_binding);
+        impl_->Compute(pipeline, args, shader_binding);
     }
 
     void GpuCommandList::ComputeIndirect(
         const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding)
     {
         assert(impl_);
-        impl_->Internal().ComputeIndirect(pipeline, indirect_args, shader_binding);
+        impl_->ComputeIndirect(pipeline, indirect_args, shader_binding);
     }
 
     void GpuCommandList::Copy(GpuBuffer& dest, const GpuBuffer& src)
     {
         assert(impl_);
-        impl_->Internal().Copy(dest, src);
+        impl_->Copy(dest, src);
     }
 
     void GpuCommandList::Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size)
     {
         assert(impl_);
-        impl_->Internal().Copy(dest, dst_offset, src, src_offset, src_size);
+        impl_->Copy(dest, dst_offset, src, src_offset, src_size);
     }
 
     void GpuCommandList::Copy(GpuTexture& dest, const GpuTexture& src)
     {
         assert(impl_);
-        impl_->Internal().Copy(dest, src);
+        impl_->Copy(dest, src);
     }
 
     void GpuCommandList::Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
         const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box)
     {
         assert(impl_);
-        impl_->Internal().Copy(dest, dest_sub_resource, dst_x, dst_y, dst_z, src, src_sub_resource, src_box);
+        impl_->Copy(dest, dest_sub_resource, dst_x, dst_y, dst_z, src, src_sub_resource, src_box);
     }
 
     void GpuCommandList::Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func)
     {
         assert(impl_);
-        impl_->Internal().Upload(dest, copy_func);
+        impl_->Upload(dest, copy_func);
     }
 
     void GpuCommandList::Upload(GpuBuffer& dest, const void* src_data, uint32_t src_size)
@@ -204,7 +186,7 @@ namespace AIHoloImager
         const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         assert(impl_);
-        impl_->Internal().Upload(dest, sub_resource, copy_func);
+        impl_->Upload(dest, sub_resource, copy_func);
     }
 
     void GpuCommandList::Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size)
@@ -236,7 +218,7 @@ namespace AIHoloImager
     std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func)
     {
         assert(impl_);
-        return impl_->Internal().ReadBackAsync(src, copy_func);
+        return impl_->ReadBackAsync(src, copy_func);
     }
 
     std::future<void> GpuCommandList::ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size)
@@ -249,7 +231,7 @@ namespace AIHoloImager
         const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         assert(impl_);
-        return impl_->Internal().ReadBackAsync(src, sub_resource, copy_func);
+        return impl_->ReadBackAsync(src, sub_resource, copy_func);
     }
 
     std::future<void> GpuCommandList::ReadBackAsync(const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size)
@@ -281,28 +263,18 @@ namespace AIHoloImager
     void GpuCommandList::Close()
     {
         assert(impl_);
-        impl_->Internal().Close();
+        impl_->Close();
     }
 
     void GpuCommandList::Reset(GpuCommandPool& cmd_pool)
     {
         assert(impl_);
-        impl_->Internal().Reset(cmd_pool);
-    }
-
-    GpuCommandListInternal& GpuCommandList::Internal() noexcept
-    {
-        assert(impl_);
-        return impl_->Internal();
-    }
-    const GpuCommandListInternal& GpuCommandList::Internal() const noexcept
-    {
-        return const_cast<GpuCommandList&>(*this).Internal();
+        impl_->Reset(cmd_pool);
     }
 
     void GpuCommandList::GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter)
     {
-        auto& mipmapper = impl_->GpuSys().Mipmapper();
+        auto& mipmapper = this->GpuSys().Mipmapper();
         mipmapper.Generate(*this, texture, filter);
     }
 } // namespace AIHoloImager
