@@ -43,16 +43,10 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
         }
-        ID3D12CommandQueue* CommandQueue(GpuSystem::CmdQueueType type) const noexcept;
-        void* NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept override;
-        template <typename Traits>
-        typename Traits::CommandQueueType NativeCommandQueue() const noexcept
-        {
-            return reinterpret_cast<typename Traits::CommandQueueType>(this->NativeCommandQueue());
-        }
 
         LUID DeviceLuid() const noexcept override;
 
+        GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept override;
         void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
 
         [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
@@ -161,7 +155,7 @@ namespace AIHoloImager
         std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const override;
 
     private:
-        struct CmdQueue
+        struct CommandQueueContext
         {
             GpuCommandQueue cmd_queue;
             std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
@@ -172,9 +166,9 @@ namespace AIHoloImager
         };
 
     private:
-        CmdQueue& GetOrCreateCommandQueue(GpuSystem::CmdQueueType type);
-        CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type);
-        const CmdQueue* GetCommandQueue(GpuSystem::CmdQueueType type) const;
+        CommandQueueContext& GetOrCreateCommandQueueContext(GpuSystem::CmdQueueType type);
+        CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type);
+        const CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type) const;
         GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
         uint64_t ExecuteOnly(D3D12CommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
         static void DebugMessageCallback(
@@ -187,7 +181,7 @@ namespace AIHoloImager
         bool enable_sharing_;
         DWORD dbg_callback_cookie_ = 0;
 
-        CmdQueue cmd_queues_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
+        CommandQueueContext cmd_queue_ctxs_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
         struct StallResourceInfo
         {

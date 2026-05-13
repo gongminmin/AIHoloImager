@@ -32,10 +32,10 @@ namespace AIHoloImager
         virtual GpuSystemInternal& operator=(GpuSystemInternal&& other) noexcept = 0;
 
         virtual void* NativeDevice() const noexcept = 0;
-        virtual void* NativeCommandQueue(GpuSystem::CmdQueueType type) const noexcept = 0;
 
         virtual LUID DeviceLuid() const = 0;
 
+        virtual GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept = 0;
         virtual void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept = 0;
 
         virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) = 0;

@@ -14,6 +14,7 @@
 
 namespace AIHoloImager
 {
+    class GpuCommandQueue;
     class GpuMemoryBlock;
     class GpuSystemInternal;
 
@@ -73,14 +74,11 @@ namespace AIHoloImager
         {
             return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
         }
-        void* NativeCommandQueue(CmdQueueType type) const noexcept;
-        template <typename Traits>
-        typename Traits::CommandQueueType NativeCommandQueue() const noexcept
-        {
-            return reinterpret_cast<typename Traits::CommandQueueType>(this->NativeCommandQueue());
-        }
 
         LUID DeviceLuid() const noexcept;
+
+        GpuCommandQueue* CommandQueue(CmdQueueType type) noexcept;
+        const GpuCommandQueue* CommandQueue(CmdQueueType type) const noexcept;
 
         void* SharedFenceHandle(CmdQueueType type) const noexcept;
         template <typename Traits>

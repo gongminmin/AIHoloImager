@@ -7,6 +7,7 @@
 
 #include "D3D12Buffer.hpp"
 #include "D3D12CommandList.hpp"
+#include "D3D12CommandQueue.hpp"
 #include "D3D12System.hpp"
 
 DEFINE_UUID_OF(ID3D12QueryHeap);
@@ -67,7 +68,7 @@ namespace AIHoloImager
         d3d12_cmd_list.NativeCommandList<ID3D12GraphicsCommandList>()->ResolveQueryData(timestamp_heap_.Object().Get(),
             D3D12_QUERY_TYPE_TIMESTAMP, 0, 2, D3D12Imp(*query_result_.Buffer()).Resource(), query_result_.Offset());
 
-        D3D12Imp(*gpu_system_).CommandQueue(cmd_list.Type())->GetTimestampFrequency(&freq_);
+        D3D12Imp(*gpu_system_->CommandQueue(cmd_list.Type())).CmdQueue()->GetTimestampFrequency(&freq_);
     }
 
     std::chrono::duration<double> D3D12TimerQuery::Elapsed() const

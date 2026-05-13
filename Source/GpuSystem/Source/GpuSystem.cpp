@@ -197,15 +197,19 @@ namespace AIHoloImager
         return impl_ ? impl_->Internal().NativeDevice() : nullptr;
     }
 
-    void* GpuSystem::NativeCommandQueue(CmdQueueType type) const noexcept
-    {
-        return impl_ ? impl_->Internal().NativeCommandQueue(impl_->OverrideCmdQueueType(type)) : nullptr;
-    }
-
     LUID GpuSystem::DeviceLuid() const noexcept
     {
         assert(impl_);
         return impl_->Internal().DeviceLuid();
+    }
+
+    GpuCommandQueue* GpuSystem::CommandQueue(CmdQueueType type) noexcept
+    {
+        return impl_ ? impl_->Internal().CommandQueue(impl_->OverrideCmdQueueType(type)) : nullptr;
+    }
+    const GpuCommandQueue* GpuSystem::CommandQueue(CmdQueueType type) const noexcept
+    {
+        return const_cast<GpuSystem&>(*this).CommandQueue(type);
     }
 
     void* GpuSystem::SharedFenceHandle(CmdQueueType type) const noexcept
