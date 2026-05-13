@@ -6,6 +6,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/Uuid.hpp"
 
+#include "D3D12CommandList.hpp"
 #include "D3D12Fence.hpp"
 #include "D3D12System.hpp"
 #include "D3D12Util.hpp"
@@ -86,14 +87,14 @@ namespace AIHoloImager
     void D3D12CommandQueue::Execute(const GpuCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
         const GpuCommandQueue::FenceInfo& signal_fence)
     {
-        this->Execute(D3D12Imp(cmd_list), std::move(wait_fences), signal_fence);
+        this->Execute(cmd_list.Internal(), std::move(wait_fences), signal_fence);
     }
-    void D3D12CommandQueue::Execute(const D3D12CommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
-        const GpuCommandQueue::FenceInfo& signal_fence)
+    void D3D12CommandQueue::Execute(const GpuCommandListInternal& cmd_list_internal,
+        std::span<const GpuCommandQueue::FenceInfo> wait_fences, const GpuCommandQueue::FenceInfo& signal_fence)
     {
         this->GpuWait(wait_fences);
 
-        ID3D12CommandList* cmd_lists[] = {cmd_list.CommandListBase()};
+        ID3D12CommandList* cmd_lists[] = {D3D12Imp(cmd_list_internal).CommandListBase()};
         cmd_queue_->ExecuteCommandLists(static_cast<uint32_t>(std::size(cmd_lists)), cmd_lists);
 
         TIFHR(cmd_queue_->Signal(D3D12Imp(*signal_fence.fence).Fence(), signal_fence.value));

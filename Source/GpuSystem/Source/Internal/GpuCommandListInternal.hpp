@@ -23,6 +23,10 @@ namespace AIHoloImager
         virtual void Name(std::string_view name) = 0;
         virtual GpuSystem& GpuSys() noexcept = 0;
 
+        virtual GpuCommandPool& CommandPool() noexcept = 0;
+        virtual void WaitForFences(GpuSystem::WaitFences& wait_fences) const = 0;
+        virtual void UpdateAccessInfo(uint64_t fence_value) = 0;
+
         virtual explicit operator bool() const noexcept = 0;
 
         virtual void* NativeCommandListBase() const noexcept = 0;

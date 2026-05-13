@@ -6,7 +6,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuSystem.hpp"
 
-#include "D3D12Conversion.hpp"
+#include "D3D12CommandList.hpp"
 #include "D3D12System.hpp"
 
 namespace AIHoloImager

@@ -83,12 +83,12 @@ namespace AIHoloImager
     void VulkanCommandQueue::Execute(const GpuCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
         const GpuCommandQueue::FenceInfo& signal_fence)
     {
-        this->Execute(VulkanImp(cmd_list), std::move(wait_fences), signal_fence);
+        this->Execute(cmd_list.Internal(), std::move(wait_fences), signal_fence);
     }
-    void VulkanCommandQueue::Execute(const VulkanCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
-        const GpuCommandQueue::FenceInfo& signal_fence)
+    void VulkanCommandQueue::Execute(const GpuCommandListInternal& cmd_list_internal,
+        std::span<const GpuCommandQueue::FenceInfo> wait_fences, const GpuCommandQueue::FenceInfo& signal_fence)
     {
-        const VkCommandBuffer vulkan_cmd_buffs[] = {cmd_list.CommandBuffer()};
+        const VkCommandBuffer vulkan_cmd_buffs[] = {VulkanImp(cmd_list_internal).CommandBuffer()};
         const VkSemaphore semaphores[] = {VulkanImp(*signal_fence.fence).Fence()};
 
         VkTimelineSemaphoreSubmitInfo timeline_info{

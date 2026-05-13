@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -29,14 +29,16 @@ namespace AIHoloImager
         D3D12CommandPool& operator=(D3D12CommandPool&& other) noexcept;
         GpuCommandPoolInternal& operator=(GpuCommandPoolInternal&& other) noexcept override;
 
+        void Reset() override;
+
         ID3D12CommandAllocator* CmdAllocator() const noexcept;
 
-        uint64_t FenceValue() const noexcept;
-        void FenceValue(uint64_t value) noexcept;
+        uint64_t FenceValue() const noexcept override;
+        void FenceValue(uint64_t value) noexcept override;
 
         void RegisterAllocatedCommandList(ID3D12CommandList* cmd_list);
         void UnregisterAllocatedCommandList(ID3D12CommandList* cmd_list);
-        bool EmptyAllocatedCommandLists() const noexcept;
+        bool Empty() const noexcept override;
 
     private:
         ComPtr<ID3D12CommandAllocator> cmd_allocator_;

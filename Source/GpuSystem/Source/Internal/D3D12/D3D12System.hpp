@@ -12,13 +12,10 @@
 #include <dxcapi.h>
 
 #include "Base/ComPtr.hpp"
-#include "Gpu/GpuFence.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
-#include "D3D12CommandList.hpp"
-#include "D3D12CommandQueue.hpp"
 #include "D3D12DescriptorAllocator.hpp"
 #include "D3D12ImpDefine.hpp"
 
@@ -27,8 +24,8 @@ namespace AIHoloImager
     class D3D12System : public GpuSystemInternal
     {
     public:
-        explicit D3D12System(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
-            bool enable_sharing = false, bool enable_debug = false);
+        explicit D3D12System(GpuSystem& gpu_system, std::function<bool(GpuSystem::Api api, void* device)> confirm_device,
+            bool enable_sharing, bool enable_debug);
         ~D3D12System() override;
 
         D3D12System(D3D12System&& other) noexcept;
@@ -46,22 +43,9 @@ namespace AIHoloImager
 
         LUID DeviceLuid() const noexcept override;
 
-        GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept override;
-        void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
-
-        [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t ExecuteAndReset(D3D12CommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
-
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
-
-        void CpuWait(const GpuSystem::WaitFences& wait_fences) override;
-        void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
-        uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
         void HandleDeviceLost() override;
         void ClearStallResources() override;
@@ -155,33 +139,12 @@ namespace AIHoloImager
         std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const override;
 
     private:
-        struct CommandQueueContext
-        {
-            GpuCommandQueue cmd_queue;
-            std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
-            std::list<GpuCommandList> free_cmd_lists;
-
-            GpuFence fence;
-            uint64_t fence_val = 0;
-        };
-
-    private:
-        CommandQueueContext& GetOrCreateCommandQueueContext(GpuSystem::CmdQueueType type);
-        CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type);
-        const CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type) const;
-        GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(D3D12CommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
         static void DebugMessageCallback(
             D3D12_MESSAGE_CATEGORY category, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context);
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-
         ComPtr<ID3D12Device> device_;
-        bool enable_sharing_;
         DWORD dbg_callback_cookie_ = 0;
-
-        CommandQueueContext cmd_queue_ctxs_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
         struct StallResourceInfo
         {

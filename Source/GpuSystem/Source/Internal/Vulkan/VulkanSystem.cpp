@@ -15,6 +15,7 @@
 #include "VulkanBuffer.hpp"
 #include "VulkanCommandList.hpp"
 #include "VulkanCommandPool.hpp"
+#include "VulkanCommandQueue.hpp"
 #include "VulkanErrorHandling.hpp"
 #include "VulkanFence.hpp"
 #include "VulkanQuery.hpp"
@@ -30,7 +31,7 @@ namespace AIHoloImager
 
     VulkanSystem::VulkanSystem(
         GpuSystem& gpu_system, std::function<bool(GpuSystem::Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
-        : gpu_system_(&gpu_system), enable_sharing_(enable_sharing)
+        : GpuSystemInternal(gpu_system, enable_sharing)
     {
         std::fill(std::begin(queue_family_indices_), std::end(queue_family_indices_), std::numeric_limits<uint32_t>::max());
 
@@ -346,17 +347,7 @@ namespace AIHoloImager
 
         desc_set_allocators_ = VulkanDescriptorSetAllocator();
 
-        for (auto& cmd_queue_ctx : cmd_queue_ctxs_)
-        {
-            if (cmd_queue_ctx.cmd_queue)
-            {
-                cmd_queue_ctx.free_cmd_lists.clear();
-                cmd_queue_ctx.cmd_pools.clear();
-                cmd_queue_ctx.cmd_queue = {};
-
-                cmd_queue_ctx.fence = {};
-            }
-        }
+        this->ClearCommandQueueContexts();
 
         stall_resources_.clear();
 
@@ -417,56 +408,6 @@ namespace AIHoloImager
         return ret;
     }
 
-    GpuCommandQueue* VulkanSystem::CommandQueue(GpuSystem::CmdQueueType type) noexcept
-    {
-        auto* cmd_queue_ctx = this->GetCommandQueueContext(type);
-        return cmd_queue_ctx ? &cmd_queue_ctx->cmd_queue : nullptr;
-    }
-
-    void* VulkanSystem::SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept
-    {
-        auto* cmd_queue_ctx = this->GetCommandQueueContext(type);
-        return cmd_queue_ctx ? cmd_queue_ctx->fence.SharedFenceHandle() : nullptr;
-    }
-
-    GpuCommandList VulkanSystem::CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name)
-    {
-        GpuCommandList cmd_list;
-        auto& cmd_pool = this->CurrentCommandPool(type);
-        auto& cmd_queue_ctx = *this->GetCommandQueueContext(type);
-        if (cmd_queue_ctx.free_cmd_lists.empty())
-        {
-            cmd_list = GpuCommandList(*gpu_system_, cmd_pool, type);
-        }
-        else
-        {
-            cmd_list = std::move(cmd_queue_ctx.free_cmd_lists.front());
-            cmd_queue_ctx.free_cmd_lists.pop_front();
-            cmd_list.Reset(cmd_pool);
-        }
-        cmd_list.Name(std::move(name));
-        return cmd_list;
-    }
-
-    uint64_t VulkanSystem::Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences)
-    {
-        const uint64_t new_fence_value = this->ExecuteOnly(VulkanImp(cmd_list), wait_fences);
-        this->GetCommandQueueContext(cmd_list.Type())->free_cmd_lists.emplace_back(std::move(cmd_list));
-        return new_fence_value;
-    }
-
-    uint64_t VulkanSystem::ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
-    {
-        return this->ExecuteAndReset(VulkanImp(cmd_list), wait_fences);
-    }
-
-    uint64_t VulkanSystem::ExecuteAndReset(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
-    {
-        const uint64_t new_fence_value = this->ExecuteOnly(cmd_list, wait_fences);
-        cmd_list.Reset(this->CurrentCommandPool(cmd_list.Type()));
-        return new_fence_value;
-    }
-
     uint32_t VulkanSystem::ConstantDataAlignment() const noexcept
     {
         return static_cast<uint32_t>(device_props_.properties.limits.minUniformBufferOffsetAlignment);
@@ -484,82 +425,9 @@ namespace AIHoloImager
         return device_props_.properties.limits.timestampPeriod;
     }
 
-    void VulkanSystem::CpuWait(const GpuSystem::WaitFences& wait_fences)
-    {
-        for (size_t i = 0; i < std::size(wait_fences.fence_values); ++i)
-        {
-            const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
-            auto* wait_cmd_queue_ctx = this->GetCommandQueueContext(queue_type);
-            if ((wait_cmd_queue_ctx != nullptr) && (wait_cmd_queue_ctx->fence_val != 0) && (wait_fences.fence_values[i] != 0))
-            {
-                const uint64_t wait_fence_value = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue
-                                                      ? wait_cmd_queue_ctx->fence_val - 1
-                                                      : wait_fences.fence_values[i];
-                if (wait_cmd_queue_ctx->fence.CompletedValue() < wait_fence_value)
-                {
-                    wait_cmd_queue_ctx->fence.CpuWait(wait_fence_value);
-                }
-            }
-        }
-
-        this->ClearStallResources();
-    }
-
-    void VulkanSystem::GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences)
-    {
-        auto* target_cmd_queue_ctx = this->GetCommandQueueContext(target_queue_type);
-        if (target_cmd_queue_ctx != nullptr)
-        {
-            GpuCommandQueue::FenceInfo wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-            uint32_t num_waits = 0;
-            for (size_t i = 0; i < std::size(wait_fence_values); ++i)
-            {
-                const auto queue_type = static_cast<GpuSystem::CmdQueueType>(i);
-                auto* wait_cmd_queue_ctx = this->GetCommandQueueContext(queue_type);
-                if ((wait_cmd_queue_ctx != nullptr) && (wait_cmd_queue_ctx->fence_val != 0) && (wait_fences.fence_values[i] != 0))
-                {
-                    const uint64_t wait_value = wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue_ctx->fence_val - 1
-                                                                                                        : wait_fences.fence_values[i];
-                    wait_fence_values[num_waits] = {&wait_cmd_queue_ctx->fence, wait_value};
-
-                    if (target_queue_type == queue_type)
-                    {
-                        target_cmd_queue_ctx->fence_val = std::max(target_cmd_queue_ctx->fence_val, wait_value) + 1;
-                    }
-
-                    ++num_waits;
-                }
-            }
-
-            target_cmd_queue_ctx->cmd_queue.GpuWait(std::span(wait_fence_values, num_waits));
-        }
-    }
-
-    uint64_t VulkanSystem::FenceValue(GpuSystem::CmdQueueType type) const noexcept
-    {
-        auto* cmd_queue_ctx = this->GetCommandQueueContext(type);
-        return cmd_queue_ctx ? cmd_queue_ctx->fence_val : 0;
-    }
-
-    uint64_t VulkanSystem::CompletedFenceValue(GpuSystem::CmdQueueType type) const
-    {
-        auto* cmd_queue_ctx = this->GetCommandQueueContext(type);
-        return cmd_queue_ctx ? cmd_queue_ctx->fence.CompletedValue() : 0;
-    }
-
     void VulkanSystem::HandleDeviceLost()
     {
-        for (auto& cmd_queue_ctx : cmd_queue_ctxs_)
-        {
-            if (cmd_queue_ctx.cmd_queue)
-            {
-                cmd_queue_ctx.cmd_queue = {};
-                cmd_queue_ctx.cmd_pools.clear();
-                cmd_queue_ctx.free_cmd_lists.clear();
-
-                cmd_queue_ctx.fence = {};
-            }
-        }
+        this->ClearCommandQueueContexts();
 
         vkDestroyDevice(device_, nullptr);
         device_ = VK_NULL_HANDLE;
@@ -682,123 +550,29 @@ namespace AIHoloImager
         }
     }
 
-    VulkanSystem::CommandQueueContext& VulkanSystem::GetOrCreateCommandQueueContext(GpuSystem::CmdQueueType type)
-    {
-        auto& cmd_queue_ctx = cmd_queue_ctxs_[static_cast<uint32_t>(type)];
-        if (!cmd_queue_ctx.cmd_queue)
-        {
-            const std::string debug_name = std::format("cmd_queue {}", static_cast<uint32_t>(type));
-            cmd_queue_ctx.cmd_queue = GpuCommandQueue(*gpu_system_, type, debug_name);
-
-            cmd_queue_ctx.fence = GpuFence(*gpu_system_, cmd_queue_ctx.fence_val, enable_sharing_);
-            ++cmd_queue_ctx.fence_val;
-        }
-
-        return cmd_queue_ctx;
-    }
-
-    VulkanSystem::CommandQueueContext* VulkanSystem::GetCommandQueueContext(GpuSystem::CmdQueueType type)
-    {
-        auto& cmd_queue_ctx = cmd_queue_ctxs_[static_cast<uint32_t>(type)];
-        if (cmd_queue_ctx.cmd_queue)
-        {
-            return &cmd_queue_ctx;
-        }
-        return nullptr;
-    }
-
-    const VulkanSystem::CommandQueueContext* VulkanSystem::GetCommandQueueContext(GpuSystem::CmdQueueType type) const
-    {
-        return const_cast<VulkanSystem*>(this)->GetCommandQueueContext(type);
-    }
-
-    GpuCommandPool& VulkanSystem::CurrentCommandPool(GpuSystem::CmdQueueType type)
-    {
-        auto& cmd_queue_ctx = this->GetOrCreateCommandQueueContext(type);
-        const uint64_t completed_fence = cmd_queue_ctx.fence.CompletedValue();
-        for (auto& pool : cmd_queue_ctx.cmd_pools)
-        {
-            auto& vulkan_pool = VulkanImp(*pool);
-            if (vulkan_pool.EmptyAllocatedCommandBuffers() && (vulkan_pool.FenceValue() <= completed_fence))
-            {
-                TIFVK(vkResetCommandPool(device_, vulkan_pool.CmdPool(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
-                return *pool;
-            }
-        }
-
-        return *cmd_queue_ctx.cmd_pools.emplace_back(std::make_unique<GpuCommandPool>(*gpu_system_, type));
-    }
-
-    uint64_t VulkanSystem::ExecuteOnly(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences)
-    {
-        auto& cmd_pool = *cmd_list.CommandPool();
-        cmd_list.Close();
-
-        auto* cmd_queue_ctx = this->GetCommandQueueContext(cmd_list.Type());
-        assert(cmd_queue_ctx != nullptr);
-
-        GpuSystem::WaitFences dep_wait_fences;
-        cmd_list.WaitForFences(dep_wait_fences);
-
-        GpuCommandQueue::FenceInfo compact_wait_fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-        uint32_t num_waits = 0;
-        for (size_t i = 0; i < std::size(dep_wait_fences.fence_values); ++i)
-        {
-            auto* wait_cmd_queue_ctx = this->GetCommandQueueContext(static_cast<GpuSystem::CmdQueueType>(i));
-            if ((wait_cmd_queue_ctx != nullptr) && (wait_cmd_queue_ctx->fence_val != 0))
-            {
-                uint64_t fence_value = dep_wait_fences.fence_values[i];
-                if (wait_fences.fence_values[i] != 0)
-                {
-                    fence_value =
-                        std::max(fence_value, wait_fences.fence_values[i] == GpuSystem::MaxFenceValue ? wait_cmd_queue_ctx->fence_val - 1
-                                                                                                      : wait_fences.fence_values[i]);
-                }
-                if (fence_value != 0)
-                {
-                    compact_wait_fence_values[num_waits] = {&wait_cmd_queue_ctx->fence, fence_value};
-                    ++num_waits;
-                }
-            }
-        }
-
-        const uint64_t curr_fence_value = cmd_queue_ctx->fence_val;
-        cmd_list.UpdateAccessInfo(curr_fence_value);
-        ++cmd_queue_ctx->fence_val;
-
-        VulkanImp(cmd_queue_ctx->cmd_queue)
-            .Execute(cmd_list, std::span(compact_wait_fence_values, num_waits), {&cmd_queue_ctx->fence, curr_fence_value});
-
-        VulkanImp(cmd_pool).FenceValue(cmd_queue_ctx->fence_val);
-
-        this->ClearStallResources();
-
-        return curr_fence_value;
-    }
-
     std::unique_ptr<GpuBufferInternal> VulkanSystem::CreateBuffer(
         uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name) const
     {
-        return std::make_unique<VulkanBuffer>(*gpu_system_, size, heap, flags, std::move(name));
+        return std::make_unique<VulkanBuffer>(this->GpuSys(), size, heap, flags, std::move(name));
     }
 
     std::unique_ptr<GpuTextureInternal> VulkanSystem::CreateTexture(GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth,
         uint32_t array_size, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags, std::string_view name) const
     {
         return std::make_unique<VulkanTexture>(
-            *gpu_system_, type, width, height, depth, array_size, mip_levels, format, flags, std::move(name));
+            this->GpuSys(), type, width, height, depth, array_size, mip_levels, format, flags, std::move(name));
     }
 
     std::unique_ptr<GpuStaticSamplerInternal> VulkanSystem::CreateStaticSampler(
         const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const
     {
-        return std::make_unique<VulkanStaticSampler>(*gpu_system_, filters, addr_modes);
+        return std::make_unique<VulkanStaticSampler>(this->GpuSys(), filters, addr_modes);
     }
 
     std::unique_ptr<GpuDynamicSamplerInternal> VulkanSystem::CreateDynamicSampler(
         const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes) const
     {
-        return std::make_unique<VulkanDynamicSampler>(*gpu_system_, filters, addr_modes);
+        return std::make_unique<VulkanDynamicSampler>(this->GpuSys(), filters, addr_modes);
     }
 
     std::unique_ptr<GpuVertexLayoutInternal> VulkanSystem::CreateVertexLayout(
@@ -815,71 +589,71 @@ namespace AIHoloImager
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(*gpu_system_, texture, sub_resource, format);
+        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(*gpu_system_, texture_array, sub_resource, format);
+        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture_array, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(*gpu_system_, texture, sub_resource, format);
+        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(*gpu_system_, buffer, first_element, num_elements, format);
+        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
     {
-        return std::make_unique<VulkanShaderResourceView>(*gpu_system_, buffer, first_element, num_elements, element_size);
+        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
     }
 
     std::unique_ptr<GpuRenderTargetViewInternal> VulkanSystem::CreateRenderTargetView(GpuTexture2D& texture, GpuFormat format) const
     {
-        return std::make_unique<VulkanRenderTargetView>(*gpu_system_, texture, format);
+        return std::make_unique<VulkanRenderTargetView>(this->GpuSys(), texture, format);
     }
 
     std::unique_ptr<GpuDepthStencilViewInternal> VulkanSystem::CreateDepthStencilView(GpuTexture2D& texture, GpuFormat format) const
     {
-        return std::make_unique<VulkanDepthStencilView>(*gpu_system_, texture, format);
+        return std::make_unique<VulkanDepthStencilView>(this->GpuSys(), texture, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(*gpu_system_, texture, sub_resource, format);
+        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(*gpu_system_, texture_array, sub_resource, format);
+        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture_array, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(*gpu_system_, texture, sub_resource, format);
+        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(*gpu_system_, buffer, first_element, num_elements, format);
+        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(*gpu_system_, buffer, first_element, num_elements, element_size);
+        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
     }
 
     std::unique_ptr<GpuRenderPipelineInternal> VulkanSystem::CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,
@@ -887,38 +661,38 @@ namespace AIHoloImager
         const GpuRenderPipeline::States& states) const
     {
         return std::make_unique<VulkanRenderPipeline>(
-            *gpu_system_, topology, std::move(shaders), vertex_layout, std::move(static_samplers), states);
+            this->GpuSys(), topology, std::move(shaders), vertex_layout, std::move(static_samplers), states);
     }
 
     std::unique_ptr<GpuComputePipelineInternal> VulkanSystem::CreateComputePipeline(
         const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers) const
     {
-        return std::make_unique<VulkanComputePipeline>(*gpu_system_, shader, std::move(static_samplers));
+        return std::make_unique<VulkanComputePipeline>(this->GpuSys(), shader, std::move(static_samplers));
     }
 
     std::unique_ptr<GpuCommandPoolInternal> VulkanSystem::CreateCommandPool(GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<VulkanCommandPool>(*gpu_system_, type);
+        return std::make_unique<VulkanCommandPool>(this->GpuSys(), type);
     }
 
     std::unique_ptr<GpuCommandListInternal> VulkanSystem::CreateCommandList(GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type) const
     {
-        return std::make_unique<VulkanCommandList>(*gpu_system_, cmd_pool, type);
+        return std::make_unique<VulkanCommandList>(this->GpuSys(), cmd_pool, type);
     }
 
     std::unique_ptr<GpuTimerQueryInternal> VulkanSystem::CreateTimerQuery() const
     {
-        return std::make_unique<VulkanTimerQuery>(*gpu_system_);
+        return std::make_unique<VulkanTimerQuery>(this->GpuSys());
     }
 
     std::unique_ptr<GpuFenceInternal> VulkanSystem::CreateFence(uint64_t init_val, bool enable_sharing) const
     {
-        return std::make_unique<VulkanFence>(*gpu_system_, init_val, enable_sharing);
+        return std::make_unique<VulkanFence>(this->GpuSys(), init_val, enable_sharing);
     }
 
     std::unique_ptr<GpuCommandQueueInternal> VulkanSystem::CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const
     {
-        return std::make_unique<VulkanCommandQueue>(*gpu_system_, type, std::move(name));
+        return std::make_unique<VulkanCommandQueue>(this->GpuSys(), type, std::move(name));
     }
 
     VkBool32 VulkanSystem::DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -1000,7 +774,7 @@ namespace AIHoloImager
     {
         if (!desc_set_allocators_)
         {
-            desc_set_allocators_ = VulkanDescriptorSetAllocator(*gpu_system_);
+            desc_set_allocators_ = VulkanDescriptorSetAllocator(this->GpuSys());
         }
 
         return desc_set_allocators_.Allocate(layout);

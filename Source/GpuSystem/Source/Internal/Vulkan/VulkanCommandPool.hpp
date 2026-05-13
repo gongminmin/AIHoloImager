@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -27,14 +27,16 @@ namespace AIHoloImager
         VulkanCommandPool& operator=(VulkanCommandPool&& other) noexcept;
         GpuCommandPoolInternal& operator=(GpuCommandPoolInternal&& other) noexcept override;
 
+        void Reset() override;
+
         VkCommandPool CmdPool() const noexcept;
 
-        uint64_t FenceValue() const noexcept;
-        void FenceValue(uint64_t value) noexcept;
+        uint64_t FenceValue() const noexcept override;
+        void FenceValue(uint64_t value) noexcept override;
 
         void RegisterAllocatedCommandBuffer(VkCommandBuffer cmd_buff);
         void UnregisterAllocatedCommandBuffer(VkCommandBuffer cmd_buff);
-        bool EmptyAllocatedCommandBuffers() const noexcept;
+        bool Empty() const noexcept override;
 
     private:
         VulkanRecyclableObject<VkCommandPool> cmd_pool_;

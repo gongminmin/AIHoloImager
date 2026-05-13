@@ -8,7 +8,6 @@
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuCommandQueue.hpp"
-#include "Gpu/GpuFence.hpp"
 
 namespace AIHoloImager
 {
@@ -30,6 +29,8 @@ namespace AIHoloImager
         virtual void GpuWait(std::span<const GpuCommandQueue::FenceInfo> fences) = 0;
 
         virtual void Execute(const GpuCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
+            const GpuCommandQueue::FenceInfo& signal_fence) = 0;
+        virtual void Execute(const GpuCommandListInternal& cmd_list_internal, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
             const GpuCommandQueue::FenceInfo& signal_fence) = 0;
     };
 } // namespace AIHoloImager

@@ -3,6 +3,12 @@
 
 #pragma once
 
+#include <list>
+#include <memory>
+#include <span>
+#include <string_view>
+#include <vector>
+
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
 
@@ -26,6 +32,7 @@ namespace AIHoloImager
 
     public:
         GpuSystemInternal() noexcept;
+        GpuSystemInternal(GpuSystem& gpu_system, bool enable_sharing);
         virtual ~GpuSystemInternal();
 
         GpuSystemInternal(GpuSystemInternal&& other) noexcept;
@@ -35,21 +42,22 @@ namespace AIHoloImager
 
         virtual LUID DeviceLuid() const = 0;
 
-        virtual GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept = 0;
-        virtual void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept = 0;
+        GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept;
+        void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept;
 
-        virtual [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) = 0;
-        virtual uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) = 0;
-        virtual uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) = 0;
+        [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name);
+        uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences);
+        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
+        uint64_t ExecuteAndReset(GpuCommandListInternal& cmd_list, const GpuSystem::WaitFences& wait_fences);
 
         virtual uint32_t ConstantDataAlignment() const noexcept = 0;
         virtual uint32_t StructuredDataAlignment() const noexcept = 0;
         virtual uint32_t TextureDataAlignment() const noexcept = 0;
 
-        virtual void CpuWait(const GpuSystem::WaitFences& wait_fences) = 0;
-        virtual void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) = 0;
-        virtual uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept = 0;
-        virtual uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const = 0;
+        void CpuWait(const GpuSystem::WaitFences& wait_fences);
+        void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences);
+        uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept;
+        uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const;
 
         virtual void HandleDeviceLost() = 0;
         virtual void ClearStallResources() = 0;
@@ -111,5 +119,33 @@ namespace AIHoloImager
         virtual std::unique_ptr<GpuFenceInternal> CreateFence(uint64_t init_val, bool enable_sharing) const = 0;
 
         virtual std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const = 0;
+
+    protected:
+        struct CommandQueueContext
+        {
+            GpuCommandQueue cmd_queue;
+            std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
+            std::list<GpuCommandList> free_cmd_lists;
+
+            GpuFence fence;
+            uint64_t fence_val = 0;
+        };
+
+    protected:
+        GpuSystem& GpuSys() const noexcept;
+        void ClearCommandQueueContexts();
+
+    private:
+        CommandQueueContext& GetOrCreateCommandQueueContext(GpuSystem::CmdQueueType type);
+        CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type);
+        const CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type) const;
+        GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
+        uint64_t ExecuteOnly(GpuCommandListInternal& cmd_list_internal, const GpuSystem::WaitFences& wait_fences);
+
+    private:
+        GpuSystem* gpu_system_ = nullptr;
+        bool enable_sharing_ = false;
+
+        CommandQueueContext cmd_queue_ctxs_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
     };
 } // namespace AIHoloImager

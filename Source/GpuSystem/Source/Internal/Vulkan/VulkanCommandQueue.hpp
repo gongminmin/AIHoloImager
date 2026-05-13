@@ -34,8 +34,8 @@ namespace AIHoloImager
 
         void Execute(const GpuCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
             const GpuCommandQueue::FenceInfo& signal_fence) override;
-        void Execute(const VulkanCommandList& cmd_list, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
-            const GpuCommandQueue::FenceInfo& signal_fence);
+        void Execute(const GpuCommandListInternal& cmd_list_internal, std::span<const GpuCommandQueue::FenceInfo> wait_fences,
+            const GpuCommandQueue::FenceInfo& signal_fence) override;
 
         VkQueue CmdQueue() const noexcept;
 

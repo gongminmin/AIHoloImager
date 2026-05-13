@@ -51,6 +51,11 @@ namespace AIHoloImager
         return this->operator=(static_cast<D3D12CommandPool&&>(other));
     }
 
+    void D3D12CommandPool::Reset()
+    {
+        TIFHR(cmd_allocator_->Reset());
+    }
+
     ID3D12CommandAllocator* D3D12CommandPool::CmdAllocator() const noexcept
     {
         return cmd_allocator_.Get();
@@ -80,7 +85,7 @@ namespace AIHoloImager
         }
     }
 
-    bool D3D12CommandPool::EmptyAllocatedCommandLists() const noexcept
+    bool D3D12CommandPool::Empty() const noexcept
     {
         return allocated_cmd_lists_.empty();
     }

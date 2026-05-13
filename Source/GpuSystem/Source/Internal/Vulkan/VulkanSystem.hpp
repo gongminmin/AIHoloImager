@@ -7,13 +7,10 @@
 
 #include <volk.h>
 
-#include "Gpu/GpuFence.hpp"
 #include "Gpu/GpuSystem.hpp"
 
 #include "../GpuCommandListInternal.hpp"
 #include "../GpuSystemInternal.hpp"
-#include "VulkanCommandList.hpp"
-#include "VulkanCommandQueue.hpp"
 #include "VulkanDescriptorAllocator.hpp"
 #include "VulkanImpDefine.hpp"
 
@@ -22,8 +19,8 @@ namespace AIHoloImager
     class VulkanSystem : public GpuSystemInternal
     {
     public:
-        explicit VulkanSystem(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device = nullptr,
-            bool enable_sharing = false, bool enable_debug = false);
+        explicit VulkanSystem(GpuSystem& gpu_system_, std::function<bool(GpuSystem::Api api, void* device)> confirm_device,
+            bool enable_sharing, bool enable_debug);
         ~VulkanSystem() override;
 
         VulkanSystem(VulkanSystem&& other) noexcept;
@@ -34,34 +31,16 @@ namespace AIHoloImager
         VkPhysicalDevice PhysicalDevice() const noexcept;
         VkDevice Device() const noexcept;
         void* NativeDevice() const noexcept override;
-        template <typename Traits>
-        typename Traits::DeviceType NativeDevice() const noexcept
-        {
-            return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
-        }
 
         LUID DeviceLuid() const noexcept override;
 
         uint32_t& QueueFamilyIndex(GpuSystem::CmdQueueType type) noexcept;
         uint32_t QueueFamilyIndex(GpuSystem::CmdQueueType type) const noexcept;
 
-        GpuCommandQueue* CommandQueue(GpuSystem::CmdQueueType type) noexcept override;
-        void* SharedFenceHandle(GpuSystem::CmdQueueType type) const noexcept override;
-
-        [[nodiscard]] GpuCommandList CreateCommandList(GpuSystem::CmdQueueType type, std::string_view name) override;
-        uint64_t Execute(GpuCommandList&& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t ExecuteAndReset(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
-
         uint32_t ConstantDataAlignment() const noexcept override;
         uint32_t StructuredDataAlignment() const noexcept override;
         uint32_t TextureDataAlignment() const noexcept override;
         float TimestampFrequency() const noexcept;
-
-        void CpuWait(const GpuSystem::WaitFences& wait_fences) override;
-        void GpuWait(GpuSystem::CmdQueueType target_queue_type, const GpuSystem::WaitFences& wait_fences) override;
-        uint64_t FenceValue(GpuSystem::CmdQueueType type) const noexcept override;
-        uint64_t CompletedFenceValue(GpuSystem::CmdQueueType type) const override;
 
         void HandleDeviceLost() override;
         void ClearStallResources() override;
@@ -148,29 +127,10 @@ namespace AIHoloImager
         std::unique_ptr<GpuCommandQueueInternal> CreateCommandQueue(GpuSystem::CmdQueueType type, std::string_view name) const override;
 
     private:
-        struct CommandQueueContext
-        {
-            GpuCommandQueue cmd_queue;
-            std::vector<std::unique_ptr<GpuCommandPool>> cmd_pools;
-            std::list<GpuCommandList> free_cmd_lists;
-
-            GpuFence fence;
-            uint64_t fence_val = 0;
-        };
-
-    private:
-        CommandQueueContext& GetOrCreateCommandQueueContext(GpuSystem::CmdQueueType type);
-        CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type);
-        const CommandQueueContext* GetCommandQueueContext(GpuSystem::CmdQueueType type) const;
-        GpuCommandPool& CurrentCommandPool(GpuSystem::CmdQueueType type);
-        uint64_t ExecuteOnly(VulkanCommandList& cmd_list, const GpuSystem::WaitFences& wait_fences);
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessageCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
             VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 
     private:
-        GpuSystem* gpu_system_ = nullptr;
-        bool enable_sharing_;
-
         VkInstance instance_ = VK_NULL_HANDLE;
         std::vector<std::string> supported_instance_exts_;
         VkDebugUtilsMessengerEXT debug_utils_messenger_ = VK_NULL_HANDLE;
@@ -183,7 +143,6 @@ namespace AIHoloImager
 
         VkDevice device_ = VK_NULL_HANDLE;
         uint32_t queue_family_indices_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
-        CommandQueueContext cmd_queue_ctxs_[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)];
 
         struct StallResourceInfo
         {

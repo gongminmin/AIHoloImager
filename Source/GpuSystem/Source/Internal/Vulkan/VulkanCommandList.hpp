@@ -91,16 +91,16 @@ namespace AIHoloImager
         void Close() override;
         void Reset(GpuCommandPool& cmd_pool) override;
 
-        GpuCommandPool* CommandPool() noexcept
+        GpuCommandPool& CommandPool() noexcept override
         {
-            return cmd_pool_;
+            return *cmd_pool_;
         }
 
         void CheckWrittenBy(const VulkanResource& resource);
-        void WaitForFences(GpuSystem::WaitFences& wait_fences) const;
+        void WaitForFences(GpuSystem::WaitFences& wait_fences) const override;
 
         void RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const;
-        void UpdateAccessInfo(uint64_t fence_value);
+        void UpdateAccessInfo(uint64_t fence_value) override;
 
     private:
         void Render(const GpuRenderPipeline& pipeline, std::span<const GpuCommandList::VertexBufferBinding> vbs,

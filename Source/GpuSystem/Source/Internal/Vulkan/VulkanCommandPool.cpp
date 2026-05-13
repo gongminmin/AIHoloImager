@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanCommandPool.hpp"
@@ -37,6 +37,13 @@ namespace AIHoloImager
         return this->operator=(static_cast<VulkanCommandPool&&>(other));
     }
 
+    void VulkanCommandPool::Reset()
+    {
+        auto& vulkan_system = *cmd_pool_.VulkanSys();
+        const VkDevice device = vulkan_system.Device();
+        TIFVK(vkResetCommandPool(device, cmd_pool_.Object(), VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+    }
+
     VkCommandPool VulkanCommandPool::CmdPool() const noexcept
     {
         return cmd_pool_.Object();
@@ -66,7 +73,7 @@ namespace AIHoloImager
         }
     }
 
-    bool VulkanCommandPool::EmptyAllocatedCommandBuffers() const noexcept
+    bool VulkanCommandPool::Empty() const noexcept
     {
         return allocated_cmd_buffs_.empty();
     }
