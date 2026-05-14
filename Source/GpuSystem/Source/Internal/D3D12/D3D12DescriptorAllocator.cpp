@@ -9,7 +9,6 @@
 #include "Gpu/GpuSystem.hpp"
 
 #include "D3D12System.hpp"
-#include "Internal/GpuSystemInternal.hpp"
 
 using namespace AIHoloImager;
 

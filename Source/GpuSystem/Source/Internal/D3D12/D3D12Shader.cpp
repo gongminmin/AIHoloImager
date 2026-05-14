@@ -13,6 +13,9 @@
 #include "D3D12System.hpp"
 #include "D3D12VertexLayout.hpp"
 
+DEFINE_UUID_OF(ID3D12PipelineState);
+DEFINE_UUID_OF(ID3D12RootSignature);
+
 namespace
 {
     D3D12_ROOT_PARAMETER CreateRootParameterAsDescriptorTable(const D3D12_DESCRIPTOR_RANGE* descriptor_ranges,

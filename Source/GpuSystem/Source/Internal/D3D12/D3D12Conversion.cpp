@@ -368,4 +368,21 @@ namespace AIHoloImager
             Unreachable("Invalid blend operation");
         }
     }
+
+    D3D12_COMMAND_LIST_TYPE ToD3D12CommandListType(GpuSystem::CmdQueueType type) noexcept
+    {
+        switch (type)
+        {
+        case GpuSystem::CmdQueueType::Render:
+            return D3D12_COMMAND_LIST_TYPE_DIRECT;
+        case GpuSystem::CmdQueueType::Compute:
+            return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+        case GpuSystem::CmdQueueType::Copy:
+            return D3D12_COMMAND_LIST_TYPE_COPY;
+        case GpuSystem::CmdQueueType::VideoEncode:
+            return D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+        default:
+            Unreachable("Invalid command queue type");
+        }
+    }
 } // namespace AIHoloImager

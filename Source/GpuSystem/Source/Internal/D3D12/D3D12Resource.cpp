@@ -9,6 +9,8 @@
 #include "D3D12Texture.hpp"
 #include "D3D12Util.hpp"
 
+DEFINE_UUID_OF(ID3D12Resource);
+
 namespace AIHoloImager
 {
     D3D12Resource::D3D12Resource(GpuSystem& gpu_system) : resource_(D3D12Imp(gpu_system), nullptr)

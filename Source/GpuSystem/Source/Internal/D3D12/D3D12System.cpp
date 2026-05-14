@@ -33,17 +33,12 @@ DEFINE_UUID_OF(IDXGIAdapter1);
 DEFINE_UUID_OF(IDXGIFactory4);
 DEFINE_UUID_OF(IDXGIFactory6);
 DEFINE_UUID_OF(IDXGIInfoQueue);
-DEFINE_UUID_OF(ID3D12CommandAllocator);
 DEFINE_UUID_OF(ID3D12CommandSignature);
-DEFINE_UUID_OF(ID3D12DescriptorHeap);
 DEFINE_UUID_OF(ID3D12Debug);
 DEFINE_UUID_OF(ID3D12Device);
 DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedData1);
 DEFINE_UUID_OF(ID3D12DeviceRemovedExtendedDataSettings1);
 DEFINE_UUID_OF(ID3D12InfoQueue1);
-DEFINE_UUID_OF(ID3D12PipelineState);
-DEFINE_UUID_OF(ID3D12Resource);
-DEFINE_UUID_OF(ID3D12RootSignature);
 DEFINE_UUID_OF(ID3D12ShaderReflection);
 
 const auto IID_IDxcUtils = __uuidof(IDxcUtils);

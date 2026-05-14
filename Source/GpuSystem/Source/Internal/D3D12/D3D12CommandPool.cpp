@@ -5,7 +5,10 @@
 
 #include "Base/Uuid.hpp"
 
+#include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
+
+DEFINE_UUID_OF(ID3D12CommandAllocator);
 
 namespace AIHoloImager
 {
@@ -13,31 +16,9 @@ namespace AIHoloImager
 
     D3D12CommandPool::D3D12CommandPool(GpuSystem& gpu_system, GpuSystem::CmdQueueType type)
     {
-        D3D12_COMMAND_LIST_TYPE d3d12_type;
-        switch (type)
-        {
-        case GpuSystem::CmdQueueType::Render:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            break;
-
-        case GpuSystem::CmdQueueType::Compute:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            break;
-
-        case GpuSystem::CmdQueueType::Copy:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_COPY;
-            break;
-
-        case GpuSystem::CmdQueueType::VideoEncode:
-            d3d12_type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
-            break;
-
-        default:
-            Unreachable("Invalid command queue type");
-        }
-
         ID3D12Device* d3d12_device = D3D12Imp(gpu_system).Device();
-        TIFHR(d3d12_device->CreateCommandAllocator(d3d12_type, UuidOf<ID3D12CommandAllocator>(), cmd_allocator_.PutVoid()));
+        TIFHR(
+            d3d12_device->CreateCommandAllocator(ToD3D12CommandListType(type), UuidOf<ID3D12CommandAllocator>(), cmd_allocator_.PutVoid()));
     }
     D3D12CommandPool::~D3D12CommandPool() noexcept = default;
 

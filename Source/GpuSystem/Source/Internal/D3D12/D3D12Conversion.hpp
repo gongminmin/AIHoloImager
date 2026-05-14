@@ -33,4 +33,6 @@ namespace AIHoloImager
 
     D3D12_BLEND ToD3D12Blend(GpuRenderPipeline::BlendFactor blend) noexcept;
     D3D12_BLEND_OP ToD3D12BlendOp(GpuRenderPipeline::BlendOp blend_op) noexcept;
+
+    D3D12_COMMAND_LIST_TYPE ToD3D12CommandListType(GpuSystem::CmdQueueType type) noexcept;
 } // namespace AIHoloImager

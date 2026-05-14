@@ -6,9 +6,10 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/Uuid.hpp"
 
-#include "D3D12Conversion.hpp"
 #include "D3D12System.hpp"
 #include "D3D12Util.hpp"
+
+DEFINE_UUID_OF(ID3D12DescriptorHeap);
 
 namespace AIHoloImager
 {
