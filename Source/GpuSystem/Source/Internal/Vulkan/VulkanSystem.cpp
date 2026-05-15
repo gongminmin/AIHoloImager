@@ -589,31 +589,31 @@ namespace AIHoloImager
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
+        return std::make_unique<VulkanTextureShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture_array, sub_resource, format);
+        return std::make_unique<VulkanTextureShaderResourceView>(this->GpuSys(), texture_array, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
+        return std::make_unique<VulkanTextureShaderResourceView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
     {
-        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, format);
+        return std::make_unique<VulkanBufferShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, format);
     }
 
     std::unique_ptr<GpuShaderResourceViewInternal> VulkanSystem::CreateShaderResourceView(
         const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
     {
-        return std::make_unique<VulkanShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
+        return std::make_unique<VulkanBufferShaderResourceView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
     }
 
     std::unique_ptr<GpuRenderTargetViewInternal> VulkanSystem::CreateRenderTargetView(GpuTexture2D& texture, GpuFormat format) const
@@ -629,31 +629,31 @@ namespace AIHoloImager
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
+        return std::make_unique<VulkanTextureUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture_array, sub_resource, format);
+        return std::make_unique<VulkanTextureUnorderedAccessView>(this->GpuSys(), texture_array, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
+        return std::make_unique<VulkanTextureUnorderedAccessView>(this->GpuSys(), texture, sub_resource, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, format);
+        return std::make_unique<VulkanBufferUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, format);
     }
 
     std::unique_ptr<GpuUnorderedAccessViewInternal> VulkanSystem::CreateUnorderedAccessView(
         GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size) const
     {
-        return std::make_unique<VulkanUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
+        return std::make_unique<VulkanBufferUnorderedAccessView>(this->GpuSys(), buffer, first_element, num_elements, element_size);
     }
 
     std::unique_ptr<GpuRenderPipelineInternal> VulkanSystem::CreateRenderPipeline(GpuRenderPipeline::PrimitiveTopology topology,

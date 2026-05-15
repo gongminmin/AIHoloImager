@@ -35,7 +35,7 @@ namespace AIHoloImager
     private:
         const GpuResource* resource_ = nullptr;
         const GpuMemoryBlock* mem_block_ = nullptr;
-        VkWriteDescriptorSet write_desc_set_;
+        VkWriteDescriptorSet write_desc_set_{};
 
         VkDescriptorBufferInfo buff_info_{};
         VulkanRecyclableObject<VkBufferView> buff_view_;
@@ -46,48 +46,100 @@ namespace AIHoloImager
     class VulkanShaderResourceView : public GpuShaderResourceViewInternal
     {
     public:
-        VulkanShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
-        VulkanShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
-        VulkanShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
-
-        VulkanShaderResourceView(
-            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
-        VulkanShaderResourceView(
-            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
-
-        ~VulkanShaderResourceView() override;
+        explicit VulkanShaderResourceView(const GpuResource& resource) noexcept;
+        ~VulkanShaderResourceView() noexcept override;
 
         VulkanShaderResourceView(VulkanShaderResourceView&& other) noexcept;
-        explicit VulkanShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept;
-        VulkanShaderResourceView& operator=(VulkanShaderResourceView&& other) noexcept;
+        virtual VulkanShaderResourceView& operator=(VulkanShaderResourceView&& other) noexcept = 0;
+
+        virtual bool IsBuffer() const noexcept = 0;
+
+        void Transition(GpuCommandList& cmd_list) const override;
+        virtual void Transition(VulkanCommandList& cmd_list) const = 0;
+
+        const GpuResource* Resource() const noexcept;
+        VkWriteDescriptorSet WriteDescSet() const noexcept;
+
+    protected:
+        const GpuResource* resource_ = nullptr;
+        VkWriteDescriptorSet write_desc_set_{};
+    };
+
+    VULKAN_DEFINE_IMP(ShaderResourceView)
+
+    class VulkanBufferShaderResourceView : public VulkanShaderResourceView
+    {
+    public:
+        VulkanBufferShaderResourceView(
+            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
+        VulkanBufferShaderResourceView(
+            GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
+
+        ~VulkanBufferShaderResourceView() override;
+
+        VulkanBufferShaderResourceView(VulkanBufferShaderResourceView&& other) noexcept;
+        explicit VulkanBufferShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept;
+        explicit VulkanBufferShaderResourceView(VulkanShaderResourceView&& other) noexcept;
+        VulkanBufferShaderResourceView& operator=(VulkanBufferShaderResourceView&& other) noexcept;
         GpuShaderResourceViewInternal& operator=(GpuShaderResourceViewInternal&& other) noexcept override;
+        VulkanShaderResourceView& operator=(VulkanShaderResourceView&& other) noexcept override;
+
+        bool IsBuffer() const noexcept override
+        {
+            return true;
+        }
 
         void Reset() override;
 
-        void Transition(GpuCommandList& cmd_list) const override;
-        void Transition(VulkanCommandList& cmd_list) const;
-
-        VkWriteDescriptorSet WriteDescSet() const noexcept;
-
-        const GpuResource* Resource() const noexcept;
+        void Transition(VulkanCommandList& cmd_list) const override;
 
     private:
-        void FillWriteDescSetForImage();
         void FillWriteDescSetForStructuredBuffer(VkBuffer buff, uint32_t offset, uint32_t range);
 
     private:
-        const GpuResource* resource_ = nullptr;
-        uint32_t sub_resource_;
-        VkWriteDescriptorSet write_desc_set_;
-
-        VkDescriptorImageInfo image_info_{};
-        VulkanRecyclableObject<VkImageView> image_view_;
-
         VkDescriptorBufferInfo buff_info_{};
         VulkanRecyclableObject<VkBufferView> buff_view_;
     };
 
-    VULKAN_DEFINE_IMP(ShaderResourceView)
+    VULKAN_DEFINE_IMP2(ShaderResourceView, BufferShaderResourceView)
+
+    class VulkanTextureShaderResourceView : public VulkanShaderResourceView
+    {
+    public:
+        VulkanTextureShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
+        VulkanTextureShaderResourceView(
+            GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
+        VulkanTextureShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
+
+        ~VulkanTextureShaderResourceView() override;
+
+        VulkanTextureShaderResourceView(VulkanTextureShaderResourceView&& other) noexcept;
+        explicit VulkanTextureShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept;
+        explicit VulkanTextureShaderResourceView(VulkanShaderResourceView&& other) noexcept;
+        VulkanTextureShaderResourceView& operator=(VulkanTextureShaderResourceView&& other) noexcept;
+        GpuShaderResourceViewInternal& operator=(GpuShaderResourceViewInternal&& other) noexcept override;
+        VulkanShaderResourceView& operator=(VulkanShaderResourceView&& other) noexcept override;
+
+        bool IsBuffer() const noexcept override
+        {
+            return false;
+        }
+
+        void Reset() override;
+
+        void Transition(VulkanCommandList& cmd_list) const override;
+
+    private:
+        void FillWriteDescSetForImage();
+
+    private:
+        uint32_t sub_resource_;
+
+        VkDescriptorImageInfo image_info_{};
+        VulkanRecyclableObject<VkImageView> image_view_;
+    };
+
+    VULKAN_DEFINE_IMP2(ShaderResourceView, TextureShaderResourceView)
 
     class VulkanRenderTargetView : public GpuRenderTargetViewInternal
     {
@@ -158,59 +210,111 @@ namespace AIHoloImager
     class VulkanUnorderedAccessView : public GpuUnorderedAccessViewInternal
     {
     public:
-        VulkanUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
-        VulkanUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
-        VulkanUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
-
-        VulkanUnorderedAccessView(
-            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
-
-        VulkanUnorderedAccessView(
-            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
-
-        ~VulkanUnorderedAccessView() override;
+        explicit VulkanUnorderedAccessView(GpuResource& resource) noexcept;
+        ~VulkanUnorderedAccessView() noexcept override;
 
         VulkanUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept;
-        explicit VulkanUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept;
-        VulkanUnorderedAccessView& operator=(VulkanUnorderedAccessView&& other) noexcept;
-        GpuUnorderedAccessViewInternal& operator=(GpuUnorderedAccessViewInternal&& other) noexcept override;
+        virtual VulkanUnorderedAccessView& operator=(VulkanUnorderedAccessView&& other) noexcept = 0;
 
-        void Reset() override;
+        virtual bool IsBuffer() const noexcept = 0;
 
         void Transition(GpuCommandList& cmd_list) const override;
-        void Transition(VulkanCommandList& cmd_list) const;
+        virtual void Transition(VulkanCommandList& cmd_list) const = 0;
 
         GpuResource* Resource() noexcept override;
         VkWriteDescriptorSet WriteDescSet() const noexcept;
 
-        VkImage Image() const noexcept;
-        VkImageView ImageView() const noexcept;
-        const VkImageSubresourceRange& SubresourceRange() const;
+    protected:
+        GpuResource* resource_ = nullptr;
+        VkWriteDescriptorSet write_desc_set_{};
+    };
+
+    VULKAN_DEFINE_IMP(UnorderedAccessView)
+
+    class VulkanBufferUnorderedAccessView : public VulkanUnorderedAccessView
+    {
+    public:
+        VulkanBufferUnorderedAccessView(
+            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
+
+        VulkanBufferUnorderedAccessView(
+            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
+
+        ~VulkanBufferUnorderedAccessView() override;
+
+        VulkanBufferUnorderedAccessView(VulkanBufferUnorderedAccessView&& other) noexcept;
+        explicit VulkanBufferUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept;
+        explicit VulkanBufferUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept;
+        VulkanBufferUnorderedAccessView& operator=(VulkanBufferUnorderedAccessView&& other) noexcept;
+        GpuUnorderedAccessViewInternal& operator=(GpuUnorderedAccessViewInternal&& other) noexcept override;
+        VulkanUnorderedAccessView& operator=(VulkanUnorderedAccessView&& other) noexcept override;
+
+        bool IsBuffer() const noexcept override
+        {
+            return true;
+        }
+
+        void Reset() override;
+
+        void Transition(VulkanCommandList& cmd_list) const override;
 
         VkBuffer Buffer() const noexcept;
         VkBufferView BufferView() const noexcept;
         const std::tuple<uint32_t, uint32_t>& BufferRange() const;
 
     private:
-        void CreateImageView(VkDevice device, VkImage image, VkImageViewType type, GpuFormat format);
-        void FillWriteDescSetForImage();
         void FillWriteDescSetForStructuredBuffer(VkBuffer buff);
 
     private:
-        GpuResource* resource_ = nullptr;
-        uint32_t sub_resource_;
-        VkWriteDescriptorSet write_desc_set_;
-
-        VkDescriptorImageInfo image_info_{};
-        VkImageSubresourceRange subres_range_{};
-        VulkanRecyclableObject<VkImageView> image_view_;
-
         VkDescriptorBufferInfo buffer_info_{};
         std::tuple<uint32_t, uint32_t> buff_range_{};
         VulkanRecyclableObject<VkBufferView> buff_view_;
     };
 
-    VULKAN_DEFINE_IMP(UnorderedAccessView)
+    VULKAN_DEFINE_IMP2(UnorderedAccessView, BufferUnorderedAccessView)
+
+    class VulkanTextureUnorderedAccessView : public VulkanUnorderedAccessView
+    {
+    public:
+        VulkanTextureUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
+        VulkanTextureUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
+        VulkanTextureUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
+
+        ~VulkanTextureUnorderedAccessView() override;
+
+        VulkanTextureUnorderedAccessView(VulkanTextureUnorderedAccessView&& other) noexcept;
+        explicit VulkanTextureUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept;
+        explicit VulkanTextureUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept;
+        VulkanTextureUnorderedAccessView& operator=(VulkanTextureUnorderedAccessView&& other) noexcept;
+        GpuUnorderedAccessViewInternal& operator=(GpuUnorderedAccessViewInternal&& other) noexcept override;
+        VulkanUnorderedAccessView& operator=(VulkanUnorderedAccessView&& other) noexcept override;
+
+        bool IsBuffer() const noexcept override
+        {
+            return false;
+        }
+
+        void Reset() override;
+
+        void Transition(VulkanCommandList& cmd_list) const override;
+
+        VkImage Image() const noexcept;
+        VkImageView ImageView() const noexcept;
+        const VkImageSubresourceRange& SubresourceRange() const;
+
+    private:
+        void CreateImageView(VkDevice device, VkImage image, VkImageViewType type, GpuFormat format);
+        void FillWriteDescSetForImage();
+
+    private:
+        uint32_t sub_resource_;
+
+        VkDescriptorImageInfo image_info_{};
+        VkImageSubresourceRange subres_range_{};
+        VulkanRecyclableObject<VkImageView> image_view_;
+    };
+
+    VULKAN_DEFINE_IMP2(UnorderedAccessView, TextureUnorderedAccessView)
 
     VkWriteDescriptorSet NullSampledImageShaderResourceViewWriteDescSet();
     VkWriteDescriptorSet NullUniformTexelBufferShaderResourceViewWriteDescSet();

@@ -72,9 +72,143 @@ namespace AIHoloImager
 
     VULKAN_IMP_IMP(ShaderResourceView)
 
-    VulkanShaderResourceView::VulkanShaderResourceView(
+    VulkanShaderResourceView::VulkanShaderResourceView(const GpuResource& resource) noexcept : resource_(&resource)
+    {
+    }
+    VulkanShaderResourceView::~VulkanShaderResourceView() noexcept = default;
+    VulkanShaderResourceView::VulkanShaderResourceView(VulkanShaderResourceView&& other) noexcept = default;
+    VulkanShaderResourceView& VulkanShaderResourceView::operator=(VulkanShaderResourceView&& other) noexcept = default;
+
+    void VulkanShaderResourceView::Transition(GpuCommandList& cmd_list) const
+    {
+        this->Transition(VulkanImp(cmd_list));
+    }
+
+    const GpuResource* VulkanShaderResourceView::Resource() const noexcept
+    {
+        return resource_;
+    }
+
+    VkWriteDescriptorSet VulkanShaderResourceView::WriteDescSet() const noexcept
+    {
+        return write_desc_set_;
+    }
+
+
+    VULKAN_IMP_IMP2(ShaderResourceView, BufferShaderResourceView)
+
+    VulkanBufferShaderResourceView::VulkanBufferShaderResourceView(
+        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
+        : VulkanShaderResourceView(buffer), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    {
+        const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
+        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
+        const uint32_t element_size = FormatSize(format);
+
+        const uint32_t offset = first_element * element_size;
+        const uint32_t range = num_elements * element_size;
+
+        const GpuResourceFlag flags = buffer.Flags();
+        if (EnumHasAny(flags, GpuResourceFlag::Structured))
+        {
+            this->FillWriteDescSetForStructuredBuffer(vulkan_buff, offset, range);
+        }
+        else
+        {
+            const VkBufferViewCreateInfo view_create_info{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+                .buffer = vulkan_buff,
+                .format = ToVkFormat(format),
+                .offset = offset,
+                .range = range,
+            };
+            TIFVK(vkCreateBufferView(vulkan_device, &view_create_info, nullptr, &buff_view_.Object()));
+
+            write_desc_set_ = VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                .pTexelBufferView = &buff_view_.Object(),
+            };
+        }
+    }
+
+    VulkanBufferShaderResourceView::VulkanBufferShaderResourceView(
+        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
+        : VulkanShaderResourceView(buffer), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    {
+        const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
+        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
+
+        const uint32_t offset = first_element * element_size;
+        const uint32_t range = num_elements * element_size;
+
+        const VkBufferViewCreateInfo view_create_info{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+            .buffer = vulkan_buff,
+            .format = VK_FORMAT_UNDEFINED,
+            .offset = offset,
+            .range = range,
+        };
+        TIFVK(vkCreateBufferView(vulkan_device, &view_create_info, nullptr, &buff_view_.Object()));
+
+        this->FillWriteDescSetForStructuredBuffer(vulkan_buff, offset, range);
+    }
+
+    VulkanBufferShaderResourceView::~VulkanBufferShaderResourceView() = default;
+
+    VulkanBufferShaderResourceView::VulkanBufferShaderResourceView(VulkanBufferShaderResourceView&& other) noexcept = default;
+    VulkanBufferShaderResourceView::VulkanBufferShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept
+        : VulkanBufferShaderResourceView(static_cast<VulkanBufferShaderResourceView&&>(other))
+    {
+    }
+    VulkanBufferShaderResourceView::VulkanBufferShaderResourceView(VulkanShaderResourceView&& other) noexcept
+        : VulkanBufferShaderResourceView(static_cast<VulkanBufferShaderResourceView&&>(other))
+    {
+    }
+
+    VulkanBufferShaderResourceView& VulkanBufferShaderResourceView::operator=(VulkanBufferShaderResourceView&& other) noexcept = default;
+    GpuShaderResourceViewInternal& VulkanBufferShaderResourceView::operator=(GpuShaderResourceViewInternal&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanBufferShaderResourceView&&>(other));
+    }
+    VulkanShaderResourceView& VulkanBufferShaderResourceView::operator=(VulkanShaderResourceView&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanBufferShaderResourceView&&>(other));
+    }
+
+    void VulkanBufferShaderResourceView::Reset()
+    {
+        buff_view_.Reset();
+    }
+
+    void VulkanBufferShaderResourceView::Transition(VulkanCommandList& cmd_list) const
+    {
+        cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
+        VulkanImp(*resource_).Transition(cmd_list, 0, GpuResourceState::Common);
+    }
+
+    void VulkanBufferShaderResourceView::FillWriteDescSetForStructuredBuffer(VkBuffer buff, uint32_t offset, uint32_t range)
+    {
+        buff_info_ = VkDescriptorBufferInfo{
+            .buffer = buff,
+            .offset = offset,
+            .range = range,
+        };
+        write_desc_set_ = VkWriteDescriptorSet{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo = &buff_info_,
+        };
+    }
+
+
+    VULKAN_IMP_IMP2(ShaderResourceView, TextureShaderResourceView)
+
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+        : VulkanShaderResourceView(texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
         const VkImage vulkan_image = VulkanImp(texture).Image();
@@ -114,9 +248,9 @@ namespace AIHoloImager
         this->FillWriteDescSetForImage();
     }
 
-    VulkanShaderResourceView::VulkanShaderResourceView(
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture_array), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+        : VulkanShaderResourceView(texture_array), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
         const VkImage vulkan_image = VulkanImp(texture_array).Image();
@@ -154,9 +288,9 @@ namespace AIHoloImager
         this->FillWriteDescSetForImage();
     }
 
-    VulkanShaderResourceView::VulkanShaderResourceView(
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+        : VulkanShaderResourceView(texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
         const VkImage vulkan_image = VulkanImp(texture).Image();
@@ -196,114 +330,40 @@ namespace AIHoloImager
         this->FillWriteDescSetForImage();
     }
 
-    VulkanShaderResourceView::VulkanShaderResourceView(
-        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : resource_(&buffer), sub_resource_(0), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    VulkanTextureShaderResourceView::~VulkanTextureShaderResourceView() = default;
+
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(VulkanTextureShaderResourceView&& other) noexcept = default;
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept
+        : VulkanTextureShaderResourceView(static_cast<VulkanTextureShaderResourceView&&>(other))
     {
-        const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
-        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
-        const uint32_t element_size = FormatSize(format);
-
-        const uint32_t offset = first_element * element_size;
-        const uint32_t range = num_elements * element_size;
-
-        const GpuResourceFlag flags = buffer.Flags();
-        if (EnumHasAny(flags, GpuResourceFlag::Structured))
-        {
-            this->FillWriteDescSetForStructuredBuffer(vulkan_buff, offset, range);
-        }
-        else
-        {
-            const VkBufferViewCreateInfo view_create_info{
-                .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-                .buffer = vulkan_buff,
-                .format = ToVkFormat(format),
-                .offset = offset,
-                .range = range,
-            };
-            TIFVK(vkCreateBufferView(vulkan_device, &view_create_info, nullptr, &buff_view_.Object()));
-
-            write_desc_set_ = VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                .pTexelBufferView = &buff_view_.Object(),
-            };
-        }
     }
-
-    VulkanShaderResourceView::VulkanShaderResourceView(
-        GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : resource_(&buffer), sub_resource_(0), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
-    {
-        const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
-        const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
-
-        const uint32_t offset = first_element * element_size;
-        const uint32_t range = num_elements * element_size;
-
-        const VkBufferViewCreateInfo view_create_info{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-            .buffer = vulkan_buff,
-            .format = VK_FORMAT_UNDEFINED,
-            .offset = offset,
-            .range = range,
-        };
-        TIFVK(vkCreateBufferView(vulkan_device, &view_create_info, nullptr, &buff_view_.Object()));
-
-        this->FillWriteDescSetForStructuredBuffer(vulkan_buff, offset, range);
-    }
-
-    VulkanShaderResourceView::~VulkanShaderResourceView() = default;
-
-    VulkanShaderResourceView::VulkanShaderResourceView(VulkanShaderResourceView&& other) noexcept = default;
-    VulkanShaderResourceView::VulkanShaderResourceView(GpuShaderResourceViewInternal&& other) noexcept
-        : VulkanShaderResourceView(static_cast<VulkanShaderResourceView&&>(other))
+    VulkanTextureShaderResourceView::VulkanTextureShaderResourceView(VulkanShaderResourceView&& other) noexcept
+        : VulkanTextureShaderResourceView(static_cast<VulkanTextureShaderResourceView&&>(other))
     {
     }
 
-    VulkanShaderResourceView& VulkanShaderResourceView::operator=(VulkanShaderResourceView&& other) noexcept = default;
-    GpuShaderResourceViewInternal& VulkanShaderResourceView::operator=(GpuShaderResourceViewInternal&& other) noexcept
+    VulkanTextureShaderResourceView& VulkanTextureShaderResourceView::operator=(VulkanTextureShaderResourceView&& other) noexcept = default;
+    GpuShaderResourceViewInternal& VulkanTextureShaderResourceView::operator=(GpuShaderResourceViewInternal&& other) noexcept
     {
-        return this->operator=(static_cast<VulkanShaderResourceView&&>(other));
+        return this->operator=(static_cast<VulkanTextureShaderResourceView&&>(other));
+    }
+    VulkanShaderResourceView& VulkanTextureShaderResourceView::operator=(VulkanShaderResourceView&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanTextureShaderResourceView&&>(other));
     }
 
-    void VulkanShaderResourceView::Reset()
+    void VulkanTextureShaderResourceView::Reset()
     {
-        buff_view_.Reset();
         image_view_.Reset();
     }
 
-    void VulkanShaderResourceView::Transition(GpuCommandList& cmd_list) const
+    void VulkanTextureShaderResourceView::Transition(VulkanCommandList& cmd_list) const
     {
-        this->Transition(VulkanImp(cmd_list));
-    }
-
-    void VulkanShaderResourceView::Transition(VulkanCommandList& cmd_list) const
-    {
-        if (buff_view_)
-        {
-            cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
-        }
-        if (image_view_)
-        {
-            cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
-        }
-
+        cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
         VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::Common);
     }
 
-    VkWriteDescriptorSet VulkanShaderResourceView::WriteDescSet() const noexcept
-    {
-        return write_desc_set_;
-    }
-
-    const GpuResource* VulkanShaderResourceView::Resource() const noexcept
-    {
-        return resource_;
-    }
-
-    void VulkanShaderResourceView::FillWriteDescSetForImage()
+    void VulkanTextureShaderResourceView::FillWriteDescSetForImage()
     {
         image_info_ = VkDescriptorImageInfo{
             .imageView = image_view_.Object(),
@@ -314,21 +374,6 @@ namespace AIHoloImager
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             .pImageInfo = &image_info_,
-        };
-    }
-
-    void VulkanShaderResourceView::FillWriteDescSetForStructuredBuffer(VkBuffer buff, uint32_t offset, uint32_t range)
-    {
-        buff_info_ = VkDescriptorBufferInfo{
-            .buffer = buff,
-            .offset = offset,
-            .range = range,
-        };
-        write_desc_set_ = VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &buff_info_,
         };
     }
 
@@ -518,86 +563,34 @@ namespace AIHoloImager
 
     VULKAN_IMP_IMP(UnorderedAccessView)
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(
-        GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE), buff_range_({0, 0})
+    VulkanUnorderedAccessView::VulkanUnorderedAccessView(GpuResource& resource) noexcept : resource_(&resource)
     {
-        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
-        const VkImage vulkan_image = VulkanImp(texture).Image();
-        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture.Format()))
-        {
-            format = texture.Format();
-        }
+    }
+    VulkanUnorderedAccessView::~VulkanUnorderedAccessView() noexcept = default;
+    VulkanUnorderedAccessView::VulkanUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept = default;
+    VulkanUnorderedAccessView& VulkanUnorderedAccessView::operator=(VulkanUnorderedAccessView&& other) noexcept = default;
 
-        subres_range_ = VkImageSubresourceRange{
-            .aspectMask = ToVulkanAspectMask(format),
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        };
-
-        uint32_t array_slice;
-        uint32_t plane_slice;
-        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, subres_range_.baseMipLevel, array_slice, plane_slice);
-
-        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_2D, format);
-        this->FillWriteDescSetForImage();
+    void VulkanUnorderedAccessView::Transition(GpuCommandList& cmd_list) const
+    {
+        this->Transition(VulkanImp(cmd_list));
     }
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(
-        GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture_array), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE), buff_range_({0, 0})
+    GpuResource* VulkanUnorderedAccessView::Resource() noexcept
     {
-        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
-        const VkImage vulkan_image = VulkanImp(texture_array).Image();
-        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture_array.Format()))
-        {
-            format = texture_array.Format();
-        }
-
-        subres_range_ = VkImageSubresourceRange{
-            .aspectMask = ToVulkanAspectMask(format),
-            .levelCount = 1,
-            .layerCount = 1,
-        };
-
-        uint32_t plane_slice;
-        DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), subres_range_.baseMipLevel,
-            subres_range_.baseArrayLayer, plane_slice);
-
-        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format);
-        this->FillWriteDescSetForImage();
+        return resource_;
     }
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(
-        GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
-        : resource_(&texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE), buff_range_({0, 0})
+    VkWriteDescriptorSet VulkanUnorderedAccessView::WriteDescSet() const noexcept
     {
-        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
-        const VkImage vulkan_image = VulkanImp(texture).Image();
-        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture.Format()))
-        {
-            format = texture.Format();
-        }
-
-        subres_range_ = VkImageSubresourceRange{
-            .aspectMask = ToVulkanAspectMask(format),
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        };
-
-        uint32_t array_slice;
-        uint32_t plane_slice;
-        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, subres_range_.baseMipLevel, array_slice, plane_slice);
-
-        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_3D, format);
-        this->FillWriteDescSetForImage();
+        return write_desc_set_;
     }
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(
+
+    VULKAN_IMP_IMP2(UnorderedAccessView, BufferUnorderedAccessView)
+
+    VulkanBufferUnorderedAccessView::VulkanBufferUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
-        : resource_(&buffer), sub_resource_(0), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+        : VulkanUnorderedAccessView(buffer), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
         const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
@@ -630,9 +623,9 @@ namespace AIHoloImager
         }
     }
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(
+    VulkanBufferUnorderedAccessView::VulkanBufferUnorderedAccessView(
         GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
-        : resource_(&buffer), sub_resource_(0), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+        : VulkanUnorderedAccessView(buffer), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
         const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
 
@@ -641,124 +634,55 @@ namespace AIHoloImager
         this->FillWriteDescSetForStructuredBuffer(vulkan_buff);
     }
 
-    VulkanUnorderedAccessView::~VulkanUnorderedAccessView()
+    VulkanBufferUnorderedAccessView::~VulkanBufferUnorderedAccessView()
     {
         this->Reset();
     }
 
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept = default;
-    VulkanUnorderedAccessView::VulkanUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept
-        : VulkanUnorderedAccessView(static_cast<VulkanUnorderedAccessView&&>(other))
+    VulkanBufferUnorderedAccessView::VulkanBufferUnorderedAccessView(VulkanBufferUnorderedAccessView&& other) noexcept = default;
+    VulkanBufferUnorderedAccessView::VulkanBufferUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept
+        : VulkanBufferUnorderedAccessView(static_cast<VulkanBufferUnorderedAccessView&&>(other))
     {
     }
-    VulkanUnorderedAccessView& VulkanUnorderedAccessView::operator=(VulkanUnorderedAccessView&& other) noexcept = default;
-    GpuUnorderedAccessViewInternal& VulkanUnorderedAccessView::operator=(GpuUnorderedAccessViewInternal&& other) noexcept
+    VulkanBufferUnorderedAccessView::VulkanBufferUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept
+        : VulkanBufferUnorderedAccessView(static_cast<VulkanBufferUnorderedAccessView&&>(other))
     {
-        return this->operator=(static_cast<VulkanUnorderedAccessView&&>(other));
+    }
+    VulkanBufferUnorderedAccessView& VulkanBufferUnorderedAccessView::operator=(VulkanBufferUnorderedAccessView&& other) noexcept = default;
+    GpuUnorderedAccessViewInternal& VulkanBufferUnorderedAccessView::operator=(GpuUnorderedAccessViewInternal&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanBufferUnorderedAccessView&&>(other));
+    }
+    VulkanUnorderedAccessView& VulkanBufferUnorderedAccessView::operator=(VulkanUnorderedAccessView&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanBufferUnorderedAccessView&&>(other));
     }
 
-    void VulkanUnorderedAccessView::Reset()
+    void VulkanBufferUnorderedAccessView::Reset()
     {
         buff_view_.Reset();
-        image_view_.Reset();
     }
 
-    void VulkanUnorderedAccessView::Transition(GpuCommandList& cmd_list) const
+    void VulkanBufferUnorderedAccessView::Transition(VulkanCommandList& cmd_list) const
     {
-        this->Transition(VulkanImp(cmd_list));
+        cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
+        VulkanImp(*resource_).Transition(cmd_list, 0, GpuResourceState::UnorderedAccess);
     }
 
-    void VulkanUnorderedAccessView::Transition(VulkanCommandList& cmd_list) const
+    VkBuffer VulkanBufferUnorderedAccessView::Buffer() const noexcept
     {
-        if (buff_view_)
-        {
-            cmd_list.RegisterAccessedObject(buff_view_.StalledWaitFences());
-        }
-        if (image_view_)
-        {
-            cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
-        }
-
-        VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::UnorderedAccess);
+        return static_cast<VulkanBuffer&>(VulkanImp(*resource_)).Buffer();
     }
-
-    GpuResource* VulkanUnorderedAccessView::Resource() noexcept
-    {
-        return resource_;
-    }
-
-    VkWriteDescriptorSet VulkanUnorderedAccessView::WriteDescSet() const noexcept
-    {
-        return write_desc_set_;
-    }
-
-    VkImage VulkanUnorderedAccessView::Image() const noexcept
-    {
-        if (image_view_)
-        {
-            return static_cast<VulkanTexture&>(VulkanImp(*resource_)).Image();
-        }
-        else
-        {
-            return VK_NULL_HANDLE;
-        }
-    }
-    VkImageView VulkanUnorderedAccessView::ImageView() const noexcept
-    {
-        return image_view_.Object();
-    }
-    const VkImageSubresourceRange& VulkanUnorderedAccessView::SubresourceRange() const
-    {
-        return subres_range_;
-    }
-
-    VkBuffer VulkanUnorderedAccessView::Buffer() const noexcept
-    {
-        if (buff_view_)
-        {
-            return static_cast<VulkanBuffer&>(VulkanImp(*resource_)).Buffer();
-        }
-        else
-        {
-            return VK_NULL_HANDLE;
-        }
-    }
-    VkBufferView VulkanUnorderedAccessView::BufferView() const noexcept
+    VkBufferView VulkanBufferUnorderedAccessView::BufferView() const noexcept
     {
         return buff_view_.Object();
     }
-    const std::tuple<uint32_t, uint32_t>& VulkanUnorderedAccessView::BufferRange() const
+    const std::tuple<uint32_t, uint32_t>& VulkanBufferUnorderedAccessView::BufferRange() const
     {
         return buff_range_;
     }
 
-    void VulkanUnorderedAccessView::CreateImageView(VkDevice device, VkImage image, VkImageViewType type, GpuFormat format)
-    {
-        const VkImageViewCreateInfo view_create_info{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = image,
-            .viewType = type,
-            .format = ToVkFormat(format),
-            .subresourceRange = subres_range_,
-        };
-        TIFVK(vkCreateImageView(device, &view_create_info, nullptr, &image_view_.Object()));
-    }
-
-    void VulkanUnorderedAccessView::FillWriteDescSetForImage()
-    {
-        image_info_ = VkDescriptorImageInfo{
-            .imageView = image_view_.Object(),
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-        write_desc_set_ = VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .pImageInfo = &image_info_,
-        };
-    }
-
-    void VulkanUnorderedAccessView::FillWriteDescSetForStructuredBuffer(VkBuffer buff)
+    void VulkanBufferUnorderedAccessView::FillWriteDescSetForStructuredBuffer(VkBuffer buff)
     {
         buffer_info_ = VkDescriptorBufferInfo{
             .buffer = buff,
@@ -770,6 +694,161 @@ namespace AIHoloImager
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .pBufferInfo = &buffer_info_,
+        };
+    }
+
+
+    VULKAN_IMP_IMP2(UnorderedAccessView, TextureUnorderedAccessView)
+
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(
+        GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format)
+        : VulkanUnorderedAccessView(texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    {
+        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
+        const VkImage vulkan_image = VulkanImp(texture).Image();
+        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture.Format()))
+        {
+            format = texture.Format();
+        }
+
+        subres_range_ = VkImageSubresourceRange{
+            .aspectMask = ToVulkanAspectMask(format),
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        };
+
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, subres_range_.baseMipLevel, array_slice, plane_slice);
+
+        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_2D, format);
+        this->FillWriteDescSetForImage();
+    }
+
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(
+        GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
+        : VulkanUnorderedAccessView(texture_array), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    {
+        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
+        const VkImage vulkan_image = VulkanImp(texture_array).Image();
+        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture_array.Format()))
+        {
+            format = texture_array.Format();
+        }
+
+        subres_range_ = VkImageSubresourceRange{
+            .aspectMask = ToVulkanAspectMask(format),
+            .levelCount = 1,
+            .layerCount = 1,
+        };
+
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), subres_range_.baseMipLevel,
+            subres_range_.baseArrayLayer, plane_slice);
+
+        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_2D_ARRAY, format);
+        this->FillWriteDescSetForImage();
+    }
+
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(
+        GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
+        : VulkanUnorderedAccessView(texture), sub_resource_(sub_resource), image_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
+    {
+        const VkDevice vulkan_device = image_view_.VulkanSys()->Device();
+        const VkImage vulkan_image = VulkanImp(texture).Image();
+        if ((format == GpuFormat::Unknown) || IsDepthStencilFormat(texture.Format()))
+        {
+            format = texture.Format();
+        }
+
+        subres_range_ = VkImageSubresourceRange{
+            .aspectMask = ToVulkanAspectMask(format),
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        };
+
+        uint32_t array_slice;
+        uint32_t plane_slice;
+        DecomposeSubResource(sub_resource, texture.MipLevels(), 1, subres_range_.baseMipLevel, array_slice, plane_slice);
+
+        this->CreateImageView(vulkan_device, vulkan_image, VK_IMAGE_VIEW_TYPE_3D, format);
+        this->FillWriteDescSetForImage();
+    }
+
+    VulkanTextureUnorderedAccessView::~VulkanTextureUnorderedAccessView()
+    {
+        this->Reset();
+    }
+
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(VulkanTextureUnorderedAccessView&& other) noexcept = default;
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(GpuUnorderedAccessViewInternal&& other) noexcept
+        : VulkanTextureUnorderedAccessView(static_cast<VulkanTextureUnorderedAccessView&&>(other))
+    {
+    }
+    VulkanTextureUnorderedAccessView::VulkanTextureUnorderedAccessView(VulkanUnorderedAccessView&& other) noexcept
+        : VulkanTextureUnorderedAccessView(static_cast<VulkanTextureUnorderedAccessView&&>(other))
+    {
+    }
+    VulkanTextureUnorderedAccessView& VulkanTextureUnorderedAccessView::operator=(
+        VulkanTextureUnorderedAccessView&& other) noexcept = default;
+    GpuUnorderedAccessViewInternal& VulkanTextureUnorderedAccessView::operator=(GpuUnorderedAccessViewInternal&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanTextureUnorderedAccessView&&>(other));
+    }
+    VulkanUnorderedAccessView& VulkanTextureUnorderedAccessView::operator=(VulkanUnorderedAccessView&& other) noexcept
+    {
+        return this->operator=(static_cast<VulkanTextureUnorderedAccessView&&>(other));
+    }
+
+    void VulkanTextureUnorderedAccessView::Reset()
+    {
+        image_view_.Reset();
+    }
+
+    void VulkanTextureUnorderedAccessView::Transition(VulkanCommandList& cmd_list) const
+    {
+        cmd_list.RegisterAccessedObject(image_view_.StalledWaitFences());
+        VulkanImp(*resource_).Transition(cmd_list, sub_resource_, GpuResourceState::UnorderedAccess);
+    }
+
+    VkImage VulkanTextureUnorderedAccessView::Image() const noexcept
+    {
+        return static_cast<VulkanTexture&>(VulkanImp(*resource_)).Image();
+    }
+    VkImageView VulkanTextureUnorderedAccessView::ImageView() const noexcept
+    {
+        return image_view_.Object();
+    }
+    const VkImageSubresourceRange& VulkanTextureUnorderedAccessView::SubresourceRange() const
+    {
+        return subres_range_;
+    }
+
+    void VulkanTextureUnorderedAccessView::CreateImageView(VkDevice device, VkImage image, VkImageViewType type, GpuFormat format)
+    {
+        const VkImageViewCreateInfo view_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = image,
+            .viewType = type,
+            .format = ToVkFormat(format),
+            .subresourceRange = subres_range_,
+        };
+        TIFVK(vkCreateImageView(device, &view_create_info, nullptr, &image_view_.Object()));
+    }
+
+    void VulkanTextureUnorderedAccessView::FillWriteDescSetForImage()
+    {
+        image_info_ = VkDescriptorImageInfo{
+            .imageView = image_view_.Object(),
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        };
+        write_desc_set_ = VkWriteDescriptorSet{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .pImageInfo = &image_info_,
         };
     }
 

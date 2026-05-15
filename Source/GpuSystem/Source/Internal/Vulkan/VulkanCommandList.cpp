@@ -108,22 +108,26 @@ namespace AIHoloImager
     {
         auto& vulkan_uav = VulkanImp(uav);
         auto& vulkan_resource = VulkanImp(*vulkan_uav.Resource());
-        if (vulkan_uav.BufferView() != VK_NULL_HANDLE)
+        if (vulkan_uav.IsBuffer())
         {
-            const auto& [buff_offset, buffer_size] = vulkan_uav.BufferRange();
+            auto& vulkan_buff_uav = VulkanImp<VulkanBufferUnorderedAccessView>(uav);
+
+            const auto& [buff_offset, buffer_size] = vulkan_buff_uav.BufferRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdFillBuffer(cmd_buff_, vulkan_uav.Buffer(), buff_offset, buffer_size, std::bit_cast<uint32_t>(color[0]));
+            vkCmdFillBuffer(cmd_buff_, vulkan_buff_uav.Buffer(), buff_offset, buffer_size, std::bit_cast<uint32_t>(color[0]));
         }
         else
         {
+            auto& vulkan_tex_uav = VulkanImp<VulkanTextureUnorderedAccessView>(uav);
+
             const VkClearColorValue clear_color{
                 .float32 = {color[0], color[1], color[2], color[3]},
             };
-            const auto& subres_range = vulkan_uav.SubresourceRange();
+            const auto& subres_range = vulkan_tex_uav.SubresourceRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdClearColorImage(cmd_buff_, vulkan_uav.Image(), VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &subres_range);
+            vkCmdClearColorImage(cmd_buff_, vulkan_tex_uav.Image(), VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &subres_range);
         }
     }
 
@@ -131,22 +135,26 @@ namespace AIHoloImager
     {
         auto& vulkan_uav = VulkanImp(uav);
         auto& vulkan_resource = VulkanImp(*vulkan_uav.Resource());
-        if (vulkan_uav.BufferView() != VK_NULL_HANDLE)
+        if (vulkan_uav.IsBuffer())
         {
-            const auto& [buff_offset, buffer_size] = vulkan_uav.BufferRange();
+            auto& vulkan_buff_uav = VulkanImp<VulkanBufferUnorderedAccessView>(uav);
+
+            const auto& [buff_offset, buffer_size] = vulkan_buff_uav.BufferRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdFillBuffer(cmd_buff_, vulkan_uav.Buffer(), buff_offset, buffer_size, color[0]);
+            vkCmdFillBuffer(cmd_buff_, vulkan_buff_uav.Buffer(), buff_offset, buffer_size, color[0]);
         }
         else
         {
+            auto& vulkan_tex_uav = VulkanImp<VulkanTextureUnorderedAccessView>(uav);
+
             const VkClearColorValue clear_color{
                 .uint32 = {color[0], color[1], color[2], color[3]},
             };
-            const auto& subres_range = vulkan_uav.SubresourceRange();
+            const auto& subres_range = vulkan_tex_uav.SubresourceRange();
             vulkan_resource.Transition(*this, GpuResourceState::UnorderedAccess);
 
-            vkCmdClearColorImage(cmd_buff_, vulkan_uav.Image(), VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &subres_range);
+            vkCmdClearColorImage(cmd_buff_, vulkan_tex_uav.Image(), VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &subres_range);
         }
     }
 
@@ -988,7 +996,6 @@ namespace AIHoloImager
                     bool found = false;
                     switch (type)
                     {
-                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
                     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
                         for (const auto& [binding_name, srv] : shader_binding.srvs)
                         {
@@ -996,21 +1003,13 @@ namespace AIHoloImager
                             {
                                 if (srv != nullptr)
                                 {
-                                    const auto& vulkan_srv = VulkanImp(*srv);
+                                    const auto& vulkan_srv = VulkanImp<VulkanBufferShaderResourceView>(*srv);
                                     vulkan_srv.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_srv.WriteDescSet());
                                 }
                                 else
                                 {
-                                    switch (type)
-                                    {
-                                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                                        write_desc_sets.emplace_back(NullSampledImageShaderResourceViewWriteDescSet());
-                                        break;
-                                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                                        write_desc_sets.emplace_back(NullUniformTexelBufferShaderResourceViewWriteDescSet());
-                                        break;
-                                    }
+                                    write_desc_sets.emplace_back(NullUniformTexelBufferShaderResourceViewWriteDescSet());
                                 }
                                 found = true;
                                 break;
@@ -1019,7 +1018,28 @@ namespace AIHoloImager
                         view_type_name = "SRV";
                         break;
 
-                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                        for (const auto& [binding_name, srv] : shader_binding.srvs)
+                        {
+                            if (binding_name == name)
+                            {
+                                if (srv != nullptr)
+                                {
+                                    const auto& vulkan_srv = VulkanImp<VulkanTextureShaderResourceView>(*srv);
+                                    vulkan_srv.Transition(*this);
+                                    write_desc_sets.emplace_back(vulkan_srv.WriteDescSet());
+                                }
+                                else
+                                {
+                                    write_desc_sets.emplace_back(NullSampledImageShaderResourceViewWriteDescSet());
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        view_type_name = "SRV";
+                        break;
+
                     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
                     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
                     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
@@ -1029,7 +1049,7 @@ namespace AIHoloImager
                             {
                                 if (uav != nullptr)
                                 {
-                                    auto& vulkan_uav = VulkanImp(*uav);
+                                    auto& vulkan_uav = VulkanImp<VulkanBufferUnorderedAccessView>(*uav);
                                     vulkan_uav.Transition(*this);
                                     write_desc_sets.emplace_back(vulkan_uav.WriteDescSet());
                                 }
@@ -1037,9 +1057,6 @@ namespace AIHoloImager
                                 {
                                     switch (type)
                                     {
-                                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                                        write_desc_sets.emplace_back(NullStorageImageUnorderedAccessViewWriteDescSet());
-                                        break;
                                     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
                                         write_desc_sets.emplace_back(NullStorageTexelBufferUnorderedAccessViewWriteDescSet());
                                         break;
@@ -1048,6 +1065,28 @@ namespace AIHoloImager
                                         write_desc_sets.emplace_back(NullStorageBufferUnorderedAccessViewWriteDescSet());
                                         break;
                                     }
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        view_type_name = "UAV";
+                        break;
+
+                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                        for (const auto& [binding_name, uav] : shader_binding.uavs)
+                        {
+                            if (binding_name == name)
+                            {
+                                if (uav != nullptr)
+                                {
+                                    auto& vulkan_uav = VulkanImp<VulkanTextureUnorderedAccessView>(*uav);
+                                    vulkan_uav.Transition(*this);
+                                    write_desc_sets.emplace_back(vulkan_uav.WriteDescSet());
+                                }
+                                else
+                                {
+                                    write_desc_sets.emplace_back(NullStorageImageUnorderedAccessViewWriteDescSet());
                                 }
                                 found = true;
                                 break;
