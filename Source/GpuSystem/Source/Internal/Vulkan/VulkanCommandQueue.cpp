@@ -106,12 +106,15 @@ namespace AIHoloImager
             .pSignalSemaphores = semaphores,
         };
 
+        std::unique_ptr<VkSemaphore[]> wait_semaphores;
+        std::unique_ptr<uint64_t[]> wait_fence_values;
+        std::unique_ptr<VkPipelineStageFlags[]> wait_stages;
         if (!wait_fences.empty())
         {
             const uint32_t num_fences = static_cast<uint32_t>(wait_fences.size());
-            auto wait_semaphores = std::make_unique<VkSemaphore[]>(num_fences);
-            auto wait_fence_values = std::make_unique<uint64_t[]>(num_fences);
-            auto wait_stages = std::make_unique<VkPipelineStageFlags[]>(num_fences);
+            wait_semaphores = std::make_unique<VkSemaphore[]>(num_fences);
+            wait_fence_values = std::make_unique<uint64_t[]>(num_fences);
+            wait_stages = std::make_unique<VkPipelineStageFlags[]>(num_fences);
 
             for (uint32_t i = 0; i < num_fences; ++i)
             {
