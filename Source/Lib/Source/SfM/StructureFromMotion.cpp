@@ -33,6 +33,9 @@
     #pragma warning(disable : 4702) // Ignore unreachable code
     #pragma warning(disable : 5054) // Ignore operator between enums of different types
     #pragma warning(disable : 5055) // Ignore operator between enums and floating-point types
+    #if _MSC_VER >= 1950
+        #pragma warning(disable : 4864) // Ignore missing 'template' keyword before dependent template name
+    #endif
 #endif
 #include <openMVG/cameras/Camera_Pinhole_Radial.hpp>
 #include <openMVG/exif/exif_IO_EasyExif.hpp>

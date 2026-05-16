@@ -19,13 +19,25 @@ stages:
   - job: Build
     strategy:
       matrix:
-        Windows_vc143_Debug:
+        Windows_vc145_Debug:
+          vmImage: windows-2025-vs2026
           configuration: Debug
-        Windows_vc143_Release:
+          folder: 18
+        Windows_vc145_Release:
+          vmImage: windows-2025-vs2026
           configuration: Release
+          folder: 18
+        Windows_vc143_Debug:
+          vmImage: windows-2025
+          configuration: Debug
+          folder: 2022
+        Windows_vc143_Release:
+          vmImage: windows-2025
+          configuration: Release
+          folder: 2022
 
     pool:
-      vmImage: windows-2025
+      vmImage: $(vmImage)
 
     steps:
       - checkout: self
@@ -42,20 +54,20 @@ stages:
 
       - task: Cache@2
         inputs:
-          key: 'Build | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(configuration)'
-          restoreKeys: 'Build | $(configuration)'
+          key: 'Build | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
+          restoreKeys: 'Build | $(Agent.JobName)'
           path: Build
         displayName: Cache Build
 
       - task: Cache@2
         inputs:
-          key: 'External | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(configuration)'
-          restoreKeys: 'External | $(configuration)'
+          key: 'External | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
+          restoreKeys: 'External | $(Agent.JobName)'
           path: External
         displayName: Cache External
 
       - script: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
+          call "C:\Program Files\Microsoft Visual Studio\$(folder)\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
           cmake --build Build -j
         displayName: 'Build'

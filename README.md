@@ -13,7 +13,7 @@ So, here's the intriguing proposition: AIHoloImage aims to combine the best of b
 AIHoloImager currently supports only Windows. To get started, use CMake to generate the project file and build the application. Before you begin, ensure that you have the following prerequisites installed:
 
 * [Git](http://git-scm.com/downloads). Put git into the PATH is recommended.
-* [Visual Studio 2022](https://www.visualstudio.com/downloads).
+* [Visual Studio 2022 or 2026](https://www.visualstudio.com/downloads).
 * [CMake](https://www.cmake.org/download/). Version 3.25 or up. It's highly recommended to choose "Add CMake to the system PATH for all users" during installation.
 * [Python](https://www.python.org/downloads/). Version 3.11 to 3.13.
 
