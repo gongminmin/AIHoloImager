@@ -72,7 +72,7 @@ class DiffOptimizer:
 
     def OptimizeTransform(self,
                           vtx_positions, vtx_colors, num_vertices, indices, num_indices,
-                          view_images, view_proj_mtxs, transform_offsets, num_views,
+                          view_images, view_proj_mtxs, vp_offsets, num_views,
                           scale, rotation, translation):
         PurgeTorchCache()
 
@@ -88,8 +88,8 @@ class DiffOptimizer:
         view_proj_mtxs = TensorFromBytes(view_proj_mtxs, torch.float32, num_views * 4 * 4)
         view_proj_mtxs = view_proj_mtxs.reshape(num_views, 4, 4)
 
-        transform_offsets = TensorFromBytes(transform_offsets, torch.int32, num_views * 2)
-        transform_offsets = transform_offsets.reshape(num_views, 2)
+        vp_offsets = TensorFromBytes(vp_offsets, torch.float32, num_views * 2)
+        vp_offsets = vp_offsets.reshape(num_views, 2)
 
         scale = TensorFromBytes(scale, torch.float32, 3)
         rotation = TensorFromBytes(rotation, torch.float32, 4)
@@ -116,7 +116,7 @@ class DiffOptimizer:
 
             if self.downsampling:
                 rois[i] = (rois[i] + 1) // 2
-                transform_offsets[i] = (transform_offsets[i] + 1) // 2
+                vp_offsets[i] = vp_offsets[i] / 2
                 resolution = ((image_width + 1) // 2, (image_height + 1) // 2)
                 image = self.DownsampleImage(image.unsqueeze(0)).squeeze(0)
             else:
@@ -145,8 +145,8 @@ class DiffOptimizer:
         viewports = [None] * num_views
         for i in range(0, num_views):
             viewports[i] = Viewport()
-            viewports[i].left = -merged_roi[0] + transform_offsets[i][0]
-            viewports[i].top = -merged_roi[1] + transform_offsets[i][1]
+            viewports[i].left = -merged_roi[0] + vp_offsets[i][0]
+            viewports[i].top = -merged_roi[1] + vp_offsets[i][1]
             viewports[i].width = resolutions[i][0]
             viewports[i].height = resolutions[i][1]
 
@@ -258,7 +258,7 @@ class DiffOptimizer:
 
     def OptimizeTexture(self,
                         vtx_positions, vtx_uv, num_vertices, indices, num_indices,
-                        view_images, mvp_mtxs, transform_offsets, num_views,
+                        view_images, mvp_mtxs, vp_offsets, num_views,
                         texture_data, texture_width, texture_height, mask_tex_data):
         PurgeTorchCache()
 
@@ -275,8 +275,8 @@ class DiffOptimizer:
         mvp_mtxs = mvp_mtxs.reshape(num_views, 4, 4)
         mvp_mtxs = mvp_mtxs.to(self.device)
 
-        transform_offsets = TensorFromBytes(transform_offsets, torch.int32, num_views * 2)
-        transform_offsets = transform_offsets.reshape(num_views, 2)
+        vp_offsets = TensorFromBytes(vp_offsets, torch.float32, num_views * 2)
+        vp_offsets = vp_offsets.reshape(num_views, 2)
 
         rois = torch.empty(num_views, 4, dtype = torch.int32, device = GeneralDevice())
         crop_images = []
@@ -299,7 +299,7 @@ class DiffOptimizer:
 
             if self.downsampling:
                 rois[i] = (rois[i] + 1) // 2
-                transform_offsets[i] = (transform_offsets[i] + 1) // 2
+                vp_offsets[i] = vp_offsets[i] / 2
                 resolution = ((image_width + 1) // 2, (image_height + 1) // 2)
                 image = self.DownsampleImage(image.unsqueeze(0)).squeeze(0)
             else:
@@ -328,8 +328,8 @@ class DiffOptimizer:
         viewports = [None] * num_views
         for i in range(0, num_views):
             viewports[i] = Viewport()
-            viewports[i].left = -merged_roi[0] + transform_offsets[i][0]
-            viewports[i].top = -merged_roi[1] + transform_offsets[i][1]
+            viewports[i].left = -merged_roi[0] + vp_offsets[i][0]
+            viewports[i].top = -merged_roi[1] + vp_offsets[i][1]
             viewports[i].width = resolutions[i][0]
             viewports[i].height = resolutions[i][1]
 

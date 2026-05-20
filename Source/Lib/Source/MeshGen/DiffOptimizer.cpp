@@ -88,7 +88,7 @@ namespace AIHoloImager
 
             const uint32_t num_images = static_cast<uint32_t>(sfm_input.views.size());
             std::vector<glm::mat4x4> view_proj_mtxs(num_images);
-            std::vector<glm::ivec2> transform_offsets(num_images);
+            std::vector<glm::vec2> vp_offsets(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
                 const auto& view = sfm_input.views[i];
@@ -96,13 +96,9 @@ namespace AIHoloImager
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
-
                 view_proj_mtxs[i] = proj_mtx * view_mtx;
 
-                transform_offsets[i] = {
-                    intrinsic.k[0].z - intrinsic.width / 2,
-                    intrinsic.k[1].z - intrinsic.height / 2,
-                };
+                vp_offsets[i] = CalcViewportOffset(intrinsic);
             }
 
             {
@@ -140,8 +136,8 @@ namespace AIHoloImager
                     std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
                     static_cast<uint32_t>(indices.size()), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4)),
-                    std::span(reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2)),
-                    num_images, std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
+                    std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
+                    std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
                     std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
                     std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)));
 
@@ -178,7 +174,7 @@ namespace AIHoloImager
 
             const uint32_t num_images = static_cast<uint32_t>(sfm_input.views.size());
             std::vector<glm::mat4x4> mvp_mtxs(num_images);
-            std::vector<glm::ivec2> transform_offsets(num_images);
+            std::vector<glm::vec2> vp_offsets(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
                 const auto& view = sfm_input.views[i];
@@ -186,13 +182,9 @@ namespace AIHoloImager
 
                 const glm::mat4x4 view_mtx = CalcViewMatrix(view);
                 const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
-
                 mvp_mtxs[i] = proj_mtx * view_mtx * model_mtx;
 
-                transform_offsets[i] = {
-                    intrinsic.k[0].z - intrinsic.width / 2,
-                    intrinsic.k[1].z - intrinsic.height / 2,
-                };
+                vp_offsets[i] = CalcViewportOffset(intrinsic);
             }
 
             auto& texture = mesh.AlbedoTexture();
@@ -232,8 +224,8 @@ namespace AIHoloImager
                     std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
                     static_cast<uint32_t>(indices.size()), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4)),
-                    std::span(reinterpret_cast<const std::byte*>(transform_offsets.data()), transform_offsets.size() * sizeof(glm::ivec2)),
-                    num_images, std::span(reinterpret_cast<const std::byte*>(texture.Data()), texture.DataSize()),
+                    std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
+                    std::span(reinterpret_cast<const std::byte*>(texture.Data()), texture.DataSize()),
                     static_cast<uint32_t>(texture.Width()), static_cast<uint32_t>(texture.Height()),
                     std::span(reinterpret_cast<const std::byte*>(mask_tex.Data()), mask_tex.DataSize()));
 
