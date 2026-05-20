@@ -1,26 +1,7 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
-
-#include "Platform.hlslh"
-
-void AtomicAdd(RWBuffer<uint32_t> buff, uint32_t addr, float value)
-{
-    uint32_t cmp_val = buff[addr];
-    ALLOW_UAV_CONDITION
-    for (;;)
-    {
-        uint32_t new_val = asuint(asfloat(cmp_val) + value);
-        uint32_t ori_val;
-        InterlockedCompareExchange(buff[addr], cmp_val, new_val, ori_val);
-        if (cmp_val == ori_val)
-        {
-            break;
-        }
-        cmp_val = ori_val;
-    }
-}
 
 template <typename T>
 void Swap(inout T a, inout T b)

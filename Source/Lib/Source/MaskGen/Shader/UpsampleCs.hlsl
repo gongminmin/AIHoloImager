@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Lanczos.hlslh"
@@ -15,7 +15,7 @@ cbuffer param_cb
 };
 
 Texture2D<float> input_tex;
-Buffer<uint32_t> min_max_buff;
+Buffer<float> min_max_buff;
 
 #ifdef __spirv__
 [[vk::image_format("r8")]]
@@ -35,8 +35,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     float pred_scale;
     if (x_dir)
     {
-        min_pred = min_max_buff[0] / 1e5f;
-        const float max_pred = min_max_buff[1] / 1e5f;
+        min_pred = min_max_buff[0];
+        const float max_pred = min_max_buff[1];
         pred_scale = 1 / (max_pred - min_pred);
     }
     else

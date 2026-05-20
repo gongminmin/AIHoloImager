@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "MaskGenerator.hpp"
@@ -126,14 +126,14 @@ namespace AIHoloImager
                 downsampled_gpu_tex_ = GpuTexture2D(
                     gpu_system, U2NetInputDim, U2NetInputDim, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "downsampled_gpu_tex_");
                 image_max_gpu_buff_ =
-                    GpuBuffer(gpu_system, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "image_max_gpu_buff_");
+                    GpuBuffer(gpu_system, sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "image_max_gpu_buff_");
                 normalized_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "normalized_gpu_tex_");
 
                 pred_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float,
                     GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "pred_gpu_tex_");
-                pred_min_max_gpu_buff_ = GpuBuffer(
-                    gpu_system, 2 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_buff_");
+                pred_min_max_gpu_buff_ =
+                    GpuBuffer(gpu_system, 2 * sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_buff_");
                 mask_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_gpu_tex_");
                 mask_pingpong_gpu_tex_ =
                     GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_pingpong_gpu_tex_");
@@ -206,7 +206,7 @@ namespace AIHoloImager
             const uint32_t roi_width = roi.z - roi.x;
             const uint32_t roi_height = roi.w - roi.y;
 
-            constexpr uint32_t InitMinMax[2] = {~0U, 0U};
+            constexpr float InitMinMax[2] = {1e5f, 0};
             cmd_list.Upload(pred_min_max_gpu_buff_, InitMinMax, sizeof(InitMinMax));
 
             {
@@ -265,7 +265,8 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
-                GpuUnorderedAccessView max_uav(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView max_uav(
+                    gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint); // Float as uint due to atomic operations
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_image_cb(gpu_system, "stat_image_cb");
                 stat_image_cb->texture_size.x = U2NetInputDim;
@@ -287,7 +288,7 @@ namespace AIHoloImager
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
-                const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint);
+                const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Float);
                 GpuUnorderedAccessView normalized_uav(gpu_system, normalized_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> normalize_image_cb(gpu_system, "normalize_image_cb");
@@ -334,7 +335,8 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
-                GpuUnorderedAccessView min_max_uav(gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView min_max_uav(
+                    gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint); // Float as uint due to atomic operations
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_pred_cb(gpu_system, "stat_pred_cb");
                 stat_pred_cb->texture_size.x = U2NetInputDim;
@@ -357,7 +359,7 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, pred_gpu_tex_);
-                const GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint);
+                const GpuShaderResourceView min_max_srv(gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Float);
                 GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_x_cb(gpu_system, "upsample_x_cb");

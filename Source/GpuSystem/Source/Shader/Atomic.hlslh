@@ -1,0 +1,58 @@
+
+// Copyright (c) 2025 Minmin Gong
+//
+
+#pragma once
+
+#include "Platform.hlslh"
+
+void AtomicAdd(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+{
+    uint32_t cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        uint32_t new_val = asuint(asfloat(cmp_val) + value);
+        uint32_t ori_val;
+        InterlockedCompareExchange(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+
+void AtomicMax(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+{
+    uint32_t cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        uint32_t new_val = asuint(max(asfloat(cmp_val), value));
+        uint32_t ori_val;
+        InterlockedCompareExchange(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+
+void AtomicMin(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+{
+    uint32_t cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        uint32_t new_val = asuint(min(asfloat(cmp_val), value));
+        uint32_t ori_val;
+        InterlockedCompareExchange(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}

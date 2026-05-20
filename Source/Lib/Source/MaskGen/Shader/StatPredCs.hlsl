@@ -1,6 +1,7 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
+#include "Atomic.hlslh"
 #include "Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
@@ -54,7 +55,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
     if (group_index == 0)
     {
-        InterlockedMin(min_max_buff[0], uint32_t(min_max.x * 1e5f));
-        InterlockedMax(min_max_buff[1], uint32_t(min_max.y * 1e5f));
+        AtomicMin(min_max_buff, 0, min_max.x);
+        AtomicMax(min_max_buff, 1, min_max.y);
     }
 }
