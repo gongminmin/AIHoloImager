@@ -59,19 +59,19 @@ namespace AIHoloImager
 
         AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuBuffer& buff, GpuHeap heap,
             GpuResourceFlag flags, std::string_view name) const;
-        AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture2D& tex, GpuFormat format,
+        AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture& tex, GpuFormat format,
             GpuResourceFlag flags, std::string_view name) const;
         AIHI_TC_API torch::Tensor Convert(
             GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
-        AIHI_TC_API torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
+        AIHI_TC_API torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture& tex) const;
 
         AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap,
             GpuResourceFlag flags, std::string_view name) const;
-        AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format,
+        AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture& tex, GpuFormat format,
             GpuResourceFlag flags, std::string_view name) const;
         AIHI_TC_API PyObject* ConvertPy(
             GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
-        AIHI_TC_API PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const;
+        AIHI_TC_API PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture& tex) const;
 
     private:
         class Impl;

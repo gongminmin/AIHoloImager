@@ -180,8 +180,8 @@ namespace AIHoloImager
             }
         }
 
-        void Convert(GpuCommandList& cmd_list, const torch::Tensor& input_tensor, GpuTexture2D& tex, GpuFormat format,
-            GpuResourceFlag flags, std::string_view name) const
+        void Convert(GpuCommandList& cmd_list, const torch::Tensor& input_tensor, GpuTexture& tex, GpuFormat format, GpuResourceFlag flags,
+            std::string_view name) const
         {
             assert(input_tensor.size(-1) == FormatChannels(format));
             assert(input_tensor.element_size() == FormatChannelSize(format));
@@ -193,12 +193,31 @@ namespace AIHoloImager
                 flags |= GpuResourceFlag::Shareable;
             }
 
+            const bool is_tex_2d = (input_tensor.sizes().size() == 3) || (input_tensor.size(-4) == 1);
             const uint32_t width = static_cast<uint32_t>(input_tensor.size(-2));
             const uint32_t height = static_cast<uint32_t>(input_tensor.size(-3));
+            const uint32_t depth = is_tex_2d ? 1 : static_cast<uint32_t>(input_tensor.size(-4));
 
+            bool recreate = false;
             if ((tex.Width(0) != width) || (tex.Height(0) != height) || (tex.Format() != format))
             {
-                tex = GpuTexture2D(gpu_system_, width, height, 1, format, flags);
+                recreate = true;
+            }
+            if (!is_tex_2d && (tex.Depth(0) != depth))
+            {
+                recreate = true;
+            }
+
+            if (recreate)
+            {
+                if (is_tex_2d)
+                {
+                    tex = GpuTexture2D(gpu_system_, width, height, 1, format, flags);
+                }
+                else
+                {
+                    tex = GpuTexture3D(gpu_system_, width, height, depth, 1, format, flags);
+                }
             }
             tex.Name(std::move(name));
 
@@ -217,7 +236,7 @@ namespace AIHoloImager
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
                 MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, 0};
+                ext_mem_mip_desc.extent = {width, height, is_tex_2d ? 0 : depth};
                 ext_mem_mip_desc.format_desc = this->FormatDesc(format);
                 ext_mem_mip_desc.num_levels = 1;
                 ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
@@ -234,7 +253,7 @@ namespace AIHoloImager
                 p.src_ptr.x_size = width;
                 p.src_ptr.y_size = height;
                 p.dst_array = cu_array;
-                p.extent = {width, height, 1};
+                p.extent = {width, height, depth};
                 p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
                 TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
 
@@ -304,10 +323,12 @@ namespace AIHoloImager
             return tensor;
         }
 
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture& tex) const
         {
+            const bool is_tex_2d = (tex.Type() == GpuResourceType::Texture2D);
             const uint32_t width = tex.Width(0);
             const uint32_t height = tex.Height(0);
+            const uint32_t depth = tex.Depth(0);
             const GpuFormat fmt = tex.Format();
             const uint32_t num_channels = FormatChannels(fmt);
 
@@ -347,7 +368,7 @@ namespace AIHoloImager
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
                 MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, 0};
+                ext_mem_mip_desc.extent = {width, height, is_tex_2d ? 0 : depth};
                 ext_mem_mip_desc.format_desc = this->FormatDesc(fmt);
                 ext_mem_mip_desc.num_levels = 1;
                 ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
@@ -359,7 +380,7 @@ namespace AIHoloImager
                 TIFCE(cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0));
 
                 opts = opts.device(torch_device_);
-                tensor = torch::empty({1, height, width, num_channels}, opts);
+                tensor = torch::empty({depth, height, width, num_channels}, opts);
 
                 MiniCudaRt::Memcpy3DParams p{};
                 p.src_array = cu_array;
@@ -367,7 +388,7 @@ namespace AIHoloImager
                 p.dst_ptr.pitch = width * FormatSize(fmt);
                 p.dst_ptr.x_size = width;
                 p.dst_ptr.y_size = height;
-                p.extent = {width, height, 1};
+                p.extent = {width, height, depth};
                 p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
                 TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
 
@@ -381,7 +402,7 @@ namespace AIHoloImager
             else
             {
                 opts = opts.device(torch::kCPU);
-                tensor = torch::empty({1, height, width, num_channels}, opts);
+                tensor = torch::empty({depth, height, width, num_channels}, opts);
                 const auto rb_future = cmd_list.ReadBackAsync(tex, 0, tensor.mutable_data_ptr(), static_cast<uint32_t>(tensor.nbytes()));
                 rb_future.wait();
                 if (torch_device_.type() != torch::DeviceType::CPU)
@@ -400,7 +421,7 @@ namespace AIHoloImager
             this->Convert(cmd_list, tensor, buff, heap, flags, std::move(name));
         }
 
-        void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format, GpuResourceFlag flags,
+        void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture& tex, GpuFormat format, GpuResourceFlag flags,
             std::string_view name) const
         {
             const torch::Tensor& tensor = THPVariable_Unpack(const_cast<PyObject*>(&py_tensor));
@@ -413,7 +434,7 @@ namespace AIHoloImager
             return THPVariable_Wrap(tensor);
         }
 
-        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture& tex) const
         {
             const torch::Tensor tensor = this->Convert(cmd_list, tex);
             return THPVariable_Wrap(tensor);
@@ -598,7 +619,7 @@ namespace AIHoloImager
         impl_->Convert(cmd_list, tensor, buff, heap, flags, std::move(name));
     }
 
-    void TensorConverter::Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture2D& tex, GpuFormat format,
+    void TensorConverter::Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture& tex, GpuFormat format,
         GpuResourceFlag flags, std::string_view name) const
     {
         impl_->Convert(cmd_list, tensor, tex, format, flags, std::move(name));
@@ -610,7 +631,7 @@ namespace AIHoloImager
         return impl_->Convert(cmd_list, buff, size, data_type);
     }
 
-    torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+    torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture& tex) const
     {
         return impl_->Convert(cmd_list, tex);
     }
@@ -621,7 +642,7 @@ namespace AIHoloImager
         impl_->ConvertPy(cmd_list, py_tensor, buff, heap, flags, std::move(name));
     }
 
-    void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture2D& tex, GpuFormat format,
+    void TensorConverter::ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture& tex, GpuFormat format,
         GpuResourceFlag flags, std::string_view name) const
     {
         impl_->ConvertPy(cmd_list, py_tensor, tex, format, flags, std::move(name));
@@ -633,7 +654,7 @@ namespace AIHoloImager
         return impl_->ConvertPy(cmd_list, buff, size, data_type);
     }
 
-    PyObject* TensorConverter::ConvertPy(GpuCommandList& cmd_list, const GpuTexture2D& tex) const
+    PyObject* TensorConverter::ConvertPy(GpuCommandList& cmd_list, const GpuTexture& tex) const
     {
         return impl_->ConvertPy(cmd_list, tex);
     }
