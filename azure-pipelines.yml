@@ -68,7 +68,7 @@ stages:
 
       - script: |
           call "C:\Program Files\Microsoft Visual Studio\$(folder)\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
+          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_LINKER=link
           cmake --build Build -j
         displayName: 'Build'
 
