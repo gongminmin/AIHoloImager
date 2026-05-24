@@ -487,6 +487,7 @@ namespace AIHoloImager
         {
             const GpuBaseFormat base_fmt = BaseFormat(format);
             const uint32_t num_channels = FormatChannels(format);
+            const uint32_t fmt_ch_size = FormatChannelSize(format);
 
             MiniCudaRt::ChannelFormatKind kind;
             int ch_bytes;
@@ -494,17 +495,38 @@ namespace AIHoloImager
             {
             case GpuBaseFormat::Float:
                 kind = MiniCudaRt::ChannelFormatKind::Float;
-                ch_bytes = sizeof(float);
+                if (fmt_ch_size == 2)
+                {
+                    ch_bytes = sizeof(uint16_t);
+                }
+                else
+                {
+                    ch_bytes = sizeof(float);
+                }
                 break;
 
             case GpuBaseFormat::Sint:
                 kind = MiniCudaRt::ChannelFormatKind::Signed;
-                ch_bytes = sizeof(int32_t);
+                if (fmt_ch_size == 2)
+                {
+                    ch_bytes = sizeof(int16_t);
+                }
+                else
+                {
+                    ch_bytes = sizeof(int32_t);
+                }
                 break;
 
             case GpuBaseFormat::Uint:
                 kind = MiniCudaRt::ChannelFormatKind::Unsigned;
-                ch_bytes = sizeof(uint32_t);
+                if (fmt_ch_size == 2)
+                {
+                    ch_bytes = sizeof(uint16_t);
+                }
+                else
+                {
+                    ch_bytes = sizeof(uint32_t);
+                }
                 break;
 
             case GpuBaseFormat::UNorm:
