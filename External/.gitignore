@@ -12,6 +12,7 @@ nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 openMVS/OpenMVS_*
 PythonVenv/PythonVenv/
+Real-ESRGAN/RealESrGanModel/
 SPIRV-Reflect/SPIRV-Reflect/
 TRELLIS/TRELLIS-image-large/
 stb/stb/

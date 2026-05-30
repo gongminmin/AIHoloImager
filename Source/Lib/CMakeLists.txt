@@ -161,6 +161,13 @@ set(aihi_files
     Source/SfM/PointCloudEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
+    Source/SuperRes/RealESrGan/SrVggNetCompact.py
+    Source/SuperRes/RealESrGan/__init__.py
+    Source/SuperRes/Shader/BlendCs.hlsl
+    Source/SuperRes/Shader/ResizeCs.hlsl
+    Source/SuperRes/SuperResolution.cpp
+    Source/SuperRes/SuperResolution.hpp
+    Source/SuperRes/SuperResolution.py
     Source/TextureRecon/Shader/FlattenVs.hlsl
     Source/TextureRecon/Shader/FlattenPs.hlsl
     Source/TextureRecon/Shader/GenShadowMapVs.hlsl
@@ -233,6 +240,8 @@ AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotatePs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
+AddShaderFile(Source/SuperRes/Shader/BlendCs.hlsl "cs" "main")
+AddShaderFile(Source/SuperRes/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenVs.hlsl "vs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
 AddShaderFile(Source/TextureRecon/Shader/GenShadowMapVs.hlsl "vs" "main")
@@ -345,6 +354,9 @@ set(py_files
     Source/SfM/Extractor.py
     Source/SfM/Matcher.py
     Source/SfM/PointCloudEstimator.py
+    Source/SuperRes/RealESrGan/SrVggNetCompact.py
+    Source/SuperRes/RealESrGan/__init__.py
+    Source/SuperRes/SuperResolution.py
 )
 foreach(py_file ${py_files})
     string(REPLACE "/" ";" path_list ${py_file})
@@ -366,7 +378,7 @@ foreach(py_file ${py_files})
     )
 endforeach()
 
-add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployTrellisModels DeployMoGeModels DeployLightGlueModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)
+add_dependencies(AIHoloImagerLib DeployPython DeployU2NetModels DeployIntrinsicModels DeployRealESrganModels DeployTrellisModels DeployMoGeModels DeployLightGlueModels AIHoloImagerGpuDiffRender AIHoloImagerSubMConv)
 
 if(MSVC)
     target_link_libraries(AIHoloImagerLib

@@ -40,6 +40,7 @@
 #include "InvisibleFacesRemover.hpp"
 #include "MarchingCubes.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
+#include "SuperRes/SuperResolution.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
 #include "Util/BoundingBox.hpp"
 #include "Util/CameraUtil.hpp"
@@ -193,7 +194,8 @@ namespace AIHoloImager
     {
     public:
         explicit Impl(AIHoloImagerInternal& aihi)
-            : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), texture_recon_(aihi), gsplat_(aihi), optimizer_(aihi)
+            : aihi_(aihi), invisible_faces_remover_(aihi), marching_cubes_(aihi), super_res_(aihi), texture_recon_(aihi), gsplat_(aihi),
+              optimizer_(aihi)
         {
             PerfRegion init_perf(aihi_.PerfProfilerInstance(), "Mesh generator init");
 
@@ -614,18 +616,41 @@ namespace AIHoloImager
 
             std::vector<AIHoloImagerInternal::ProjectionDesc> updated_projections(sfm_input.projections.size());
             {
+                std::cout << "Super resolution...\n";
+
+                PerfRegion super_res_perf(profiler, "Super resolution");
+
+                for (size_t i = 0; i < sfm_input.projections.size(); ++i)
+                {
+                    std::cout << std::format("Upsampling images ({} / {})\r", i + 1, sfm_input.projections.size());
+
+                    updated_projections[i] = super_res_.Process(sfm_input.projections[i], 2);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    {
+                        auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                        const uint32_t width = updated_projections[i].image->Width(0);
+                        const uint32_t height = updated_projections[i].image->Height(0);
+                        Texture super_res_rb_tex(width, height, ElementFormat::RGBA8_UNorm);
+                        auto rb_future =
+                            cmd_list.ReadBackAsync(*updated_projections[i].image, 0, super_res_rb_tex.Data(), super_res_rb_tex.DataSize());
+                        gpu_system.Execute(std::move(cmd_list));
+
+                        rb_future.wait();
+
+                        SaveTexture(super_res_rb_tex, output_dir / std::format("SuperRes_{}.png", i));
+                    }
+#endif
+                }
+                std::cout << '\n';
+            }
+
+            {
                 const Obb world_obb = Obb::Transform(obb, model_mtx);
                 for (size_t i = 0; i < updated_projections.size(); ++i)
                 {
-                    auto& input_projection = sfm_input.projections[i];
                     auto& updated_projection = updated_projections[i];
-                    updated_projection.image = input_projection.image;
-                    updated_projection.view_mtx = input_projection.view_mtx;
-                    updated_projection.proj_mtx = input_projection.proj_mtx;
-                    updated_projection.full_width = input_projection.full_width;
-                    updated_projection.full_height = input_projection.full_height;
-                    updated_projection.vp_offset = input_projection.vp_offset;
-                    updated_projection.image_offset = input_projection.image_offset;
 
                     const glm::vec2 near_far_plane = CalcNearFarPlane(updated_projection.view_mtx, world_obb);
                     const float range = near_far_plane.y - near_far_plane.x;
@@ -2067,6 +2092,7 @@ namespace AIHoloImager
 
         InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;
+        SuperResolution super_res_;
         TextureReconstruction texture_recon_;
         GaussianSplatting gsplat_;
 
