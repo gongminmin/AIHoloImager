@@ -593,7 +593,7 @@ namespace AIHoloImager
                 }
 
                 gsplat_texture_result = texture_recon_.Process(mesh, glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(0.5f)),
-                    std::span(gsplat_projections.get(), gsplat_projections.get() + GSplatNumViews), texture_size);
+                    std::span(gsplat_projections.get(), GSplatNumViews), texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
