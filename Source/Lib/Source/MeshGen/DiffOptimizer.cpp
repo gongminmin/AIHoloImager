@@ -60,7 +60,7 @@ namespace AIHoloImager
             diff_optimizer_module_.reset();
         }
 
-        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
+        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
         {
             glm::vec3 scale;
             glm::quat rotation;
@@ -86,19 +86,15 @@ namespace AIHoloImager
                 colors[i] = mesh.VertexData<glm::vec3>(i, color_attrib_index);
             }
 
-            const uint32_t num_images = static_cast<uint32_t>(sfm_input.views.size());
+            const uint32_t num_images = static_cast<uint32_t>(projections.size());
             std::vector<glm::mat4x4> view_proj_mtxs(num_images);
             std::vector<glm::vec2> vp_offsets(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
-                const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+                const auto& projection = projections[i];
 
-                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
-                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
-                view_proj_mtxs[i] = proj_mtx * view_mtx;
-
-                vp_offsets[i] = CalcViewportOffset(intrinsic);
+                view_proj_mtxs[i] = projection.proj_mtx * projection.view_mtx;
+                vp_offsets[i] = projection.vp_offset;
             }
 
             {
@@ -117,13 +113,12 @@ namespace AIHoloImager
                 auto imgs_args = python_system.MakeTupleOfSize(num_images);
                 for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    const auto& view = sfm_input.views[i];
-                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+                    const auto& projection = projections[i];
 
-                    const auto& delighted_tex = view.delighted_tex;
+                    const auto& delighted_tex = *projection.image;
                     PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
-                    auto img_tuple = python_system.MakeTuple(
-                        std::move(image), view.delighted_offset.x, view.delighted_offset.y, intrinsic.width, intrinsic.height);
+                    auto img_tuple = python_system.MakeTuple(std::move(image), projection.image_offset.x, projection.image_offset.y,
+                        projection.full_width, projection.full_height);
                     python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
                 gpu_system.Execute(std::move(cmd_list));
@@ -151,8 +146,8 @@ namespace AIHoloImager
             }
         }
 
-        void OptimizeTexture(
-            Mesh& mesh, const glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input, const Texture& mask_tex)
+        void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+            const Texture& mask_tex)
         {
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
@@ -172,19 +167,15 @@ namespace AIHoloImager
                 tex_coords[i].y = 1 - tex_coords[i].y;
             }
 
-            const uint32_t num_images = static_cast<uint32_t>(sfm_input.views.size());
+            const uint32_t num_images = static_cast<uint32_t>(projections.size());
             std::vector<glm::mat4x4> mvp_mtxs(num_images);
             std::vector<glm::vec2> vp_offsets(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
-                const auto& view = sfm_input.views[i];
-                const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+                const auto& projection = projections[i];
 
-                const glm::mat4x4 view_mtx = CalcViewMatrix(view);
-                const glm::mat4x4 proj_mtx = CalcProjMatrix(intrinsic, 0.1f, 30.0f);
-                mvp_mtxs[i] = proj_mtx * view_mtx * model_mtx;
-
-                vp_offsets[i] = CalcViewportOffset(intrinsic);
+                mvp_mtxs[i] = projection.proj_mtx * projection.view_mtx * model_mtx;
+                vp_offsets[i] = projection.vp_offset;
             }
 
             auto& texture = mesh.AlbedoTexture();
@@ -205,13 +196,12 @@ namespace AIHoloImager
                 auto imgs_args = python_system.MakeTupleOfSize(num_images);
                 for (uint32_t i = 0; i < num_images; ++i)
                 {
-                    const auto& view = sfm_input.views[i];
-                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
+                    const auto& projection = projections[i];
 
-                    const auto& delighted_tex = view.delighted_tex;
+                    const auto& delighted_tex = *projection.image;
                     PyObjectPtr image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, delighted_tex));
-                    auto img_tuple = python_system.MakeTuple(
-                        std::move(image), view.delighted_offset.x, view.delighted_offset.y, intrinsic.width, intrinsic.height);
+                    auto img_tuple = python_system.MakeTuple(std::move(image), projection.image_offset.x, projection.image_offset.y,
+                        projection.full_width, projection.full_height);
                     python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
                 gpu_system.ExecuteAndReset(cmd_list);
@@ -258,14 +248,15 @@ namespace AIHoloImager
     DiffOptimizer::DiffOptimizer(DiffOptimizer&& other) noexcept = default;
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
-    void DiffOptimizer::OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input)
+    void DiffOptimizer::OptimizeTransform(
+        const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
     {
-        impl_->OptimizeTransform(mesh, model_mtx, sfm_input);
+        impl_->OptimizeTransform(mesh, model_mtx, std::move(projections));
     }
 
-    void DiffOptimizer::OptimizeTexture(
-        Mesh& mesh, const glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input, const Texture& mask_tex)
+    void DiffOptimizer::OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx,
+        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, const Texture& mask_tex)
     {
-        impl_->OptimizeTexture(mesh, model_mtx, sfm_input, mask_tex);
+        impl_->OptimizeTexture(mesh, model_mtx, std::move(projections), mask_tex);
     }
 } // namespace AIHoloImager

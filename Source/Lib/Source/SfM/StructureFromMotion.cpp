@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat3x3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -76,6 +77,7 @@
 #include "Gpu/GpuShader.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "MaskGen/MaskGenerator.hpp"
+#include "Util/BoundingBox.hpp"
 #include "Util/PerfProfiler.hpp"
 #ifdef AIHI_KEEP_INTERMEDIATES
     #include "AIHoloImager/Mesh.hpp"
@@ -149,6 +151,25 @@ namespace AIHoloImager
         {
             std::vector<std::unique_ptr<features::Regions>> feature_regions;
             std::shared_ptr<Regions_Provider> regions_provider;
+        };
+
+        struct View
+        {
+            GpuTexture2D delighted_tex;
+            glm::uvec2 delighted_offset;
+
+            uint32_t intrinsic_id;
+
+            glm::dmat3x3 rotation;
+            glm::dvec3 center;
+        };
+
+        struct PinholeIntrinsic
+        {
+            uint32_t width;
+            uint32_t height;
+
+            glm::dmat3x3 k;
         };
 
     public:
@@ -810,21 +831,20 @@ namespace AIHoloImager
 
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Export result");
 
-            Result ret;
-
-            ret.intrinsics.reserve(sfm_data.intrinsics.size());
+            std::vector<PinholeIntrinsic> intrinsics;
+            intrinsics.reserve(sfm_data.intrinsics.size());
             std::map<IndexT, uint32_t> intrinsic_id_mapping;
             for (const auto& mvg_intrinsic : sfm_data.intrinsics)
             {
                 if (intrinsic_id_mapping.find(mvg_intrinsic.first) == intrinsic_id_mapping.end())
                 {
-                    intrinsic_id_mapping.emplace(mvg_intrinsic.first, static_cast<uint32_t>(ret.intrinsics.size()));
+                    intrinsic_id_mapping.emplace(mvg_intrinsic.first, static_cast<uint32_t>(intrinsics.size()));
                 }
 
                 assert(dynamic_cast<const Pinhole_Intrinsic*>(mvg_intrinsic.second.get()) != nullptr);
                 const Pinhole_Intrinsic& cam = static_cast<const Pinhole_Intrinsic&>(*mvg_intrinsic.second);
 
-                auto& result_intrinsic = ret.intrinsics.emplace_back();
+                auto& result_intrinsic = intrinsics.emplace_back();
                 result_intrinsic.width = cam.w();
                 result_intrinsic.height = cam.h();
                 const auto& k = cam.K();
@@ -837,15 +857,16 @@ namespace AIHoloImager
             GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
 
-            ret.views.reserve(sfm_data.views.size());
+            std::vector<View> views;
+            views.reserve(sfm_data.views.size());
             std::map<IndexT, uint32_t> view_id_mapping;
             for (const auto& mvg_view : sfm_data.views)
             {
                 if (sfm_data.IsPoseAndIntrinsicDefined(mvg_view.second.get()))
                 {
-                    view_id_mapping.emplace(mvg_view.first, static_cast<uint32_t>(ret.views.size()));
+                    view_id_mapping.emplace(mvg_view.first, static_cast<uint32_t>(views.size()));
 
-                    auto& result_view = ret.views.emplace_back();
+                    auto& result_view = views.emplace_back();
                     result_view.intrinsic_id = intrinsic_id_mapping.at(mvg_view.second->id_intrinsic);
 
                     const auto& mvg_pose = sfm_data.poses.at(mvg_view.second->id_pose);
@@ -927,6 +948,28 @@ namespace AIHoloImager
             distort_gpu_tex = GpuTexture2D();
             undistort_gpu_tex = GpuTexture2D();
 
+            Result ret;
+
+            ret.projections.resize(views.size());
+            for (size_t i = 0; i < views.size(); ++i)
+            {
+                auto& projection = ret.projections[i];
+
+                auto& view = views[i];
+                const auto& intrinsic = intrinsics[view.intrinsic_id];
+
+                projection.image = std::make_shared<GpuTexture2D>(std::move(view.delighted_tex));
+
+                projection.view_mtx = this->CalcViewMatrix(view);
+                projection.proj_mtx = this->CalcProjMatrix(intrinsic, 0.1f, 30.0f);
+
+                projection.full_width = intrinsic.width;
+                projection.full_height = intrinsic.height;
+
+                projection.vp_offset = this->CalcViewportOffset(intrinsic);
+                projection.image_offset = view.delighted_offset;
+            }
+
             const auto& sfm_landmarks = sfm_data.GetLandmarks();
             if (sfm_landmarks.empty())
             {
@@ -947,7 +990,7 @@ namespace AIHoloImager
 
                     auto py_image = python_system.MakeObject(
                         std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
-                    const double fx = ret.intrinsics[0].k[0].x;
+                    const double fx = intrinsics[0].k[0].x;
                     const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
                     auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image),
                         width, height, FormatChannels(image.Format()), fov_x);
@@ -1138,6 +1181,27 @@ namespace AIHoloImager
             return roi_image;
         }
 
+        static glm::mat4x4 CalcViewMatrix(const View& view)
+        {
+            const glm::vec3 camera_pos = view.center;
+            const glm::vec3 camera_up_vec = -view.rotation[1];
+            const glm::vec3 camera_forward_vec = view.rotation[2];
+            return glm::lookAtRH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
+        }
+        static glm::mat4x4 CalcProjMatrix(const PinholeIntrinsic& intrinsic, float near_plane, float far_plane)
+        {
+            const double fy = intrinsic.k[1].y;
+            const float fov = static_cast<float>(2 * std::atan2(intrinsic.height, 2 * fy));
+            return glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
+        }
+        static glm::vec2 CalcViewportOffset(const PinholeIntrinsic& intrinsic)
+        {
+            return {
+                intrinsic.k[0].z - intrinsic.width / 2,
+                intrinsic.k[1].z - intrinsic.height / 2,
+            };
+        }
+
     private:
         AIHoloImagerInternal& aihi_;
 
@@ -1192,53 +1256,5 @@ namespace AIHoloImager
     StructureFromMotion::Result StructureFromMotion::Process(const std::filesystem::path& image_dir, bool sequential, bool no_delight)
     {
         return impl_->Process(image_dir, sequential, no_delight);
-    }
-
-    glm::mat4x4 CalcViewMatrix(const StructureFromMotion::View& view)
-    {
-        const glm::vec3 camera_pos = view.center;
-        const glm::vec3 camera_up_vec = -view.rotation[1];
-        const glm::vec3 camera_forward_vec = view.rotation[2];
-        return glm::lookAtRH(camera_pos, camera_pos + camera_forward_vec, camera_up_vec);
-    }
-
-    glm::mat4x4 CalcProjMatrix(const StructureFromMotion::PinholeIntrinsic& intrinsic, float near_plane, float far_plane)
-    {
-        const double fy = intrinsic.k[1].y;
-        const float fov = static_cast<float>(2 * std::atan2(intrinsic.height, 2 * fy));
-        return glm::perspectiveRH_ZO(fov, static_cast<float>(intrinsic.width) / intrinsic.height, near_plane, far_plane);
-    }
-
-    glm::vec2 CalcNearFarPlane(const glm::mat4x4& view_mtx, const Obb& obb)
-    {
-        glm::vec3 corners[8];
-        Obb::GetCorners(obb, corners);
-
-        const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
-
-        float min_z_es = std::numeric_limits<float>::max();
-        float max_z_es = std::numeric_limits<float>::lowest();
-        for (const auto& corner : corners)
-        {
-            const glm::vec4 pos(corner.x, corner.y, corner.z, 1);
-            const float z = glm::dot(pos, z_col);
-            min_z_es = std::min(min_z_es, z);
-            max_z_es = std::max(max_z_es, z);
-        }
-
-        const float center_es_z = (max_z_es + min_z_es) / 2;
-        const float extent_es_z = (max_z_es - min_z_es) / 2 * 1.05f;
-
-        const float near_plane = center_es_z + extent_es_z;
-        const float far_plane = center_es_z - extent_es_z;
-        return glm::vec2(-near_plane, -far_plane);
-    }
-
-    glm::vec2 CalcViewportOffset(const StructureFromMotion::PinholeIntrinsic& intrinsic)
-    {
-        return {
-            intrinsic.k[0].z - intrinsic.width / 2,
-            intrinsic.k[1].z - intrinsic.height / 2,
-        };
     }
 } // namespace AIHoloImager

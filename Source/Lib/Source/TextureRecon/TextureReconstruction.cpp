@@ -90,7 +90,8 @@ namespace AIHoloImager
             }
         }
 
-        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const ProjectionDesc> projections, uint32_t texture_size)
+        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+            uint32_t texture_size)
         {
 #ifdef AIHI_KEEP_INTERMEDIATES
             const auto output_dir = aihi_.TmpDir() / "Texture";
@@ -204,7 +205,7 @@ namespace AIHoloImager
 
         GpuTexture2D GenTextureByProjection(GpuCommandList& cmd_list, const GpuBuffer& mesh_vb, const GpuBuffer& mesh_ib,
             const glm::mat4x4& model_mtx, const GpuTexture2D& flatten_pos_tex, const GpuTexture2D& flatten_normal_tex,
-            std::span<const ProjectionDesc> projections, uint32_t texture_size)
+            std::span<const AIHoloImagerInternal::ProjectionDesc> projections, uint32_t texture_size)
         {
             PerfRegion perf(aihi_.PerfProfilerInstance(), "Projection", &cmd_list);
 
@@ -258,7 +259,7 @@ namespace AIHoloImager
         }
 
         void GenShadowMap(GpuCommandList& cmd_list, const GpuBuffer& vb, const GpuBuffer& ib, uint32_t num_indices,
-            const glm::mat4x4& mvp_mtx, const ProjectionDesc& projection, GpuDepthStencilView& shadow_map_dsv)
+            const glm::mat4x4& mvp_mtx, const AIHoloImagerInternal::ProjectionDesc& projection, GpuDepthStencilView& shadow_map_dsv)
         {
             GpuConstantBufferOfType<GenShadowMapConstantBuffer> gen_shadow_map_cb(gpu_system_, "gen_shadow_map_cb");
             gen_shadow_map_cb->mvp = glm::transpose(mvp_mtx);
@@ -285,7 +286,7 @@ namespace AIHoloImager
                 std::span(&viewport, 1), {});
         }
 
-        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const ProjectionDesc& projection,
+        void ProjectTexture(GpuCommandList& cmd_list, uint32_t texture_size, const AIHoloImagerInternal::ProjectionDesc& projection,
             const GpuShaderResourceView& flatten_pos_srv, const GpuShaderResourceView& flatten_normal_srv,
             const GpuShaderResourceView& projective_map_srv, const GpuShaderResourceView& shadow_map_srv,
             GpuUnorderedAccessView& accum_color_uav)
@@ -411,7 +412,7 @@ namespace AIHoloImager
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
     TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx,
-        std::span<const TextureReconstruction::ProjectionDesc> projections, uint32_t texture_size)
+        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, uint32_t texture_size)
     {
         return impl_->Process(mesh, model_mtx, std::move(projections), texture_size);
     }

@@ -8,7 +8,6 @@
 #include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "SfM/StructureFromMotion.hpp"
 
 namespace AIHoloImager
 {
@@ -23,9 +22,9 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input);
-        void OptimizeTexture(
-            Mesh& mesh, const glm::mat4x4& model_mtx, const StructureFromMotion::Result& sfm_input, const Texture& mask_tex);
+        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections);
+        void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+            const Texture& mask_tex);
 
     private:
         class Impl;

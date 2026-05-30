@@ -164,6 +164,31 @@ namespace AIHoloImager
     }
 #endif
 
+    glm::vec2 CalcNearFarPlane(const glm::mat4x4& view_mtx, const Obb& obb)
+    {
+        glm::vec3 corners[8];
+        Obb::GetCorners(obb, corners);
+
+        const glm::vec4 z_col(view_mtx[0].z, view_mtx[1].z, view_mtx[2].z, view_mtx[3].z);
+
+        float min_z_es = std::numeric_limits<float>::max();
+        float max_z_es = std::numeric_limits<float>::lowest();
+        for (const auto& corner : corners)
+        {
+            const glm::vec4 pos(corner.x, corner.y, corner.z, 1);
+            const float z = glm::dot(pos, z_col);
+            min_z_es = std::min(min_z_es, z);
+            max_z_es = std::max(max_z_es, z);
+        }
+
+        const float center_es_z = (max_z_es + min_z_es) / 2;
+        const float extent_es_z = (max_z_es - min_z_es) / 2 * 1.05f;
+
+        const float near_plane = center_es_z + extent_es_z;
+        const float far_plane = center_es_z - extent_es_z;
+        return glm::vec2(-near_plane, -far_plane);
+    }
+
     class MeshGenerator::Impl
     {
     public:
@@ -418,8 +443,8 @@ namespace AIHoloImager
                 }
 #endif
 
-                optimizer_.OptimizeTransform(pos_color_mesh, model_mtx, sfm_input);
-                if (sfm_input.views.size() == 1)
+                optimizer_.OptimizeTransform(pos_color_mesh, model_mtx, std::span(sfm_input.projections));
+                if (sfm_input.projections.size() == 1)
                 {
                     // When there is only one image, the point cloud only covers the front half of the object. Scale the model to
                     // compensate.
@@ -507,17 +532,19 @@ namespace AIHoloImager
 
                 constexpr uint32_t GSplatNumViews = 8;
                 constexpr uint32_t GSplatRenderedSize = 1024;
-                auto gsplat_texs = std::make_unique<GpuTexture2D[]>(GSplatNumViews);
-                auto gsplat_view_mtxs = std::make_unique<glm::mat4x4[]>(GSplatNumViews);
-                auto gsplat_proj_mtxs = std::make_unique<glm::mat4x4[]>(GSplatNumViews);
+                auto gsplat_projections = std::make_unique<AIHoloImagerInternal::ProjectionDesc[]>(GSplatNumViews);
                 for (uint32_t i = 0; i < GSplatNumViews; ++i)
                 {
-                    auto& rendered_tex = gsplat_texs[i];
-                    auto& view_mtx = gsplat_view_mtxs[i];
-                    auto& proj_mtx = gsplat_proj_mtxs[i];
+                    auto& projection = gsplat_projections[i];
 
-                    rendered_tex = GpuTexture2D(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm,
-                        GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, std::format("gsplat_rendered_{}", i));
+                    projection.full_width = GSplatRenderedSize;
+                    projection.full_height = GSplatRenderedSize;
+                    projection.vp_offset = glm::vec2(0, 0);
+                    projection.image_offset = glm::uvec2(0, 0);
+
+                    projection.image =
+                        std::make_shared<GpuTexture2D>(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm,
+                            GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, std::format("gsplat_rendered_{}", i));
 
                     const glm::vec2 angle = SphereHammersleySequence(i, GSplatNumViews);
                     const glm::vec3 camera_pos = SphericalCameraPose(angle.x, angle.y, 1.5f);
@@ -532,13 +559,13 @@ namespace AIHoloImager
                         camera_up_vec = glm::vec3(0, 0, 1);
                     }
 
-                    view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), camera_up_vec);
-                    proj_mtx = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.5f, 2.5f);
+                    projection.view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), camera_up_vec);
+                    projection.proj_mtx = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.5f, 2.5f);
 
                     {
                         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
-                        GpuRenderTargetView rendered_tex_rtv(gpu_system, rendered_tex);
+                        GpuRenderTargetView rendered_tex_rtv(gpu_system, *projection.image);
 
                         const float bg_clr[] = {0.0f, 0.0f, 0.0f, 1.0f};
                         cmd_list.Clear(rendered_tex_rtv, bg_clr);
@@ -546,16 +573,16 @@ namespace AIHoloImager
                         gpu_system.Execute(std::move(cmd_list));
                     }
 
-                    gsplat_.Render(gaussians, view_mtx, proj_mtx, 0.1f, rendered_tex);
+                    gsplat_.Render(gaussians, projection.view_mtx, projection.proj_mtx, 0.1f, *projection.image);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                     {
                         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                        const uint32_t width = rendered_tex.Width(0);
-                        const uint32_t height = rendered_tex.Height(0);
+                        const uint32_t width = projection.image->Width(0);
+                        const uint32_t height = projection.image->Height(0);
                         Texture gsplat_rb_tex(width, height, ElementFormat::RGBA8_UNorm);
-                        auto rb_future = cmd_list.ReadBackAsync(rendered_tex, 0, gsplat_rb_tex.Data(), gsplat_rb_tex.DataSize());
+                        auto rb_future = cmd_list.ReadBackAsync(*projection.image, 0, gsplat_rb_tex.Data(), gsplat_rb_tex.DataSize());
                         gpu_system.Execute(std::move(cmd_list));
 
                         rb_future.wait();
@@ -565,22 +592,6 @@ namespace AIHoloImager
 #endif
                 }
 
-                auto gsplat_projections = std::make_unique<TextureReconstruction::ProjectionDesc[]>(GSplatNumViews);
-                for (uint32_t i = 0; i < GSplatNumViews; ++i)
-                {
-                    auto& projection = gsplat_projections[i];
-
-                    projection.image = &gsplat_texs[i];
-
-                    projection.view_mtx = gsplat_view_mtxs[i];
-                    projection.proj_mtx = gsplat_proj_mtxs[i];
-
-                    projection.full_width = GSplatRenderedSize;
-                    projection.full_height = GSplatRenderedSize;
-
-                    projection.vp_offset = glm::vec2(0, 0);
-                    projection.image_offset = glm::uvec2(0, 0);
-                }
                 gsplat_texture_result = texture_recon_.Process(mesh, glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(0.5f)),
                     std::span(gsplat_projections.get(), gsplat_projections.get() + GSplatNumViews), texture_size);
 
@@ -601,35 +612,35 @@ namespace AIHoloImager
 #endif
             }
 
+            std::vector<AIHoloImagerInternal::ProjectionDesc> updated_projections(sfm_input.projections.size());
+            {
+                const Obb world_obb = Obb::Transform(obb, model_mtx);
+                for (size_t i = 0; i < updated_projections.size(); ++i)
+                {
+                    auto& input_projection = sfm_input.projections[i];
+                    auto& updated_projection = updated_projections[i];
+                    updated_projection.image = input_projection.image;
+                    updated_projection.view_mtx = input_projection.view_mtx;
+                    updated_projection.proj_mtx = input_projection.proj_mtx;
+                    updated_projection.full_width = input_projection.full_width;
+                    updated_projection.full_height = input_projection.full_height;
+                    updated_projection.vp_offset = input_projection.vp_offset;
+                    updated_projection.image_offset = input_projection.image_offset;
+
+                    const glm::vec2 near_far_plane = CalcNearFarPlane(updated_projection.view_mtx, world_obb);
+                    const float range = near_far_plane.y - near_far_plane.x;
+                    updated_projection.proj_mtx[2][2] = -near_far_plane.y / range;
+                    updated_projection.proj_mtx[3][2] = -(near_far_plane.y * near_far_plane.x) / range;
+                }
+            }
+
             TextureReconstruction::Result photo_texture_result;
             {
                 std::cout << "Generating texture from photos...\n";
 
                 PerfRegion photo_texturing_perf(profiler, "Generate photo texture");
 
-                const Obb world_obb = Obb::Transform(obb, model_mtx);
-                auto projections = std::make_unique<TextureReconstruction::ProjectionDesc[]>(sfm_input.views.size());
-                for (size_t i = 0; i < sfm_input.views.size(); ++i)
-                {
-                    auto& projection = projections[i];
-
-                    projection.image = &sfm_input.views[i].delighted_tex;
-
-                    const auto& view = sfm_input.views[i];
-                    const auto& intrinsic = sfm_input.intrinsics[view.intrinsic_id];
-
-                    projection.view_mtx = CalcViewMatrix(view);
-                    const glm::vec2 near_far_plane = CalcNearFarPlane(projection.view_mtx, world_obb);
-                    projection.proj_mtx = CalcProjMatrix(intrinsic, near_far_plane.x, near_far_plane.y);
-
-                    projection.full_width = intrinsic.width;
-                    projection.full_height = intrinsic.height;
-
-                    projection.vp_offset = CalcViewportOffset(intrinsic);
-                    projection.image_offset = view.delighted_offset;
-                }
-                photo_texture_result = texture_recon_.Process(
-                    mesh, model_mtx, std::span(projections.get(), projections.get() + sfm_input.views.size()), texture_size);
+                photo_texture_result = texture_recon_.Process(mesh, model_mtx, std::span(updated_projections), texture_size);
             }
 
             Texture mask_tex(texture_size, texture_size, ElementFormat::R8_UNorm);
@@ -696,7 +707,7 @@ namespace AIHoloImager
 #endif
             }
 
-            if (sfm_input.views.size() > 1)
+            if (updated_projections.size() > 1)
             {
                 std::cout << "Optimizing texture...\n";
 
@@ -706,7 +717,7 @@ namespace AIHoloImager
 
                 PerfRegion opt_texture_perf(profiler, "Optimize texture");
 
-                optimizer_.OptimizeTexture(mesh, model_mtx, sfm_input, mask_tex);
+                optimizer_.OptimizeTexture(mesh, model_mtx, std::span(updated_projections), mask_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveTexture(mesh.AlbedoTexture(), output_dir / "AfterOpt.png");
@@ -783,12 +794,12 @@ namespace AIHoloImager
             std::vector<glm::vec3> object_colors;
             std::vector<glm::vec3> plane_colors;
 #endif
-            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            for (uint32_t i = 0; i < sfm_input.projections.size(); ++i)
             {
-                const auto& view = sfm_input.views[i];
+                const auto& projection = sfm_input.projections[i];
 
-                const uint32_t delighted_width = view.delighted_tex.Width(0);
-                const uint32_t delighted_height = view.delighted_tex.Height(0);
+                const uint32_t delighted_width = projection.image->Width(0);
+                const uint32_t delighted_height = projection.image->Height(0);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 Texture delighted_image(delighted_width, delighted_height, ElementFormat::RGBA8_UNorm);
@@ -823,7 +834,7 @@ namespace AIHoloImager
                             erosion_mask_cb.UploadStaging();
                             const GpuConstantBufferView erosion_cbv(gpu_system, erosion_mask_cb);
 
-                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? view.delighted_tex : erosion_mask_gpu_texs[src]);
+                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? *projection.image : erosion_mask_gpu_texs[src]);
                             GpuUnorderedAccessView erosion_uav(gpu_system, erosion_mask_gpu_texs[dst]);
 
                             std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
@@ -868,7 +879,7 @@ namespace AIHoloImager
                             dilation_mask_cb.UploadStaging();
                             const GpuConstantBufferView dilation_cbv(gpu_system, dilation_mask_cb);
 
-                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? view.delighted_tex : dilation_mask_gpu_texs[src]);
+                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? *projection.image : dilation_mask_gpu_texs[src]);
                             GpuUnorderedAccessView dilation_uav(gpu_system, dilation_mask_gpu_texs[dst]);
 
                             std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
@@ -891,7 +902,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                     std::future<void> delighted_rb_future =
-                        cmd_list.ReadBackAsync(view.delighted_tex, 0, delighted_image.Data(), delighted_image.DataSize());
+                        cmd_list.ReadBackAsync(*projection.image, 0, delighted_image.Data(), delighted_image.DataSize());
 #endif
 
                     gpu_system.Execute(std::move(cmd_list));
@@ -911,15 +922,15 @@ namespace AIHoloImager
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x =
-                    static_cast<uint32_t>(std::max(static_cast<int32_t>(view.delighted_offset.x) - static_cast<int32_t>(Gap), 0));
-                const uint32_t beg_y = view.delighted_offset.y + delighted_height - Gap;
-                const uint32_t end_x = view.delighted_offset.x + delighted_width + Gap;
-                const uint32_t end_y = view.delighted_offset.y + delighted_height + Gap;
+                    static_cast<uint32_t>(std::max(static_cast<int32_t>(projection.image_offset.x) - static_cast<int32_t>(Gap), 0));
+                const uint32_t beg_y = projection.image_offset.y + delighted_height - Gap;
+                const uint32_t end_x = projection.image_offset.x + delighted_width + Gap;
+                const uint32_t end_y = projection.image_offset.y + delighted_height + Gap;
 
-                const uint32_t delighted_beg_x = view.delighted_offset.x;
-                const uint32_t delighted_beg_y = view.delighted_offset.y;
-                const uint32_t delighted_end_x = view.delighted_offset.x + delighted_width;
-                const uint32_t delighted_end_y = view.delighted_offset.y + delighted_height;
+                const uint32_t delighted_beg_x = projection.image_offset.x;
+                const uint32_t delighted_beg_y = projection.image_offset.y;
+                const uint32_t delighted_end_x = projection.image_offset.x + delighted_width;
+                const uint32_t delighted_end_y = projection.image_offset.y + delighted_height;
 
                 for (size_t j = 0; j < sfm_input.structure.size(); ++j)
                 {
@@ -1064,20 +1075,20 @@ namespace AIHoloImager
 
             const glm::vec4 target_up_vec_ws = glm::vec4(up_vec.x, up_vec.y, up_vec.z, 0);
 
-            std::vector<GpuTexture2D> rotated_images(sfm_input.views.size());
-            for (uint32_t i = 0; i < sfm_input.views.size(); ++i)
+            std::vector<GpuTexture2D> rotated_images(sfm_input.projections.size());
+            for (uint32_t i = 0; i < sfm_input.projections.size(); ++i)
             {
-                const auto& view = sfm_input.views[i];
+                const auto& projection = sfm_input.projections[i];
 
                 GpuTexture2D rotated_roi_tex;
                 {
-                    const uint32_t delighted_width = view.delighted_tex.Width(0);
-                    const uint32_t delighted_height = view.delighted_tex.Height(0);
-                    const GpuShaderResourceView delighted_srv(gpu_system, view.delighted_tex);
+                    const uint32_t delighted_width = projection.image->Width(0);
+                    const uint32_t delighted_height = projection.image->Height(0);
+                    const GpuShaderResourceView delighted_srv(gpu_system, *projection.image);
 
                     GpuConstantBufferOfType<RotateConstantBuffer> rotation_cb(gpu_system, "rotation_cb");
 
-                    const auto& view_mtx = CalcViewMatrix(view);
+                    const auto& view_mtx = projection.view_mtx;
                     const glm::vec3 forward_vec(0, 0, 1);
                     const glm::vec3 target_up_vec = glm::normalize(glm::vec3(view_mtx * target_up_vec_ws));
                     const glm::vec3 old_right_vec(1, 0, 0);
