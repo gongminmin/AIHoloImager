@@ -35,7 +35,7 @@ certifi==2025.10.5
 charset-normalizer==3.4.0
 #colorama==0.4.6
 #filelock==3.20.3
-idna==3.11
+idna==3.15
 requests==2.33.0
 #tqdm==4.67.0
 #typing-extensions==4.15.0
