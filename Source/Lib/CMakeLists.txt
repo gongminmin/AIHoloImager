@@ -225,6 +225,7 @@ AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshGen/Shader/ExtractMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")
@@ -237,7 +238,6 @@ AddShaderFile(Source/TextureRecon/Shader/FlattenPs.hlsl "ps" "main")
 AddShaderFile(Source/TextureRecon/Shader/GenShadowMapVs.hlsl "vs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ProjectTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/ResolveTextureCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ExtractMaskCs.hlsl "cs" "main")
 
 target_include_directories(AIHoloImagerLib
     PUBLIC
