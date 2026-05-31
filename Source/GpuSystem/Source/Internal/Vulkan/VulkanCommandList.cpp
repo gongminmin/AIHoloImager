@@ -727,15 +727,8 @@ namespace AIHoloImager
         const uint32_t height = dest.Height(mip);
         const uint32_t depth = dest.Depth(mip);
 
-        const VkDevice vulkan_device = VulkanImp(*gpu_system_).Device();
         auto& vulkan_dst = VulkanImp(dest);
-        const VkImage vulkan_dst_image = vulkan_dst.Image();
-
-        VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(vulkan_device, vulkan_dst_image, &requirements);
-
-        auto upload_mem_block =
-            gpu_system_->AllocUploadMemBlock(static_cast<uint32_t>(requirements.size), gpu_system_->TextureDataAlignment());
+        auto upload_mem_block = gpu_system_->AllocUploadMemBlock(vulkan_dst.AllocationSize(), gpu_system_->TextureDataAlignment());
 
         VkBuffer vulkan_src_buffer = VulkanImp(*upload_mem_block.Buffer()).Buffer();
 
@@ -782,7 +775,7 @@ namespace AIHoloImager
         const VkCopyBufferToImageInfo2 copy_info{
             .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
             .srcBuffer = vulkan_src_buffer,
-            .dstImage = vulkan_dst_image,
+            .dstImage = vulkan_dst.Image(),
             .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             .regionCount = 1,
             .pRegions = &region,
@@ -863,7 +856,6 @@ namespace AIHoloImager
         const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func)
     {
         auto& vulkan_system = VulkanImp(*gpu_system_);
-        const auto& vulkan_src = VulkanImp(src);
 
         uint32_t mip;
         uint32_t array_slice;
@@ -873,14 +865,8 @@ namespace AIHoloImager
         const uint32_t height = src.Height(mip);
         const uint32_t depth = src.Depth(mip);
 
-        const VkDevice vulkan_device = vulkan_system.Device();
-        const VkImage vulkan_src_image = vulkan_src.Image();
-
-        VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(vulkan_device, vulkan_src_image, &requirements);
-
-        auto read_back_mem_block =
-            gpu_system_->AllocReadBackMemBlock(static_cast<uint32_t>(requirements.size), gpu_system_->TextureDataAlignment());
+        const auto& vulkan_src = VulkanImp(src);
+        auto read_back_mem_block = gpu_system_->AllocReadBackMemBlock(vulkan_src.AllocationSize(), gpu_system_->TextureDataAlignment());
 
         VkBuffer vulkan_dst_buff = VulkanImp(*read_back_mem_block.Buffer()).Buffer();
 
@@ -910,7 +896,7 @@ namespace AIHoloImager
         };
         const VkCopyImageToBufferInfo2 copy_info{
             .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2,
-            .srcImage = vulkan_src_image,
+            .srcImage = vulkan_src.Image(),
             .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             .dstBuffer = vulkan_dst_buff,
             .regionCount = 1,

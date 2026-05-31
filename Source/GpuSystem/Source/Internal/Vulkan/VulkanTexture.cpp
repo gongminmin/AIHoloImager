@@ -56,9 +56,7 @@ namespace AIHoloImager
 
         TIFVK(vkCreateImage(vulkan_device, &image_create_info_, nullptr, &texture_.Object()));
 
-        VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(vulkan_device, texture_.Object(), &requirements);
-        this->CreateMemory(type, requirements, GpuHeap::Default, flags);
+        this->CreateMemory(type, this->MemoryRequirements(), GpuHeap::Default, flags);
         TIFVK(vkBindImageMemory(vulkan_device, texture_.Object(), this->Memory(), 0));
 
         this->Name(std::move(name));
@@ -113,13 +111,25 @@ namespace AIHoloImager
         return this->VulkanResource::Type();
     }
 
-    uint32_t VulkanTexture::AllocationSize() const noexcept
+    VkMemoryRequirements VulkanTexture::MemoryRequirements() const noexcept
     {
         const VkDevice vulkan_device = texture_.VulkanSys()->Device();
 
-        VkMemoryRequirements requirements;
-        vkGetImageMemoryRequirements(vulkan_device, texture_.Object(), &requirements);
-        return static_cast<uint32_t>(requirements.size);
+        const VkImageMemoryRequirementsInfo2 req_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+            .image = texture_.Object(),
+        };
+        VkMemoryRequirements2 requirements = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+        };
+        vkGetImageMemoryRequirements2(vulkan_device, &req_info, &requirements);
+
+        return requirements.memoryRequirements;
+    }
+
+    uint32_t VulkanTexture::AllocationSize() const noexcept
+    {
+        return static_cast<uint32_t>(this->MemoryRequirements().size);
     }
 
     GpuResourceFlag VulkanTexture::Flags() const noexcept

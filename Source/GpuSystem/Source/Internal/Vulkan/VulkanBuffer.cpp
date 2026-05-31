@@ -71,9 +71,7 @@ namespace AIHoloImager
 
         TIFVK(vkCreateBuffer(vulkan_device, &buff_create_info_, nullptr, &buff_.Object()));
 
-        VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(vulkan_device, buff_.Object(), &requirements);
-        this->CreateMemory(GpuResourceType::Buffer, requirements, heap, flags);
+        this->CreateMemory(GpuResourceType::Buffer, this->MemoryRequirements(), heap, flags);
         TIFVK(vkBindBufferMemory(vulkan_device, buff_.Object(), this->Memory(), 0));
 
         this->Name(std::move(name));
@@ -133,13 +131,25 @@ namespace AIHoloImager
         return this->VulkanResource::Type();
     }
 
-    uint32_t VulkanBuffer::AllocationSize() const noexcept
+    VkMemoryRequirements VulkanBuffer::MemoryRequirements() const noexcept
     {
         const VkDevice vulkan_device = buff_.VulkanSys()->Device();
 
-        VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(vulkan_device, buff_.Object(), &requirements);
-        return static_cast<uint32_t>(requirements.size);
+        const VkBufferMemoryRequirementsInfo2 req_info{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+            .buffer = buff_.Object(),
+        };
+        VkMemoryRequirements2 requirements = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+        };
+        vkGetBufferMemoryRequirements2(vulkan_device, &req_info, &requirements);
+
+        return requirements.memoryRequirements;
+    }
+
+    uint32_t VulkanBuffer::AllocationSize() const noexcept
+    {
+        return static_cast<uint32_t>(this->MemoryRequirements().size);
     }
 
     GpuResourceFlag VulkanBuffer::Flags() const noexcept
