@@ -44,8 +44,8 @@ namespace AIHoloImager
             return this->CommandBuffer();
         }
 
-        void Transition(std::span<const VkBufferMemoryBarrier> barriers) const noexcept;
-        void Transition(std::span<const VkImageMemoryBarrier> barriers) const noexcept;
+        void Transition(std::span<const VkBufferMemoryBarrier2> barriers) const noexcept;
+        void Transition(std::span<const VkImageMemoryBarrier2> barriers) const noexcept;
 
         void Clear(GpuRenderTargetView& rtv, const float color[4]) override;
         void Clear(GpuUnorderedAccessView& uav, const float color[4]) override;

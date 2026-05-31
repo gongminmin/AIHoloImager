@@ -177,6 +177,7 @@ namespace AIHoloImager
                 vulkan12_features.timelineSemaphore,
                 vulkan13_features.shaderDemoteToHelperInvocation,
                 vulkan13_features.dynamicRendering,
+                vulkan13_features.synchronization2,
             };
 
             return std::all_of(std::begin(requires_bits), std::end(requires_bits), [](VkBool32 bit) { return bit == VK_TRUE; });
@@ -324,6 +325,7 @@ namespace AIHoloImager
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = &enable_vulkan12_features,
             .shaderDemoteToHelperInvocation = VK_TRUE,
+            .synchronization2 = VK_TRUE,
             .dynamicRendering = VK_TRUE,
         };
 

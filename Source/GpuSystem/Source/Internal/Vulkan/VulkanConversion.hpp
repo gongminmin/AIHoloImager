@@ -26,7 +26,7 @@ namespace AIHoloImager
 
     VkImageType ToVulkanImageType(GpuResourceType type);
 
-    std::tuple<VkAccessFlags, VkAccessFlags> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout);
+    std::tuple<VkAccessFlags2, VkAccessFlags2> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout);
 
     VkImageAspectFlags ToVulkanAspectMask(GpuFormat fmt) noexcept;
 

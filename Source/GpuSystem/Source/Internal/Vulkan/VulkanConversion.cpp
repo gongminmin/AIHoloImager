@@ -288,64 +288,64 @@ namespace AIHoloImager
         }
     }
 
-    std::tuple<VkAccessFlags, VkAccessFlags> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout)
+    std::tuple<VkAccessFlags2, VkAccessFlags2> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout)
     {
-        VkAccessFlags src_access_mask;
+        VkAccessFlags2 src_access_mask;
         switch (old_layout)
         {
         case VK_IMAGE_LAYOUT_UNDEFINED:
             src_access_mask = 0;
             break;
         case VK_IMAGE_LAYOUT_PREINITIALIZED:
-            src_access_mask = VK_ACCESS_HOST_WRITE_BIT;
+            src_access_mask = VK_ACCESS_2_HOST_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            src_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            src_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            src_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-            src_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+            src_access_mask = VK_ACCESS_2_TRANSFER_READ_BIT;
             break;
         case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-            src_access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            src_access_mask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-            src_access_mask = VK_ACCESS_SHADER_READ_BIT;
+            src_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
             break;
         case VK_IMAGE_LAYOUT_GENERAL:
-            src_access_mask = VK_ACCESS_SHADER_WRITE_BIT;
+            src_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;
             break;
 
         default:
             Unreachable("Unsupported old layout");
         }
 
-        VkAccessFlags dst_access_mask;
+        VkAccessFlags2 dst_access_mask;
         switch (new_layout)
         {
         case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-            dst_access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            dst_access_mask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-            dst_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+            dst_access_mask = VK_ACCESS_2_TRANSFER_READ_BIT;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            dst_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dst_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            dst_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            dst_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
             break;
         case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
             if (src_access_mask == 0)
             {
-                src_access_mask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+                src_access_mask = VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
             }
-            dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
+            dst_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
             break;
         case VK_IMAGE_LAYOUT_GENERAL:
-            dst_access_mask = VK_ACCESS_SHADER_WRITE_BIT;
+            dst_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;
             break;
 
         default:

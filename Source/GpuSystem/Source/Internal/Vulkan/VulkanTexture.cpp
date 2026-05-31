@@ -204,8 +204,10 @@ namespace AIHoloImager
             uint32_t mip_level, array_index, plane;
             DecomposeSubResource(sub_resource, this->MipLevels(), this->Planes(), mip_level, array_index, plane);
 
-            VkImageMemoryBarrier barrier{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            VkImageMemoryBarrier2 barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = texture_.Object(),
@@ -231,8 +233,8 @@ namespace AIHoloImager
             }
             else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
             {
-                barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+                barrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
                 barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
@@ -254,10 +256,12 @@ namespace AIHoloImager
         if ((curr_layouts_[0] == vulkan_target_layout) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
         {
-            VkImageMemoryBarrier barrier{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+            VkImageMemoryBarrier2 barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
                 .newLayout = VK_IMAGE_LAYOUT_GENERAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -290,8 +294,10 @@ namespace AIHoloImager
             {
                 if (curr_layouts_[0] != vulkan_target_layout)
                 {
-                    VkImageMemoryBarrier barrier{
-                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    VkImageMemoryBarrier2 barrier{
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                        .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                         .oldLayout = curr_layouts_[0],
                         .newLayout = vulkan_target_layout,
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -312,7 +318,7 @@ namespace AIHoloImager
             }
             else
             {
-                std::vector<VkImageMemoryBarrier> barriers;
+                std::vector<VkImageMemoryBarrier2> barriers;
                 for (size_t i = 0; i < curr_layouts_.size(); ++i)
                 {
                     if (curr_layouts_[i] != vulkan_target_layout)
@@ -322,7 +328,9 @@ namespace AIHoloImager
 
                         auto& barrier = barriers.emplace_back();
                         barrier = {
-                            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                            .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                            .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                             .oldLayout = curr_layouts_[i],
                             .newLayout = vulkan_target_layout,
                             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,

@@ -44,13 +44,13 @@ namespace AIHoloImager
     {
         auto& vulkan_cmd_list = VulkanImp(cmd_list);
         vkCmdResetQueryPool(vulkan_cmd_list.CommandBuffer(), timestamp_pool_.Object(), 0, 2);
-        vkCmdWriteTimestamp(vulkan_cmd_list.CommandBuffer(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, timestamp_pool_.Object(), 0);
+        vkCmdWriteTimestamp2(vulkan_cmd_list.CommandBuffer(), VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, timestamp_pool_.Object(), 0);
     }
 
     void VulkanTimerQuery::End(GpuCommandList& cmd_list)
     {
         auto& vulkan_cmd_list = VulkanImp(cmd_list);
-        vkCmdWriteTimestamp(vulkan_cmd_list.CommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, timestamp_pool_.Object(), 1);
+        vkCmdWriteTimestamp2(vulkan_cmd_list.CommandBuffer(), VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, timestamp_pool_.Object(), 1);
     }
 
     std::chrono::duration<double> VulkanTimerQuery::Elapsed() const
