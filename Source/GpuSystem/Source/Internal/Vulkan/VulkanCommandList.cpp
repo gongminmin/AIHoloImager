@@ -396,7 +396,7 @@ namespace AIHoloImager
 
         if (!vbs.empty())
         {
-            vkCmdBindVertexBuffers(cmd_buff_, 0, static_cast<uint32_t>(vbs.size()), vbvs.get(), vb_offsets.get());
+            vkCmdBindVertexBuffers2(cmd_buff_, 0, static_cast<uint32_t>(vbs.size()), vbvs.get(), vb_offsets.get(), nullptr, nullptr);
         }
         if (ib != nullptr)
         {

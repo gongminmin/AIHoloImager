@@ -18,7 +18,12 @@ namespace AIHoloImager
         auto& vulkan_system = *cmd_queue_.VulkanSys();
         const VkDevice device = vulkan_system.Device();
 
-        vkGetDeviceQueue(device, vulkan_system.QueueFamilyIndex(type), 0, &cmd_queue_.Object());
+        const VkDeviceQueueInfo2 queue_info{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+            .queueFamilyIndex = vulkan_system.QueueFamilyIndex(type),
+            .queueIndex = 0,
+        };
+        vkGetDeviceQueue2(device, &queue_info, &cmd_queue_.Object());
         SetName(vulkan_system, cmd_queue_.Object(), VK_OBJECT_TYPE_QUEUE, name);
     }
 

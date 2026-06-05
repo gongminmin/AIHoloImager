@@ -72,7 +72,14 @@ namespace AIHoloImager
         TIFVK(vkCreateBuffer(vulkan_device, &buff_create_info_, nullptr, &buff_.Object()));
 
         this->CreateMemory(GpuResourceType::Buffer, this->MemoryRequirements(), heap, flags);
-        TIFVK(vkBindBufferMemory(vulkan_device, buff_.Object(), this->Memory(), 0));
+
+        const VkBindBufferMemoryInfo buff_mem_info{
+            .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+            .buffer = buff_.Object(),
+            .memory = this->Memory(),
+            .memoryOffset = 0,
+        };
+        TIFVK(vkBindBufferMemory2(vulkan_device, 1, &buff_mem_info));
 
         this->Name(std::move(name));
     }

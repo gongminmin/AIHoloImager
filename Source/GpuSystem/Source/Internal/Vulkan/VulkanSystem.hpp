@@ -138,7 +138,7 @@ namespace AIHoloImager
         VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
         VkPhysicalDeviceIDProperties device_id_props_{};
         VkPhysicalDeviceProperties2 device_props_{};
-        VkPhysicalDeviceMemoryProperties mem_props_{};
+        VkPhysicalDeviceMemoryProperties2 mem_props_{};
         float max_extra_primitive_overestimation_size_ = 0;
 
         VkDevice device_ = VK_NULL_HANDLE;

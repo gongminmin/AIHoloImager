@@ -246,39 +246,50 @@ namespace AIHoloImager
             .pNext = &device_id_props_,
         };
         vkGetPhysicalDeviceProperties2(physical_device_, &device_props_);
-        vkGetPhysicalDeviceMemoryProperties(physical_device_, &mem_props_);
+        mem_props_ = VkPhysicalDeviceMemoryProperties2{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
+        };
+        vkGetPhysicalDeviceMemoryProperties2(physical_device_, &mem_props_);
         max_extra_primitive_overestimation_size_ = conservative_raster_props.maxExtraPrimitiveOverestimationSize;
 
         uint32_t queue_family_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &queue_family_count, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties2(physical_device_, &queue_family_count, nullptr);
         assert(queue_family_count > 0);
-        auto queue_family_props = std::make_unique<VkQueueFamilyProperties[]>(queue_family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &queue_family_count, queue_family_props.get());
+        auto queue_family_props = std::make_unique<VkQueueFamilyProperties2[]>(queue_family_count);
+        for (uint32_t i = 0; i < queue_family_count; ++i)
+        {
+            queue_family_props[i] = VkQueueFamilyProperties2{
+                .sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2,
+            };
+        }
+        vkGetPhysicalDeviceQueueFamilyProperties2(physical_device_, &queue_family_count, queue_family_props.get());
 
         std::set<uint32_t> queue_family_indices;
         for (uint32_t i = 0; i < queue_family_count; ++i)
         {
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Render) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+                (queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Render) = i;
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+                (queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT) &&
+                !(queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Compute) = i;
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::Copy) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queue_family_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) &&
-                !(queue_family_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+                (queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+                !(queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT) &&
+                !(queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::Copy) = i;
                 queue_family_indices.insert(i);
             }
             if ((this->QueueFamilyIndex(GpuSystem::CmdQueueType::VideoEncode) == std::numeric_limits<uint32_t>::max()) &&
-                (queue_family_props[i].queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR))
+                (queue_family_props[i].queueFamilyProperties.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR))
             {
                 this->QueueFamilyIndex(GpuSystem::CmdQueueType::VideoEncode) = i;
                 queue_family_indices.insert(i);
@@ -752,11 +763,11 @@ namespace AIHoloImager
 
     uint32_t VulkanSystem::MemoryTypeIndex(uint32_t type_bits, VkMemoryPropertyFlags properties) const
     {
-        for (uint32_t i = 0; i < mem_props_.memoryTypeCount; ++i)
+        for (uint32_t i = 0; i < mem_props_.memoryProperties.memoryTypeCount; ++i)
         {
             if ((type_bits & 1) == 1)
             {
-                if ((mem_props_.memoryTypes[i].propertyFlags & properties) == properties)
+                if ((mem_props_.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
                 {
                     return i;
                 }
