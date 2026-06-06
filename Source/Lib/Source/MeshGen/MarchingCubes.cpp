@@ -307,12 +307,13 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
             auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-            edge_table_buff_ = GpuBuffer(gpu_system, sizeof(EdgeTable), GpuHeap::Default, GpuResourceFlag::None, "edge_table_buff");
+            edge_table_buff_ =
+                GpuBuffer(gpu_system, sizeof(EdgeTable), GpuHeap::Default, GpuResourceFlag::ShaderResource, "edge_table_buff");
             cmd_list.Upload(edge_table_buff_, EdgeTable, sizeof(EdgeTable));
             edge_table_srv_ = GpuShaderResourceView(gpu_system, edge_table_buff_, GpuFormat::R16_Uint);
 
             triangle_table_buff_ = GpuBuffer(gpu_system, std::size(TriangleTable) * 16 * sizeof(uint16_t), GpuHeap::Default,
-                GpuResourceFlag::None, "triangle_table_buff");
+                GpuResourceFlag::ShaderResource, "triangle_table_buff");
             cmd_list.Upload(triangle_table_buff_, [](void* dst_data) {
                 uint16_t* triangle_table_buff_ptr = reinterpret_cast<uint16_t*>(dst_data);
                 for (size_t i = 0; i < std::size(TriangleTable); ++i)
@@ -371,8 +372,8 @@ namespace AIHoloImager
             const uint32_t zeros[] = {0, 0, 0, 0};
             cmd_list.Clear(counter_uav, zeros);
 
-            GpuBuffer cube_offsets_buff(
-                gpu_system, total_cubes * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "cube_offsets_buff");
+            GpuBuffer cube_offsets_buff(gpu_system, total_cubes * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "cube_offsets_buff");
             const GpuShaderResourceView cube_offsets_srv(gpu_system, cube_offsets_buff, GpuFormat::R32_Uint);
             {
                 PerfRegion calc_cube_indices_perf(profiler, "Marching cubes: Calc cube indices", &cmd_list);
@@ -415,11 +416,11 @@ namespace AIHoloImager
             }
 
             GpuBuffer non_empty_cube_ids_buff(gpu_system, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "non_empty_cube_ids_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "non_empty_cube_ids_buff");
             GpuBuffer non_empty_cube_indices_buff(gpu_system, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "non_empty_cube_indices_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "non_empty_cube_indices_buff");
             GpuBuffer vertex_index_offsets_buff(gpu_system, num_non_empty_cubes * sizeof(glm::uvec2), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "vertex_index_offsets_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "vertex_index_offsets_buff");
             {
                 PerfRegion process_non_empty_cubes_perf(profiler, "Marching cubes: Process non-empty cubes", &cmd_list);
 

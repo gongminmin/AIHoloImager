@@ -226,6 +226,10 @@ namespace AIHoloImager
         if (EnumHasAny(flags, GpuResourceFlag::DepthStencil))
         {
             d3d12_flag |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            if (!EnumHasAny(flags, GpuResourceFlag::ShaderResource))
+            {
+                d3d12_flag |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+            }
         }
         if (EnumHasAny(flags, GpuResourceFlag::UnorderedAccess))
         {
@@ -237,7 +241,7 @@ namespace AIHoloImager
 
     GpuResourceFlag FromD3D12ResourceFlags(D3D12_RESOURCE_FLAGS flags) noexcept
     {
-        GpuResourceFlag gpu_flag = GpuResourceFlag::None;
+        GpuResourceFlag gpu_flag = GpuResourceFlag::ShaderResource;
         if (EnumHasAny(flags, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
         {
             gpu_flag |= GpuResourceFlag::RenderTarget;
@@ -245,6 +249,10 @@ namespace AIHoloImager
         if (EnumHasAny(flags, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
         {
             gpu_flag |= GpuResourceFlag::DepthStencil;
+            if (!EnumHasAny(flags, D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
+            {
+                gpu_flag &= ~GpuResourceFlag::ShaderResource;
+            }
         }
         if (EnumHasAny(flags, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
         {

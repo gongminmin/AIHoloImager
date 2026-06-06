@@ -546,7 +546,8 @@ namespace AIHoloImager
 
                     projection.image =
                         std::make_shared<GpuTexture2D>(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm,
-                            GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, std::format("gsplat_rendered_{}", i));
+                            GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess,
+                            std::format("gsplat_rendered_{}", i));
 
                     const glm::vec2 angle = SphereHammersleySequence(i, GSplatNumViews);
                     const glm::vec3 camera_pos = SphericalCameraPose(angle.x, angle.y, 1.5f);
@@ -714,7 +715,7 @@ namespace AIHoloImager
 
                     GpuTexture2D dilated_tmp_gpu_tex(gpu_system, photo_texture_result.color_tex.Width(0),
                         photo_texture_result.color_tex.Height(0), 1, photo_texture_result.color_tex.Format(),
-                        GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
 
                     GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, photo_texture_result.color_tex, dilated_tmp_gpu_tex);
 
@@ -843,7 +844,7 @@ namespace AIHoloImager
                         for (auto& tex : erosion_mask_gpu_texs)
                         {
                             tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
-                                GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
+                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
                         }
 
                         uint32_t dst;
@@ -888,7 +889,7 @@ namespace AIHoloImager
                         for (auto& tex : dilation_mask_gpu_texs)
                         {
                             tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
-                                GpuResourceFlag::UnorderedAccess, "dilation_mask_gpu_texs");
+                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "dilation_mask_gpu_texs");
                         }
 
                         uint32_t dst;
@@ -1137,8 +1138,8 @@ namespace AIHoloImager
                     const float cos_theta = glm::dot(new_right_vec, old_right_vec);
                     const float abs_sin_theta = std::sqrt(1 - cos_theta * cos_theta);
                     const uint32_t rotated_size = static_cast<uint32_t>(std::round(size * (std::abs(cos_theta) + abs_sin_theta)));
-                    rotated_roi_tex =
-                        GpuTexture2D(gpu_system, rotated_size, rotated_size, 1, ColorFmt, GpuResourceFlag::RenderTarget, "rotated_roi_tex");
+                    rotated_roi_tex = GpuTexture2D(gpu_system, rotated_size, rotated_size, 1, ColorFmt,
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget, "rotated_roi_tex");
                     GpuRenderTargetView rotated_roi_rtv(gpu_system, rotated_roi_tex);
 
                     const float clear_clr[] = {0, 0, 0, 1};
@@ -1165,10 +1166,11 @@ namespace AIHoloImager
                 const uint32_t rotated_height = rotated_roi_tex.Height(0);
 
                 GpuTexture2D resized_rotated_roi_x_tex(gpu_system, ResizedImageSize, rotated_height, 1, ColorFmt,
-                    GpuResourceFlag::UnorderedAccess, "resized_rotated_roi_x_tex");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "resized_rotated_roi_x_tex");
                 auto& resized_rotated_roi_tex = rotated_images[i];
                 resized_rotated_roi_tex = GpuTexture2D(gpu_system, ResizedImageSize, ResizedImageSize, 1, ColorFmt,
-                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "resized_rotated_roi_tex");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                    "resized_rotated_roi_tex");
                 {
                     constexpr uint32_t BlockDim = 16;
 
@@ -1276,11 +1278,11 @@ namespace AIHoloImager
                 const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
                 GpuBuffer coords_buff;
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::None, "MeshGenerator.coords_buff");
+                    cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource, "MeshGenerator.coords_buff");
                 const GpuShaderResourceView coords_srv(gpu_system, coords_buff, GpuFormat::RGB32_Uint);
 
                 index_vol_tex = GpuTexture3D(gpu_system, grid_res, grid_res, grid_res, 1, GpuFormat::R32_Uint,
-                    GpuResourceFlag::UnorderedAccess, "MeshGenerator.index_vol_tex");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "MeshGenerator.index_vol_tex");
                 {
                     const uint32_t num_features = coords_buff.Size() / sizeof(glm::uvec3);
 
@@ -1310,16 +1312,16 @@ namespace AIHoloImager
                 }
 
                 const auto py_density_features = python_system.CallObject(*mesh_generator_density_features_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_density_features, density_features_buff, GpuHeap::Default, GpuResourceFlag::None,
-                    "MeshGenerator.density_features_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_density_features, density_features_buff, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.density_features_buff");
 
                 const auto py_deformation_features = python_system.CallObject(*mesh_generator_deformation_features_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_deformation_features, deformation_features_buff, GpuHeap::Default,
-                    GpuResourceFlag::None, "MeshGenerator.deformation_features_buff");
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.deformation_features_buff");
 
                 const auto py_color_features = python_system.CallObject(*mesh_generator_color_features_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_color_features, color_features_buff, GpuHeap::Default, GpuResourceFlag::None,
-                    "MeshGenerator.color_features_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_color_features, color_features_buff, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.color_features_buff");
 
                 const auto py_num_gaussians = python_system.CallObject(*mesh_generator_gsplat_num_gaussians_method_);
                 gaussians.num_gaussians = python_system.Cast<uint32_t>(*py_num_gaussians);
@@ -1328,24 +1330,24 @@ namespace AIHoloImager
                 gaussians.sh_degrees = static_cast<uint32_t>(std::round(std::sqrt(python_system.Cast<uint32_t>(*py_sh_coefficients)))) - 1;
 
                 const auto py_gsplat_positions = python_system.CallObject(*mesh_generator_gsplat_positions_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_positions, gaussians.positions, GpuHeap::Default, GpuResourceFlag::None,
-                    "MeshGenerator.gsplat_positions_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_positions, gaussians.positions, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_positions_buff");
 
                 const auto py_gsplat_scales = python_system.CallObject(*mesh_generator_gsplat_scales_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_scales, gaussians.scales, GpuHeap::Default, GpuResourceFlag::None,
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_scales, gaussians.scales, GpuHeap::Default, GpuResourceFlag::ShaderResource,
                     "MeshGenerator.gsplat_scales_buff");
 
                 const auto py_gsplat_rotations = python_system.CallObject(*mesh_generator_gsplat_rotations_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_rotations, gaussians.rotations, GpuHeap::Default, GpuResourceFlag::None,
-                    "MeshGenerator.gsplat_rotations_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_rotations, gaussians.rotations, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_rotations_buff");
 
                 const auto py_gsplat_shs = python_system.CallObject(*mesh_generator_gsplat_shs_method_);
-                tensor_converter.ConvertPy(
-                    cmd_list, *py_gsplat_shs, gaussians.shs, GpuHeap::Default, GpuResourceFlag::None, "MeshGenerator.gsplat_shs_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_shs, gaussians.shs, GpuHeap::Default, GpuResourceFlag::ShaderResource,
+                    "MeshGenerator.gsplat_shs_buff");
 
                 const auto py_gsplat_opacities = python_system.CallObject(*mesh_generator_gsplat_opacities_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_opacities, gaussians.opacities, GpuHeap::Default, GpuResourceFlag::None,
-                    "MeshGenerator.gsplat_opacities_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_opacities, gaussians.opacities, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_opacities_buff");
             }
 
             const GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);
@@ -1353,10 +1355,10 @@ namespace AIHoloImager
             const GpuShaderResourceView color_features_srv(gpu_system, color_features_buff, GpuFormat::R16_Float);
 
             const uint32_t size = grid_res + 1;
-            GpuTexture3D density_deformation_tex(gpu_system, size, size, size, 1, GpuFormat::RGBA16_Float, GpuResourceFlag::UnorderedAccess,
-                "MeshGenerator.density_deformation_tex");
-            color_tex = GpuTexture3D(
-                gpu_system, size, size, size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "MeshGenerator.color_tex");
+            GpuTexture3D density_deformation_tex(gpu_system, size, size, size, 1, GpuFormat::RGBA16_Float,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "MeshGenerator.density_deformation_tex");
+            color_tex = GpuTexture3D(gpu_system, size, size, size, 1, GpuFormat::RGBA8_UNorm,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "color_tex");
 
             {
                 GpuConstantBufferOfType<GatherVolumeConstantBuffer> gather_volume_cb(gpu_system, "gather_volume_cb");
@@ -1393,7 +1395,8 @@ namespace AIHoloImager
             }
 
             GpuTexture3D dilated_3d_tmp_gpu_tex(gpu_system, color_tex.Width(0), color_tex.Height(0), color_tex.Depth(0), 1,
-                color_tex.Format(), GpuResourceFlag::UnorderedAccess, "MeshGenerator.dilated_3d_tmp_gpu_tex");
+                color_tex.Format(), GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                "MeshGenerator.dilated_3d_tmp_gpu_tex");
 
             GpuTexture3D* dilated_gpu_tex = this->DilateTexture(cmd_list, color_tex, dilated_3d_tmp_gpu_tex);
             if (dilated_gpu_tex != &color_tex)
@@ -1649,8 +1652,8 @@ namespace AIHoloImager
             const auto& vertex_desc = mesh.MeshVertexDesc();
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
 
-            GpuBuffer pos_vb(
-                gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default, GpuResourceFlag::None, "pos_vb");
+            GpuBuffer pos_vb(gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource, "pos_vb");
 
             const GpuShaderResourceView pos_srv(gpu_system, pos_vb, GpuFormat::RGB32_Float);
             const GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);

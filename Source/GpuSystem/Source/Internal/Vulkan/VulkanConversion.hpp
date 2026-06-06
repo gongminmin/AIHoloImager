@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -22,7 +22,7 @@ namespace AIHoloImager
     VkImageUsageFlags ToVulkanImageUsageFlags(GpuResourceFlag flags) noexcept;
     GpuResourceFlag FromVulkanImageUsageFlags(VkImageUsageFlags flags) noexcept;
 
-    VkImageLayout ToVulkanImageLayout(GpuResourceState state);
+    VkImageLayout ToVulkanImageLayout(GpuResourceState state, GpuResourceFlag flags);
 
     VkImageType ToVulkanImageType(GpuResourceType type);
 

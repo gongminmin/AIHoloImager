@@ -121,27 +121,28 @@ namespace AIHoloImager
 
             if (!mask_gpu_tex_ || (mask_gpu_tex_.Width(0) != width) || (mask_gpu_tex_.Height(0) != height))
             {
-                downsampled_x_gpu_tex_ = GpuTexture2D(
-                    gpu_system, U2NetInputDim, height, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "downsampled_x_gpu_tex_");
-                downsampled_gpu_tex_ = GpuTexture2D(
-                    gpu_system, U2NetInputDim, U2NetInputDim, 1, ColorFmt, GpuResourceFlag::UnorderedAccess, "downsampled_gpu_tex_");
-                image_max_gpu_buff_ =
-                    GpuBuffer(gpu_system, sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "image_max_gpu_buff_");
+                downsampled_x_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, height, 1, ColorFmt,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "downsampled_x_gpu_tex_");
+                downsampled_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim, 1, ColorFmt,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "downsampled_gpu_tex_");
+                image_max_gpu_buff_ = GpuBuffer(gpu_system, sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "image_max_gpu_buff_");
                 normalized_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim * U2NetInputChannels, 1, GpuFormat::R32_Float,
-                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "normalized_gpu_tex_");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "normalized_gpu_tex_");
 
                 pred_gpu_tex_ = GpuTexture2D(gpu_system, U2NetInputDim, U2NetInputDim, 1, GpuFormat::R32_Float,
-                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "pred_gpu_tex_");
-                pred_min_max_gpu_buff_ =
-                    GpuBuffer(gpu_system, 2 * sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_buff_");
-                mask_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_gpu_tex_");
-                mask_pingpong_gpu_tex_ =
-                    GpuTexture2D(gpu_system, width, height, 1, MaskFmt, GpuResourceFlag::UnorderedAccess, "mask_pingpong_gpu_tex_");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "pred_gpu_tex_");
+                pred_min_max_gpu_buff_ = GpuBuffer(gpu_system, 2 * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "pred_min_max_gpu_buff_");
+                mask_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "mask_gpu_tex_");
+                mask_pingpong_gpu_tex_ = GpuTexture2D(gpu_system, width, height, 1, MaskFmt,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "mask_pingpong_gpu_tex_");
 
                 if (crop)
                 {
-                    bbox_gpu_buff_ =
-                        GpuBuffer(gpu_system, 4 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "bbox_gpu_buff_");
+                    bbox_gpu_buff_ = GpuBuffer(gpu_system, 4 * sizeof(uint32_t), GpuHeap::Default,
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "bbox_gpu_buff_");
                 }
             }
 

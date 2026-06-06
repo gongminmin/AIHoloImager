@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanConversion.hpp"
@@ -214,7 +214,11 @@ namespace AIHoloImager
 
     VkImageUsageFlags ToVulkanImageUsageFlags(GpuResourceFlag flags) noexcept
     {
-        VkImageUsageFlags vulkan_flag = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        VkImageUsageFlags vulkan_flag = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if (EnumHasAny(flags, GpuResourceFlag::ShaderResource))
+        {
+            vulkan_flag |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        }
         if (EnumHasAny(flags, GpuResourceFlag::RenderTarget))
         {
             vulkan_flag |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -234,6 +238,10 @@ namespace AIHoloImager
     GpuResourceFlag FromVulkanImageUsageFlags(VkImageUsageFlags flags) noexcept
     {
         GpuResourceFlag gpu_flag = GpuResourceFlag::None;
+        if (flags & VK_IMAGE_USAGE_SAMPLED_BIT)
+        {
+            gpu_flag |= GpuResourceFlag::ShaderResource;
+        }
         if (flags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
         {
             gpu_flag |= GpuResourceFlag::RenderTarget;
@@ -249,12 +257,19 @@ namespace AIHoloImager
         return gpu_flag;
     }
 
-    VkImageLayout ToVulkanImageLayout(GpuResourceState state)
+    VkImageLayout ToVulkanImageLayout(GpuResourceState state, GpuResourceFlag flags)
     {
         switch (state)
         {
         case GpuResourceState::Common:
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            if (EnumHasAny(flags, GpuResourceFlag::ShaderResource))
+            {
+                return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            }
+            else
+            {
+                return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+            }
 
         case GpuResourceState::ColorWrite:
             return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -314,6 +329,9 @@ namespace AIHoloImager
         case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
             src_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
             break;
+        case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
+            src_access_mask = VK_ACCESS_2_MEMORY_READ_BIT;
+            break;
         case VK_IMAGE_LAYOUT_GENERAL:
             src_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;
             break;
@@ -343,6 +361,9 @@ namespace AIHoloImager
                 src_access_mask = VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
             }
             dst_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
+            dst_access_mask = VK_ACCESS_2_MEMORY_READ_BIT;
             break;
         case VK_IMAGE_LAYOUT_GENERAL:
             dst_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;

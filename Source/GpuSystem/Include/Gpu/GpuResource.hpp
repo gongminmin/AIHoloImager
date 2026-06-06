@@ -27,6 +27,10 @@ namespace AIHoloImager
         UnorderedAccess = 1U << 2,
         Shareable = 1U << 3,
         Structured = 1U << 4,
+        VertexBuffer = 1U << 5,
+        IndexBuffer = 1U << 6,
+        ShaderResource = 1U << 7,
+        IndirectArgs = 1U << 8,
     };
     ENUM_CLASS_BITWISE_OPERATORS(GpuResourceFlag);
 

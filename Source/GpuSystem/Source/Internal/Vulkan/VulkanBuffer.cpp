@@ -26,8 +26,15 @@ namespace AIHoloImager
         switch (heap)
         {
         case GpuHeap::Default:
-            usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+            usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+            if (EnumHasAny(flags, GpuResourceFlag::VertexBuffer))
+            {
+                usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            }
+            if (EnumHasAny(flags, GpuResourceFlag::IndexBuffer))
+            {
+                usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            }
             if (EnumHasAny(flags, GpuResourceFlag::UnorderedAccess))
             {
                 usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -36,9 +43,13 @@ namespace AIHoloImager
                     usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
                 }
             }
-            if (!EnumHasAny(flags, GpuResourceFlag::Structured))
+            if (EnumHasAny(flags, GpuResourceFlag::ShaderResource) && !EnumHasAny(flags, GpuResourceFlag::Structured))
             {
                 usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+            }
+            if (EnumHasAny(flags, GpuResourceFlag::IndirectArgs))
+            {
+                usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
             }
             break;
 

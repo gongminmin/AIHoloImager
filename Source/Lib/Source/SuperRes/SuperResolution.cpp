@@ -121,7 +121,7 @@ namespace AIHoloImager
                     *super_res_process_method_, py_image, image.Width(0), image.Height(0), FormatChannels(image.Format()), false);
 
                 tensor_converter.ConvertPy(cmd_list, *py_upsampled_image, upsampled_residual_tex, GpuFormat::RGBA8_UNorm,
-                    GpuResourceFlag::UnorderedAccess, "upsampled_residual_tex");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "upsampled_residual_tex");
                 gpu_system.ExecuteAndReset(cmd_list);
             }
 
@@ -131,8 +131,9 @@ namespace AIHoloImager
 
                 PerfRegion perf(aihi_.PerfProfilerInstance(), "Blend", &cmd_list);
 
-                upsampled_tex = GpuTexture2D(gpu_system, upsampled_residual_tex.Width(0), upsampled_residual_tex.Height(0), 1,
-                    image.Format(), GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "upsampled_tex");
+                upsampled_tex =
+                    GpuTexture2D(gpu_system, upsampled_residual_tex.Width(0), upsampled_residual_tex.Height(0), 1, image.Format(),
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "upsampled_tex");
 
                 GpuConstantBufferOfType<BlendConstantBuffer> blend_cb(gpu_system, "blend_cb");
                 blend_cb->dest_size = glm::uvec2(upsampled_tex.Width(0), upsampled_tex.Height(0));
@@ -169,9 +170,9 @@ namespace AIHoloImager
             PerfRegion perf(aihi_.PerfProfilerInstance(), "Resize", &cmd_list);
 
             GpuTexture2D resized_x_tex(gpu_system, target_width, upsampled_tex.Height(0), 1, upsampled_tex.Format(),
-                GpuResourceFlag::UnorderedAccess, "resize_x_tex");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "resize_x_tex");
             GpuTexture2D resized_image(gpu_system, target_width, target_height, 1, upsampled_tex.Format(),
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "resized_image");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "resized_image");
 
             constexpr uint32_t BlockDim = 16;
 

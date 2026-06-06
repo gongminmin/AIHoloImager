@@ -86,13 +86,16 @@ namespace AIHoloImager
                 for (size_t i = 0; i < std::size(intermediate_cache_.ping_pong_keys); ++i)
                 {
                     intermediate_cache_.ping_pong_keys[i] = GpuBuffer(gpu_system_, num_items * key_size, GpuHeap::Default,
-                        GpuResourceFlag::UnorderedAccess, std::format("Sorter.intermediate_cache_.ping_pong_keys_{}", i));
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                        std::format("Sorter.intermediate_cache_.ping_pong_keys_{}", i));
                     intermediate_cache_.ping_pong_values[i] = GpuBuffer(gpu_system_, num_items * value_size, GpuHeap::Default,
-                        GpuResourceFlag::UnorderedAccess, std::format("Sorter.intermediate_cache_.ping_pong_values_{}", i));
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                        std::format("Sorter.intermediate_cache_.ping_pong_values_{}", i));
                 }
 
                 intermediate_cache_.partition_histogram = GpuBuffer(gpu_system_, num_partitions * NumDigitBins * sizeof(uint32_t),
-                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.partition_histogram");
+                    GpuHeap::Default, GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                    "Sorter.intermediate_cache_.partition_histogram");
                 intermediate_cache_.partition_histogram_srv =
                     GpuShaderResourceView(gpu_system_, intermediate_cache_.partition_histogram, GpuFormat::R32_Uint);
                 intermediate_cache_.partition_histogram_uav =
@@ -103,7 +106,7 @@ namespace AIHoloImager
             if (intermediate_cache_.key_size < key_size)
             {
                 intermediate_cache_.global_histogram = GpuBuffer(gpu_system_, key_size * NumDigitBins * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.global_histogram");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.global_histogram");
 
                 intermediate_cache_.global_histogram_srv =
                     GpuShaderResourceView(gpu_system_, intermediate_cache_.global_histogram, GpuFormat::R32_Uint);

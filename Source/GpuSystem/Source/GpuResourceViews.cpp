@@ -69,6 +69,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture, sub_resource, format).release()))
     {
         static_assert(sizeof(Impl) == sizeof(GpuShaderResourceViewInternal));
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::ShaderResource));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array)
@@ -90,6 +91,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture_array, sub_resource, format).release()))
     {
+        Verify(EnumHasAny(texture_array.Flags(), GpuResourceFlag::ShaderResource));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture)
@@ -111,6 +113,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(texture, sub_resource, format).release()))
     {
+        Verify(EnumHasAny(texture.Flags(), GpuResourceFlag::ShaderResource));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format)
@@ -122,6 +125,7 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format)
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
     {
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::ShaderResource));
         Verify(!EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
@@ -135,6 +139,7 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(
               gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, element_size).release()))
     {
+        Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::ShaderResource));
         Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 

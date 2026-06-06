@@ -96,25 +96,28 @@ namespace AIHoloImager
 
             if (intermediate_cache_.num_gaussians_allocated < gaussians.num_gaussians)
             {
-                intermediate_cache_.screen_pos_extents = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec4),
-                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.screen_pos");
+                intermediate_cache_.screen_pos_extents =
+                    GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
+                        GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.screen_pos");
                 intermediate_cache_.conic_opacity = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.conic_opacity");
+                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.conic_opacity");
                 intermediate_cache_.color = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.color");
+                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.color");
                 intermediate_cache_.num_visible_gaussians_indirect_args = GpuBuffer(gpu_system, sizeof(GpuRenderIndexedArguments),
-                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.num_visible_gaussians_indirect_args");
+                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs,
+                    "gsplat.intermediate_cache_.num_visible_gaussians_indirect_args");
                 intermediate_cache_.visible_key = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.visible_key");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.visible_key");
                 intermediate_cache_.visible_id = GpuBuffer(gpu_system, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.visible_id");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::IndexBuffer | GpuResourceFlag::UnorderedAccess,
+                    "gsplat.intermediate_cache_.visible_id");
 
                 intermediate_cache_.num_gaussians_allocated = gaussians.num_gaussians;
             }
             if ((intermediate_cache_.gsplat_image.Width(0) != width) || (intermediate_cache_.gsplat_image.Height(0) != height))
             {
-                intermediate_cache_.gsplat_image = GpuTexture2D(
-                    gpu_system, width, height, 1, GSplatFmt, GpuResourceFlag::RenderTarget, "gsplat.intermediate_cache_.gsplat_image");
+                intermediate_cache_.gsplat_image = GpuTexture2D(gpu_system, width, height, 1, GSplatFmt,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget, "gsplat.intermediate_cache_.gsplat_image");
             }
 
             {
@@ -380,16 +383,16 @@ namespace AIHoloImager
 
         const uint32_t num_coeffs = NumCoefficientsFromShDegrees(ret.sh_degrees);
 
-        ret.positions =
-            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.positions");
-        ret.scales =
-            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.scales");
-        ret.rotations =
-            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(glm::vec4), GpuHeap::Default, GpuResourceFlag::None, "gaussians.rotations");
-        ret.shs = GpuBuffer(
-            gpu_system, ret.num_gaussians * num_coeffs * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::None, "gaussians.shs");
-        ret.opacities =
-            GpuBuffer(gpu_system, ret.num_gaussians * sizeof(float), GpuHeap::Default, GpuResourceFlag::None, "gaussians.opacities");
+        ret.positions = GpuBuffer(
+            gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::ShaderResource, "gaussians.positions");
+        ret.scales = GpuBuffer(
+            gpu_system, ret.num_gaussians * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::ShaderResource, "gaussians.scales");
+        ret.rotations = GpuBuffer(
+            gpu_system, ret.num_gaussians * sizeof(glm::vec4), GpuHeap::Default, GpuResourceFlag::ShaderResource, "gaussians.rotations");
+        ret.shs = GpuBuffer(gpu_system, ret.num_gaussians * num_coeffs * sizeof(glm::vec3), GpuHeap::Default,
+            GpuResourceFlag::ShaderResource, "gaussians.shs");
+        ret.opacities = GpuBuffer(
+            gpu_system, ret.num_gaussians * sizeof(float), GpuHeap::Default, GpuResourceFlag::ShaderResource, "gaussians.opacities");
 
         auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 

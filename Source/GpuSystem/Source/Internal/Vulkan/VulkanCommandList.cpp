@@ -224,6 +224,8 @@ namespace AIHoloImager
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
+        Verify(EnumHasAny(indirect_args.Flags(), GpuResourceFlag::IndirectArgs));
+
         const auto& vulkan_indirect_args = VulkanImp(indirect_args);
         vulkan_indirect_args.Transition(*this, GpuResourceState::Common);
 
@@ -248,6 +250,8 @@ namespace AIHoloImager
         std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
         std::span<const GpuRect> scissor_rects)
     {
+        Verify(EnumHasAny(indirect_args.Flags(), GpuResourceFlag::IndirectArgs));
+
         const auto& vulkan_indirect_args = VulkanImp(indirect_args);
         vulkan_indirect_args.Transition(*this, GpuResourceState::Common);
 
@@ -490,6 +494,8 @@ namespace AIHoloImager
     void VulkanCommandList::ComputeIndirect(
         const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const GpuCommandList::ShaderBinding& shader_binding)
     {
+        Verify(EnumHasAny(indirect_args.Flags(), GpuResourceFlag::IndirectArgs));
+
         const auto& vulkan_indirect_args = VulkanImp(indirect_args);
         vulkan_indirect_args.Transition(*this, GpuResourceState::Common);
 

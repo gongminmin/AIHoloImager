@@ -156,13 +156,13 @@ namespace AIHoloImager
             anti_alias_bwd_pipeline_ = GpuComputePipeline(gpu_system_, shader, {});
         }
 
-        silhouette_counter_ = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
-            "GpuDiffRender.AntiAliasFwd.silhouette_counter");
+        silhouette_counter_ = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "GpuDiffRender.AntiAliasFwd.silhouette_counter");
         silhouette_counter_srv_ = GpuShaderResourceView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
         silhouette_counter_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
 
-        indirect_args_ = GpuBuffer(gpu_system_, sizeof(GpuComputeArguments), GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
-            "GpuDiffRender.AntiAliasBwd.indirect_args");
+        indirect_args_ = GpuBuffer(gpu_system_, sizeof(GpuComputeArguments), GpuHeap::Default,
+            GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs, "GpuDiffRender.AntiAliasBwd.indirect_args");
         indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, GpuFormat::R32_Uint);
     }
 
@@ -174,15 +174,15 @@ namespace AIHoloImager
     {
         if ((barycentric.Width(0) != width) || (barycentric.Height(0) != height) || (barycentric.Format() != GpuFormat::RG32_Float))
         {
-            barycentric = GpuTexture2D(
-                gpu_system_, width, height, 1, GpuFormat::RG32_Float, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+            barycentric = GpuTexture2D(gpu_system_, width, height, 1, GpuFormat::RG32_Float,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
         }
         barycentric.Name("GpuDiffRender.RasterizeFwd.barycentric");
 
         if ((prim_id.Width(0) != width) || (prim_id.Height(0) != height) || (prim_id.Format() != GpuFormat::R32_Uint))
         {
-            prim_id = GpuTexture2D(
-                gpu_system_, width, height, 1, GpuFormat::R32_Uint, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+            prim_id = GpuTexture2D(gpu_system_, width, height, 1, GpuFormat::R32_Uint,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
         }
         prim_id.Name("GpuDiffRender.RasterizeFwd.prim_id");
 
@@ -191,8 +191,8 @@ namespace AIHoloImager
             if ((derivative_barycentric.Width(0) != width) || (derivative_barycentric.Height(0) != height) ||
                 (derivative_barycentric.Format() != GpuFormat::RGBA32_Float))
             {
-                derivative_barycentric = GpuTexture2D(
-                    gpu_system_, width, height, 1, GpuFormat::RGBA32_Float, GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
+                derivative_barycentric = GpuTexture2D(gpu_system_, width, height, 1, GpuFormat::RGBA32_Float,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::Shareable);
             }
             derivative_barycentric.Name("GpuDiffRender.RasterizeFwd.derivative_barycentric");
         }
@@ -211,8 +211,8 @@ namespace AIHoloImager
 
         if ((depth_tex_.Width(0) != width) || (depth_tex_.Height(0) != height))
         {
-            depth_tex_ = GpuTexture2D(
-                gpu_system_, width, height, 1, GpuFormat::D32_Float, GpuResourceFlag::DepthStencil, "GpuDiffRender.RasterizeFwd.depth_tex");
+            depth_tex_ = GpuTexture2D(gpu_system_, width, height, 1, GpuFormat::D32_Float,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::DepthStencil, "GpuDiffRender.RasterizeFwd.depth_tex");
             depth_srv_ = GpuShaderResourceView(gpu_system_, depth_tex_, GpuFormat::R32_Float);
             depth_dsv_ = GpuDepthStencilView(gpu_system_, depth_tex_);
         }
@@ -534,7 +534,8 @@ namespace AIHoloImager
         if ((texture.Format() != GpuFormat::RGBA32_Float) || (texture.MipLevels() != mip_levels))
         {
             texture_temp = GpuTexture2D(gpu_system_, width, height, mip_levels, GpuFormat::RGBA32_Float,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "GpuDiffRender.GenerateMipmap.texture_mip");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                "GpuDiffRender.GenerateMipmap.texture_mip");
             texture_mip = &texture_temp;
 
             if (texture.Format() != GpuFormat::RGBA32_Float)
@@ -663,8 +664,8 @@ namespace AIHoloImager
         GpuBuffer grad_texture_mips;
         if (mip_mode)
         {
-            grad_texture_mips =
-                GpuBuffer(gpu_system_, mip_level_offsets[mip_levels] * sizeof(float), GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
+            grad_texture_mips = GpuBuffer(gpu_system_, mip_level_offsets[mip_levels] * sizeof(float), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
         }
 
         const uint32_t grad_texture_size = mip_level_offsets[1] * sizeof(float);
@@ -805,7 +806,8 @@ namespace AIHoloImager
         const uint32_t expected_hash_buff_size = num_indices * 2 * sizeof(glm::uvec3);
         if (opposite_vertices_hash_.Size() != expected_hash_buff_size)
         {
-            opposite_vertices_hash_ = GpuBuffer(gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
+            opposite_vertices_hash_ = GpuBuffer(
+                gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
             opposite_vertices_hash_srv_ = GpuShaderResourceView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
             opposite_vertices_hash_uav_ = GpuUnorderedAccessView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
         }
@@ -842,7 +844,8 @@ namespace AIHoloImager
 
         if (opposite_vertices.Size() != indices.Size())
         {
-            opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess);
+            opposite_vertices = GpuBuffer(
+                gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
         }
         opposite_vertices.Name("GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices");
 
@@ -884,16 +887,16 @@ namespace AIHoloImager
 
         if (anti_aliased.Size() != shading.Size())
         {
-            anti_aliased =
-                GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+            anti_aliased = GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
         }
         anti_aliased.Name("GpuDiffRender.AntiAliasFwd.anti_aliased");
 
         const uint32_t silhouette_info_size = width * height * 4 * sizeof(uint32_t);
         if (silhouette_info_.Size() != silhouette_info_size)
         {
-            silhouette_info_ = GpuBuffer(gpu_system_, silhouette_info_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess,
-                "GpuDiffRender.AntiAliasFwd.silhouette_info");
+            silhouette_info_ = GpuBuffer(gpu_system_, silhouette_info_size, GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "GpuDiffRender.AntiAliasFwd.silhouette_info");
             silhouette_info_srv_ = GpuShaderResourceView(gpu_system_, silhouette_info_, GpuFormat::R32_Uint);
             silhouette_info_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_info_, GpuFormat::R32_Uint);
         }

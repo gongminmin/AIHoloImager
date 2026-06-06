@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "Delighter.hpp"
@@ -88,8 +88,8 @@ namespace AIHoloImager
 
                 const auto output_roi_image = python_system.CallObject(
                     *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(image.Format()));
-                tensor_converter.ConvertPy(
-                    cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::UnorderedAccess, "delighted_tex");
+                tensor_converter.ConvertPy(cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "delighted_tex");
 
                 {
                     constexpr uint32_t BlockDim = 16;

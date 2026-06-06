@@ -228,7 +228,7 @@ namespace AIHoloImager
             };
 
             bool need_transition = false;
-            auto vulkan_target_layout = ToVulkanImageLayout(target_state);
+            auto vulkan_target_layout = ToVulkanImageLayout(target_state, this->Flags());
             if (curr_layouts_[sub_resource] != vulkan_target_layout)
             {
                 barrier.oldLayout = curr_layouts_[sub_resource];
@@ -259,7 +259,7 @@ namespace AIHoloImager
     {
         cmd_list.RegisterAccessedObject(this->StalledWaitFences());
 
-        const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state);
+        const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state, this->Flags());
         if ((curr_layouts_[0] == vulkan_target_layout) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
         {

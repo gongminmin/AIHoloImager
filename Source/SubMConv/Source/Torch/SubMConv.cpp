@@ -37,16 +37,16 @@ namespace AIHoloImager
         const uint32_t expected_hash_buff_size = num_coords_ * 4 * sizeof(uint32_t) * 5;
         if (coord_hash_.Size() < expected_hash_buff_size)
         {
-            coord_hash_ = GpuBuffer(
-                gpu_system_, expected_hash_buff_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "SubMConv3DHelper.coord_hash_");
+            coord_hash_ = GpuBuffer(gpu_system_, expected_hash_buff_size, GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "SubMConv3DHelper.coord_hash_");
             coord_hash_srv_ = GpuShaderResourceView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
             coord_hash_uav_ = GpuUnorderedAccessView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
         }
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-        tensor_converter_.Convert(
-            cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::None, "SubMConv3DHelper.coords_buff_");
+        tensor_converter_.Convert(cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::ShaderResource,
+            "SubMConv3DHelper.coords_buff_");
         coords_srv_ = GpuShaderResourceView(gpu_system_, coords_buff_, GpuFormat::RGBA32_Uint);
 
         {
@@ -103,8 +103,8 @@ namespace AIHoloImager
         const uint32_t expected_offsets_size = num_offsets * sizeof(glm::ivec3);
         if (offsets_buff_.Size() < expected_offsets_size)
         {
-            offsets_buff_ =
-                GpuBuffer(gpu_system_, expected_offsets_size, GpuHeap::Default, GpuResourceFlag::None, "SubMConv3DHelper.offsets_buff_");
+            offsets_buff_ = GpuBuffer(
+                gpu_system_, expected_offsets_size, GpuHeap::Default, GpuResourceFlag::ShaderResource, "SubMConv3DHelper.offsets_buff_");
             offsets_srv_ = GpuShaderResourceView(gpu_system_, offsets_buff_, GpuFormat::RGB32_Sint);
         }
 

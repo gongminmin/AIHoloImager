@@ -35,7 +35,7 @@ namespace AIHoloImager
             : gpu_system_(aihi.GpuSystemInstance()), proj_mtx_(glm::perspectiveRH_ZO(Fov, 1.0f, 1.0f, 3.0f))
         {
             face_id_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::R32_Uint,
-                GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, "face_id_tex_");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess, "face_id_tex_");
             face_id_rtv_ = GpuRenderTargetView(gpu_system_, face_id_tex_);
             face_id_srv_ = GpuShaderResourceView(gpu_system_, face_id_tex_);
 
@@ -88,20 +88,20 @@ namespace AIHoloImager
             const auto& vertex_desc = mesh.MeshVertexDesc();
 
             GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::None, "vb");
+                GpuResourceFlag::VertexBuffer, "vb");
             GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::None, "ib");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::IndexBuffer, "ib");
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
             const uint32_t num_faces = num_indices / 3;
 
-            face_mark_buff_ =
-                GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "face_mark_buff_");
+            face_mark_buff_ = GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "face_mark_buff_");
             face_mark_srv_ = GpuShaderResourceView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
             face_mark_uav_ = GpuUnorderedAccessView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
 
-            view_counter_buff_ = GpuBuffer(
-                gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "view_counter_buff");
+            view_counter_buff_ = GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "view_counter_buff");
             view_counter_srv_ = GpuShaderResourceView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
             view_counter_uav_ = GpuUnorderedAccessView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
 
