@@ -115,8 +115,13 @@ namespace AIHoloImager
         }
         else
         {
+            const VkBufferUsageFlags2CreateInfoKHR usage_create_info{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+                .usage = VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR,
+            };
             const VkBufferViewCreateInfo view_create_info{
                 .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+                .pNext = &usage_create_info,
                 .buffer = vulkan_buff,
                 .format = ToVkFormat(format),
                 .offset = offset,
@@ -143,8 +148,13 @@ namespace AIHoloImager
         const uint32_t offset = first_element * element_size;
         const uint32_t range = num_elements * element_size;
 
+        const VkBufferUsageFlags2CreateInfoKHR usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+            .usage = VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR,
+        };
         const VkBufferViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .buffer = vulkan_buff,
             .format = VK_FORMAT_UNDEFINED,
             .offset = offset,
@@ -605,8 +615,13 @@ namespace AIHoloImager
         }
         else
         {
+            const VkBufferUsageFlags2CreateInfoKHR usage_create_info{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+                .usage = VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR,
+            };
             const VkBufferViewCreateInfo view_create_info{
                 .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+                .pNext = &usage_create_info,
                 .buffer = vulkan_buff,
                 .format = ToVkFormat(format),
                 .offset = std::get<0>(buff_range_),

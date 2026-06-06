@@ -184,6 +184,7 @@ namespace AIHoloImager
         };
 
         std::vector<const char*> enable_device_exts = {
+            VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
             VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
             VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
         };
