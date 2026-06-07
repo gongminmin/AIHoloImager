@@ -147,7 +147,7 @@ namespace AIHoloImager
         }
 
         void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
-            const Texture& mask_tex)
+            GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex)
         {
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
@@ -178,8 +178,6 @@ namespace AIHoloImager
                 vp_offsets[i] = projection.vp_offset;
             }
 
-            auto& texture = mesh.AlbedoTexture();
-
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
@@ -204,6 +202,8 @@ namespace AIHoloImager
                         projection.full_width, projection.full_height);
                     python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
+                PyObjectPtr py_albedo_img = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, albedo_tex));
+                PyObjectPtr py_mask_img = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mask_tex));
                 gpu_system.ExecuteAndReset(cmd_list);
 
                 const auto indices = mesh.IndexBuffer();
@@ -215,16 +215,11 @@ namespace AIHoloImager
                     static_cast<uint32_t>(indices.size()), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4)),
                     std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
-                    std::span(reinterpret_cast<const std::byte*>(texture.Data()), texture.DataSize()),
-                    static_cast<uint32_t>(texture.Width()), static_cast<uint32_t>(texture.Height()),
-                    std::span(reinterpret_cast<const std::byte*>(mask_tex.Data()), mask_tex.DataSize()));
+                    std::move(py_albedo_img), std::move(py_mask_img));
 
-                GpuTexture2D texture_opt;
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_opt_texture, texture_opt, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "texture_opt");
-                const auto rb_future = cmd_list.ReadBackAsync(texture_opt, 0, texture.Data(), texture.DataSize());
+                    cmd_list, *py_opt_texture, albedo_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "albedo_tex");
                 gpu_system.Execute(std::move(cmd_list));
-                rb_future.wait();
             }
         }
 
@@ -255,8 +250,8 @@ namespace AIHoloImager
     }
 
     void DiffOptimizer::OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx,
-        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, const Texture& mask_tex)
+        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex)
     {
-        impl_->OptimizeTexture(mesh, model_mtx, std::move(projections), mask_tex);
+        impl_->OptimizeTexture(mesh, model_mtx, std::move(projections), albedo_tex, mask_tex);
     }
 } // namespace AIHoloImager

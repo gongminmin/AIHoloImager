@@ -24,7 +24,7 @@ namespace AIHoloImager
 
         void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections);
         void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
-            const Texture& mask_tex);
+            GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex);
 
     private:
         class Impl;

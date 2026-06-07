@@ -259,7 +259,7 @@ class DiffOptimizer:
     def OptimizeTexture(self,
                         vtx_positions, vtx_uv, num_vertices, indices, num_indices,
                         view_images, mvp_mtxs, vp_offsets, num_views,
-                        texture_data, texture_width, texture_height, mask_tex_data):
+                        texture, mask_tex):
         PurgeTorchCache()
 
         vtx_positions = TensorFromBytes(vtx_positions, torch.float32, num_vertices * 3, self.device)
@@ -339,12 +339,12 @@ class DiffOptimizer:
 
         vtx_positions = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
 
-        texture = TensorFromBytes(texture_data, torch.uint8, texture_height * texture_width * 4, self.device)
+        texture_width = texture.shape[-2]
+        texture_height = texture.shape[-3]
         texture = texture.reshape(texture_height, texture_width, 4)
         texture = texture.to(torch.float32).contiguous()
         texture /= 255.0
 
-        mask_tex = TensorFromBytes(mask_tex_data, torch.uint8, texture_height * texture_width, self.device)
         mask_tex = mask_tex.reshape(texture_height, texture_width)
         mask_tex = (mask_tex != 0)
         mask_tex = mask_tex.contiguous()

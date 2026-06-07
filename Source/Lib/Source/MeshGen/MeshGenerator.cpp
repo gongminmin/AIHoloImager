@@ -669,24 +669,22 @@ namespace AIHoloImager
                 photo_texture_result = texture_recon_.Process(mesh, model_mtx, std::span(updated_projections), texture_size);
             }
 
-            Texture mask_tex(texture_size, texture_size, ElementFormat::R8_UNorm);
+            GpuTexture2D albedo_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "albedo_gpu_tex");
+            GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "mask_gpu_tex");
             {
                 std::cout << "Merging textures...\n";
 
                 PerfRegion merge_textures_perf(profiler, "Merge textures");
 
-                Texture merged_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
                     this->MergeTexture(cmd_list, gsplat_texture_result.color_tex, photo_texture_result.color_tex);
 
-                    std::future<void> mask_rb_future;
                     {
                         constexpr uint32_t BlockDim = 16;
-
-                        GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
-                            GpuResourceFlag::UnorderedAccess, "mask_gpu_tex");
 
                         GpuShaderResourceView input_srv(gpu_system, photo_texture_result.color_tex);
                         GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
@@ -708,9 +706,6 @@ namespace AIHoloImager
                         const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                         cmd_list.Compute(
                             extract_mask_pipeline_, {DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1}, shader_binding);
-
-                        mask_rb_future = cmd_list.ReadBackAsync(mask_gpu_tex, 0, mask_tex.Data(), mask_tex.DataSize());
-                        gpu_system.ExecuteAndReset(cmd_list);
                     }
 
                     GpuTexture2D dilated_tmp_gpu_tex(gpu_system, photo_texture_result.color_tex.Width(0),
@@ -718,15 +713,11 @@ namespace AIHoloImager
                         GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "dilated_tmp_tex");
 
                     GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, photo_texture_result.color_tex, dilated_tmp_gpu_tex);
+                    cmd_list.Copy(albedo_gpu_tex, *dilated_gpu_tex);
+                    albedo_gpu_tex.Transition(cmd_list, GpuResourceState::Common);
 
-                    const auto dilated_rb_future = cmd_list.ReadBackAsync(*dilated_gpu_tex, 0, merged_tex.Data(), merged_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
-
-                    mask_rb_future.wait();
-                    dilated_rb_future.wait();
                 }
-
-                mesh.AlbedoTexture() = std::move(merged_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
@@ -738,16 +729,42 @@ namespace AIHoloImager
                 std::cout << "Optimizing texture...\n";
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveTexture(mesh.AlbedoTexture(), output_dir / "BeforeOpt.png");
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                    Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                    const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+                    rb_future.wait();
+                    SaveTexture(albedo_tex, output_dir / "BeforeOpt.png");
+                }
 #endif
 
                 PerfRegion opt_texture_perf(profiler, "Optimize texture");
 
-                optimizer_.OptimizeTexture(mesh, model_mtx, std::span(updated_projections), mask_tex);
+                optimizer_.OptimizeTexture(mesh, model_mtx, std::span(updated_projections), albedo_gpu_tex, mask_gpu_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveTexture(mesh.AlbedoTexture(), output_dir / "AfterOpt.png");
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                    Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                    const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
+                    gpu_system.Execute(std::move(cmd_list));
+                    rb_future.wait();
+                    SaveTexture(albedo_tex, output_dir / "AfterOpt.png");
+                }
 #endif
+            }
+
+            {
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
+                gpu_system.Execute(std::move(cmd_list));
+                rb_future.wait();
+                mesh.AlbedoTexture() = std::move(albedo_tex);
             }
 
             {
