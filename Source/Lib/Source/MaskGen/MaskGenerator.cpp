@@ -151,8 +151,7 @@ namespace AIHoloImager
             if (crop)
             {
                 GpuConstantBufferOfType<StatPredConstantBuffer> calc_bbox_cb(gpu_system, "calc_bbox_cb");
-                calc_bbox_cb->texture_size.x = width;
-                calc_bbox_cb->texture_size.y = height;
+                calc_bbox_cb->texture_size = {width, height};
                 calc_bbox_cb.UploadStaging();
 
                 const GpuConstantBufferView calc_bbox_cbv(gpu_system, calc_bbox_cb);
@@ -216,8 +215,7 @@ namespace AIHoloImager
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, "downsample_x_cb");
                 downsample_x_cb->src_roi = roi;
-                downsample_x_cb->dest_size.x = U2NetInputDim;
-                downsample_x_cb->dest_size.y = roi_height;
+                downsample_x_cb->dest_size = {U2NetInputDim, roi_height};
                 downsample_x_cb->scale = static_cast<float>(roi_width) / U2NetInputDim;
                 downsample_x_cb->x_dir = true;
                 downsample_x_cb.UploadStaging();
@@ -240,12 +238,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system, downsampled_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, "downsample_y_cb");
-                downsample_y_cb->src_roi.x = 0;
-                downsample_y_cb->src_roi.y = 0;
-                downsample_y_cb->src_roi.z = U2NetInputDim;
-                downsample_y_cb->src_roi.w = roi_height;
-                downsample_y_cb->dest_size.x = U2NetInputDim;
-                downsample_y_cb->dest_size.y = U2NetInputDim;
+                downsample_y_cb->src_roi = {0, 0, U2NetInputDim, roi_height};
+                downsample_y_cb->dest_size = {U2NetInputDim, U2NetInputDim};
                 downsample_y_cb->scale = static_cast<float>(roi_height) / U2NetInputDim;
                 downsample_y_cb->x_dir = false;
                 downsample_y_cb.UploadStaging();
@@ -270,8 +264,7 @@ namespace AIHoloImager
                     gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint); // Float as uint due to atomic operations
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_image_cb(gpu_system, "stat_image_cb");
-                stat_image_cb->texture_size.x = U2NetInputDim;
-                stat_image_cb->texture_size.y = U2NetInputDim;
+                stat_image_cb->texture_size = {U2NetInputDim, U2NetInputDim};
                 stat_image_cb.UploadStaging();
                 const GpuConstantBufferView stat_image_cbv(gpu_system, stat_image_cb);
 
@@ -293,8 +286,7 @@ namespace AIHoloImager
                 GpuUnorderedAccessView normalized_uav(gpu_system, normalized_gpu_tex_);
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> normalize_image_cb(gpu_system, "normalize_image_cb");
-                normalize_image_cb->texture_size.x = U2NetInputDim;
-                normalize_image_cb->texture_size.y = U2NetInputDim;
+                normalize_image_cb->texture_size = {U2NetInputDim, U2NetInputDim};
                 normalize_image_cb.UploadStaging();
                 const GpuConstantBufferView normalize_image_cbv(gpu_system, normalize_image_cb);
 
@@ -340,8 +332,7 @@ namespace AIHoloImager
                     gpu_system, pred_min_max_gpu_buff_, GpuFormat::R32_Uint); // Float as uint due to atomic operations
 
                 GpuConstantBufferOfType<StatPredConstantBuffer> stat_pred_cb(gpu_system, "stat_pred_cb");
-                stat_pred_cb->texture_size.x = U2NetInputDim;
-                stat_pred_cb->texture_size.y = U2NetInputDim;
+                stat_pred_cb->texture_size = {U2NetInputDim, U2NetInputDim};
                 stat_pred_cb.UploadStaging();
                 const GpuConstantBufferView stat_pred_cbv(gpu_system, stat_pred_cb);
 
@@ -364,12 +355,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_x_cb(gpu_system, "upsample_x_cb");
-                upsample_x_cb->src_roi.x = 0;
-                upsample_x_cb->src_roi.y = 0;
-                upsample_x_cb->src_roi.z = U2NetInputDim;
-                upsample_x_cb->src_roi.w = U2NetInputDim;
-                upsample_x_cb->dest_size.x = roi_width;
-                upsample_x_cb->dest_size.y = U2NetInputDim;
+                upsample_x_cb->src_roi = {0, 0, U2NetInputDim, U2NetInputDim};
+                upsample_x_cb->dest_size = {roi_width, U2NetInputDim};
                 upsample_x_cb->scale = static_cast<float>(U2NetInputDim) / roi_width;
                 upsample_x_cb->x_dir = true;
                 upsample_x_cb.UploadStaging();
@@ -393,12 +380,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> upsample_y_cb(gpu_system, "upsample_y_cb");
-                upsample_y_cb->src_roi.x = 0;
-                upsample_y_cb->src_roi.y = 0;
-                upsample_y_cb->src_roi.z = roi_width;
-                upsample_y_cb->src_roi.w = U2NetInputDim;
-                upsample_y_cb->dest_size.x = roi_width;
-                upsample_y_cb->dest_size.y = roi_height;
+                upsample_y_cb->src_roi = {0, 0, roi_width, U2NetInputDim};
+                upsample_y_cb->dest_size = {roi_width, roi_height};
                 upsample_y_cb->scale = static_cast<float>(U2NetInputDim) / roi_height;
                 upsample_y_cb->x_dir = false;
                 upsample_y_cb.UploadStaging();
@@ -430,8 +413,7 @@ namespace AIHoloImager
                     GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                     GpuConstantBufferOfType<ErosionDilateConstantBuffer> erosion_cb(gpu_system, "erosion_cb");
-                    erosion_cb->texture_size.x = roi_width;
-                    erosion_cb->texture_size.y = roi_height;
+                    erosion_cb->texture_size = {roi_width, roi_height};
                     erosion_cb->erosion = true;
                     erosion_cb->weights[0].x = Kernel[0][0];
                     erosion_cb->weights[1].x = Kernel[0][1];
@@ -463,8 +445,7 @@ namespace AIHoloImager
                     GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                     GpuConstantBufferOfType<ErosionDilateConstantBuffer> dilation_cb(gpu_system, "dilation_cb");
-                    dilation_cb->texture_size.x = roi_width;
-                    dilation_cb->texture_size.y = roi_height;
+                    dilation_cb->texture_size = {roi_width, roi_height};
                     dilation_cb->erosion = false;
                     dilation_cb->weights[0].x = Kernel[0][0];
                     dilation_cb->weights[1].x = Kernel[0][1];
@@ -504,8 +485,7 @@ namespace AIHoloImager
                     GpuUnorderedAccessView output_uav(gpu_system, mask_pingpong_gpu_tex_);
 
                     GpuConstantBufferOfType<GaussianBlurConstantBuffer> gaussian_blur_x_cb(gpu_system, "gaussian_blur_x_cb");
-                    gaussian_blur_x_cb->texture_size.x = roi_width;
-                    gaussian_blur_x_cb->texture_size.y = roi_height;
+                    gaussian_blur_x_cb->texture_size = {roi_width, roi_height};
                     gaussian_blur_x_cb->x_dir = true;
                     for (uint32_t i = 0; i < BlurKernelRadius * 2 + 1; ++i)
                     {
@@ -531,8 +511,7 @@ namespace AIHoloImager
                     GpuUnorderedAccessView output_uav(gpu_system, mask_gpu_tex_);
 
                     GpuConstantBufferOfType<GaussianBlurConstantBuffer> gaussian_blur_y_cb(gpu_system, "gaussian_blur_y_cb");
-                    gaussian_blur_y_cb->texture_size.x = roi_width;
-                    gaussian_blur_y_cb->texture_size.y = roi_height;
+                    gaussian_blur_y_cb->texture_size = {roi_width, roi_height};
                     gaussian_blur_y_cb->x_dir = false;
                     for (uint32_t i = 0; i < BlurKernelRadius * 2 + 1; ++i)
                     {
@@ -563,8 +542,7 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system, image_gpu_tex);
 
                 GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, "merge_mask_cb");
-                merge_mask_cb->texture_size.x = width;
-                merge_mask_cb->texture_size.y = height;
+                merge_mask_cb->texture_size = {width, height};
                 merge_mask_cb->roi = roi;
                 merge_mask_cb.UploadStaging();
                 const GpuConstantBufferView merge_mask_cbv(gpu_system, merge_mask_cb);

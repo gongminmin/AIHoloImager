@@ -41,10 +41,11 @@ namespace AIHoloImager
     GpuDiffRender::GpuDiffRender(GpuSystem& gpu_system) : gpu_system_(gpu_system)
     {
         {
-            GpuRenderPipeline::States states;
-            states.cull_mode = GpuRenderPipeline::CullMode::ClockWise;
-            states.dsv_format = GpuFormat::D32_Float;
-            states.depth_enable = true;
+            GpuRenderPipeline::States states{
+                .cull_mode = GpuRenderPipeline::CullMode::ClockWise,
+                .depth_enable = true,
+                .dsv_format = GpuFormat::D32_Float,
+            };
 
             const GpuVertexLayout vertex_layout(gpu_system_, std::span<const GpuVertexAttrib>({
                                                                  {"POSITION", 0, GpuFormat::RGBA32_Float},
@@ -227,7 +228,7 @@ namespace AIHoloImager
 
         const GpuCommandList::VertexBufferBinding vb_bindings[] = {{&positions, 0}};
         const GpuCommandList::IndexBufferBinding ib_binding = {&indices, 0, GpuFormat::R32_Uint};
-
+        const GpuRenderIndexedArguments args = {indices.Size() / sizeof(uint32_t)};
         if (needs_derivative_barycentric)
         {
             GpuConstantBufferOfType<RasterizeFwdPsDerivateBcConstantBuffer> rasterize_fwd_ps_derivative_bc_cb(
@@ -255,8 +256,8 @@ namespace AIHoloImager
 
             GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv, &derivative_barycentric_rtv};
 
-            cmd_list.RenderIndexed(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, ib_binding, {indices.Size() / sizeof(uint32_t)},
-                shader_bindings, rtvs, &depth_dsv_, std::span(&viewport, 1), {});
+            cmd_list.RenderIndexed(rasterize_fwd_derivative_bc_pipeline_, vb_bindings, ib_binding, args, shader_bindings, rtvs, &depth_dsv_,
+                std::span(&viewport, 1), {});
         }
         else
         {
@@ -268,8 +269,8 @@ namespace AIHoloImager
 
             GpuRenderTargetView* rtvs[] = {&barycentric_rtv, &prim_id_rtv};
 
-            cmd_list.RenderIndexed(rasterize_fwd_pipeline_, vb_bindings, ib_binding, {indices.Size() / sizeof(uint32_t)}, shader_bindings,
-                rtvs, &depth_dsv_, std::span(&viewport, 1), {});
+            cmd_list.RenderIndexed(
+                rasterize_fwd_pipeline_, vb_bindings, ib_binding, args, shader_bindings, rtvs, &depth_dsv_, std::span(&viewport, 1), {});
         }
     }
 

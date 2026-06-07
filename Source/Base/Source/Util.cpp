@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2006 Minmin Gong
 //
 
 #include "Base/Util.hpp"
@@ -90,7 +90,9 @@ namespace AIHoloImager
             {
                 // 2-byte
                 if (i + 1 >= src.size())
+                {
                     break; // incomplete
+                }
                 codepoint = ((c & 0x1F) << 6) | (src[i + 1] & 0x3F);
                 i += 2;
             }

@@ -149,12 +149,10 @@ namespace AIHoloImager
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
                 .pNext = &robustness_2_feature,
             };
-
             VkPhysicalDeviceVulkan12Features vulkan12_features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
                 .pNext = &vulkan11_features,
             };
-
             VkPhysicalDeviceVulkan13Features vulkan13_features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
                 .pNext = &vulkan12_features,
@@ -319,21 +317,19 @@ namespace AIHoloImager
             .nullDescriptor = VK_TRUE,
         };
 
-        VkPhysicalDeviceVulkan11Features enable_vulkan11_features = {
+        VkPhysicalDeviceVulkan11Features enable_vulkan11_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
             .pNext = &enable_robustness_2_feature,
             .storageBuffer16BitAccess = VK_TRUE,
             .uniformAndStorageBuffer16BitAccess = VK_TRUE,
         };
-
-        VkPhysicalDeviceVulkan12Features enable_vulkan12_features = {
+        VkPhysicalDeviceVulkan12Features enable_vulkan12_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext = &enable_vulkan11_features,
             .shaderFloat16 = VK_TRUE,
             .timelineSemaphore = VK_TRUE,
         };
-
-        VkPhysicalDeviceVulkan13Features enable_vulkan13_features = {
+        VkPhysicalDeviceVulkan13Features enable_vulkan13_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = &enable_vulkan12_features,
             .shaderDemoteToHelperInvocation = VK_TRUE,

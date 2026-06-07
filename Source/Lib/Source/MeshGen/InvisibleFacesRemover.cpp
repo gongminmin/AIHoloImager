@@ -53,13 +53,13 @@ namespace AIHoloImager
                 };
 
                 const GpuFormat rtv_formats[] = {face_id_tex_.Format()};
-
-                GpuRenderPipeline::States states;
-                states.cull_mode = GpuRenderPipeline::CullMode::ClockWise;
-                states.conservative_raster = true;
-                states.depth_enable = true;
-                states.rtv_formats = rtv_formats;
-                states.dsv_format = ds_tex_.Format();
+                const GpuRenderPipeline::States states{
+                    .cull_mode = GpuRenderPipeline::CullMode::ClockWise,
+                    .conservative_raster = true,
+                    .depth_enable = true,
+                    .rtv_formats = rtv_formats,
+                    .dsv_format = ds_tex_.Format(),
+                };
 
                 const GpuVertexLayout vertex_layout(gpu_system_, std::span<const GpuVertexAttrib>({
                                                                      {"POSITION", 0, GpuFormat::RGB32_Float},
@@ -198,7 +198,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 16;
 
                 GpuConstantBufferOfType<MarkFacesConstantBuffer> mark_faces_cb(gpu_system_, "mark_faces_cb");
-                mark_faces_cb->width_height = glm::uvec2(face_id_tex_.Width(0), face_id_tex_.Height(0));
+                mark_faces_cb->width_height = {face_id_tex_.Width(0), face_id_tex_.Height(0)};
                 mark_faces_cb.UploadStaging();
                 const GpuConstantBufferView mark_faces_cbv(gpu_system_, mark_faces_cb);
 

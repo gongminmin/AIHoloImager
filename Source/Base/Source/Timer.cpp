@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Base/Timer.hpp"
@@ -9,6 +9,7 @@ namespace AIHoloImager
     {
         this->Restart();
     }
+    Timer::~Timer() noexcept = default;
 
     void Timer::Restart() noexcept
     {

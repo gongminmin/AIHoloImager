@@ -12,7 +12,7 @@
 namespace AIHoloImager
 {
     template <typename T>
-    class ComPtr
+    class ComPtr final
     {
         template <typename U>
         friend class ComPtr;

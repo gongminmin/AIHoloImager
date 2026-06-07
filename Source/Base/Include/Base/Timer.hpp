@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2006 Minmin Gong
 //
 
 #pragma once
@@ -11,6 +11,7 @@ namespace AIHoloImager
     {
     public:
         Timer() noexcept;
+        ~Timer() noexcept;
 
         void Restart() noexcept;
         std::chrono::high_resolution_clock::time_point Now() const noexcept;

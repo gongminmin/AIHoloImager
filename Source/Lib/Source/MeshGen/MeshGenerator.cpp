@@ -238,10 +238,10 @@ namespace AIHoloImager
                 };
 
                 const GpuFormat rtv_formats[] = {ColorFmt};
-
-                GpuRenderPipeline::States states;
-                states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
-                states.rtv_formats = rtv_formats;
+                const GpuRenderPipeline::States states{
+                    .cull_mode = GpuRenderPipeline::CullMode::CounterClockWise,
+                    .rtv_formats = rtv_formats,
+                };
 
                 const GpuStaticSampler bilinear_sampler(gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear},
                     GpuStaticSampler::AddressMode::Border);
@@ -691,8 +691,8 @@ namespace AIHoloImager
                         GpuShaderResourceView input_srv(gpu_system, photo_texture_result.color_tex);
                         GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
 
-                        auto extract_mask_cb = GpuConstantBufferOfType<ExtractMaskConstantBuffer>(gpu_system, "extract_mask_cb");
-                        extract_mask_cb->texture_size = glm::uvec2(texture_size, texture_size);
+                        GpuConstantBufferOfType<ExtractMaskConstantBuffer> extract_mask_cb(gpu_system, "extract_mask_cb");
+                        extract_mask_cb->texture_size = {texture_size, texture_size};
                         extract_mask_cb.UploadStaging();
                         const GpuConstantBufferView extract_mask_cbv(gpu_system, extract_mask_cb);
 
@@ -853,8 +853,8 @@ namespace AIHoloImager
                             const uint32_t src = j & 1;
                             dst = src ? 0 : 1;
 
-                            auto erosion_mask_cb = GpuConstantBufferOfType<ErosionMaskConstantBuffer>(gpu_system, "erosion_mask_cb");
-                            erosion_mask_cb->texture_size = glm::uvec2(delighted_width, delighted_height);
+                            GpuConstantBufferOfType<ErosionMaskConstantBuffer> erosion_mask_cb(gpu_system, "erosion_mask_cb");
+                            erosion_mask_cb->texture_size = {delighted_width, delighted_height};
                             erosion_mask_cb->erosion = true;
                             erosion_mask_cb->channel = j == 0 ? 3 : 0;
                             erosion_mask_cb.UploadStaging();
@@ -898,8 +898,8 @@ namespace AIHoloImager
                             const uint32_t src = j & 1;
                             dst = src ? 0 : 1;
 
-                            auto dilation_mask_cb = GpuConstantBufferOfType<ErosionMaskConstantBuffer>(gpu_system, "dilation_mask_cb");
-                            dilation_mask_cb->texture_size = glm::uvec2(delighted_width, delighted_height);
+                            GpuConstantBufferOfType<ErosionMaskConstantBuffer> dilation_mask_cb(gpu_system, "dilation_mask_cb");
+                            dilation_mask_cb->texture_size = {delighted_width, delighted_height};
                             dilation_mask_cb->erosion = false;
                             dilation_mask_cb->channel = j == 0 ? 3 : 0;
                             dilation_mask_cb.UploadStaging();
@@ -1985,7 +1985,7 @@ namespace AIHoloImager
             const uint32_t texture_height = merged_tex.Height(0);
 
             GpuConstantBufferOfType<MergeTextureConstantBuffer> merge_texture_cb(gpu_system, "merge_texture_cb");
-            merge_texture_cb->texture_size = glm::uvec2(texture_width, texture_height);
+            merge_texture_cb->texture_size = {texture_width, texture_height};
             merge_texture_cb.UploadStaging();
 
             const GpuConstantBufferView merge_texture_cbv(gpu_system, merge_texture_cb);

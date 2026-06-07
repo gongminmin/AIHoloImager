@@ -33,19 +33,19 @@ namespace AIHoloImager
                     {DEFINE_SHADER(FlattenPs)},
                 };
 
-                const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
-
                 const GpuVertexLayout vertex_layout(gpu_system_, std::span<const GpuVertexAttrib>({
                                                                      {"POSITION", 0, GpuFormat::RGB32_Float},
                                                                      {"NORMAL", 0, GpuFormat::RGB32_Float},
                                                                      {"TEXCOORD", 0, GpuFormat::RG32_Float},
                                                                  }));
 
-                GpuRenderPipeline::States states;
-                states.cull_mode = GpuRenderPipeline::CullMode::None;
-                states.conservative_raster = true;
-                states.depth_enable = false;
-                states.rtv_formats = rtv_formats;
+                const GpuFormat rtv_formats[] = {PositionFmt, NormalFmt};
+                const GpuRenderPipeline::States states{
+                    .cull_mode = GpuRenderPipeline::CullMode::None,
+                    .conservative_raster = true,
+                    .depth_enable = false,
+                    .rtv_formats = rtv_formats,
+                };
 
                 flatten_pipeline_ =
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_layout, {}, states);
@@ -64,11 +64,12 @@ namespace AIHoloImager
                         8 * sizeof(float),
                     }));
 
-                GpuRenderPipeline::States states;
-                states.cull_mode = GpuRenderPipeline::CullMode::None;
-                states.depth_enable = true;
-                states.rtv_formats = {};
-                states.dsv_format = DepthFmt;
+                const GpuRenderPipeline::States states{
+                    .cull_mode = GpuRenderPipeline::CullMode::None,
+                    .depth_enable = true,
+                    .rtv_formats = {},
+                    .dsv_format = DepthFmt,
+                };
 
                 gen_shadow_map_pipeline_ =
                     GpuRenderPipeline(gpu_system_, GpuRenderPipeline::PrimitiveTopology::TriangleList, shaders, vertex_layout, {}, states);

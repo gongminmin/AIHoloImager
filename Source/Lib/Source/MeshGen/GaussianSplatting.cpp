@@ -48,12 +48,7 @@ namespace AIHoloImager
                     {DEFINE_SHADER(RenderGs)},
                 };
 
-                GpuRenderPipeline::States states;
-                states.cull_mode = GpuRenderPipeline::CullMode::CounterClockWise;
-
                 const GpuFormat rtv_formats[] = {GSplatFmt};
-                states.rtv_formats = rtv_formats;
-
                 const GpuRenderPipeline::RenderTargetBlendDesc blend_desc{
                     .blend_enable = true,
                     .src_color_blend_factor = GpuRenderPipeline::BlendFactor::DstAlpha,
@@ -61,7 +56,13 @@ namespace AIHoloImager
                     .src_alpha_blend_factor = GpuRenderPipeline::BlendFactor::Zero,
                     .dst_alpha_blend_factor = GpuRenderPipeline::BlendFactor::InvSrcAlpha,
                 };
-                states.blend_states.render_targets = std::span(&blend_desc, 1);
+                const GpuRenderPipeline::States states{
+                    .cull_mode = GpuRenderPipeline::CullMode::CounterClockWise,
+                    .rtv_formats = rtv_formats,
+                    .blend_states{
+                        .render_targets = std::span(&blend_desc, 1),
+                    },
+                };
 
                 const GpuVertexLayout vertex_layout(gpu_system, std::span<const GpuVertexAttrib>({
                                                                     {"TEXCOORD", 0, GpuFormat::RGBA32_Float, 0},
@@ -130,9 +131,9 @@ namespace AIHoloImager
                 preprocess_cb->kernel_size = kernel_size;
                 preprocess_cb->view_mtx = glm::transpose(view_mtx);
                 preprocess_cb->view_proj_mtx = glm::transpose(proj_mtx * view_mtx);
-                preprocess_cb->focal = glm::vec2(focal_x, focal_y);
-                preprocess_cb->tan_fov = glm::vec2(tan_fov_x, tan_fov_y);
-                preprocess_cb->width_height = glm::uvec2(width, height);
+                preprocess_cb->focal = {focal_x, focal_y};
+                preprocess_cb->tan_fov = {tan_fov_x, tan_fov_y};
+                preprocess_cb->width_height = {width, height};
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system, preprocess_cb);
 
@@ -188,7 +189,7 @@ namespace AIHoloImager
 
             {
                 GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system, "render_cb");
-                render_cb->width_height = glm::uvec2(width, height);
+                render_cb->width_height = {width, height};
                 render_cb.UploadStaging();
                 const GpuConstantBufferView render_cbv(gpu_system, render_cb);
 
@@ -226,7 +227,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 16;
 
                 GpuConstantBufferOfType<BlendConstantBuffer> blend_cb(gpu_system, "blend_cb");
-                blend_cb->width_height = glm::uvec2(width, height);
+                blend_cb->width_height = {width, height};
                 blend_cb.UploadStaging();
                 const GpuConstantBufferView blend_cbv(gpu_system, blend_cb);
 

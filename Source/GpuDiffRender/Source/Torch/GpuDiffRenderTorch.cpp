@@ -75,17 +75,21 @@ namespace AIHoloImager
 
         if (viewport != nullptr)
         {
-            rast_intermediate_.viewport.left = viewport->left;
-            rast_intermediate_.viewport.top = viewport->top;
-            rast_intermediate_.viewport.width = viewport->width;
-            rast_intermediate_.viewport.height = viewport->height;
+            rast_intermediate_.viewport = {
+                .left = viewport->left,
+                .top = viewport->top,
+                .width = viewport->width,
+                .height = viewport->height,
+            };
         }
         else
         {
-            rast_intermediate_.viewport.left = 0;
-            rast_intermediate_.viewport.top = 0;
-            rast_intermediate_.viewport.width = static_cast<float>(width);
-            rast_intermediate_.viewport.height = static_cast<float>(height);
+            rast_intermediate_.viewport = {
+                .left = 0,
+                .top = 0,
+                .width = static_cast<float>(width),
+                .height = static_cast<float>(height),
+            };
         }
         rast_intermediate_.viewport.min_depth = 0;
         rast_intermediate_.viewport.max_depth = 1;
@@ -630,17 +634,21 @@ namespace AIHoloImager
 
         if (viewport != nullptr)
         {
-            aa_intermediate_.viewport.left = viewport->left;
-            aa_intermediate_.viewport.top = viewport->top;
-            aa_intermediate_.viewport.width = viewport->width;
-            aa_intermediate_.viewport.height = viewport->height;
+            aa_intermediate_.viewport = {
+                .left = viewport->left,
+                .top = viewport->top,
+                .width = viewport->width,
+                .height = viewport->height,
+            };
         }
         else
         {
-            aa_intermediate_.viewport.left = 0;
-            aa_intermediate_.viewport.top = 0;
-            aa_intermediate_.viewport.width = static_cast<float>(width);
-            aa_intermediate_.viewport.height = static_cast<float>(height);
+            aa_intermediate_.viewport = {
+                .left = 0,
+                .top = 0,
+                .width = static_cast<float>(width),
+                .height = static_cast<float>(height),
+            };
         }
         aa_intermediate_.viewport.min_depth = 0;
         aa_intermediate_.viewport.max_depth = 1;

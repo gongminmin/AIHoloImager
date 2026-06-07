@@ -333,8 +333,7 @@ namespace AIHoloImager
                         uint32_t mip_level, array_index, plane;
                         DecomposeSubResource(static_cast<uint32_t>(i), this->MipLevels(), this->Planes(), mip_level, array_index, plane);
 
-                        auto& barrier = barriers.emplace_back();
-                        barrier = {
+                        auto& barrier = barriers.emplace_back(VkImageMemoryBarrier2{
                             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                             .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                             .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
@@ -350,11 +349,11 @@ namespace AIHoloImager
                                 .baseArrayLayer = array_index,
                                 .layerCount = 1,
                             },
-                        };
+                        });
                         std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
                     }
                 }
-                cmd_list.Transition(std::span(barriers.begin(), barriers.end()));
+                cmd_list.Transition(std::span(barriers));
             }
         }
 

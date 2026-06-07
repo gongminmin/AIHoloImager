@@ -1128,17 +1128,11 @@ namespace AIHoloImager
             GpuConstantBufferOfType<UndistortConstantBuffer> undistort_cb(gpu_system, "undistort_cb");
 
             const auto& k = camera.K();
-            undistort_cb->k.x = static_cast<float>(k(0, 0));
-            undistort_cb->k.y = static_cast<float>(k(0, 2));
-            undistort_cb->k.z = static_cast<float>(k(1, 2));
+            undistort_cb->k = {static_cast<float>(k(0, 0)), static_cast<float>(k(0, 2)), static_cast<float>(k(1, 2))};
             const auto& params = camera.getParams();
-            undistort_cb->params.x = static_cast<float>(params[3]);
-            undistort_cb->params.y = static_cast<float>(params[4]);
-            undistort_cb->params.z = static_cast<float>(params[5]);
-            undistort_cb->width_height.x = static_cast<float>(input_tex.Width(0));
-            undistort_cb->width_height.y = static_cast<float>(input_tex.Height(0));
-            undistort_cb->width_height.z = 1.0f / input_tex.Width(0);
-            undistort_cb->width_height.w = 1.0f / input_tex.Height(0);
+            undistort_cb->params = {static_cast<float>(params[3]), static_cast<float>(params[4]), static_cast<float>(params[5])};
+            undistort_cb->width_height = {static_cast<float>(input_tex.Width(0)), static_cast<float>(input_tex.Height(0)),
+                1.0f / input_tex.Width(0), 1.0f / input_tex.Height(0)};
             undistort_cb.UploadStaging();
 
             const GpuConstantBufferView undistort_cbv(gpu_system, undistort_cb);

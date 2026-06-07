@@ -136,7 +136,7 @@ namespace AIHoloImager
                         GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "upsampled_tex");
 
                 GpuConstantBufferOfType<BlendConstantBuffer> blend_cb(gpu_system, "blend_cb");
-                blend_cb->dest_size = glm::uvec2(upsampled_tex.Width(0), upsampled_tex.Height(0));
+                blend_cb->dest_size = {upsampled_tex.Width(0), upsampled_tex.Height(0)};
                 blend_cb->scale = upsampled_tex.Width(0) / image.Width(0);
                 blend_cb.UploadStaging();
                 const GpuConstantBufferView blend_cbv(gpu_system, blend_cb);
@@ -178,8 +178,8 @@ namespace AIHoloImager
 
             {
                 GpuConstantBufferOfType<ResizeConstantBuffer> resize_x_cb(gpu_system, "resize_x_cb");
-                resize_x_cb->src_roi = glm::uvec4(0, 0, upsampled_tex.Width(0), upsampled_tex.Height(0));
-                resize_x_cb->dest_size = glm::uvec2(target_width, upsampled_tex.Height(0));
+                resize_x_cb->src_roi = {0, 0, upsampled_tex.Width(0), upsampled_tex.Height(0)};
+                resize_x_cb->dest_size = {target_width, upsampled_tex.Height(0)};
                 resize_x_cb->scale = static_cast<float>(upsampled_tex.Width(0)) / target_width;
                 resize_x_cb->x_dir = true;
                 resize_x_cb.UploadStaging();
@@ -206,8 +206,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView output_uav(gpu_system, resized_image);
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> resize_y_cb(gpu_system, "resize_y_cb");
-                resize_y_cb->src_roi = glm::uvec4(0, 0, target_width, upsampled_tex.Height(0));
-                resize_y_cb->dest_size = glm::uvec2(target_width, target_height);
+                resize_y_cb->src_roi = {0, 0, target_width, upsampled_tex.Height(0)};
+                resize_y_cb->dest_size = {target_width, target_height};
                 resize_y_cb->scale = static_cast<float>(upsampled_tex.Height(0)) / target_height;
                 resize_y_cb->x_dir = false;
                 resize_y_cb.UploadStaging();

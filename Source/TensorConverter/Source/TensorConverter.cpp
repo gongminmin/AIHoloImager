@@ -73,7 +73,6 @@ namespace AIHoloImager
 
             if (cuda_copy_enabled_)
             {
-
                 TIFCE(cuda_rt_.StreamCreate(&copy_stream_));
             }
         }
@@ -150,11 +149,11 @@ namespace AIHoloImager
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(*copy_buff);
 
-                MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
-                ext_mem_buffer_desc.size = size;
-                ext_mem_buffer_desc.offset = 0;
-                ext_mem_buffer_desc.flags = 0;
-
+                const MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{
+                    .offset = 0,
+                    .size = size,
+                    .flags = 0,
+                };
                 void* ext_mem_ptr;
                 TIFCE(cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc));
 
@@ -235,27 +234,38 @@ namespace AIHoloImager
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
-                MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, is_tex_2d ? 0 : depth};
-                ext_mem_mip_desc.format_desc = this->FormatDesc(format);
-                ext_mem_mip_desc.num_levels = 1;
-                ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
-
+                MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{
+                    .format_desc = this->FormatDesc(format),
+                    .extent{
+                        .width = width,
+                        .height = height,
+                        .depth = is_tex_2d ? 0 : depth,
+                    },
+                    .flags = MiniCudaRt::ArraySurfaceLoadStore,
+                    .num_levels = 1,
+                };
                 MiniCudaRt::MipmappedArray_t cu_mip_array;
                 TIFCE(cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc));
 
                 MiniCudaRt::Array_t cu_array;
                 TIFCE(cuda_rt_.GetMipmappedArrayLevel(&cu_array, cu_mip_array, 0));
 
-                MiniCudaRt::Memcpy3DParams p{};
-                p.src_ptr.ptr = tensor.mutable_data_ptr();
-                p.src_ptr.pitch = width * FormatSize(format);
-                p.src_ptr.x_size = width;
-                p.src_ptr.y_size = height;
-                p.dst_array = cu_array;
-                p.extent = {width, height, depth};
-                p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
-                TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
+                const MiniCudaRt::Memcpy3DParams param{
+                    .src_ptr{
+                        .ptr = tensor.mutable_data_ptr(),
+                        .pitch = width * FormatSize(format),
+                        .x_size = width,
+                        .y_size = height,
+                    },
+                    .dst_array = cu_array,
+                    .extent{
+                        .width = width,
+                        .height = height,
+                        .depth = depth,
+                    },
+                    .kind = MiniCudaRt::MemcpyKind::DeviceToDevice,
+                };
+                TIFCE(cuda_rt_.Memcpy3DAsync(&param, copy_stream_));
 
                 TIFCE(cuda_rt_.FreeMipmappedArray(cu_mip_array));
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
@@ -273,7 +283,7 @@ namespace AIHoloImager
 
         torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
         {
-            auto opts = torch::TensorOptions().dtype(data_type);
+            auto opts = torch::dtype(data_type);
             torch::Tensor tensor;
             if (cuda_copy_enabled_)
             {
@@ -287,11 +297,11 @@ namespace AIHoloImager
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(buff);
 
-                MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{};
-                ext_mem_buffer_desc.size = buff.Size();
-                ext_mem_buffer_desc.offset = 0;
-                ext_mem_buffer_desc.flags = 0;
-
+                const MiniCudaRt::ExternalMemoryBufferDesc ext_mem_buffer_desc{
+                    .offset = 0,
+                    .size = buff.Size(),
+                    .flags = 0,
+                };
                 void* ext_mem_ptr;
                 TIFCE(cuda_rt_.ExternalMemoryGetMappedBuffer(&ext_mem_ptr, ext_mem, &ext_mem_buffer_desc));
 
@@ -353,7 +363,7 @@ namespace AIHoloImager
                 Unreachable("Invalid format");
             }
 
-            auto opts = torch::TensorOptions().dtype(data_type);
+            auto opts = torch::dtype(data_type);
             torch::Tensor tensor;
             if (cuda_copy_enabled_)
             {
@@ -367,12 +377,16 @@ namespace AIHoloImager
 
                 MiniCudaRt::ExternalMemory_t ext_mem = this->ImportFromResource(tex);
 
-                MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{};
-                ext_mem_mip_desc.extent = {width, height, is_tex_2d ? 0 : depth};
-                ext_mem_mip_desc.format_desc = this->FormatDesc(fmt);
-                ext_mem_mip_desc.num_levels = 1;
-                ext_mem_mip_desc.flags = MiniCudaRt::ArraySurfaceLoadStore;
-
+                const MiniCudaRt::ExternalMemoryMipmappedArrayDesc ext_mem_mip_desc{
+                    .format_desc = this->FormatDesc(fmt),
+                    .extent{
+                        .width = width,
+                        .height = height,
+                        .depth = is_tex_2d ? 0 : depth,
+                    },
+                    .flags = MiniCudaRt::ArraySurfaceLoadStore,
+                    .num_levels = 1,
+                };
                 MiniCudaRt::MipmappedArray_t cu_mip_array;
                 TIFCE(cuda_rt_.ExternalMemoryGetMappedMipmappedArray(&cu_mip_array, ext_mem, &ext_mem_mip_desc));
 
@@ -382,15 +396,22 @@ namespace AIHoloImager
                 opts = opts.device(torch_device_);
                 tensor = torch::empty({depth, height, width, num_channels}, opts);
 
-                MiniCudaRt::Memcpy3DParams p{};
-                p.src_array = cu_array;
-                p.dst_ptr.ptr = tensor.mutable_data_ptr();
-                p.dst_ptr.pitch = width * FormatSize(fmt);
-                p.dst_ptr.x_size = width;
-                p.dst_ptr.y_size = height;
-                p.extent = {width, height, depth};
-                p.kind = MiniCudaRt::MemcpyKind::DeviceToDevice;
-                TIFCE(cuda_rt_.Memcpy3DAsync(&p, copy_stream_));
+                const MiniCudaRt::Memcpy3DParams param{
+                    .src_array = cu_array,
+                    .dst_ptr{
+                        .ptr = tensor.mutable_data_ptr(),
+                        .pitch = width * FormatSize(fmt),
+                        .x_size = width,
+                        .y_size = height,
+                    },
+                    .extent{
+                        .width = width,
+                        .height = height,
+                        .depth = depth,
+                    },
+                    .kind = MiniCudaRt::MemcpyKind::DeviceToDevice,
+                };
+                TIFCE(cuda_rt_.Memcpy3DAsync(&param, copy_stream_));
 
                 TIFCE(cuda_rt_.FreeMipmappedArray(cu_mip_array));
                 TIFCE(cuda_rt_.DestroyExternalMemory(ext_mem));
@@ -443,7 +464,14 @@ namespace AIHoloImager
     private:
         MiniCudaRt::ExternalMemory_t ImportFromResource(const GpuResource& resource) const
         {
-            MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{};
+            MiniCudaRt::ExternalMemoryHandleDesc ext_mem_handle_desc{
+                .handle{
+                    .win32{
+                        .handle = resource.SharedHandle(),
+                    },
+                },
+                .size = resource.AllocationSize(),
+            };
             switch (gpu_system_.NativeApi())
             {
             case GpuSystem::Api::D3D12:
@@ -452,13 +480,12 @@ namespace AIHoloImager
                 break;
             case GpuSystem::Api::Vulkan:
                 ext_mem_handle_desc.type = MiniCudaRt::ExternalMemoryHandleType::OpaqueWin32;
+                ext_mem_handle_desc.flags = 0;
                 break;
 
             default:
                 Unreachable("Invalid API");
             }
-            ext_mem_handle_desc.handle.win32.handle = resource.SharedHandle();
-            ext_mem_handle_desc.size = resource.AllocationSize();
 
             MiniCudaRt::ExternalMemory_t ext_mem;
             TIFCE(cuda_rt_.ImportExternalMemory(&ext_mem, &ext_mem_handle_desc));
@@ -469,7 +496,14 @@ namespace AIHoloImager
         {
             if (ext_semaphores_[static_cast<uint32_t>(type)] == MiniCudaRt::ExternalSemaphore_t{})
             {
-                MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{};
+                MiniCudaRt::ExternalSemaphoreHandleDesc ext_semaphore_handle_desc{
+                    .handle{
+                        .win32{
+                            .handle = gpu_system_.SharedFenceHandle(type),
+                        },
+                    },
+                    .flags = 0,
+                };
                 switch (gpu_system_.NativeApi())
                 {
                 case GpuSystem::Api::D3D12:
@@ -482,24 +516,32 @@ namespace AIHoloImager
                 default:
                     Unreachable("Invalid API");
                 }
-                ext_semaphore_handle_desc.handle.win32.handle = gpu_system_.SharedFenceHandle(type);
-                ext_semaphore_handle_desc.flags = 0;
                 TIFCE(cuda_rt_.ImportExternalSemaphore(&ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_handle_desc));
             }
         }
 
         void WaitExternalSemaphore(GpuSystem::CmdQueueType type, uint64_t fence_val) const
         {
-            MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{};
-            ext_semaphore_wait_params.params.fence.value = fence_val;
+            const MiniCudaRt::ExternalSemaphoreWaitParams ext_semaphore_wait_params{
+                .params{
+                    .fence{
+                        .value = fence_val,
+                    },
+                },
+            };
             TIFCE(cuda_rt_.WaitExternalSemaphoresAsync(
                 &ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_wait_params, 1, copy_stream_));
         }
 
         void SignalExternalSemaphore(GpuSystem::CmdQueueType type, uint64_t fence_val) const
         {
-            MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{};
-            ext_semaphore_signal_params.params.fence.value = fence_val;
+            const MiniCudaRt::ExternalSemaphoreSignalParams ext_semaphore_signal_params{
+                .params{
+                    .fence{
+                        .value = fence_val,
+                    },
+                },
+            };
             TIFCE(cuda_rt_.SignalExternalSemaphoresAsync(
                 &ext_semaphores_[static_cast<uint32_t>(type)], &ext_semaphore_signal_params, 1, copy_stream_));
         }
