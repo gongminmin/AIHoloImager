@@ -11,7 +11,9 @@ MoGe/moge-vitl
 nvdiffrast/nvdiffrast/
 openMVG/openMVG/
 openMVS/OpenMVS_*
-PythonVenv/PythonVenv/
+Python/Python/python*.zip
+Python/Python/Python
+Python/Venv/Venv/
 Real-ESRGAN/RealESrGanModel/
 SPIRV-Reflect/SPIRV-Reflect/
 TRELLIS/TRELLIS-image-large/

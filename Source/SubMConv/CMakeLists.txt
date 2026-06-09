@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 set(aihi_subm_conv_files
@@ -19,7 +19,7 @@ add_library(AIHoloImagerSubMConv SHARED
 AddShaderFile(Source/Torch/Shader/BuildCoordHashCs.hlsl "cs" "main")
 AddShaderFile(Source/Torch/Shader/FindAvailableNeighborsCs.hlsl "cs" "main")
 
-set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
+set(torch_dir ${PROJECT_SOURCE_DIR}/External/Python/Venv/Venv/Lib/site-packages/torch)
 
 target_include_directories(AIHoloImagerSubMConv
     PRIVATE

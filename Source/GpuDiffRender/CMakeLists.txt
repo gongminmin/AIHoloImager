@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 set(aihi_gpu_diff_render_files
@@ -61,7 +61,7 @@ AddShaderFile(Source/Shader/TextureBwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/TextureBwdMipCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/AccumGradMipsCs.hlsl "cs" "main")
 
-set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
+set(torch_dir ${PROJECT_SOURCE_DIR}/External/Python/Venv/Venv/Lib/site-packages/torch)
 
 target_include_directories(AIHoloImagerGpuDiffRender
     PRIVATE

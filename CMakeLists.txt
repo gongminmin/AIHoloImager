@@ -1,3 +1,6 @@
+# Copyright (c) 2024-2026 Minmin Gong
+#
+
 cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
 set(aihi_cmake_module_dir "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules")
@@ -38,9 +41,6 @@ if(ai_holo_imager_platform_windows)
     option(AIHI_ENABLE_D3D12 "Enable D3D12" ON)
 endif()
 option(AIHI_ENABLE_VULKAN "Enable Vulkan" ON)
-
-# 3.13.4 has issues with lib name. See https://github.com/python/cpython/issues/135151
-find_package(Python3 3.11...<3.13.4 COMPONENTS Interpreter Development.Embed REQUIRED)
 
 add_subdirectory(External)
 add_subdirectory(Source)

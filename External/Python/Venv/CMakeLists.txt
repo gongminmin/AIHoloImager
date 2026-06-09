@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 execute_process(
@@ -1805,10 +1805,10 @@ foreach(src_file ${py_files})
     set(pyc_file "${src_file_dir}/${src_file_stem}.pyc")
     set(dst_file "${aihi_output_dir}/Python/${pyc_file}")
     add_custom_command(OUTPUT ${dst_file}
-        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> PythonVenv/${src_file}
-        COMMAND ${CMAKE_COMMAND} -E copy "PythonVenv/${pyc_file}" ${dst_file}
+        COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> Venv/${src_file}
+        COMMAND ${CMAKE_COMMAND} -E copy "Venv/${pyc_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
-        DEPENDS PythonVenv/${src_file}
+        DEPENDS Venv/${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
@@ -1883,9 +1883,9 @@ foreach(src_file ${copy_files})
     set(src_file "Lib/site-packages/${src_file}")
     set(dst_file "${aihi_output_dir}/Python/${src_file}")
     add_custom_command(OUTPUT ${dst_file}
-        COMMAND ${CMAKE_COMMAND} -E create_hardlink "PythonVenv/${src_file}" ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink "Venv/${src_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
-        DEPENDS PythonVenv/${src_file}
+        DEPENDS Venv/${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
@@ -1971,6 +1971,7 @@ set(py_files
     importlib/resources/abc.py
     importlib/resources/_adapters.py
     importlib/resources/_common.py
+    importlib/resources/_functional.py
     importlib/resources/__init__.py
     importlib/abc.py
     importlib/_abc.py
@@ -1990,11 +1991,15 @@ set(py_files
     multiprocessing/synchronize.py
     multiprocessing/util.py
     multiprocessing/__init__.py
+    pathlib/_abc.py
+    pathlib/_local.py
+    pathlib/__init__.py
     re/_casefix.py
     re/_compiler.py
     re/_constants.py
     re/_parser.py
     re/__init__.py
+    sysconfig/__init__.py
     unittest/case.py
     unittest/loader.py
     unittest/main.py
@@ -2014,6 +2019,9 @@ set(py_files
     xml/etree/ElementTree.py
     xml/etree/__init__.py
     xml/__init__.py
+    zipfile/_path/glob.py
+    zipfile/_path/__init__.py
+    zipfile/__init__.py
     argparse.py
     ast.py
     base64.py
@@ -2073,6 +2081,7 @@ set(py_files
     quopri.py
     random.py
     reprlib.py
+    rlcompleter.py
     secrets.py
     selectors.py
     shlex.py
@@ -2097,42 +2106,14 @@ set(py_files
     uuid.py
     warnings.py
     weakref.py
+    _colorize.py
     _compat_pickle.py
     _compression.py
     _markupbase.py
+    _opcode_metadata.py
     _weakrefset.py
     __future__.py
 )
-if(Python3_VERSION VERSION_GREATER_EQUAL "3.12")
-    set(py_files ${py_files}
-        zipfile/_path/glob.py
-        zipfile/_path/__init__.py
-        zipfile/__init__.py
-    )
-else()
-    set(py_files ${py_files}
-        zipfile.py
-    )
-endif()
-if(Python3_VERSION VERSION_GREATER_EQUAL "3.13")
-    set(py_files ${py_files}
-        importlib/resources/_functional.py
-        pathlib/_abc.py
-        pathlib/_local.py
-        pathlib/__init__.py
-        sysconfig/__init__.py
-        rlcompleter.py
-        _colorize.py
-        _opcode_metadata.py
-    )
-else()
-    set(py_files ${py_files}
-        collections/abc.py
-        importlib/resources/_legacy.py
-        pathlib.py
-        sysconfig.py
-    )
-endif()
 foreach(src_file ${py_files})
     get_filename_component(src_file_dir ${src_file} DIRECTORY)
     file(COPY "${Python3_STDLIB}/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/Lib/${src_file_dir}")

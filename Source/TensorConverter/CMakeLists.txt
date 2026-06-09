@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 set(aihi_tensor_converter_files
@@ -14,7 +14,7 @@ add_library(AIHoloImagerTensorConverter SHARED
     ${aihi_tensor_converter_files}
 )
 
-set(torch_dir ${PROJECT_SOURCE_DIR}/External/PythonVenv/PythonVenv/Lib/site-packages/torch)
+set(torch_dir ${PROJECT_SOURCE_DIR}/External/Python/Venv/Venv/Lib/site-packages/torch)
 
 target_include_directories(AIHoloImagerTensorConverter
     PUBLIC
