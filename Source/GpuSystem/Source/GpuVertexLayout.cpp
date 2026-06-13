@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuVertexLayout.hpp"
@@ -56,5 +56,30 @@ namespace AIHoloImager
             impl_ = std::move(other.impl_);
         }
         return *this;
+    }
+
+    std::span<const GpuVertexAttrib> GpuVertexLayout::Attribs() const noexcept
+    {
+        assert(impl_);
+        return impl_->Attribs();
+    }
+
+    std::span<const uint32_t> GpuVertexLayout::SlotStrides() const noexcept
+    {
+        assert(impl_);
+        return impl_->SlotStrides();
+    }
+
+    uint32_t GpuVertexLayout::FindAttrib(std::string_view semantic, uint32_t index) const
+    {
+        const auto attribs = this->Attribs();
+        for (uint32_t i = 0; i < attribs.size(); ++i)
+        {
+            if ((attribs[i].semantic == semantic) && (attribs[i].semantic_index == index))
+            {
+                return i;
+            }
+        }
+        return InvalidIndex;
     }
 } // namespace AIHoloImager

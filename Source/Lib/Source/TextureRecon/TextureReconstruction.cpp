@@ -91,7 +91,7 @@ namespace AIHoloImager
             }
         }
 
-        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+        Result Process(const GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
             uint32_t texture_size)
         {
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -103,13 +103,8 @@ namespace AIHoloImager
 
             PerfRegion texture_perf(aihi_.PerfProfilerInstance(), "TextureReconstruction Process", &cmd_list);
 
-            GpuBuffer mesh_vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::VertexBuffer, "TextureReconstruction.mesh_vb");
-            cmd_list.Upload(mesh_vb, mesh.VertexBuffer().data(), mesh_vb.Size());
-
-            GpuBuffer mesh_ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::IndexBuffer, "TextureReconstruction.mesh_ib");
-            cmd_list.Upload(mesh_ib, mesh.IndexBuffer().data(), mesh_ib.Size());
+            const GpuBuffer& mesh_vb = mesh.VertexBuffer();
+            const GpuBuffer& mesh_ib = mesh.IndexBuffer();
 
             GpuTexture2D flatten_pos_tex;
             GpuTexture2D flatten_normal_tex;
@@ -140,7 +135,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                SaveMesh(mesh, output_dir / "MeshTextured.glb");
+                SaveMesh(ToMesh(gpu_system_, mesh), output_dir / "MeshTextured.glb");
 
                 Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
                 const auto rb_future = cmd_list.ReadBackAsync(result.color_tex, 0, projective_tex.Data(), projective_tex.DataSize());
@@ -412,7 +407,7 @@ namespace AIHoloImager
     TextureReconstruction::TextureReconstruction(TextureReconstruction&& other) noexcept = default;
     TextureReconstruction& TextureReconstruction::operator=(TextureReconstruction&& other) noexcept = default;
 
-    TextureReconstruction::Result TextureReconstruction::Process(const Mesh& mesh, const glm::mat4x4& model_mtx,
+    TextureReconstruction::Result TextureReconstruction::Process(const GpuMesh& mesh, const glm::mat4x4& model_mtx,
         std::span<const AIHoloImagerInternal::ProjectionDesc> projections, uint32_t texture_size)
     {
         return impl_->Process(mesh, model_mtx, std::move(projections), texture_size);

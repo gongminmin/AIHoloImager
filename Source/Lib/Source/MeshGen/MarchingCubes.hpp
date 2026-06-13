@@ -1,12 +1,12 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
 
-#include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "Util/GpuMesh.hpp"
 
 namespace AIHoloImager
 {
@@ -21,7 +21,7 @@ namespace AIHoloImager
 
         MarchingCubes& operator=(MarchingCubes&& other) noexcept;
 
-        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale);
+        GpuMesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale);
 
     private:
         class Impl;

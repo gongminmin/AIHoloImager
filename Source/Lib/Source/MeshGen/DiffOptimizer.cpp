@@ -60,7 +60,8 @@ namespace AIHoloImager
             diff_optimizer_module_.reset();
         }
 
-        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
+        void OptimizeTransform(
+            const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
         {
             glm::vec3 scale;
             glm::quat rotation;
@@ -69,21 +70,36 @@ namespace AIHoloImager
             glm::vec4 perspective;
             glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
+            auto& gpu_system = aihi_.GpuSystemInstance();
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
             const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-            const uint32_t color_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Color, 0);
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
+            const uint32_t color_attrib_index = vertex_desc.FindAttrib("COLOR", 0);
 
-            std::vector<glm::vec3> positions(mesh.NumVertices());
-            std::vector<glm::vec3> colors(mesh.NumVertices());
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
+            const auto vertex_attribs = vertex_desc.Attribs();
+            const uint32_t pos_offset = vertex_attribs[pos_attrib_index].offset / sizeof(float);
+            const uint32_t color_offset = vertex_attribs[color_attrib_index].offset / sizeof(float);
+
+            uint32_t stride = 0;
+            for (const auto& attrib : vertex_desc.Attribs())
             {
-                positions[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                colors[i] = mesh.VertexData<glm::vec3>(i, color_attrib_index);
+                stride += FormatChannels(attrib.format);
+            }
+
+            PyObjectPtr mesh_vb;
+            PyObjectPtr mesh_ib;
+            {
+                PythonSystem::GilGuard guard;
+
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                mesh_vb = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mesh.VertexBuffer(),
+                    std::span<const int64_t>({mesh.NumVertices(), stride}), TensorConverter::DataType::Float32));
+                mesh_ib = MakePyObjectPtr(tensor_converter.ConvertPy(
+                    cmd_list, mesh.IndexBuffer(), std::span<const int64_t>({mesh.NumIndices()}), TensorConverter::DataType::Int32));
+
+                gpu_system.Execute(std::move(cmd_list));
             }
 
             const uint32_t num_images = static_cast<uint32_t>(projections.size());
@@ -105,7 +121,6 @@ namespace AIHoloImager
             {
                 PythonSystem::GilGuard guard;
 
-                auto& gpu_system = aihi_.GpuSystemInstance();
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
@@ -123,13 +138,8 @@ namespace AIHoloImager
                 }
                 gpu_system.Execute(std::move(cmd_list));
 
-                const auto indices = mesh.IndexBuffer();
-                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_,
-                    std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3)),
-                    std::span(reinterpret_cast<const std::byte*>(colors.data()), colors.size() * sizeof(glm::vec3)),
-                    static_cast<uint32_t>(positions.size()),
-                    std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
-                    static_cast<uint32_t>(indices.size()), std::move(imgs_args),
+                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_, std::move(mesh_vb), pos_offset,
+                    color_offset, std::move(mesh_ib), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4)),
                     std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
                     std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
@@ -146,25 +156,39 @@ namespace AIHoloImager
             }
         }
 
-        void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
-            GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex)
+        void OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+            const GpuTexture2D& mask_tex)
         {
+            auto& gpu_system = aihi_.GpuSystemInstance();
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
             const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-            const uint32_t tex_coord_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::TexCoord, 0);
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
+            const uint32_t tex_coord_attrib_index = vertex_desc.FindAttrib("TEXCOORD", 0);
 
-            std::vector<glm::vec3> positions(mesh.NumVertices());
-            std::vector<glm::vec2> tex_coords(mesh.NumVertices());
-#ifdef _OPENMP
-    #pragma omp parallel
-#endif
-            for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
+            const auto vertex_attribs = vertex_desc.Attribs();
+            const uint32_t pos_offset = vertex_attribs[pos_attrib_index].offset / sizeof(float);
+            const uint32_t tex_coord_offset = vertex_attribs[tex_coord_attrib_index].offset / sizeof(float);
+
+            uint32_t stride = 0;
+            for (const auto& attrib : vertex_desc.Attribs())
             {
-                positions[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                tex_coords[i] = mesh.VertexData<glm::vec2>(i, tex_coord_attrib_index);
-                tex_coords[i].y = 1 - tex_coords[i].y;
+                stride += FormatChannels(attrib.format);
+            }
+
+            PyObjectPtr mesh_vb;
+            PyObjectPtr mesh_ib;
+            {
+                PythonSystem::GilGuard guard;
+
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                mesh_vb = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mesh.VertexBuffer(),
+                    std::span<const int64_t>({mesh.NumVertices(), stride}), TensorConverter::DataType::Float32));
+                mesh_ib = MakePyObjectPtr(tensor_converter.ConvertPy(
+                    cmd_list, mesh.IndexBuffer(), std::span<const int64_t>({mesh.NumIndices()}), TensorConverter::DataType::Int32));
+
+                gpu_system.Execute(std::move(cmd_list));
             }
 
             const uint32_t num_images = static_cast<uint32_t>(projections.size());
@@ -186,7 +210,6 @@ namespace AIHoloImager
             {
                 PythonSystem::GilGuard guard;
 
-                auto& gpu_system = aihi_.GpuSystemInstance();
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                 auto& python_system = aihi_.PythonSystemInstance();
@@ -202,23 +225,18 @@ namespace AIHoloImager
                         projection.full_width, projection.full_height);
                     python_system.SetTupleItem(*imgs_args, i, std::move(img_tuple));
                 }
-                PyObjectPtr py_albedo_img = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, albedo_tex));
+                PyObjectPtr py_albedo_img = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mesh.AlbedoTexture()));
                 PyObjectPtr py_mask_img = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mask_tex));
                 gpu_system.ExecuteAndReset(cmd_list);
 
-                const auto indices = mesh.IndexBuffer();
-                auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_,
-                    std::span(reinterpret_cast<const std::byte*>(positions.data()), positions.size() * sizeof(glm::vec3)),
-                    std::span(reinterpret_cast<const std::byte*>(tex_coords.data()), tex_coords.size() * sizeof(glm::vec2)),
-                    static_cast<uint32_t>(positions.size()),
-                    std::span(reinterpret_cast<const std::byte*>(indices.data()), indices.size() * sizeof(uint32_t)),
-                    static_cast<uint32_t>(indices.size()), std::move(imgs_args),
+                auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_, std::move(mesh_vb), pos_offset,
+                    tex_coord_offset, std::move(mesh_ib), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4)),
                     std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
                     std::move(py_albedo_img), std::move(py_mask_img));
 
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_opt_texture, albedo_tex, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "albedo_tex");
+                    cmd_list, *py_opt_texture, mesh.AlbedoTexture(), GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "albedo_tex");
                 gpu_system.Execute(std::move(cmd_list));
             }
         }
@@ -244,14 +262,14 @@ namespace AIHoloImager
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
     void DiffOptimizer::OptimizeTransform(
-        const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
+        const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
     {
         impl_->OptimizeTransform(mesh, model_mtx, std::move(projections));
     }
 
-    void DiffOptimizer::OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx,
-        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex)
+    void DiffOptimizer::OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx,
+        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, const GpuTexture2D& mask_tex)
     {
-        impl_->OptimizeTexture(mesh, model_mtx, std::move(projections), albedo_tex, mask_tex);
+        impl_->OptimizeTexture(mesh, model_mtx, std::move(projections), mask_tex);
     }
 } // namespace AIHoloImager

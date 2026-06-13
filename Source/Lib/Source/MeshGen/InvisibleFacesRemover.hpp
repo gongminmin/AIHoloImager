@@ -1,13 +1,13 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
 
 #include <memory>
 
-#include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Util/GpuMesh.hpp"
 
 namespace AIHoloImager
 {
@@ -22,7 +22,7 @@ namespace AIHoloImager
 
         InvisibleFacesRemover& operator=(InvisibleFacesRemover&& other) noexcept;
 
-        Mesh Process(const Mesh& mesh);
+        GpuMesh Process(const GpuMesh& mesh);
 
     private:
         class Impl;

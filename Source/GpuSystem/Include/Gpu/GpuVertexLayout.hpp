@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -32,6 +32,9 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuVertexLayout)
 
     public:
+        static const uint32_t InvalidIndex = ~0U;
+
+    public:
         GpuVertexLayout() noexcept;
         GpuVertexLayout(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
         ~GpuVertexLayout() noexcept;
@@ -41,6 +44,11 @@ namespace AIHoloImager
 
         GpuVertexLayout(GpuVertexLayout&& other) noexcept;
         GpuVertexLayout& operator=(GpuVertexLayout&& other) noexcept;
+
+        std::span<const GpuVertexAttrib> Attribs() const noexcept;
+        std::span<const uint32_t> SlotStrides() const noexcept;
+
+        uint32_t FindAttrib(std::string_view semantic, uint32_t index) const;
 
     private:
         class Impl;

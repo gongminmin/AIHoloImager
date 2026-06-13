@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -37,13 +37,16 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuVertexLayoutInternal> Clone() const override;
 
+        std::span<const GpuVertexAttrib> Attribs() const noexcept override;
+        std::span<const uint32_t> SlotStrides() const noexcept override;
+
         std::span<const D3D12_INPUT_ELEMENT_DESC> InputElementDescs() const noexcept;
-        std::span<const uint32_t> SlotStrides() const noexcept;
 
     private:
         void UpdateSemantics();
 
     private:
+        std::vector<GpuVertexAttrib> attribs_;
         std::vector<D3D12_INPUT_ELEMENT_DESC> input_elems_;
         std::vector<std::string> semantics_;
         std::vector<uint32_t> slot_strides_;

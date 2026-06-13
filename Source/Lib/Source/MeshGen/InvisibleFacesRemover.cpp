@@ -83,16 +83,12 @@ namespace AIHoloImager
             }
         }
 
-        Mesh Process(const Mesh& mesh)
+        GpuMesh Process(const GpuMesh& gpu_mesh)
         {
-            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const auto& vb = gpu_mesh.VertexBuffer();
+            const auto& ib = gpu_mesh.IndexBuffer();
 
-            GpuBuffer vb(gpu_system_, static_cast<uint32_t>(mesh.VertexBuffer().size() * sizeof(float)), GpuHeap::Default,
-                GpuResourceFlag::VertexBuffer, "vb");
-            GpuBuffer ib(gpu_system_, static_cast<uint32_t>(mesh.IndexBuffer().size() * sizeof(uint32_t)), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::IndexBuffer, "ib");
-
-            const uint32_t num_indices = static_cast<uint32_t>(mesh.IndexBuffer().size());
+            const uint32_t num_indices = ib.Size() / FormatSize(gpu_mesh.IndexFormat());
             const uint32_t num_faces = num_indices / 3;
 
             face_mark_buff_ = GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default,
@@ -106,9 +102,6 @@ namespace AIHoloImager
             view_counter_uav_ = GpuUnorderedAccessView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
-
-            cmd_list.Upload(vb, mesh.VertexBuffer().data(), vb.Size());
-            cmd_list.Upload(ib, mesh.IndexBuffer().data(), ib.Size());
 
             {
                 const uint32_t clear_clr[] = {0, 0, 0, 0};
@@ -142,8 +135,11 @@ namespace AIHoloImager
             index_rb_future.wait();
             count_rb_future.wait();
 
+            Mesh mesh = ToMesh(gpu_system_, gpu_mesh);
+
             const uint32_t* filtered_indices_ptr = filtered_indices.get();
-            return mesh.ExtractMesh(vertex_desc, {filtered_indices_ptr, filtered_indices_ptr + filtered_count * 3});
+            return ToGpuMesh(
+                gpu_system_, mesh.ExtractMesh(mesh.MeshVertexDesc(), {filtered_indices_ptr, filtered_indices_ptr + filtered_count * 3}));
         }
 
     private:
@@ -334,7 +330,7 @@ namespace AIHoloImager
     InvisibleFacesRemover::InvisibleFacesRemover(InvisibleFacesRemover&& other) noexcept = default;
     InvisibleFacesRemover& InvisibleFacesRemover::operator=(InvisibleFacesRemover&& other) noexcept = default;
 
-    Mesh InvisibleFacesRemover::Process(const Mesh& mesh)
+    GpuMesh InvisibleFacesRemover::Process(const GpuMesh& mesh)
     {
         return impl_->Process(mesh);
     }

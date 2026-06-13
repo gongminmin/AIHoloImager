@@ -342,7 +342,7 @@ namespace AIHoloImager
             }
         }
 
-        Mesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
+        GpuMesh Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
         {
             assert(scalar_deformation.Width(0) >= 3);
 
@@ -412,7 +412,7 @@ namespace AIHoloImager
             const uint32_t num_non_empty_cubes = counter.x;
             if (num_non_empty_cubes == 0)
             {
-                return Mesh();
+                return GpuMesh();
             }
 
             GpuBuffer non_empty_cube_ids_buff(gpu_system, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
@@ -464,13 +464,11 @@ namespace AIHoloImager
             const uint32_t num_vertices = counter.y;
             const uint32_t num_indices = counter.z;
 
-            const VertexAttrib pos_only_vertex_attribs[] = {
-                {VertexAttrib::Semantic::Position, 0, 3},
-            };
-            Mesh mesh(VertexDesc(pos_only_vertex_attribs), num_vertices, num_indices);
+            GpuVertexLayout pos_only_vertex_layout(gpu_system, std::span<const GpuVertexAttrib>({
+                                                                   {"POSITION", 0, GpuFormat::RGB32_Float, 0},
+                                                               }));
+            GpuMesh mesh(std::move(pos_only_vertex_layout), GpuFormat::R32_Uint);
 
-            std::future<void> vertex_rb_future;
-            std::future<void> index_rb_future;
             {
                 PerfRegion gen_vertices_indices_perf(profiler, "Marching cubes: Gen vertices indices", &cmd_list);
 
@@ -487,10 +485,11 @@ namespace AIHoloImager
                 const GpuShaderResourceView non_empty_cube_indices_srv(gpu_system, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
                 const GpuShaderResourceView vertex_index_offsets_srv(gpu_system, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
 
-                GpuBuffer mesh_vertices_buff(
-                    gpu_system, num_vertices * sizeof(glm::vec3), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "mesh_vertices_buff");
-                GpuBuffer mesh_indices_buff(
-                    gpu_system, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "mesh_indices_buff");
+                GpuBuffer mesh_vertices_buff(gpu_system, num_vertices * sizeof(glm::vec3), GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer,
+                    "mesh_vertices_buff");
+                GpuBuffer mesh_indices_buff(gpu_system, num_indices * sizeof(uint32_t), GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer, "mesh_indices_buff");
                 GpuUnorderedAccessView mesh_vertices_uav(gpu_system, mesh_vertices_buff, GpuFormat::R32_Float);
                 GpuUnorderedAccessView mesh_indices_uav(gpu_system, mesh_indices_buff, GpuFormat::R32_Uint);
 
@@ -513,15 +512,12 @@ namespace AIHoloImager
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
                 cmd_list.Compute(gen_vertices_indices_pipeline_, {DivUp(num_non_empty_cubes, BlockDim), 1, 1}, shader_binding);
 
-                vertex_rb_future = cmd_list.ReadBackAsync(mesh_vertices_buff, mesh.VertexBuffer().data(), mesh.VertexBuffer().size_bytes());
-                index_rb_future = cmd_list.ReadBackAsync(mesh_indices_buff, mesh.IndexBuffer().data(), mesh.IndexBuffer().size_bytes());
+                mesh.VertexBuffer() = std::move(mesh_vertices_buff);
+                mesh.IndexBuffer() = std::move(mesh_indices_buff);
             }
             vertex_index_offsets_buff.Reset();
 
             gpu_system.Execute(std::move(cmd_list));
-
-            vertex_rb_future.wait();
-            index_rb_future.wait();
 
             return mesh;
         }
@@ -572,7 +568,7 @@ namespace AIHoloImager
     MarchingCubes::MarchingCubes(MarchingCubes&& other) noexcept = default;
     MarchingCubes& MarchingCubes::operator=(MarchingCubes&& other) noexcept = default;
 
-    Mesh MarchingCubes::Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
+    GpuMesh MarchingCubes::Generate(const GpuTexture3D& scalar_deformation, float isovalue, float scale)
     {
         return impl_->Generate(scalar_deformation, isovalue, scale);
     }

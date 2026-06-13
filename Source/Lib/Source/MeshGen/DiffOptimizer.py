@@ -71,19 +71,18 @@ class DiffOptimizer:
         PurgeTorchCache()
 
     def OptimizeTransform(self,
-                          vtx_positions, vtx_colors, num_vertices, indices, num_indices,
+                          mesh_vb, pos_offset, color_offset, mesh_ib,
                           view_images, view_proj_mtxs, vp_offsets, num_views,
                           scale, rotation, translation):
         PurgeTorchCache()
 
-        vtx_positions = TensorFromBytes(vtx_positions, torch.float32, num_vertices * 3, self.device)
-        vtx_positions = vtx_positions.reshape(num_vertices, 3)
+        num_vertices = mesh_vb.shape[0]
+        num_indices = mesh_ib.shape[0]
 
-        vtx_colors = TensorFromBytes(vtx_colors, torch.float32, num_vertices * 3, self.device)
-        vtx_colors = vtx_colors.reshape(num_vertices, 3)
+        vtx_positions = mesh_vb[:, pos_offset : pos_offset + 3].contiguous()
+        vtx_colors = mesh_vb[:, color_offset : color_offset + 3].contiguous()
 
-        indices = TensorFromBytes(indices, torch.int32, num_indices, self.device)
-        indices = indices.reshape(num_indices // 3, 3)
+        indices = mesh_ib.reshape(num_indices // 3, 3)
 
         view_proj_mtxs = TensorFromBytes(view_proj_mtxs, torch.float32, num_views * 4 * 4)
         view_proj_mtxs = view_proj_mtxs.reshape(num_views, 4, 4)
@@ -257,19 +256,19 @@ class DiffOptimizer:
         return scale_best, rotation_best, translation_best
 
     def OptimizeTexture(self,
-                        vtx_positions, vtx_uv, num_vertices, indices, num_indices,
+                        mesh_vb, pos_offset, uv_offset, mesh_ib,
                         view_images, mvp_mtxs, vp_offsets, num_views,
                         texture, mask_tex):
         PurgeTorchCache()
 
-        vtx_positions = TensorFromBytes(vtx_positions, torch.float32, num_vertices * 3, self.device)
-        vtx_positions = vtx_positions.reshape(num_vertices, 3)
+        num_vertices = mesh_vb.shape[0]
+        num_indices = mesh_ib.shape[0]
 
-        vtx_uv = TensorFromBytes(vtx_uv, torch.float32, num_vertices * 2, self.device)
-        vtx_uv = vtx_uv.reshape(num_vertices, 2)
+        vtx_positions = mesh_vb[:, pos_offset : pos_offset + 3].contiguous()
+        vtx_uv = mesh_vb[:, uv_offset : uv_offset + 2].contiguous()
+        vtx_uv[:, 1] = 1.0 - vtx_uv[:, 1]
 
-        indices = TensorFromBytes(indices, torch.int32, num_indices, self.device)
-        indices = indices.reshape(num_indices // 3, 3)
+        indices = mesh_ib.reshape(num_indices // 3, 3)
 
         mvp_mtxs = TensorFromBytes(mvp_mtxs, torch.float32, num_views * 4 * 4)
         mvp_mtxs = mvp_mtxs.reshape(num_views, 4, 4)

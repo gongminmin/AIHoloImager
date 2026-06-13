@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "D3D12VertexLayout.hpp"
@@ -18,7 +18,7 @@ namespace AIHoloImager
     D3D12_IMP_IMP(VertexLayout)
 
     D3D12VertexLayout::D3D12VertexLayout(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
-        : input_elems_(attribs.size()), semantics_(attribs.size())
+        : attribs_(attribs.begin(), attribs.end()), input_elems_(attribs.size()), semantics_(attribs.size())
     {
         uint32_t max_slot = 0;
         std::map<uint32_t, uint32_t> slot_size;
@@ -48,6 +48,8 @@ namespace AIHoloImager
                 input_elems_[i].AlignedByteOffset = attribs[i].offset;
             }
             iter->second = std::max(iter->second, input_elems_[i].AlignedByteOffset + FormatSize(attribs[i].format));
+
+            attribs_[i].offset = input_elems_[i].AlignedByteOffset;
         }
 
         if (slot_strides.empty())
@@ -69,7 +71,7 @@ namespace AIHoloImager
     D3D12VertexLayout::~D3D12VertexLayout() = default;
 
     D3D12VertexLayout::D3D12VertexLayout(const D3D12VertexLayout& other)
-        : input_elems_(other.input_elems_), semantics_(other.semantics_), slot_strides_(other.slot_strides_)
+        : attribs_(other.attribs_), input_elems_(other.input_elems_), semantics_(other.semantics_), slot_strides_(other.slot_strides_)
     {
         this->UpdateSemantics();
     }
@@ -82,6 +84,7 @@ namespace AIHoloImager
     {
         if (this != &other)
         {
+            attribs_ = other.attribs_;
             input_elems_ = other.input_elems_;
             semantics_ = other.semantics_;
             slot_strides_ = other.slot_strides_;
@@ -96,7 +99,7 @@ namespace AIHoloImager
     }
 
     D3D12VertexLayout::D3D12VertexLayout(D3D12VertexLayout&& other) noexcept
-        : input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_)),
+        : attribs_(std::move(other.attribs_)), input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_)),
           slot_strides_(std::move(other.slot_strides_))
     {
         this->UpdateSemantics();
@@ -110,6 +113,7 @@ namespace AIHoloImager
     {
         if (this != &other)
         {
+            attribs_ = std::move(other.attribs_);
             input_elems_ = std::move(other.input_elems_);
             semantics_ = std::move(other.semantics_);
             slot_strides_ = std::move(other.slot_strides_);
@@ -128,14 +132,19 @@ namespace AIHoloImager
         return std::make_unique<D3D12VertexLayout>(*this);
     }
 
-    std::span<const D3D12_INPUT_ELEMENT_DESC> D3D12VertexLayout::InputElementDescs() const noexcept
+    std::span<const GpuVertexAttrib> D3D12VertexLayout::Attribs() const noexcept
     {
-        return input_elems_;
+        return attribs_;
     }
 
     std::span<const uint32_t> D3D12VertexLayout::SlotStrides() const noexcept
     {
         return slot_strides_;
+    }
+
+    std::span<const D3D12_INPUT_ELEMENT_DESC> D3D12VertexLayout::InputElementDescs() const noexcept
+    {
+        return input_elems_;
     }
 
     void D3D12VertexLayout::UpdateSemantics()

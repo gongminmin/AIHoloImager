@@ -184,6 +184,8 @@ set(aihi_files
     Source/Util/CameraUtil.hpp
     Source/Util/FormatConversion.cpp
     Source/Util/FormatConversion.hpp
+    Source/Util/GpuMesh.cpp
+    Source/Util/GpuMesh.hpp
     Source/Util/PerfProfiler.cpp
     Source/Util/PerfProfiler.hpp
 )

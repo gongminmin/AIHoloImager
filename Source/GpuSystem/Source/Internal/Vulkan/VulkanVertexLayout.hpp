@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -35,12 +35,17 @@ namespace AIHoloImager
 
         std::unique_ptr<GpuVertexLayoutInternal> Clone() const override;
 
+        std::span<const GpuVertexAttrib> Attribs() const noexcept override;
+        std::span<const uint32_t> SlotStrides() const noexcept override;
+
         std::span<const VkVertexInputBindingDescription> InputBindings() const;
         std::span<const VkVertexInputAttributeDescription> InputAttribs() const;
 
     private:
+        std::vector<GpuVertexAttrib> attribs_;
         std::vector<VkVertexInputBindingDescription> input_bindings_;
         std::vector<VkVertexInputAttributeDescription> input_attribs_;
+        std::vector<uint32_t> slot_strides_;
     };
 
     VULKAN_DEFINE_IMP(VertexLayout)

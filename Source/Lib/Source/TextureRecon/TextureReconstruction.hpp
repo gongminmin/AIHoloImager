@@ -7,10 +7,10 @@
 
 #include <glm/mat4x4.hpp>
 
-#include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "Util/GpuMesh.hpp"
 
 namespace AIHoloImager
 {
@@ -31,7 +31,7 @@ namespace AIHoloImager
 
         TextureReconstruction& operator=(TextureReconstruction&& other) noexcept;
 
-        Result Process(const Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+        Result Process(const GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
             uint32_t texture_size);
 
     private:

@@ -5,9 +5,9 @@
 
 #include <glm/mat4x4.hpp>
 
-#include "AIHoloImager/Mesh.hpp"
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
+#include "Util/GpuMesh.hpp"
 
 namespace AIHoloImager
 {
@@ -22,9 +22,10 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void OptimizeTransform(const Mesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections);
-        void OptimizeTexture(Mesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
-            GpuTexture2D& albedo_tex, const GpuTexture2D& mask_tex);
+        void OptimizeTransform(
+            const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections);
+        void OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
+            const GpuTexture2D& mask_tex);
 
     private:
         class Impl;

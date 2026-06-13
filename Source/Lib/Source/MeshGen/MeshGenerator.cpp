@@ -359,7 +359,7 @@ namespace AIHoloImager
 #endif
             }
 
-            Mesh mesh;
+            GpuMesh mesh;
             Gaussians gaussians;
             {
                 std::cout << "Generating mesh from images...\n";
@@ -370,14 +370,14 @@ namespace AIHoloImager
                 mesh = this->GenMesh(rotated_images, color_vol_tex, gaussians);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMeshPosOnly.glb");
+                SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshPosOnly.glb");
                 SavePointCloud(gpu_system, gaussians, output_dir / "AiMeshGaussians.ply");
 #endif
 
                 mesh = this->ApplyVertexColor(mesh, color_vol_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMeshPosColor.glb");
+                SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshPosColor.glb");
 #endif
             }
 
@@ -389,10 +389,12 @@ namespace AIHoloImager
 
                 PerfRegion opt_perf(profiler, "Optimize transform");
 
+                Mesh cpu_mesh = ToMesh(gpu_system, mesh);
+
                 {
-                    const auto& vertex_desc = mesh.MeshVertexDesc();
+                    const auto& vertex_desc = cpu_mesh.MeshVertexDesc();
                     const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-                    obb = Obb::FromPoints(&mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
+                    obb = Obb::FromPoints(&cpu_mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mesh.NumVertices());
                 }
 
                 {
@@ -429,7 +431,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    Mesh before_opt_mesh = mesh;
+                    Mesh before_opt_mesh = cpu_mesh;
                     TransformMesh(before_opt_mesh, model_mtx);
                     SaveMesh(before_opt_mesh, output_dir / "BeforeOpt.glb");
                 }
@@ -481,7 +483,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    Mesh after_opt_mesh = mesh;
+                    Mesh after_opt_mesh = cpu_mesh;
                     TransformMesh(after_opt_mesh, model_mtx);
                     SaveMesh(after_opt_mesh, output_dir / "AfterOpt.glb");
                 }
@@ -502,19 +504,23 @@ namespace AIHoloImager
 
                 PerfRegion simplify_perf(profiler, "Simplify mesh");
 
+                Mesh cpu_mesh = ToMesh(gpu_system, mesh);
+
                 MeshSimplification mesh_simp;
-                mesh = mesh_simp.Process(mesh, 0.125f);
-                this->FillHoles(mesh);
+                cpu_mesh = mesh_simp.Process(cpu_mesh, 0.125f);
+                this->FillHoles(cpu_mesh);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMeshSimplified.glb");
+                SaveMesh(cpu_mesh, output_dir / "AiMeshSimplified.glb");
 #endif
 
-                mesh.ComputeNormals();
+                cpu_mesh.ComputeNormals();
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMeshPosNormal.glb");
+                SaveMesh(cpu_mesh, output_dir / "AiMeshPosNormal.glb");
 #endif
+
+                mesh = ToGpuMesh(gpu_system, cpu_mesh);
             }
 
             {
@@ -522,7 +528,9 @@ namespace AIHoloImager
 
                 PerfRegion unwrap_perf(profiler, "Unwrap UV");
 
-                mesh = mesh.UnwrapUv(texture_size, 2);
+                Mesh cpu_mesh = ToMesh(gpu_system, mesh);
+                cpu_mesh = cpu_mesh.UnwrapUv(texture_size, 2);
+                mesh = ToGpuMesh(gpu_system, cpu_mesh);
             }
 
             TextureReconstruction::Result gsplat_texture_result;
@@ -601,15 +609,14 @@ namespace AIHoloImager
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                    Texture rb_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                    auto rb_future = cmd_list.ReadBackAsync(gsplat_texture_result.color_tex, 0, rb_tex.Data(), rb_tex.DataSize());
+                    GpuTexture2D dump_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+                        GpuResourceFlag::ShaderResource | GpuResourceFlag::Shareable, "dump_gs_tex");
+                    cmd_list.Copy(dump_tex, gsplat_texture_result.color_tex);
 
                     gpu_system.Execute(std::move(cmd_list));
 
-                    rb_future.wait();
-
-                    mesh.AlbedoTexture() = std::move(rb_tex);
-                    SaveMesh(mesh, output_dir / "AiMeshGSplat.glb");
+                    mesh.AlbedoTexture() = std::move(dump_tex);
+                    SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshGSplat.glb");
                 }
 #endif
             }
@@ -668,8 +675,6 @@ namespace AIHoloImager
                 photo_texture_result = texture_recon_.Process(mesh, model_mtx, std::span(updated_projections), texture_size);
             }
 
-            GpuTexture2D albedo_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "albedo_gpu_tex");
             GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
                 GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "mask_gpu_tex");
             {
@@ -677,6 +682,8 @@ namespace AIHoloImager
 
                 PerfRegion merge_textures_perf(profiler, "Merge textures");
 
+                GpuTexture2D albedo_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "albedo_gpu_tex");
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
@@ -718,20 +725,10 @@ namespace AIHoloImager
                     gpu_system.Execute(std::move(cmd_list));
                 }
 
+                mesh.AlbedoTexture() = std::move(albedo_gpu_tex);
+
 #ifdef AIHI_KEEP_INTERMEDIATES
-                {
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
-
-                    Texture rb_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                    auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, rb_tex.Data(), rb_tex.DataSize());
-
-                    gpu_system.Execute(std::move(cmd_list));
-
-                    rb_future.wait();
-
-                    mesh.AlbedoTexture() = std::move(rb_tex);
-                    SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
-                }
+                SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshTextured.glb");
 #endif
             }
 
@@ -744,7 +741,7 @@ namespace AIHoloImager
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                     Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                    const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
+                    const auto rb_future = cmd_list.ReadBackAsync(mesh.AlbedoTexture(), 0, albedo_tex.Data(), albedo_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
                     rb_future.wait();
                     SaveTexture(albedo_tex, output_dir / "BeforeOpt.png");
@@ -753,14 +750,14 @@ namespace AIHoloImager
 
                 PerfRegion opt_texture_perf(profiler, "Optimize texture");
 
-                optimizer_.OptimizeTexture(mesh, model_mtx, std::span(updated_projections), albedo_gpu_tex, mask_gpu_tex);
+                optimizer_.OptimizeTexture(mesh, model_mtx, std::span(updated_projections), mask_gpu_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
                     Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                    const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
+                    const auto rb_future = cmd_list.ReadBackAsync(mesh.AlbedoTexture(), 0, albedo_tex.Data(), albedo_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
                     rb_future.wait();
                     SaveTexture(albedo_tex, output_dir / "AfterOpt.png");
@@ -768,16 +765,7 @@ namespace AIHoloImager
 #endif
             }
 
-            {
-                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
-
-                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                const auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, albedo_tex.Data(), albedo_tex.DataSize());
-                gpu_system.Execute(std::move(cmd_list));
-                rb_future.wait();
-                mesh.AlbedoTexture() = std::move(albedo_tex);
-            }
-
+            Mesh cpu_mesh = ToMesh(gpu_system, mesh);
             {
                 PerfRegion aligning_perf(profiler, "Align mesh");
 
@@ -790,14 +778,14 @@ namespace AIHoloImager
 
                 const glm::mat4x4 adjust_mtx = glm::recompose(
                     scale, glm::normalize(glm::rotation(local_up_vec, glm::vec3(0, 1, 0))), glm::zero<glm::vec3>(), skew, perspective);
-                TransformMesh(mesh, adjust_mtx);
+                TransformMesh(cpu_mesh, adjust_mtx);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMesh.glb");
+                SaveMesh(cpu_mesh, output_dir / "AiMesh.glb");
 #endif
             }
 
-            return mesh;
+            return cpu_mesh;
         }
 
     private:
@@ -1265,7 +1253,7 @@ namespace AIHoloImager
             return rotated_images;
         }
 
-        Mesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex, Gaussians& gaussians)
+        GpuMesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex, Gaussians& gaussians)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -1434,14 +1422,17 @@ namespace AIHoloImager
 
             gpu_system.Execute(std::move(cmd_list));
 
-            Mesh pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
+            GpuMesh pos_only_mesh = marching_cubes_.Generate(density_deformation_tex, 0, GridScale);
             pos_only_mesh = invisible_faces_remover_.Process(pos_only_mesh);
             return this->CleanMesh(pos_only_mesh);
         }
 
-        Mesh CleanMesh(const Mesh& input_mesh)
+        GpuMesh CleanMesh(const GpuMesh& input_gpu_mesh)
         {
             constexpr float Scale = 1e5f;
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            auto input_mesh = ToMesh(gpu_system, input_gpu_mesh);
 
             const auto& vertex_desc = input_mesh.MeshVertexDesc();
             const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
@@ -1511,7 +1502,7 @@ namespace AIHoloImager
             ret_mesh.ResizeIndices(num_faces * 3);
 
             this->RemoveSmallComponents(ret_mesh);
-            return ret_mesh;
+            return ToGpuMesh(gpu_system, ret_mesh);
         }
 
         void RemoveSmallComponents(Mesh& mesh)
@@ -1665,42 +1656,35 @@ namespace AIHoloImager
             }
         }
 
-        Mesh ApplyVertexColor(const Mesh& mesh, const GpuTexture3D& color_vol_tex)
+        GpuMesh ApplyVertexColor(const GpuMesh& mesh, const GpuTexture3D& color_vol_tex)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
+
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
 
             const uint32_t num_vertices = mesh.NumVertices();
 
             GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb(gpu_system, "apply_vertex_color_cb");
             apply_vertex_color_cb->inv_scale = 1 / GridScale;
             apply_vertex_color_cb->num_vertices = num_vertices;
+            apply_vertex_color_cb->stride = vertex_desc.SlotStrides()[0] / sizeof(float);
+            apply_vertex_color_cb->pos_offset = pos_attrib_index * 3;
             apply_vertex_color_cb.UploadStaging();
             const GpuConstantBufferView apply_vertex_color_cbv(gpu_system, apply_vertex_color_cb);
 
-            const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-
-            GpuBuffer pos_vb(gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource, "pos_vb");
-
-            const GpuShaderResourceView pos_srv(gpu_system, pos_vb, GpuFormat::RGB32_Float);
+            const GpuShaderResourceView pos_srv(gpu_system, mesh.VertexBuffer(), GpuFormat::R32_Float);
             const GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
 
-            GpuBuffer color_vb(gpu_system, static_cast<uint32_t>(num_vertices * sizeof(glm::vec3)), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess, "pos_color_vb");
-            GpuUnorderedAccessView color_uav(gpu_system, color_vb, GpuFormat::R32_Float);
+            GpuBuffer pos_color_vb(gpu_system, num_vertices * sizeof(glm::vec3) * 2, GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer |
+                    GpuResourceFlag::Shareable,
+                "pos_color_vb");
+            GpuUnorderedAccessView pos_color_uav(gpu_system, pos_color_vb, GpuFormat::R32_Float);
 
             constexpr uint32_t BlockDim = 256;
 
             GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
-
-            cmd_list.Upload(pos_vb, [num_vertices, &mesh, pos_attrib_index](void* dst_data) {
-                glm::vec3* pos_data = reinterpret_cast<glm::vec3*>(dst_data);
-                for (uint32_t i = 0; i < num_vertices; ++i)
-                {
-                    pos_data[i] = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                }
-            });
 
             std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                 {"param_cb", &apply_vertex_color_cbv},
@@ -1710,34 +1694,27 @@ namespace AIHoloImager
                 {"pos_vertex_buff", &pos_srv},
             };
             std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                {"color_vertex_buff", &color_uav},
+                {"pos_color_vertex_buff", &pos_color_uav},
             };
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(apply_vertex_color_pipeline_, {DivUp(num_vertices, BlockDim), 1, 1}, shader_binding);
 
-            const VertexAttrib pos_color_vertex_attribs[] = {
-                {VertexAttrib::Semantic::Position, 0, 3},
-                {VertexAttrib::Semantic::Color, 0, 3},
-            };
-            constexpr uint32_t OutputPosAttribIndex = 0;
-            constexpr uint32_t OutputColorAttribIndex = 1;
-
-            Mesh pos_color_mesh(VertexDesc(pos_color_vertex_attribs), mesh.NumVertices(), static_cast<uint32_t>(mesh.IndexBuffer().size()));
-
-            const auto rb_future =
-                cmd_list.ReadBackAsync(color_vb, [num_vertices, pos_attrib_index, &mesh, &pos_color_mesh](const void* src_data) {
-                    const auto* colors = reinterpret_cast<const glm::vec3*>(src_data);
-                    for (uint32_t i = 0; i < num_vertices; ++i)
-                    {
-                        pos_color_mesh.VertexData<glm::vec3>(i, OutputPosAttribIndex) = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                        pos_color_mesh.VertexData<glm::vec3>(i, OutputColorAttribIndex) = colors[i];
-                    }
-                });
+            GpuBuffer ib(gpu_system, mesh.IndexBuffer().Size(), GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer |
+                    GpuResourceFlag::Shareable,
+                "pos_color_ib");
+            cmd_list.Copy(ib, mesh.IndexBuffer());
 
             gpu_system.Execute(std::move(cmd_list));
-            rb_future.wait();
 
-            pos_color_mesh.IndexBuffer(mesh.IndexBuffer());
+            GpuVertexLayout pos_color_layout(gpu_system, std::span<const GpuVertexAttrib>({
+                                                             {"POSITION", 0, GpuFormat::RGB32_Float},
+                                                             {"COLOR", 0, GpuFormat::RGB32_Float},
+                                                         }));
+            GpuMesh pos_color_mesh(std::move(pos_color_layout), mesh.IndexFormat());
+
+            pos_color_mesh.VertexBuffer() = std::move(pos_color_vb);
+            pos_color_mesh.IndexBuffer() = std::move(ib);
 
             return pos_color_mesh;
         }
@@ -2187,7 +2164,8 @@ namespace AIHoloImager
         {
             uint32_t num_vertices;
             float inv_scale;
-            uint32_t padding[2];
+            uint32_t stride;
+            uint32_t pos_offset;
         };
         GpuComputePipeline apply_vertex_color_pipeline_;
 

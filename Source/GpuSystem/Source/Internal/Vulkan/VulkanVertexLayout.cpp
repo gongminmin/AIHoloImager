@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "VulkanVertexLayout.hpp"
@@ -14,8 +14,9 @@ namespace AIHoloImager
     VULKAN_IMP_IMP(VertexLayout)
 
     VulkanVertexLayout::VulkanVertexLayout(std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides)
-        : input_attribs_(attribs.size())
+        : attribs_(attribs.begin(), attribs.end()), input_attribs_(attribs.size())
     {
+        uint32_t max_slot = 0;
         std::map<uint32_t, uint32_t> slot_size;
         for (size_t i = 0; i < attribs.size(); ++i)
         {
@@ -24,6 +25,8 @@ namespace AIHoloImager
                 .binding = attribs[i].slot,
                 .format = ToVkFormat(attribs[i].format),
             };
+
+            max_slot = std::max(max_slot, attribs[i].slot);
 
             auto iter = slot_size.find(attribs[i].slot);
             if (iter == slot_size.end())
@@ -39,6 +42,8 @@ namespace AIHoloImager
                 input_attribs_[i].offset = attribs[i].offset;
             }
             iter->second = std::max(iter->second, input_attribs_[i].offset + FormatSize(attribs[i].format));
+
+            attribs_[i].offset = input_attribs_[i].offset;
         }
 
         if (slot_strides.empty())
@@ -64,6 +69,12 @@ namespace AIHoloImager
                     });
                 }
             }
+
+            slot_strides_.resize(max_slot + 1, 0);
+            for (const auto& [slot, size] : slot_size)
+            {
+                slot_strides_[slot] = size;
+            }
         }
         else
         {
@@ -75,6 +86,8 @@ namespace AIHoloImager
                     .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
                 });
             }
+
+            slot_strides_ = std::vector(slot_strides.begin(), slot_strides.end());
         }
     }
 
@@ -107,6 +120,16 @@ namespace AIHoloImager
     std::unique_ptr<GpuVertexLayoutInternal> VulkanVertexLayout::Clone() const
     {
         return std::make_unique<VulkanVertexLayout>(*this);
+    }
+
+    std::span<const GpuVertexAttrib> VulkanVertexLayout::Attribs() const noexcept
+    {
+        return attribs_;
+    }
+
+    std::span<const uint32_t> VulkanVertexLayout::SlotStrides() const noexcept
+    {
+        return slot_strides_;
     }
 
     std::span<const VkVertexInputBindingDescription> VulkanVertexLayout::InputBindings() const
