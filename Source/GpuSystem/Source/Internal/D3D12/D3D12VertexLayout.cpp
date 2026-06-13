@@ -68,7 +68,8 @@ namespace AIHoloImager
 
     D3D12VertexLayout::~D3D12VertexLayout() = default;
 
-    D3D12VertexLayout::D3D12VertexLayout(const D3D12VertexLayout& other) : input_elems_(other.input_elems_), semantics_(other.semantics_)
+    D3D12VertexLayout::D3D12VertexLayout(const D3D12VertexLayout& other)
+        : input_elems_(other.input_elems_), semantics_(other.semantics_), slot_strides_(other.slot_strides_)
     {
         this->UpdateSemantics();
     }
@@ -83,6 +84,7 @@ namespace AIHoloImager
         {
             input_elems_ = other.input_elems_;
             semantics_ = other.semantics_;
+            slot_strides_ = other.slot_strides_;
 
             this->UpdateSemantics();
         }
@@ -94,7 +96,8 @@ namespace AIHoloImager
     }
 
     D3D12VertexLayout::D3D12VertexLayout(D3D12VertexLayout&& other) noexcept
-        : input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_))
+        : input_elems_(std::move(other.input_elems_)), semantics_(std::move(other.semantics_)),
+          slot_strides_(std::move(other.slot_strides_))
     {
         this->UpdateSemantics();
     }
@@ -109,6 +112,7 @@ namespace AIHoloImager
         {
             input_elems_ = std::move(other.input_elems_);
             semantics_ = std::move(other.semantics_);
+            slot_strides_ = std::move(other.slot_strides_);
 
             this->UpdateSemantics();
         }
