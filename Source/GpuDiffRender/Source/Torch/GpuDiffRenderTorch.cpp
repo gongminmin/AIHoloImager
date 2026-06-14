@@ -131,7 +131,7 @@ namespace AIHoloImager
             rast_intermediate_.grad_derivative_barycentric, rast_intermediate_.grad_positions);
 
         const torch::Tensor grad_positions =
-            tensor_converter_.Convert(cmd_list, rast_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
+            tensor_converter_.Convert(cmd_list, rast_intermediate_.grad_positions, {{num_vertices, 4}}, TensorConverter::DataType::Float32);
 
         gpu_system_.Execute(std::move(cmd_list));
 
@@ -234,12 +234,12 @@ namespace AIHoloImager
             interpolate_intermediate_.shading, interpolate_intermediate_.derivative_shading);
 
         torch::Tensor shading = tensor_converter_.Convert(
-            cmd_list, interpolate_intermediate_.shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
+            cmd_list, interpolate_intermediate_.shading, {{mini_batch, height, width, num_attribs}}, TensorConverter::DataType::Float32);
         torch::Tensor derivative_shading;
         if (needs_dbc)
         {
-            derivative_shading = tensor_converter_.Convert(
-                cmd_list, interpolate_intermediate_.derivative_shading, {mini_batch, height, width, num_attribs * 2}, torch::kFloat32);
+            derivative_shading = tensor_converter_.Convert(cmd_list, interpolate_intermediate_.derivative_shading,
+                {{mini_batch, height, width, num_attribs * 2}}, TensorConverter::DataType::Float32);
         }
 
         gpu_system_.Execute(std::move(cmd_list));
@@ -274,8 +274,8 @@ namespace AIHoloImager
             interpolate_intermediate_.grad_vtx_attribs, interpolate_intermediate_.grad_barycentric,
             interpolate_intermediate_.grad_derivative_barycentric);
 
-        torch::Tensor grad_vtx_attribs =
-            tensor_converter_.Convert(cmd_list, interpolate_intermediate_.grad_vtx_attribs, {num_vertices, num_attribs}, torch::kFloat32);
+        torch::Tensor grad_vtx_attribs = tensor_converter_.Convert(
+            cmd_list, interpolate_intermediate_.grad_vtx_attribs, {{num_vertices, num_attribs}}, TensorConverter::DataType::Float32);
         torch::Tensor grad_barycentric = tensor_converter_.Convert(cmd_list, interpolate_intermediate_.grad_barycentric);
         torch::Tensor grad_derivative_barycentric;
         if (needs_dbc)
@@ -546,14 +546,14 @@ namespace AIHoloImager
             texture_intermediate_.grad_texture, texture_intermediate_.grad_uv, texture_intermediate_.grad_derivative_uv);
 
         torch::Tensor grad_texture = tensor_converter_.Convert(
-            cmd_list, texture_intermediate_.grad_texture, {1, tex_height, tex_width, num_channels}, torch::kFloat32);
-        torch::Tensor grad_uv =
-            tensor_converter_.Convert(cmd_list, texture_intermediate_.grad_uv, {1, gbuffer_height, gbuffer_width, 2}, torch::kFloat32);
+            cmd_list, texture_intermediate_.grad_texture, {{1, tex_height, tex_width, num_channels}}, TensorConverter::DataType::Float32);
+        torch::Tensor grad_uv = tensor_converter_.Convert(
+            cmd_list, texture_intermediate_.grad_uv, {{1, gbuffer_height, gbuffer_width, 2}}, TensorConverter::DataType::Float32);
         torch::Tensor grad_derivative_uv;
         if (static_cast<bool>(texture_intermediate_.grad_derivative_uv))
         {
-            grad_derivative_uv = tensor_converter_.Convert(
-                cmd_list, texture_intermediate_.grad_derivative_uv, {1, gbuffer_height, gbuffer_width, 4}, torch::kFloat32);
+            grad_derivative_uv = tensor_converter_.Convert(cmd_list, texture_intermediate_.grad_derivative_uv,
+                {{1, gbuffer_height, gbuffer_width, 4}}, TensorConverter::DataType::Float32);
         }
 
         gpu_system_.Execute(std::move(cmd_list));
@@ -656,8 +656,8 @@ namespace AIHoloImager
         gpu_dr_.AntiAliasFwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
             aa_intermediate_.indices, aa_intermediate_.viewport, opposite_vertices->opposite_vertices, aa_intermediate_.anti_aliased);
 
-        torch::Tensor anti_aliased =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.anti_aliased, {1, height, width, num_attribs}, torch::kFloat32);
+        torch::Tensor anti_aliased = tensor_converter_.Convert(
+            cmd_list, aa_intermediate_.anti_aliased, {{1, height, width, num_attribs}}, TensorConverter::DataType::Float32);
 
         gpu_system_.Execute(std::move(cmd_list));
 
@@ -681,10 +681,10 @@ namespace AIHoloImager
             aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,
             aa_intermediate_.grad_positions);
 
-        torch::Tensor grad_shading =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_shading, {mini_batch, height, width, num_attribs}, torch::kFloat32);
+        torch::Tensor grad_shading = tensor_converter_.Convert(
+            cmd_list, aa_intermediate_.grad_shading, {{mini_batch, height, width, num_attribs}}, TensorConverter::DataType::Float32);
         torch::Tensor grad_positions =
-            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_positions, {num_vertices, 4}, torch::kFloat32);
+            tensor_converter_.Convert(cmd_list, aa_intermediate_.grad_positions, {{num_vertices, 4}}, TensorConverter::DataType::Float32);
 
         gpu_system_.Execute(std::move(cmd_list));
 

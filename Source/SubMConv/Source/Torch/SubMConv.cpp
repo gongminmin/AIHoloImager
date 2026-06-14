@@ -151,10 +151,10 @@ namespace AIHoloImager
             cmd_list.Compute(find_available_neighbors_pipeline_, {DivUp(num_coords_, BlockDim), num_offsets, 1}, shader_binding);
         }
 
-        torch::Tensor nei_indices = tensor_converter_.Convert(
-            cmd_list, nei_indices_, {static_cast<int32_t>(num_offsets), static_cast<int32_t>(num_coords_), 2}, torch::kInt32);
+        torch::Tensor nei_indices =
+            tensor_converter_.Convert(cmd_list, nei_indices_, {{num_offsets, num_coords_, 2}}, TensorConverter::DataType::Int32);
         torch::Tensor nei_indices_size =
-            tensor_converter_.Convert(cmd_list, nei_indices_count_, {static_cast<int32_t>(num_offsets)}, torch::kInt32);
+            tensor_converter_.Convert(cmd_list, nei_indices_count_, {{num_offsets}}, TensorConverter::DataType::Int32);
 
         gpu_system_.Execute(std::move(cmd_list));
 

@@ -281,9 +281,20 @@ namespace AIHoloImager
             }
         }
 
-        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+        torch::Tensor Convert(GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const
         {
-            auto opts = torch::dtype(data_type);
+            torch::Dtype torch_dtype = torch::kFloat32;
+            switch (data_type)
+            {
+            case DataType::Int32:
+                torch_dtype = torch::kInt32;
+                break;
+            case DataType::Float32:
+                torch_dtype = torch::kFloat32;
+                break;
+            }
+
+            auto opts = torch::dtype(torch_dtype);
             torch::Tensor tensor;
             if (cuda_copy_enabled_)
             {
@@ -449,9 +460,9 @@ namespace AIHoloImager
             this->Convert(cmd_list, tensor, tex, format, flags, std::move(name));
         }
 
-        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+        PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const
         {
-            const torch::Tensor tensor = this->Convert(cmd_list, buff, size, data_type);
+            const torch::Tensor tensor = this->Convert(cmd_list, buff, std::move(size), data_type);
             return THPVariable_Wrap(tensor);
         }
 
@@ -668,9 +679,9 @@ namespace AIHoloImager
     }
 
     torch::Tensor TensorConverter::Convert(
-        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+        GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const
     {
-        return impl_->Convert(cmd_list, buff, size, data_type);
+        return impl_->Convert(cmd_list, buff, std::move(size), data_type);
     }
 
     torch::Tensor TensorConverter::Convert(GpuCommandList& cmd_list, const GpuTexture& tex) const
@@ -691,9 +702,9 @@ namespace AIHoloImager
     }
 
     PyObject* TensorConverter::ConvertPy(
-        GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const
+        GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const
     {
-        return impl_->ConvertPy(cmd_list, buff, size, data_type);
+        return impl_->ConvertPy(cmd_list, buff, std::move(size), data_type);
     }
 
     PyObject* TensorConverter::ConvertPy(GpuCommandList& cmd_list, const GpuTexture& tex) const

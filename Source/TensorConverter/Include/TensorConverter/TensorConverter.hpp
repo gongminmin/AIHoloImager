@@ -1,9 +1,10 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
 
 #include <memory>
+#include <span>
 
 #include "Base/MiniWindows.hpp"
 #include "Gpu/GpuBuffer.hpp"
@@ -29,10 +30,6 @@ typedef struct _object PyObject;
 namespace c10
 {
     struct Device;
-    template <typename T>
-    class ArrayRef;
-    using IntArrayRef = c10::ArrayRef<int64_t>;
-    enum class ScalarType : int8_t;
 } // namespace c10
 
 namespace at
@@ -44,14 +41,19 @@ namespace torch
 {
     using Device = c10::Device;
     using Tensor = at::Tensor;
-    using IntArrayRef = c10::IntArrayRef;
-    using Dtype = c10::ScalarType;
 } // namespace torch
 
 namespace AIHoloImager
 {
     class TensorConverter
     {
+    public:
+        enum class DataType : int8_t
+        {
+            Int32,
+            Float32,
+        };
+
     public:
         AIHI_TC_API TensorConverter(GpuSystem& gpu_system, std::string_view torch_device);
         AIHI_TC_API TensorConverter(GpuSystem& gpu_system, const torch::Device& torch_device);
@@ -62,7 +64,7 @@ namespace AIHoloImager
         AIHI_TC_API void Convert(GpuCommandList& cmd_list, const torch::Tensor& tensor, GpuTexture& tex, GpuFormat format,
             GpuResourceFlag flags, std::string_view name) const;
         AIHI_TC_API torch::Tensor Convert(
-            GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
+            GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const;
         AIHI_TC_API torch::Tensor Convert(GpuCommandList& cmd_list, const GpuTexture& tex) const;
 
         AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuBuffer& buff, GpuHeap heap,
@@ -70,7 +72,7 @@ namespace AIHoloImager
         AIHI_TC_API void ConvertPy(GpuCommandList& cmd_list, const PyObject& py_tensor, GpuTexture& tex, GpuFormat format,
             GpuResourceFlag flags, std::string_view name) const;
         AIHI_TC_API PyObject* ConvertPy(
-            GpuCommandList& cmd_list, const GpuBuffer& buff, const torch::IntArrayRef& size, torch::Dtype data_type) const;
+            GpuCommandList& cmd_list, const GpuBuffer& buff, std::span<const int64_t> size, DataType data_type) const;
         AIHI_TC_API PyObject* ConvertPy(GpuCommandList& cmd_list, const GpuTexture& tex) const;
 
     private:
