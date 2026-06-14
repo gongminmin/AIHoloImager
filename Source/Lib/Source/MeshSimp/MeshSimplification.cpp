@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "MeshSimplification.hpp"
@@ -118,14 +118,13 @@ namespace AIHoloImager
     public:
         Mesh Process(const Mesh& input_mesh, float face_ratio)
         {
-            assert(input_mesh.MeshVertexDesc().Attribs().size() == 1);
-
             constexpr double Aggressiveness = 7;
 
+            const uint32_t pos_attrib_index = input_mesh.MeshVertexDesc().FindAttrib(VertexAttrib::Semantic::Position, 0);
             vertices_.resize(input_mesh.NumVertices());
             for (uint32_t i = 0; i < input_mesh.NumVertices(); ++i)
             {
-                const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, 0);
+                const glm::vec3& pos = input_mesh.VertexData<glm::vec3>(i, pos_attrib_index);
                 vertices_[i].pos = pos;
             }
 
@@ -237,7 +236,11 @@ namespace AIHoloImager
 
             this->CompactMesh();
 
-            Mesh mesh(input_mesh.MeshVertexDesc(), static_cast<uint32_t>(vertices_.size()), static_cast<uint32_t>(triangles_.size() * 3));
+            const VertexAttrib pos_only_vertex_attribs[] = {
+                {VertexAttrib::Semantic::Position, 0, 3},
+            };
+            Mesh mesh(
+                VertexDesc(pos_only_vertex_attribs), static_cast<uint32_t>(vertices_.size()), static_cast<uint32_t>(triangles_.size() * 3));
             for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
             {
                 mesh.VertexData<glm::vec3>(i, 0) = vertices_[i].pos;

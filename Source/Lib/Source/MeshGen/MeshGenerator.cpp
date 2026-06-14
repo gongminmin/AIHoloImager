@@ -360,7 +360,6 @@ namespace AIHoloImager
             }
 
             Mesh mesh;
-            Mesh pos_color_mesh;
             Gaussians gaussians;
             {
                 std::cout << "Generating mesh from images...\n";
@@ -375,10 +374,10 @@ namespace AIHoloImager
                 SavePointCloud(gpu_system, gaussians, output_dir / "AiMeshGaussians.ply");
 #endif
 
-                pos_color_mesh = this->ApplyVertexColor(mesh, color_vol_tex);
+                mesh = this->ApplyVertexColor(mesh, color_vol_tex);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(pos_color_mesh, output_dir / "AiMeshPosColor.glb");
+                SaveMesh(mesh, output_dir / "AiMeshPosColor.glb");
 #endif
             }
 
@@ -445,7 +444,7 @@ namespace AIHoloImager
                 }
 #endif
 
-                optimizer_.OptimizeTransform(pos_color_mesh, model_mtx, std::span(sfm_input.projections));
+                optimizer_.OptimizeTransform(mesh, model_mtx, std::span(sfm_input.projections));
                 if (sfm_input.projections.size() == 1)
                 {
                     // When there is only one image, the point cloud only covers the front half of the object. Scale the model to
