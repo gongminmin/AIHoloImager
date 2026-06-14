@@ -720,7 +720,19 @@ namespace AIHoloImager
                 }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                    Texture rb_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                    auto rb_future = cmd_list.ReadBackAsync(albedo_gpu_tex, 0, rb_tex.Data(), rb_tex.DataSize());
+
+                    gpu_system.Execute(std::move(cmd_list));
+
+                    rb_future.wait();
+
+                    mesh.AlbedoTexture() = std::move(rb_tex);
+                    SaveMesh(mesh, output_dir / "AiMeshTextured.glb");
+                }
 #endif
             }
 
