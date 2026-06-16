@@ -263,7 +263,7 @@ namespace AIHoloImager
         VulkanCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
     {
         assert(sub_resource == 0);
-        this->Transition(cmd_list, target_state);
+        this->DoTransition(cmd_list, target_state);
     }
 
     void VulkanBuffer::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const

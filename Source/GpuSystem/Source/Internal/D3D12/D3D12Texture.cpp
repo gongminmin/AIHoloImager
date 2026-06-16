@@ -148,7 +148,7 @@ namespace AIHoloImager
     {
         if (sub_resource == ~0U)
         {
-            this->Transition(cmd_list, target_state);
+            this->DoTransition(cmd_list, target_state);
         }
         else
         {
