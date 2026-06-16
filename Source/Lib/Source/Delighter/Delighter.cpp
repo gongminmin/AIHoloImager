@@ -43,7 +43,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "Delighter destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -75,9 +78,12 @@ namespace AIHoloImager
                 roi_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
             }
 
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init", &cmd_list);
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             GpuTexture2D delighted_tex;
@@ -129,6 +135,7 @@ namespace AIHoloImager
         PyObjectPtr delighter_;
         PyObjectPtr delighter_process_method_;
         std::future<void> py_init_future_;
+        bool py_init_finished_ = false;
 
         struct MergeMaskConstantBuffer
         {

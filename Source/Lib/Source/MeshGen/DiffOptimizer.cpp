@@ -44,7 +44,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "DiffOptimizer destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -113,9 +116,12 @@ namespace AIHoloImager
                 vp_offsets[i] = projection.vp_offset;
             }
 
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             {
@@ -250,6 +256,7 @@ namespace AIHoloImager
         PyObjectPtr diff_optimizer_opt_transform_method_;
         PyObjectPtr diff_optimizer_opt_texture_method_;
         std::future<void> py_init_future_;
+        bool py_init_finished_ = false;
     };
 
     DiffOptimizer::DiffOptimizer(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))

@@ -93,7 +93,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "Mask generator destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -312,9 +315,12 @@ namespace AIHoloImager
                 normalized_image_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, normalized_gpu_tex_));
             }
 
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init", &cmd_list);
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             {
@@ -569,6 +575,7 @@ namespace AIHoloImager
         PyObjectPtr mask_generator_;
         PyObjectPtr mask_generator_gen_method_;
         std::future<void> py_init_future_;
+        bool py_init_finished_ = false;
 
         GpuTexture2D downsampled_x_gpu_tex_;
         GpuTexture2D downsampled_gpu_tex_;

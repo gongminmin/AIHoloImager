@@ -217,7 +217,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "SfM destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -449,9 +452,12 @@ namespace AIHoloImager
                 {
                     std::cout << "Estimating the camera focal length...\n";
 
+                    if (!py_init_finished_)
                     {
                         PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                         py_init_future_.wait();
+
+                        py_init_finished_ = true;
                     }
 
                     double sum_focal = 0;
@@ -510,9 +516,12 @@ namespace AIHoloImager
             regions.feature_regions.resize(sfm_data.views.size());
 
 #if USES_SP_LG
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             SuperPointImageDescriber image_describer;
@@ -609,9 +618,12 @@ namespace AIHoloImager
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Pair matching");
 
 #if USES_SP_LG
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             PairWiseMatches putative_matches;
@@ -973,9 +985,12 @@ namespace AIHoloImager
             const auto& sfm_landmarks = sfm_data.GetLandmarks();
             if (sfm_landmarks.empty())
             {
+                if (!py_init_finished_)
                 {
                     PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                     py_init_future_.wait();
+
+                    py_init_finished_ = true;
                 }
                 {
                     PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Gen point cloud");
@@ -1221,6 +1236,7 @@ namespace AIHoloImager
 #endif
 
         std::future<void> py_init_future_;
+        mutable bool py_init_finished_ = false;
 
         struct UndistortConstantBuffer
         {

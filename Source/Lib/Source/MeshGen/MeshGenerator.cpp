@@ -290,7 +290,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "MeshGenerator destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -1264,9 +1267,12 @@ namespace AIHoloImager
             GpuBuffer deformation_features_buff;
             GpuBuffer color_features_buff;
 
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             {
@@ -2097,6 +2103,7 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_gsplat_shs_method_;
         PyObjectPtr mesh_generator_gsplat_opacities_method_;
         std::future<void> py_init_future_;
+        bool py_init_finished_ = false;
 
         InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;

@@ -45,7 +45,10 @@ namespace AIHoloImager
         {
             PerfRegion destroy_perf(aihi_.PerfProfilerInstance(), "SuperResolution destroy");
 
-            py_init_future_.wait();
+            if (!py_init_finished_)
+            {
+                py_init_future_.wait();
+            }
 
             PythonSystem::GilGuard guard;
 
@@ -101,9 +104,12 @@ namespace AIHoloImager
             auto& tensor_converter = aihi_.TensorConverterInstance();
             auto& gpu_system = aihi_.GpuSystemInstance();
 
+            if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
                 py_init_future_.wait();
+
+                py_init_finished_ = true;
             }
 
             GpuTexture3D upsampled_residual_tex;
@@ -237,6 +243,7 @@ namespace AIHoloImager
         PyObjectPtr super_res_;
         PyObjectPtr super_res_process_method_;
         std::future<void> py_init_future_;
+        bool py_init_finished_ = false;
 
         struct BlendConstantBuffer
         {
