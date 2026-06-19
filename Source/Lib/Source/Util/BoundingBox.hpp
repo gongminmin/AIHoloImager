@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -9,6 +9,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+
+#include "AIHoloImager/Mesh.hpp"
 
 namespace AIHoloImager
 {
@@ -35,4 +37,6 @@ namespace AIHoloImager
         static Obb Transform(const Obb& obb, const glm::mat4x4& mtx);
         static void GetCorners(const Obb& obb, std::span<glm::vec3> corners);
     };
+
+    Mesh BoxMesh(std::span<const glm::vec3> corners);
 } // namespace AIHoloImager

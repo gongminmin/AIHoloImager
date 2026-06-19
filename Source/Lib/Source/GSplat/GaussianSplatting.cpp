@@ -10,15 +10,14 @@
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Sorter/Sorter.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "Sorter.hpp"
-
-#include "CompiledShader/MeshGen/GaussianSplatting/BlendCs.h"
-#include "CompiledShader/MeshGen/GaussianSplatting/PreprocessCs.h"
-#include "CompiledShader/MeshGen/GaussianSplatting/RenderGs.h"
-#include "CompiledShader/MeshGen/GaussianSplatting/RenderPs.h"
-#include "CompiledShader/MeshGen/GaussianSplatting/RenderVs.h"
+#include "CompiledShader/GSplat/BlendCs.h"
+#include "CompiledShader/GSplat/PreprocessCs.h"
+#include "CompiledShader/GSplat/RenderGs.h"
+#include "CompiledShader/GSplat/RenderPs.h"
+#include "CompiledShader/GSplat/RenderVs.h"
 
 namespace
 {

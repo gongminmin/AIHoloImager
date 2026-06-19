@@ -8,10 +8,10 @@
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuShader.hpp"
 
-#include "CompiledShader/MeshGen/PrefixSumScanner/ApplySumUint2Cs.h"
-#include "CompiledShader/MeshGen/PrefixSumScanner/ApplySumUintCs.h"
-#include "CompiledShader/MeshGen/PrefixSumScanner/PrefixSumUint2Cs.h"
-#include "CompiledShader/MeshGen/PrefixSumScanner/PrefixSumUintCs.h"
+#include "CompiledShader/PrefixSumScanner/ApplySumUint2Cs.h"
+#include "CompiledShader/PrefixSumScanner/ApplySumUintCs.h"
+#include "CompiledShader/PrefixSumScanner/PrefixSumUint2Cs.h"
+#include "CompiledShader/PrefixSumScanner/PrefixSumUintCs.h"
 
 namespace AIHoloImager
 {

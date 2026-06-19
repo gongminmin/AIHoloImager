@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "BoundingBox.hpp"
@@ -309,5 +309,85 @@ namespace AIHoloImager
         {
             corners[i] = obb.orientation * (obb.extents * BoxOffsets[i]) + obb.center;
         }
+    }
+
+    Mesh BoxMesh(std::span<const glm::vec3> corners)
+    {
+        const VertexAttrib pos_clr_vertex_attribs[] = {
+            {VertexAttrib::Semantic::Position, 0, 3},
+            {VertexAttrib::Semantic::Color, 0, 3},
+        };
+        constexpr uint32_t PosAttribIndex = 0;
+        constexpr uint32_t ColorAttribIndex = 1;
+        const VertexDesc pos_clr_vertex_desc(pos_clr_vertex_attribs);
+
+        Mesh mesh = Mesh(pos_clr_vertex_desc, 8, 36);
+
+        constexpr glm::vec3 BoxColors[] = {
+            {0, 0, 1},
+            {1, 0, 1},
+            {1, 1, 1},
+            {0, 1, 1},
+            {0, 0, 0},
+            {1, 0, 0},
+            {1, 1, 0},
+            {0, 1, 0},
+        };
+
+        for (uint32_t i = 0; i < 8; ++i)
+        {
+            mesh.VertexData<glm::vec3>(i, PosAttribIndex) = corners[i];
+            mesh.VertexData<glm::vec3>(i, ColorAttribIndex) = BoxColors[i];
+        }
+
+        mesh.Index(0) = 0;
+        mesh.Index(1) = 1;
+        mesh.Index(2) = 2;
+
+        mesh.Index(3) = 2;
+        mesh.Index(4) = 3;
+        mesh.Index(5) = 0;
+
+        mesh.Index(6) = 5;
+        mesh.Index(7) = 4;
+        mesh.Index(8) = 7;
+
+        mesh.Index(9) = 7;
+        mesh.Index(10) = 6;
+        mesh.Index(11) = 5;
+
+        mesh.Index(12) = 0;
+        mesh.Index(13) = 1;
+        mesh.Index(14) = 5;
+
+        mesh.Index(15) = 5;
+        mesh.Index(16) = 4;
+        mesh.Index(17) = 0;
+
+        mesh.Index(18) = 1;
+        mesh.Index(19) = 2;
+        mesh.Index(20) = 6;
+
+        mesh.Index(21) = 6;
+        mesh.Index(22) = 5;
+        mesh.Index(23) = 1;
+
+        mesh.Index(24) = 2;
+        mesh.Index(25) = 3;
+        mesh.Index(26) = 7;
+
+        mesh.Index(27) = 7;
+        mesh.Index(28) = 6;
+        mesh.Index(29) = 2;
+
+        mesh.Index(30) = 3;
+        mesh.Index(31) = 0;
+        mesh.Index(32) = 4;
+
+        mesh.Index(33) = 4;
+        mesh.Index(34) = 7;
+        mesh.Index(35) = 3;
+
+        return mesh;
     }
 } // namespace AIHoloImager

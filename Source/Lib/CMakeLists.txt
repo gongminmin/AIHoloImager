@@ -34,6 +34,16 @@ set(aihi_files
     Source/Delighter/ModMidas/MidasNet.py
     Source/Delighter/ModMidas/Wsl.py
     Source/Delighter/ModMidas/__init__.py
+    Source/DiffOptimizer/DiffOptimizer.cpp
+    Source/DiffOptimizer/DiffOptimizer.hpp
+    Source/DiffOptimizer/DiffOptimizer.py
+    Source/GSplat/Shader/BlendCs.hlsl
+    Source/GSplat/Shader/PreprocessCs.hlsl
+    Source/GSplat/Shader/RenderGs.hlsl
+    Source/GSplat/Shader/RenderPs.hlsl
+    Source/GSplat/Shader/RenderVs.hlsl
+    Source/GSplat/GaussianSplatting.cpp
+    Source/GSplat/GaussianSplatting.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
@@ -47,11 +57,6 @@ set(aihi_files
     Source/MaskGen/MaskGenerator.hpp
     Source/MaskGen/MaskGenerator.py
     Source/MaskGen/U2Net.py
-    Source/MeshGen/Shader/GaussianSplatting/BlendCs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/PreprocessCs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/RenderGs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/RenderPs.hlsl
-    Source/MeshGen/Shader/GaussianSplatting/RenderVs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl
     Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl
@@ -61,39 +66,14 @@ set(aihi_files
     Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubes/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl
-    Source/MeshGen/Shader/PrefixSumScanner/ApplySumCs.hlslh
-    Source/MeshGen/Shader/PrefixSumScanner/ApplySumUint2Cs.hlsl
-    Source/MeshGen/Shader/PrefixSumScanner/ApplySumUintCs.hlsl
-    Source/MeshGen/Shader/PrefixSumScanner/PrefixSumBlock.hlslh
-    Source/MeshGen/Shader/PrefixSumScanner/PrefixSumCs.hlslh
-    Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUint2Cs.hlsl
-    Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUintCs.hlsl
-    Source/MeshGen/Shader/Sorter/DownsweepCs.hlslh
-    Source/MeshGen/Shader/Sorter/DownsweepCs_Uint_Uint.hlsl
-    Source/MeshGen/Shader/Sorter/DownsweepCs_Uint2_Uint.hlsl
-    Source/MeshGen/Shader/Sorter/ScanCs.hlslh
-    Source/MeshGen/Shader/Sorter/ScanCs_Uint_Uint.hlsl
-    Source/MeshGen/Shader/Sorter/ScanCs_Uint2_Uint.hlsl
-    Source/MeshGen/Shader/Sorter/SortCommon.hlslh
-    Source/MeshGen/Shader/Sorter/UpsweepCs.hlslh
-    Source/MeshGen/Shader/Sorter/UpsweepCs_Uint_Uint.hlsl
-    Source/MeshGen/Shader/Sorter/UpsweepCs_Uint2_Uint.hlsl
     Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
-    Source/MeshGen/Shader/DilateCs.hlsl
     Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl
-    Source/MeshGen/Shader/ExtractMaskCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
-    Source/MeshGen/Shader/MergeTextureCs.hlsl
     Source/MeshGen/Shader/ResizeCs.hlsl
     Source/MeshGen/Shader/RotatePs.hlsl
     Source/MeshGen/Shader/RotateVs.hlsl
     Source/MeshGen/Shader/ScatterIndexCs.hlsl
-    Source/MeshGen/DiffOptimizer.cpp
-    Source/MeshGen/DiffOptimizer.hpp
-    Source/MeshGen/DiffOptimizer.py
-    Source/MeshGen/GaussianSplatting.cpp
-    Source/MeshGen/GaussianSplatting.hpp
     Source/MeshGen/InvisibleFacesRemover.cpp
     Source/MeshGen/InvisibleFacesRemover.hpp
     Source/MeshGen/MarchingCubes.cpp
@@ -101,10 +81,6 @@ set(aihi_files
     Source/MeshGen/MeshGenerator.cpp
     Source/MeshGen/MeshGenerator.hpp
     Source/MeshGen/MeshGenerator.py
-    Source/MeshGen/PrefixSumScanner.cpp
-    Source/MeshGen/PrefixSumScanner.hpp
-    Source/MeshGen/Sorter.cpp
-    Source/MeshGen/Sorter.hpp
     Source/MeshGen/Trellis/Models/StructuredLatentVae/Base.py
     Source/MeshGen/Trellis/Models/StructuredLatentVae/DecoderGs.py
     Source/MeshGen/Trellis/Models/StructuredLatentVae/DecoderVolume.py
@@ -143,8 +119,22 @@ set(aihi_files
     Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
+    Source/MeshOpt/Shader/DilateCs.hlsl
+    Source/MeshOpt/Shader/ExtractMaskCs.hlsl
+    Source/MeshOpt/Shader/MergeTextureCs.hlsl
+    Source/MeshOpt/MeshOptimizer.cpp
+    Source/MeshOpt/MeshOptimizer.hpp
     Source/MeshSimp/MeshSimplification.cpp
     Source/MeshSimp/MeshSimplification.hpp
+    Source/PrefixSumScanner/Shader/ApplySumCs.hlslh
+    Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl
+    Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl
+    Source/PrefixSumScanner/Shader/PrefixSumBlock.hlslh
+    Source/PrefixSumScanner/Shader/PrefixSumCs.hlslh
+    Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl
+    Source/PrefixSumScanner/Shader/PrefixSumUintCs.hlsl
+    Source/PrefixSumScanner/PrefixSumScanner.cpp
+    Source/PrefixSumScanner/PrefixSumScanner.hpp
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
@@ -161,6 +151,18 @@ set(aihi_files
     Source/SfM/PointCloudEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
+    Source/Sorter/Shader/DownsweepCs.hlslh
+    Source/Sorter/Shader/DownsweepCs_Uint_Uint.hlsl
+    Source/Sorter/Shader/DownsweepCs_Uint2_Uint.hlsl
+    Source/Sorter/Shader/ScanCs.hlslh
+    Source/Sorter/Shader/ScanCs_Uint_Uint.hlsl
+    Source/Sorter/Shader/ScanCs_Uint2_Uint.hlsl
+    Source/Sorter/Shader/SortCommon.hlslh
+    Source/Sorter/Shader/UpsweepCs.hlslh
+    Source/Sorter/Shader/UpsweepCs_Uint_Uint.hlsl
+    Source/Sorter/Shader/UpsweepCs_Uint2_Uint.hlsl
+    Source/Sorter/Sorter.cpp
+    Source/Sorter/Sorter.hpp
     Source/SuperRes/RealESrGan/SrVggNetCompact.py
     Source/SuperRes/RealESrGan/__init__.py
     Source/SuperRes/Shader/BlendCs.hlsl
@@ -198,6 +200,11 @@ add_library(AIHoloImagerLib STATIC
 )
 
 AddShaderFile(Source/Delighter/Shader/MergeMaskCs.hlsl "cs" "main")
+AddShaderFile(Source/GSplat/Shader/BlendCs.hlsl "cs" "main")
+AddShaderFile(Source/GSplat/Shader/PreprocessCs.hlsl "cs" "main")
+AddShaderFile(Source/GSplat/Shader/RenderVs.hlsl "vs" "main")
+AddShaderFile(Source/GSplat/Shader/RenderGs.hlsl "gs" "main")
+AddShaderFile(Source/GSplat/Shader/RenderPs.hlsl "ps" "main")
 AddShaderFile(Source/MaskGen/Shader/CalcBBoxCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/DownsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/ErosionDilationCs.hlsl "cs" "main")
@@ -207,11 +214,6 @@ AddShaderFile(Source/MaskGen/Shader/NormalizeImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/UpsampleCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatImageCs.hlsl "cs" "main")
 AddShaderFile(Source/MaskGen/Shader/StatPredCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/BlendCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/PreprocessCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderVs.hlsl "vs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderGs.hlsl "gs" "main")
-AddShaderFile(Source/MeshGen/Shader/GaussianSplatting/RenderPs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/AccumFacesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/FaceIdPs.hlsl "ps" "main")
@@ -220,28 +222,28 @@ AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/MarkFacesCs.hlsl "cs" 
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/CalcCubeIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumScanner/ApplySumUint2Cs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumScanner/ApplySumUintCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUint2Cs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/PrefixSumScanner/PrefixSumUintCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/DownsweepCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/DownsweepCs_Uint2_Uint.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/ScanCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/ScanCs_Uint2_Uint.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/UpsweepCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Sorter/UpsweepCs_Uint2_Uint.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ExtractMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotatePs.hlsl "ps" "main")
 AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshOpt/Shader/DilateCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshOpt/Shader/ExtractMaskCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshOpt/Shader/MergeTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl "cs" "main")
+AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl "cs" "main")
+AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl "cs" "main")
+AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUintCs.hlsl "cs" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint_Uint.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint2_Uint.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/ScanCs_Uint_Uint.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/ScanCs_Uint2_Uint.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/UpsweepCs_Uint_Uint.hlsl "cs" "main")
+AddShaderFile(Source/Sorter/Shader/UpsweepCs_Uint2_Uint.hlsl "cs" "main")
 AddShaderFile(Source/SuperRes/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/SuperRes/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenVs.hlsl "vs" "main")
@@ -303,6 +305,7 @@ set(py_files
     Source/Delighter/ModMidas/MidasNet.py
     Source/Delighter/ModMidas/Wsl.py
     Source/Delighter/ModMidas/__init__.py
+    Source/DiffOptimizer/DiffOptimizer.py
     Source/MaskGen/MaskGenerator.py
     Source/MaskGen/U2Net.py
     Source/MeshGen/MeshGenerator.py
@@ -345,7 +348,6 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/Samplers/__init__.py
     Source/MeshGen/Trellis/Pipelines/TrellisImageTo3D.py
     Source/MeshGen/Trellis/Pipelines/__init__.py
-    Source/MeshGen/DiffOptimizer.py
     Source/Python/PythonSystem.py
     Source/SfM/MoGe/Geometry.py
     Source/SfM/MoGe/MoGeModel.py

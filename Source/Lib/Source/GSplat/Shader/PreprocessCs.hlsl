@@ -5,7 +5,7 @@ static const uint32_t BlockDim = 256;
 static const float AlphaThreshold = 1 / 255.0f;
 
 #define DATA_TYPE uint32_t
-#include "../PrefixSumScanner/PrefixSumBlock.hlslh"
+#include "PrefixSumScanner/Shader/PrefixSumBlock.hlslh"
 
 cbuffer param_cb
 {

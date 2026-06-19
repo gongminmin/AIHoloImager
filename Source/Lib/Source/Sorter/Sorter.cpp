@@ -7,12 +7,12 @@
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 
-#include "CompiledShader/MeshGen/Sorter/DownsweepCs_Uint2_Uint.h"
-#include "CompiledShader/MeshGen/Sorter/DownsweepCs_Uint_Uint.h"
-#include "CompiledShader/MeshGen/Sorter/ScanCs_Uint2_Uint.h"
-#include "CompiledShader/MeshGen/Sorter/ScanCs_Uint_Uint.h"
-#include "CompiledShader/MeshGen/Sorter/UpsweepCs_Uint2_Uint.h"
-#include "CompiledShader/MeshGen/Sorter/UpsweepCs_Uint_Uint.h"
+#include "CompiledShader/Sorter/DownsweepCs_Uint2_Uint.h"
+#include "CompiledShader/Sorter/DownsweepCs_Uint_Uint.h"
+#include "CompiledShader/Sorter/ScanCs_Uint2_Uint.h"
+#include "CompiledShader/Sorter/ScanCs_Uint_Uint.h"
+#include "CompiledShader/Sorter/UpsweepCs_Uint2_Uint.h"
+#include "CompiledShader/Sorter/UpsweepCs_Uint_Uint.h"
 
 namespace AIHoloImager
 {

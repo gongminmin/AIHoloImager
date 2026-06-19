@@ -22,6 +22,7 @@
 #include "Gpu/GpuSystem.hpp"
 #include "MaskGen/MaskGenerator.hpp"
 #include "MeshGen/MeshGenerator.hpp"
+#include "MeshOpt/MeshOptimizer.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/PerfProfiler.hpp"
@@ -184,15 +185,21 @@ namespace AIHoloImager
                 }
             }
 
-            Mesh result_mesh;
+            MeshGenerator::Result mg_result;
             {
                 MeshGenerator mesh_gen(*this);
-                result_mesh = mesh_gen.Generate(sfm_result, texture_size);
+                mg_result = mesh_gen.Generate(sfm_result);
+            }
+
+            GpuMesh result_mesh;
+            {
+                MeshOptimizer mesh_opt(*this);
+                result_mesh = mesh_opt.Optimize(sfm_result, mg_result, texture_size);
             }
 
             profiler_.Output(std::cout);
 
-            return result_mesh;
+            return ToMesh(gpu_system_, result_mesh);
         }
 
     private:

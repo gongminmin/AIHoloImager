@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "MarchingCubesUtil.hlslh"
@@ -7,7 +7,7 @@ static const uint32_t BlockDim = 256;
 static const uint32_t MaxGroupDim = 65535;
 
 #define DATA_TYPE uint32_t
-#include "../PrefixSumScanner/PrefixSumBlock.hlslh"
+#include "PrefixSumScanner/Shader/PrefixSumBlock.hlslh"
 
 cbuffer param_cb
 {
