@@ -1,14 +1,10 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
 
-#include <glm/vec4.hpp>
-
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuCommandList.hpp"
-#include "Gpu/GpuTexture.hpp"
 
 namespace AIHoloImager
 {
@@ -23,7 +19,7 @@ namespace AIHoloImager
 
         MaskGenerator& operator=(MaskGenerator&& other) noexcept;
 
-        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image, glm::uvec4& roi);
+        void Generate(AIHoloImagerInternal::ProjectionDesc& projection);
 
     private:
         class Impl;

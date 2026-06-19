@@ -111,14 +111,15 @@ namespace AIHoloImager
             mask_generator_module_.reset();
         }
 
-        void Generate(GpuCommandList& cmd_list, GpuTexture2D& image_gpu_tex, glm::uvec4& roi)
+        void Generate(AIHoloImagerInternal::ProjectionDesc& projection)
         {
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+
             PerfRegion generate_perf(aihi_.PerfProfilerInstance(), "Mask generator generate", &cmd_list);
 
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
-            const uint32_t width = image_gpu_tex.Width(0);
-            const uint32_t height = image_gpu_tex.Height(0);
+            const uint32_t width = projection.image->Width(0);
+            const uint32_t height = projection.image->Height(0);
 
             const bool crop = (width > U2NetInputDim) || (height > U2NetInputDim);
 
@@ -149,8 +150,8 @@ namespace AIHoloImager
                 }
             }
 
-            roi = glm::uvec4(0, 0, width, height);
-            this->GenMask(cmd_list, image_gpu_tex, roi, !crop, !crop);
+            glm::uvec4 roi(0, 0, width, height);
+            this->GenMask(cmd_list, *projection.image, roi, !crop, !crop);
             if (crop)
             {
                 GpuConstantBufferOfType<StatPredConstantBuffer> calc_bbox_cb(gpu_system, "calc_bbox_cb");
@@ -166,7 +167,7 @@ namespace AIHoloImager
 
                     constexpr uint32_t BlockDim = 16;
 
-                    const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
+                    const GpuShaderResourceView input_srv(gpu_system, *projection.image);
 
                     std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                         {"param_cb", &calc_bbox_cbv},
@@ -192,8 +193,15 @@ namespace AIHoloImager
                 const glm::uvec4 square_roi = glm::clamp(glm::ivec4(crop_center - crop_extent, crop_center + crop_extent + 1U),
                     glm::ivec4(0, 0, 0, 0), glm::ivec4(width, height, width, height));
 
-                this->GenMask(cmd_list, image_gpu_tex, square_roi, true, true);
+                this->GenMask(cmd_list, *projection.image, square_roi, true, true);
             }
+
+            glm::uvec2 roi_offset;
+            *projection.image = this->CropImage(cmd_list, *projection.image, roi, roi_offset);
+            projection.image_offset += roi_offset;
+
+            generate_perf.End();
+            gpu_system.Execute(std::move(cmd_list));
         }
 
     private:
@@ -567,6 +575,28 @@ namespace AIHoloImager
             }
         }
 
+        GpuTexture2D CropImage(GpuCommandList& cmd_list, const GpuTexture2D& image, const glm::uvec4& roi, glm::uvec2& offset)
+        {
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            constexpr uint32_t Gap = 32;
+            glm::uvec4 expanded_roi;
+            expanded_roi.x = std::max(static_cast<int32_t>(std::floor(roi.x) - Gap), 0);
+            expanded_roi.y = std::max(static_cast<int32_t>(std::floor(roi.y) - Gap), 0);
+            expanded_roi.z = std::min(static_cast<int32_t>(std::ceil(roi.z) + Gap), static_cast<int32_t>(image.Width(0)));
+            expanded_roi.w = std::min(static_cast<int32_t>(std::ceil(roi.w) + Gap), static_cast<int32_t>(image.Height(0)));
+
+            offset = glm::uvec2(expanded_roi.x, expanded_roi.y);
+
+            const uint32_t roi_width = expanded_roi.z - expanded_roi.x;
+            const uint32_t roi_height = expanded_roi.w - expanded_roi.y;
+            GpuTexture2D roi_image(gpu_system, roi_width, roi_height, 1, image.Format(),
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "roi_image");
+            cmd_list.Copy(roi_image, 0, 0, 0, 0, image, 0, GpuBox{expanded_roi.x, expanded_roi.y, 0, expanded_roi.z, expanded_roi.w, 1});
+
+            return roi_image;
+        }
+
     private:
         AIHoloImagerInternal& aihi_;
 
@@ -650,8 +680,8 @@ namespace AIHoloImager
     MaskGenerator::MaskGenerator(MaskGenerator&& other) noexcept = default;
     MaskGenerator& MaskGenerator::operator=(MaskGenerator&& other) noexcept = default;
 
-    void MaskGenerator::Generate(GpuCommandList& cmd_list, GpuTexture2D& image, glm::uvec4& roi)
+    void MaskGenerator::Generate(AIHoloImagerInternal::ProjectionDesc& projection)
     {
-        impl_->Generate(cmd_list, image, roi);
+        impl_->Generate(projection);
     }
 } // namespace AIHoloImager

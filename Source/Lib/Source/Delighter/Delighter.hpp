@@ -1,15 +1,10 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
 
-#include <glm/vec2.hpp>
-#include <glm/vec4.hpp>
-
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "Gpu/GpuCommandList.hpp"
-#include "Gpu/GpuTexture.hpp"
 
 namespace AIHoloImager
 {
@@ -24,7 +19,7 @@ namespace AIHoloImager
 
         Delighter& operator=(Delighter&& other) noexcept;
 
-        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image);
+        void Process(AIHoloImagerInternal::ProjectionDesc& projection);
 
     private:
         class Impl;

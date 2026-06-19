@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "AIHoloImager/AIHoloImager.hpp"
@@ -18,7 +18,9 @@
 
 #include "AIHoloImagerInternal.hpp"
 #include "Base/ErrorHandling.hpp"
+#include "Delighter/Delighter.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "MaskGen/MaskGenerator.hpp"
 #include "MeshGen/MeshGenerator.hpp"
 #include "Python/PythonSystem.hpp"
 #include "SfM/StructureFromMotion.hpp"
@@ -163,7 +165,23 @@ namespace AIHoloImager
             StructureFromMotion::Result sfm_result;
             {
                 StructureFromMotion sfm(*this);
-                sfm_result = sfm.Process(input_path, true, no_delight);
+                sfm_result = sfm.Process(input_path, true);
+            }
+
+            {
+                MaskGenerator mask_gen(*this);
+                for (auto& projection : sfm_result.projections)
+                {
+                    mask_gen.Generate(projection);
+                }
+            }
+            if (!no_delight)
+            {
+                Delighter delighter(*this);
+                for (auto& projection : sfm_result.projections)
+                {
+                    delighter.Process(projection);
+                }
             }
 
             Mesh result_mesh;

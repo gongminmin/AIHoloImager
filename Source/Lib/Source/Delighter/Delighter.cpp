@@ -61,21 +61,22 @@ namespace AIHoloImager
             delighter_module_.reset();
         }
 
-        GpuTexture2D Process(GpuCommandList& cmd_list, const GpuTexture2D& image)
+        void Process(AIHoloImagerInternal::ProjectionDesc& projection)
         {
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "Delighter process", &cmd_list);
 
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
-            const uint32_t width = image.Width(0);
-            const uint32_t height = image.Height(0);
+            const uint32_t width = projection.image->Width(0);
+            const uint32_t height = projection.image->Height(0);
 
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
             PyObjectPtr roi_tensor;
             {
                 PythonSystem::GilGuard guard;
-                roi_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
+                roi_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, *projection.image));
             }
 
             if (!py_init_finished_)
@@ -93,14 +94,14 @@ namespace AIHoloImager
                 auto& python_system = aihi_.PythonSystemInstance();
 
                 const auto output_roi_image = python_system.CallObject(
-                    *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(image.Format()));
+                    *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(projection.image->Format()));
                 tensor_converter.ConvertPy(cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "delighted_tex");
 
                 {
                     constexpr uint32_t BlockDim = 16;
 
-                    const GpuShaderResourceView image_srv(gpu_system, image);
+                    const GpuShaderResourceView image_srv(gpu_system, *projection.image);
 
                     GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
 
@@ -124,7 +125,10 @@ namespace AIHoloImager
                 }
             }
 
-            return delighted_tex;
+            process_perf.End();
+            gpu_system.Execute(std::move(cmd_list));
+
+            *projection.image = std::move(delighted_tex);
         }
 
     private:
@@ -154,8 +158,8 @@ namespace AIHoloImager
     Delighter::Delighter(Delighter&& other) noexcept = default;
     Delighter& Delighter::operator=(Delighter&& other) noexcept = default;
 
-    GpuTexture2D Delighter::Process(GpuCommandList& cmd_list, const GpuTexture2D& image)
+    void Delighter::Process(AIHoloImagerInternal::ProjectionDesc& projection)
     {
-        return impl_->Process(cmd_list, image);
+        impl_->Process(projection);
     }
 } // namespace AIHoloImager
