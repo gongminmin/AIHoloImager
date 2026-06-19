@@ -24,8 +24,8 @@ namespace AIHoloImager
         void Transition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
         void Transition(VulkanCommandList& cmd_list, GpuResourceState target_state) const;
 
-        void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
-        void ClearLastWrittenBy() const;
+        void LastAccessedBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+        void ClearLastAccessedBy() const;
 
         const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept;
 
@@ -39,10 +39,10 @@ namespace AIHoloImager
         GpuResourceFlag Flags() const noexcept;
 
     private:
-        void AccessedBy(VulkanCommandList& cmd_list, GpuResourceState target_state) const;
+        void AccessedBy(VulkanCommandList& cmd_list, GpuResourceState target_state, bool actual_transit) const;
 
-        virtual void DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
-        virtual void DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const = 0;
+        virtual bool DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual bool DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const = 0;
 
     private:
         GpuResourceType type_ = GpuResourceType::Buffer;
@@ -50,8 +50,8 @@ namespace AIHoloImager
         VulkanRecyclableObject<VkDeviceMemory> memory_;
         Win32UniqueHandle shared_handle_;
 
-        mutable GpuSystem::CmdQueueType written_by_queue_type_ = GpuSystem::CmdQueueType::Num;
-        mutable uint64_t written_by_fence_value_ = GpuSystem::MaxFenceValue;
+        mutable GpuSystem::CmdQueueType accessed_by_queue_type_ = GpuSystem::CmdQueueType::Num;
+        mutable uint64_t accessed_by_fence_value_ = GpuSystem::MaxFenceValue;
     };
 
     VULKAN_DEFINE_IMP(Resource)

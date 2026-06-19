@@ -259,15 +259,17 @@ namespace AIHoloImager
         this->Transition(VulkanImp(cmd_list), target_state);
     }
 
-    void VulkanBuffer::DoTransition(
+    bool VulkanBuffer::DoTransition(
         VulkanCommandList& cmd_list, [[maybe_unused]] uint32_t sub_resource, GpuResourceState target_state) const
     {
         assert(sub_resource == 0);
-        this->DoTransition(cmd_list, target_state);
+        return this->DoTransition(cmd_list, target_state);
     }
 
-    void VulkanBuffer::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
+    bool VulkanBuffer::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
+        bool actual_transit = false;
+
         cmd_list.RegisterAccessedObject(this->StalledWaitFences());
 
         if ((curr_state_ != target_state) || (target_state == GpuResourceState::UnorderedAccess) ||
@@ -286,9 +288,12 @@ namespace AIHoloImager
                 .size = VK_WHOLE_SIZE,
             };
             cmd_list.Transition(std::span(&barrier, 1));
+            actual_transit = true;
 
             curr_state_ = target_state;
         }
+
+        return actual_transit;
     }
 
     const std::shared_ptr<GpuSystem::WaitFences>& VulkanBuffer::StalledWaitFences() const noexcept

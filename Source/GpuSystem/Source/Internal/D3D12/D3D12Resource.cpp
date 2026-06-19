@@ -68,20 +68,22 @@ namespace AIHoloImager
 
     void D3D12Resource::Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
+        bool actual_transit = false;
         if (cmd_list.Type() != GpuSystem::CmdQueueType::Copy)
         {
-            this->DoTransition(cmd_list, sub_resource, target_state);
+            actual_transit = this->DoTransition(cmd_list, sub_resource, target_state);
         }
-        this->AccessedBy(cmd_list, target_state);
+        this->AccessedBy(cmd_list, target_state, actual_transit);
     }
 
     void D3D12Resource::Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
+        bool actual_transit = false;
         if (cmd_list.Type() != GpuSystem::CmdQueueType::Copy)
         {
-            this->DoTransition(cmd_list, target_state);
+            actual_transit = this->DoTransition(cmd_list, target_state);
         }
-        this->AccessedBy(cmd_list, target_state);
+        this->AccessedBy(cmd_list, target_state, actual_transit);
     }
 
     const std::shared_ptr<GpuSystem::WaitFences>& D3D12Resource::StalledWaitFences() const noexcept
@@ -89,19 +91,19 @@ namespace AIHoloImager
         return resource_.StalledWaitFences();
     }
 
-    void D3D12Resource::LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
+    void D3D12Resource::LastAccessedBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const
     {
-        type = written_by_queue_type_;
-        fence_value = written_by_fence_value_;
+        type = accessed_by_queue_type_;
+        fence_value = accessed_by_fence_value_;
     }
 
-    void D3D12Resource::ClearLastWrittenBy() const
+    void D3D12Resource::ClearLastAccessedBy() const
     {
-        written_by_queue_type_ = GpuSystem::CmdQueueType::Num;
-        written_by_fence_value_ = GpuSystem::MaxFenceValue;
+        accessed_by_queue_type_ = GpuSystem::CmdQueueType::Num;
+        accessed_by_fence_value_ = GpuSystem::MaxFenceValue;
     }
 
-    void D3D12Resource::AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state) const
+    void D3D12Resource::AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state, bool actual_transit) const
     {
         cmd_list.RegisterAccessedObject(this->StalledWaitFences());
 
@@ -111,28 +113,20 @@ namespace AIHoloImager
         case GpuResourceState::CopySrc:
         case GpuResourceState::UnorderedAccess:
         case GpuResourceState::RayTracingAS:
-            cmd_list.CheckWrittenBy(*this);
+            cmd_list.CheckAccessedBy(*this);
             break;
         }
 
-        switch (target_state)
-        {
-        case GpuResourceState::ColorWrite:
-        case GpuResourceState::DepthWrite:
-        case GpuResourceState::UnorderedAccess:
-        case GpuResourceState::CopyDst:
-        case GpuResourceState::RayTracingAS:
+        if (actual_transit)
         {
             const auto type = cmd_list.Type();
             const uint64_t fence_value = resource_.D3D12Sys()->FenceValue(type);
-            if ((written_by_fence_value_ == GpuSystem::MaxFenceValue) || (type != written_by_queue_type_) ||
-                (fence_value >= written_by_fence_value_))
+            if ((accessed_by_fence_value_ == GpuSystem::MaxFenceValue) || (type != accessed_by_queue_type_) ||
+                (fence_value >= accessed_by_fence_value_))
             {
-                written_by_queue_type_ = type;
-                written_by_fence_value_ = fence_value;
+                accessed_by_queue_type_ = type;
+                accessed_by_fence_value_ = fence_value;
             }
-        }
-        break;
         }
     }
 

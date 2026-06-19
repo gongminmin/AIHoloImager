@@ -144,14 +144,16 @@ namespace AIHoloImager
         this->Transition(D3D12Imp(cmd_list), target_state);
     }
 
-    void D3D12Texture::DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    bool D3D12Texture::DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
         if (sub_resource == ~0U)
         {
-            this->DoTransition(cmd_list, target_state);
+            return this->DoTransition(cmd_list, target_state);
         }
         else
         {
+            bool actual_transit = false;
+
             auto* native_resource = this->Resource();
             auto& curr_state = curr_states_[sub_resource];
             if (curr_state != target_state)
@@ -167,6 +169,7 @@ namespace AIHoloImager
                     },
                 };
                 cmd_list.Transition(std::span(&barrier, 1));
+                actual_transit = true;
 
                 curr_state = target_state;
             }
@@ -180,12 +183,17 @@ namespace AIHoloImager
                     },
                 };
                 cmd_list.Transition(std::span(&barrier, 1));
+                actual_transit = true;
             }
+
+            return actual_transit;
         }
     }
 
-    void D3D12Texture::DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
+    bool D3D12Texture::DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
+        bool actual_transit = false;
+
         auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
         if ((curr_states_[0] == target_state) &&
@@ -199,6 +207,7 @@ namespace AIHoloImager
                 },
             };
             cmd_list.Transition(std::span(&barrier, 1));
+            actual_transit = true;
         }
         else
         {
@@ -227,6 +236,7 @@ namespace AIHoloImager
                         },
                     };
                     cmd_list.Transition(std::span(&barrier, 1));
+                    actual_transit = true;
                 }
             }
             else
@@ -249,11 +259,17 @@ namespace AIHoloImager
                         };
                     }
                 }
-                cmd_list.Transition(std::span(barriers.begin(), barriers.end()));
+                if (!barriers.empty())
+                {
+                    cmd_list.Transition(barriers);
+                    actual_transit = true;
+                }
             }
         }
 
         curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
+
+        return actual_transit;
     }
 
     const std::shared_ptr<GpuSystem::WaitFences>& D3D12Texture::StalledWaitFences() const noexcept

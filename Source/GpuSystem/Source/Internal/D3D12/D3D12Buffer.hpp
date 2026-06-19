@@ -56,8 +56,8 @@ namespace AIHoloImager
         D3D12_GPU_VIRTUAL_ADDRESS GpuVirtualAddress() const noexcept;
 
     private:
-        void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
+        bool DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        bool DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         GpuHeap heap_{};

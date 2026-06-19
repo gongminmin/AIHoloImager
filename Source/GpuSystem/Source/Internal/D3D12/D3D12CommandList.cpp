@@ -1231,15 +1231,15 @@ namespace AIHoloImager
         wait_fences_ = {};
     }
 
-    void D3D12CommandList::CheckWrittenBy(const D3D12Resource& resource)
+    void D3D12CommandList::CheckAccessedBy(const D3D12Resource& resource)
     {
-        GpuSystem::CmdQueueType lw_type;
-        uint64_t lw_fence_value;
-        resource.LastWrittenBy(lw_type, lw_fence_value);
-        if ((lw_type != GpuSystem::CmdQueueType::Num) && (lw_type != type_))
+        GpuSystem::CmdQueueType la_type;
+        uint64_t la_fence_value;
+        resource.LastAccessedBy(la_type, la_fence_value);
+        if ((la_type != GpuSystem::CmdQueueType::Num) && (la_type != type_))
         {
-            auto& wait_for = wait_fences_.fence_values[static_cast<size_t>(lw_type)];
-            wait_for = std::max(lw_fence_value, wait_for);
+            auto& wait_for = wait_fences_.fence_values[static_cast<size_t>(la_type)];
+            wait_for = std::max(la_fence_value, wait_for);
         }
     }
 

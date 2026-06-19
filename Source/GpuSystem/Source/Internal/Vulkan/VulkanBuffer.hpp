@@ -58,8 +58,8 @@ namespace AIHoloImager
         const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     private:
-        void DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const override;
+        bool DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        bool DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const override;
 
         VkMemoryRequirements MemoryRequirements() const noexcept;
 

@@ -198,11 +198,11 @@ namespace AIHoloImager
         this->Transition(VulkanImp(cmd_list), target_state);
     }
 
-    void VulkanTexture::DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
+    bool VulkanTexture::DoTransition(VulkanCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const
     {
         if (sub_resource == ~0U)
         {
-            this->DoTransition(cmd_list, target_state);
+            return this->DoTransition(cmd_list, target_state);
         }
         else
         {
@@ -252,11 +252,15 @@ namespace AIHoloImager
             {
                 cmd_list.Transition(std::span(&barrier, 1));
             }
+
+            return need_transition;
         }
     }
 
-    void VulkanTexture::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
+    bool VulkanTexture::DoTransition(VulkanCommandList& cmd_list, GpuResourceState target_state) const
     {
+        bool actual_transit = false;
+
         cmd_list.RegisterAccessedObject(this->StalledWaitFences());
 
         const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state, this->Flags());
@@ -284,6 +288,7 @@ namespace AIHoloImager
             };
 
             cmd_list.Transition(std::span(&barrier, 1));
+            actual_transit = true;
         }
         else
         {
@@ -321,6 +326,7 @@ namespace AIHoloImager
                     std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
 
                     cmd_list.Transition(std::span(&barrier, 1));
+                    actual_transit = true;
                 }
             }
             else
@@ -354,10 +360,13 @@ namespace AIHoloImager
                     }
                 }
                 cmd_list.Transition(std::span(barriers));
+                actual_transit = true;
             }
         }
 
         curr_layouts_.assign(this->MipLevels() * this->Planes(), vulkan_target_layout);
+
+        return actual_transit;
     }
 
     const std::shared_ptr<GpuSystem::WaitFences>& VulkanTexture::StalledWaitFences() const noexcept

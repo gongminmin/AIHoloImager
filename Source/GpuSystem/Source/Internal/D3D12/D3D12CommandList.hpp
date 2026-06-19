@@ -104,7 +104,7 @@ namespace AIHoloImager
             return *cmd_pool_;
         }
 
-        void CheckWrittenBy(const D3D12Resource& resource);
+        void CheckAccessedBy(const D3D12Resource& resource);
         void WaitForFences(GpuSystem::WaitFences& wait_fences) const override;
 
         void RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const;

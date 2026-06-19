@@ -96,7 +96,7 @@ namespace AIHoloImager
             return *cmd_pool_;
         }
 
-        void CheckWrittenBy(const VulkanResource& resource);
+        void CheckAccessedBy(const VulkanResource& resource);
         void WaitForFences(GpuSystem::WaitFences& wait_fences) const override;
 
         void RegisterAccessedObject(std::shared_ptr<GpuSystem::WaitFences> wait_fences) const;

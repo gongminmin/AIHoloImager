@@ -33,8 +33,8 @@ namespace AIHoloImager
         void Transition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const;
         void Transition(D3D12CommandList& cmd_list, GpuResourceState target_state) const;
 
-        void LastWrittenBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
-        void ClearLastWrittenBy() const;
+        void LastAccessedBy(GpuSystem::CmdQueueType& type, uint64_t& fence_value) const;
+        void ClearLastAccessedBy() const;
 
         const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept;
 
@@ -61,10 +61,10 @@ namespace AIHoloImager
         GpuFormat Format() const noexcept;
 
     private:
-        void AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state) const;
+        void AccessedBy(D3D12CommandList& cmd_list, GpuResourceState target_state, bool actual_transit) const;
 
-        virtual void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
-        virtual void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
+        virtual bool DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const = 0;
+        virtual bool DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const = 0;
 
     private:
         D3D12RecyclableObject<ComPtr<ID3D12Resource>> resource_;
@@ -73,8 +73,8 @@ namespace AIHoloImager
         D3D12_RESOURCE_DESC desc_{};
         Win32UniqueHandle shared_handle_;
 
-        mutable GpuSystem::CmdQueueType written_by_queue_type_ = GpuSystem::CmdQueueType::Num;
-        mutable uint64_t written_by_fence_value_ = GpuSystem::MaxFenceValue;
+        mutable GpuSystem::CmdQueueType accessed_by_queue_type_ = GpuSystem::CmdQueueType::Num;
+        mutable uint64_t accessed_by_fence_value_ = GpuSystem::MaxFenceValue;
     };
 
     D3D12_DEFINE_IMP(Resource)

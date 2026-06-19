@@ -55,8 +55,8 @@ namespace AIHoloImager
         const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     private:
-        void DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
+        bool DoTransition(D3D12CommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        bool DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const override;
 
     private:
         mutable std::vector<GpuResourceState> curr_states_;
