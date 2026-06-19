@@ -599,12 +599,40 @@ namespace AIHoloImager
         vulkan_src.Transition(*this, GpuResourceState::CopySrc);
         vulkan_dst.Transition(*this, GpuResourceState::CopyDst);
 
+        const uint32_t array_size = src.ArraySize();
+        const uint32_t mip_levels = src.MipLevels();
+        auto copy_regions = std::make_unique<VkImageCopy2[]>(mip_levels);
+        for (uint32_t i = 0; i < mip_levels; ++i)
+        {
+            copy_regions[i] = VkImageCopy2{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2,
+                .srcSubresource{
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = i,
+                    .baseArrayLayer = 0,
+                    .layerCount = array_size,
+                },
+                .dstSubresource{
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = i,
+                    .baseArrayLayer = 0,
+                    .layerCount = array_size,
+                },
+                .extent{
+                    .width = src.Width(i),
+                    .height = src.Height(i),
+                    .depth = src.Depth(i),
+                },
+            };
+        }
         const VkCopyImageInfo2 copy_info{
-            .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_IMAGE_INFO,
+            .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,
             .srcImage = vulkan_src.Image(),
             .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             .dstImage = vulkan_dst.Image(),
             .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount = mip_levels,
+            .pRegions = copy_regions.get(),
         };
         vkCmdCopyImage2(cmd_buff_, &copy_info);
     }
