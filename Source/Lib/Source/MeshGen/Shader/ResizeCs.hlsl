@@ -1,7 +1,7 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
-#include "Lanczos.hlslh"
+#include "Util/Shader/Lanczos.hlslh"
 
 static const uint32_t BlockDim = 16;
 static const uint32_t KernelRadius = 3;

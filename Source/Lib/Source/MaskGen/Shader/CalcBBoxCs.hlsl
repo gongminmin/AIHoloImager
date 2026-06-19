@@ -1,7 +1,7 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
-#include "Utils.hlslh"
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 static const uint32_t MinWaveSize = 16;

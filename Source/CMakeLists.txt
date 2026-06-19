@@ -1,3 +1,6 @@
+# Copyright (c) 2024-2026 Minmin Gong
+#
+
 if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /WX /Zc:strictStrings /Zc:rvalueCast /openmp")
 
@@ -73,7 +76,7 @@ macro(AddShaderFile file_name shader_type entry_point)
                 -HV 2021 -enable-16bit-types
                 -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo
                 "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}"
-                -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source/Util/Shader/"
+                -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source"
                 -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader"
                 ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."

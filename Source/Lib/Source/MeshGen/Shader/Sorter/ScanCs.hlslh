@@ -6,7 +6,7 @@
 #pragma once
 
 #include "SortCommon.hlslh"
-#include "Utils.hlslh"
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t MinWaveSize = 16;
 

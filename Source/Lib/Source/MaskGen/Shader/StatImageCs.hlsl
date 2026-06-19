@@ -2,7 +2,7 @@
 //
 
 #include "Atomic.hlslh"
-#include "Utils.hlslh"
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 static const uint32_t MinWaveSize = 16;
