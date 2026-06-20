@@ -643,6 +643,7 @@ set(py_files
     sympy/utilities/__init__.py
     sympy/release.py
     sympy/__init__.py
+    torch/accelerator/graphs.py
     torch/accelerator/memory.py
     torch/accelerator/_utils.py
     torch/accelerator/__init__.py
@@ -749,6 +750,7 @@ set(py_files
     torch/backends/nnpack/__init__.py
     torch/backends/openmp/__init__.py
     torch/backends/opt_einsum/__init__.py
+    torch/backends/python_native/__init__.py
     torch/backends/quantized/__init__.py
     torch/backends/__init__.py
     torch/compiler/config.py
@@ -825,7 +827,6 @@ set(py_files
     torch/distributed/tensor/parallel/__init__.py
     torch/distributed/tensor/_ops/single_dim_strategy.py
     torch/distributed/tensor/_ops/utils.py
-    torch/distributed/tensor/_ops/_common_rules.py
     torch/distributed/tensor/_ops/_conv_ops.py
     torch/distributed/tensor/_ops/_einsum_strategy.py
     torch/distributed/tensor/_ops/_embedding_ops.py
@@ -841,6 +842,7 @@ set(py_files
     torch/distributed/tensor/placement_types.py
     torch/distributed/tensor/_api.py
     torch/distributed/tensor/_collective_utils.py
+    torch/distributed/tensor/_decompositions.py
     torch/distributed/tensor/_dispatch.py
     torch/distributed/tensor/_dtensor_spec.py
     torch/distributed/tensor/_nonlinear_redux.py
@@ -890,6 +892,7 @@ set(py_files
     torch/distributed/_shard/sharder.py
     torch/distributed/_shard/_utils.py
     torch/distributed/_shard/__init__.py
+    torch/distributed/_symmetric_memory/__init__.py
     torch/distributed/c10d_logger.py
     torch/distributed/config.py
     torch/distributed/constants.py
@@ -976,6 +979,7 @@ set(py_files
     torch/fx/experimental/_config.py
     torch/fx/experimental/_constant_symnode.py
     torch/fx/experimental/_dynamism.py
+    torch/fx/experimental/_size_hinting.py
     torch/fx/experimental/__init__.py
     torch/fx/passes/infra/pass_base.py
     torch/fx/passes/infra/pass_manager.py
@@ -1251,6 +1255,7 @@ set(py_files
     torch/special/__init__.py
     torch/testing/_internal/distributed/fake_pg.py
     torch/testing/_internal/distributed/__init__.py
+    torch/testing/_internal/common_dtype.py
     torch/testing/_internal/logging_tensor.py
     torch/testing/_internal/__init__.py
     torch/testing/_comparison.py
@@ -1304,6 +1309,10 @@ set(py_files
     torch/utils/data/__init__.py
     torch/utils/serialization/config.py
     torch/utils/serialization/__init__.py
+    torch/utils/_debug_mode/_calls.py
+    torch/utils/_debug_mode/_mode.py
+    torch/utils/_debug_mode/_utils.py
+    torch/utils/_debug_mode/__init__.py
     torch/utils/_sympy/functions.py
     torch/utils/_sympy/interp.py
     torch/utils/_sympy/numbers.py
@@ -1328,15 +1337,16 @@ set(py_files
     torch/utils/_content_store.py
     torch/utils/_contextlib.py
     torch/utils/_cxx_pytree.py
-    torch/utils/_debug_mode.py
     torch/utils/_device.py
     torch/utils/_dtype_abbrs.py
     torch/utils/_exposed_in.py
     torch/utils/_foreach_utils.py
     torch/utils/_functools.py
     torch/utils/_import_utils.py
+    torch/utils/_inspect.py
     torch/utils/_mode_utils.py
     torch/utils/_ordered_set.py
+    torch/utils/_pallas.py
     torch/utils/_python_dispatch.py
     torch/utils/_pytree.py
     torch/utils/_stats.py
@@ -1363,6 +1373,7 @@ set(py_files
     torch/_dynamo/backends/registry.py
     torch/_dynamo/backends/__init__.py
     torch/_dynamo/polyfills/builtins.py
+    torch/_dynamo/polyfills/copy.py
     torch/_dynamo/polyfills/functools.py
     torch/_dynamo/polyfills/fx.py
     torch/_dynamo/polyfills/itertools.py
@@ -1384,7 +1395,9 @@ set(py_files
     torch/_dynamo/variables/dicts.py
     torch/_dynamo/variables/distributed.py
     torch/_dynamo/variables/functions.py
+    torch/_dynamo/variables/hashable.py
     torch/_dynamo/variables/higher_order_ops.py
+    torch/_dynamo/variables/invoke_subgraph.py
     torch/_dynamo/variables/iter.py
     torch/_dynamo/variables/lazy.py
     torch/_dynamo/variables/lists.py
@@ -1393,6 +1406,7 @@ set(py_files
     torch/_dynamo/variables/optimizer.py
     torch/_dynamo/variables/script_object.py
     torch/_dynamo/variables/sdpa.py
+    torch/_dynamo/variables/sets.py
     torch/_dynamo/variables/streams.py
     torch/_dynamo/variables/tensor.py
     torch/_dynamo/variables/torch.py
@@ -1402,12 +1416,14 @@ set(py_files
     torch/_dynamo/aot_compile.py
     torch/_dynamo/aot_compile_types.py
     torch/_dynamo/bytecode_analysis.py
+    torch/_dynamo/bytecode_debugger.py
     torch/_dynamo/bytecode_transformation.py
     torch/_dynamo/cache_size.py
     torch/_dynamo/callback.py
     torch/_dynamo/codegen.py
     torch/_dynamo/code_context.py
     torch/_dynamo/compiled_autograd.py
+    torch/_dynamo/comprehension_graph_break.py
     torch/_dynamo/comptime.py
     torch/_dynamo/config.py
     torch/_dynamo/convert_frame.py
@@ -1486,6 +1502,7 @@ set(py_files
     torch/_higher_order_ops/flex_attention.py
     torch/_higher_order_ops/foreach_map.py
     torch/_higher_order_ops/hints_wrap.py
+    torch/_higher_order_ops/inline_asm_elementwise.py
     torch/_higher_order_ops/invoke_leaf_function.py
     torch/_higher_order_ops/invoke_subgraph.py
     torch/_higher_order_ops/local_map.py
@@ -1536,6 +1553,13 @@ set(py_files
     torch/_logging/_internal.py
     torch/_logging/_registrations.py
     torch/_logging/__init__.py
+    torch/_native/ops/__init__.py
+    torch/_native/common_utils.py
+    torch/_native/cutedsl_utils.py
+    torch/_native/dsl_registry.py
+    torch/_native/registry.py
+    torch/_native/triton_utils.py
+    torch/_native/__init__.py
     torch/_numpy/fft.py
     torch/_numpy/linalg.py
     torch/_numpy/random.py
@@ -1765,6 +1789,7 @@ set(py_files
     torchvision/extension.py
     torchvision/utils.py
     torchvision/version.py
+    torchvision/_autograd_registrations.py
     torchvision/_internally_replaced_utils.py
     torchvision/_meta_registrations.py
     torchvision/_utils.py
@@ -1855,7 +1880,6 @@ set(copy_files
     torchvision/_C.pyd
     torchvision/image.pyd
     torchvision/jpeg8.dll
-    torchvision/libjpeg.dll
     torchvision/libpng16.dll
     torchvision/libsharpyuv.dll
     torchvision/libwebp.dll
