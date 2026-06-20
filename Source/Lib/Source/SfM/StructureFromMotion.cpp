@@ -207,6 +207,9 @@ namespace AIHoloImager
 
             const ShaderInfo shader = {DEFINE_SHADER(UndistortCs)};
             undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
+
+            tmp_dir_ = aihi_.TmpDir() / "Sfm";
+            std::filesystem::create_directories(tmp_dir_);
         }
 
         ~Impl()
@@ -260,25 +263,22 @@ namespace AIHoloImager
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
-            const auto sfm_tmp_dir = aihi_.TmpDir() / "Sfm";
-            std::filesystem::create_directories(sfm_tmp_dir);
-
             std::vector<Texture> images;
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
             if (images.size() > 1)
             {
-                const FeatureRegions regions = this->FeatureExtraction(sfm_data, images, sfm_tmp_dir);
-                PairWiseMatches matches = this->PairMatching(sfm_data, regions, images, sfm_tmp_dir);
-                matches = this->GeometricFilter(sfm_data, matches, regions, sequential, images, sfm_tmp_dir);
+                const FeatureRegions regions = this->FeatureExtraction(sfm_data, images);
+                PairWiseMatches matches = this->PairMatching(sfm_data, regions, images);
+                matches = this->GeometricFilter(sfm_data, matches, regions, sequential, images);
 
-                sfm_data = this->PointCloudReconstruction(sfm_data, matches, regions, sequential, sfm_tmp_dir);
+                sfm_data = this->PointCloudReconstruction(sfm_data, matches, regions, sequential);
             }
             else
             {
                 sfm_data.poses.emplace(0, geometry::Pose3());
             }
 
-            return this->ExportResult(sfm_data, images, sfm_tmp_dir);
+            return this->ExportResult(sfm_data, images);
         }
 
     private:
@@ -501,8 +501,7 @@ namespace AIHoloImager
             return sfm_data;
         }
 
-        FeatureRegions FeatureExtraction(
-            const SfM_Data& sfm_data, const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir) const
+        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data, const std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
@@ -586,7 +585,7 @@ namespace AIHoloImager
             regions.regions_provider->load(sfm_data, regions.feature_regions.data(), *regions_type);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            const auto features_tmp_dir = tmp_dir / "Features";
+            const auto features_tmp_dir = tmp_dir_ / "Features";
             std::filesystem::create_directories(features_tmp_dir);
 
             size_t total_regions = 0;
@@ -607,7 +606,7 @@ namespace AIHoloImager
         }
 
         PairWiseMatches PairMatching(const SfM_Data& sfm_data, [[maybe_unused]] const FeatureRegions& regions,
-            [[maybe_unused]] const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir) const
+            [[maybe_unused]] const std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
@@ -671,7 +670,7 @@ namespace AIHoloImager
             }
             std::cout << std::format("# putative feature pairs: {}\n", total_matches);
 
-            const auto matching_tmp_dir = tmp_dir / "RawMatches";
+            const auto matching_tmp_dir = tmp_dir_ / "RawMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
             const std::filesystem::path root_dir(sfm_data.s_root_path);
@@ -697,8 +696,7 @@ namespace AIHoloImager
         }
 
         PairWiseMatches GeometricFilter(const SfM_Data& sfm_data, const PairWiseMatches& putative_matches, const FeatureRegions& regions,
-            bool sequential, [[maybe_unused]] const std::vector<Texture>& images,
-            [[maybe_unused]] const std::filesystem::path& tmp_dir) const
+            bool sequential, [[maybe_unused]] const std::vector<Texture>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
 
@@ -750,7 +748,7 @@ namespace AIHoloImager
             }
             std::cout << std::format("# filtered feature pairs: {}\n", total_matches);
 
-            const auto matching_tmp_dir = tmp_dir / "FilteredMatches";
+            const auto matching_tmp_dir = tmp_dir_ / "FilteredMatches";
             std::filesystem::create_directories(matching_tmp_dir);
 
             const std::filesystem::path root_dir(sfm_data.s_root_path);
@@ -775,8 +773,8 @@ namespace AIHoloImager
             return geometric_matches;
         }
 
-        SfM_Data PointCloudReconstruction(const SfM_Data& sfm_data, const PairWiseMatches& matches, const FeatureRegions& regions,
-            bool sequential, const std::filesystem::path& tmp_dir) const
+        SfM_Data PointCloudReconstruction(
+            const SfM_Data& sfm_data, const PairWiseMatches& matches, const FeatureRegions& regions, bool sequential) const
         {
             // Reference from openMVG/src/software/SfM/main_SfM.cpp
 
@@ -791,7 +789,7 @@ namespace AIHoloImager
             std::unique_ptr<ReconstructionEngine> sfm_engine;
             if (sequential)
             {
-                auto engine = std::make_unique<SequentialSfMReconstructionEngine>(sfm_data, tmp_dir.string());
+                auto engine = std::make_unique<SequentialSfMReconstructionEngine>(sfm_data, tmp_dir_.string());
 
                 engine->SetFeaturesProvider(&feats_provider);
                 engine->SetMatchesProvider(&matches_provider);
@@ -804,7 +802,7 @@ namespace AIHoloImager
             }
             else
             {
-                auto engine = std::make_unique<GlobalSfMReconstructionEngine_RelativeMotions>(sfm_data, tmp_dir.string());
+                auto engine = std::make_unique<GlobalSfMReconstructionEngine_RelativeMotions>(sfm_data, tmp_dir_.string());
 
                 engine->SetFeaturesProvider(&feats_provider);
                 engine->SetMatchesProvider(&matches_provider);
@@ -826,14 +824,13 @@ namespace AIHoloImager
 
             const SfM_Data processed_sfm_data = sfm_engine->Get_SfM_Data();
 #ifdef AIHI_KEEP_INTERMEDIATES
-            Save(processed_sfm_data, (tmp_dir / "PointCloud_CameraPoses.ply").string(), ESfM_Data::ALL);
+            Save(processed_sfm_data, (tmp_dir_ / "PointCloud_CameraPoses.ply").string(), ESfM_Data::ALL);
 #endif
 
             return processed_sfm_data;
         }
 
-        Result ExportResult(
-            const SfM_Data& sfm_data, const std::vector<Texture>& images, [[maybe_unused]] const std::filesystem::path& tmp_dir)
+        Result ExportResult(const SfM_Data& sfm_data, const std::vector<Texture>& images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -1110,7 +1107,7 @@ namespace AIHoloImager
                             glm::vec3(image_data[offset + 0], image_data[offset + 1], image_data[offset + 2]) / 255.0f;
                     }
 
-                    SaveMesh(pc_mesh, tmp_dir / "PointCloud.ply");
+                    SaveMesh(pc_mesh, tmp_dir_ / "PointCloud.ply");
                 }
             }
 #endif
@@ -1176,6 +1173,8 @@ namespace AIHoloImager
 
     private:
         AIHoloImagerInternal& aihi_;
+
+        std::filesystem::path tmp_dir_;
 
         PyObjectPtr point_cloud_estimator_module_;
         PyObjectPtr point_cloud_estimator_class_;
