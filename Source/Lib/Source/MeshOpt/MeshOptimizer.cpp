@@ -670,6 +670,8 @@ namespace AIHoloImager
 
         std::vector<AIHoloImagerInternal::ProjectionDesc> SuperResolutionPhotos(const StructureFromMotion::Result& sfm_input)
         {
+            constexpr uint32_t MinImageDim = 1024;
+
 #ifdef AIHI_KEEP_INTERMEDIATES
             auto& gpu_system = aihi_.GpuSystemInstance();
 #endif
@@ -685,7 +687,14 @@ namespace AIHoloImager
             {
                 std::cout << std::format("Upsampling images ({} / {})\r", i + 1, sfm_input.projections.size());
 
-                updated_projections[i] = super_res_.Process(sfm_input.projections[i], 2);
+                if ((sfm_input.projections[i].image->Width(0) < MinImageDim) || (sfm_input.projections[i].image->Height(0) < MinImageDim))
+                {
+                    updated_projections[i] = super_res_.Process(sfm_input.projections[i], 2);
+                }
+                else
+                {
+                    updated_projections[i] = sfm_input.projections[i];
+                }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
