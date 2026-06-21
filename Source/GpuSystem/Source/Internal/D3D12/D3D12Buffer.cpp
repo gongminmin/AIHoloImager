@@ -149,37 +149,44 @@ namespace AIHoloImager
 
     bool D3D12Buffer::DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
+        const bool is_not_copy_queue = cmd_list.Type() != GpuSystem::CmdQueueType::Copy;
         bool actual_transit = false;
 
         auto* native_resource = this->Resource();
         const D3D12_RESOURCE_STATES d3d12_target_state = ToD3D12ResourceState(target_state);
         if (curr_state_ != target_state)
         {
-            const D3D12_RESOURCE_BARRIER barrier{
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .Transition{
-                    .pResource = native_resource,
-                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                    .StateBefore = ToD3D12ResourceState(curr_state_),
-                    .StateAfter = d3d12_target_state,
-                },
-            };
-            cmd_list.Transition(std::span(&barrier, 1));
-            actual_transit = true;
+            if (is_not_copy_queue)
+            {
+                const D3D12_RESOURCE_BARRIER barrier{
+                    .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                    .Transition{
+                        .pResource = native_resource,
+                        .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                        .StateBefore = ToD3D12ResourceState(curr_state_),
+                        .StateAfter = d3d12_target_state,
+                    },
+                };
+                cmd_list.Transition(std::span(&barrier, 1));
 
-            curr_state_ = target_state;
+                curr_state_ = target_state;
+            }
+            actual_transit = true;
         }
         else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
         {
-            const D3D12_RESOURCE_BARRIER barrier{
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .UAV{
-                    .pResource = native_resource,
-                },
-            };
-            cmd_list.Transition(std::span(&barrier, 1));
+            if (is_not_copy_queue)
+            {
+                const D3D12_RESOURCE_BARRIER barrier{
+                    .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                    .UAV{
+                        .pResource = native_resource,
+                    },
+                };
+                cmd_list.Transition(std::span(&barrier, 1));
+            }
             actual_transit = true;
         }
 

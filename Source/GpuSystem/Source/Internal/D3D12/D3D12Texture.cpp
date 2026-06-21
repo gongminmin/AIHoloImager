@@ -152,37 +152,44 @@ namespace AIHoloImager
         }
         else
         {
+            const bool is_not_copy_queue = cmd_list.Type() != GpuSystem::CmdQueueType::Copy;
             bool actual_transit = false;
 
             auto* native_resource = this->Resource();
             auto& curr_state = curr_states_[sub_resource];
             if (curr_state != target_state)
             {
-                const D3D12_RESOURCE_BARRIER barrier{
-                    .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                    .Transition{
-                        .pResource = native_resource,
-                        .Subresource = sub_resource,
-                        .StateBefore = ToD3D12ResourceState(curr_state),
-                        .StateAfter = ToD3D12ResourceState(target_state),
-                    },
-                };
-                cmd_list.Transition(std::span(&barrier, 1));
-                actual_transit = true;
+                if (is_not_copy_queue)
+                {
+                    const D3D12_RESOURCE_BARRIER barrier{
+                        .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                        .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                        .Transition{
+                            .pResource = native_resource,
+                            .Subresource = sub_resource,
+                            .StateBefore = ToD3D12ResourceState(curr_state),
+                            .StateAfter = ToD3D12ResourceState(target_state),
+                        },
+                    };
+                    cmd_list.Transition(std::span(&barrier, 1));
 
-                curr_state = target_state;
+                    curr_state = target_state;
+                }
+                actual_transit = true;
             }
             else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
             {
-                const D3D12_RESOURCE_BARRIER barrier{
-                    .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                    .UAV{
-                        .pResource = native_resource,
-                    },
-                };
-                cmd_list.Transition(std::span(&barrier, 1));
+                if (is_not_copy_queue)
+                {
+                    const D3D12_RESOURCE_BARRIER barrier{
+                        .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                        .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                        .UAV{
+                            .pResource = native_resource,
+                        },
+                    };
+                    cmd_list.Transition(std::span(&barrier, 1));
+                }
                 actual_transit = true;
             }
 
@@ -192,6 +199,7 @@ namespace AIHoloImager
 
     bool D3D12Texture::DoTransition(D3D12CommandList& cmd_list, GpuResourceState target_state) const
     {
+        const bool is_not_copy_queue = cmd_list.Type() != GpuSystem::CmdQueueType::Copy;
         bool actual_transit = false;
 
         auto* native_resource = this->Resource();
@@ -199,14 +207,17 @@ namespace AIHoloImager
         if ((curr_states_[0] == target_state) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
         {
-            const D3D12_RESOURCE_BARRIER barrier{
-                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                .UAV{
-                    .pResource = native_resource,
-                },
-            };
-            cmd_list.Transition(std::span(&barrier, 1));
+            if (is_not_copy_queue)
+            {
+                const D3D12_RESOURCE_BARRIER barrier{
+                    .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                    .UAV{
+                        .pResource = native_resource,
+                    },
+                };
+                cmd_list.Transition(std::span(&barrier, 1));
+            }
             actual_transit = true;
         }
         else
@@ -225,49 +236,66 @@ namespace AIHoloImager
             {
                 if (curr_states_[0] != target_state)
                 {
-                    const D3D12_RESOURCE_BARRIER barrier{
-                        .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                        .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                        .Transition{
-                            .pResource = native_resource,
-                            .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                            .StateBefore = ToD3D12ResourceState(curr_states_[0]),
-                            .StateAfter = d3d12_target_state,
-                        },
-                    };
-                    cmd_list.Transition(std::span(&barrier, 1));
+                    if (is_not_copy_queue)
+                    {
+                        const D3D12_RESOURCE_BARRIER barrier{
+                            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                            .Transition{
+                                .pResource = native_resource,
+                                .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                                .StateBefore = ToD3D12ResourceState(curr_states_[0]),
+                                .StateAfter = d3d12_target_state,
+                            },
+                        };
+                        cmd_list.Transition(std::span(&barrier, 1));
+                    }
                     actual_transit = true;
                 }
             }
             else
             {
-                std::vector<D3D12_RESOURCE_BARRIER> barriers;
+                uint32_t num_barriers = 0;
+                std::unique_ptr<D3D12_RESOURCE_BARRIER[]> barriers;
+                if (is_not_copy_queue)
+                {
+                    barriers = std::make_unique<D3D12_RESOURCE_BARRIER[]>(curr_states_.size());
+                }
                 for (size_t i = 0; i < curr_states_.size(); ++i)
                 {
                     if (curr_states_[i] != target_state)
                     {
-                        auto& barrier = barriers.emplace_back();
-                        barrier = {
-                            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-                            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-                            .Transition{
-                                .pResource = native_resource,
-                                .Subresource = static_cast<uint32_t>(i),
-                                .StateBefore = ToD3D12ResourceState(curr_states_[i]),
-                                .StateAfter = d3d12_target_state,
-                            },
-                        };
+                        if (is_not_copy_queue)
+                        {
+                            barriers[num_barriers] = {
+                                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                                .Transition{
+                                    .pResource = native_resource,
+                                    .Subresource = static_cast<uint32_t>(i),
+                                    .StateBefore = ToD3D12ResourceState(curr_states_[i]),
+                                    .StateAfter = d3d12_target_state,
+                                },
+                            };
+                        }
+                        ++num_barriers;
                     }
                 }
-                if (!barriers.empty())
+                if (num_barriers != 0)
                 {
-                    cmd_list.Transition(barriers);
+                    if (is_not_copy_queue)
+                    {
+                        cmd_list.Transition(std::span(barriers.get(), num_barriers));
+                    }
                     actual_transit = true;
                 }
             }
         }
 
-        curr_states_.assign(this->MipLevels() * this->Planes(), target_state);
+        if (is_not_copy_queue)
+        {
+            curr_states_.assign(curr_states_.size(), target_state);
+        }
 
         return actual_transit;
     }
