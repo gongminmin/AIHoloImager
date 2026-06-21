@@ -275,4 +275,44 @@ namespace AIHoloImager
 
         return ret;
     }
+
+    GpuMesh CopyGpuMesh(GpuSystem& gpu_system, const GpuMesh& mesh)
+    {
+        GpuMesh ret(mesh.MeshVertexDesc(), mesh.IndexFormat());
+
+        const auto& src_vb = mesh.VertexBuffer();
+        const auto& src_ib = mesh.IndexBuffer();
+        const auto& src_albedo = mesh.AlbedoTexture();
+
+        GpuBuffer dst_vb(gpu_system, mesh.VertexBuffer().Size(), GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer | GpuResourceFlag::Shareable,
+            "vb");
+        GpuBuffer dst_ib(gpu_system, mesh.IndexBuffer().Size(), GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer | GpuResourceFlag::Shareable,
+            "ib");
+
+        GpuTexture2D dst_albedo;
+        if (src_albedo)
+        {
+            dst_albedo = GpuTexture2D(gpu_system, src_albedo.Width(0), src_albedo.Height(0), 1, src_albedo.Format(),
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "albedo");
+        }
+
+        GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+        cmd_list.Copy(dst_vb, src_vb);
+        cmd_list.Copy(dst_ib, src_ib);
+        ret.VertexBuffer() = std::move(dst_vb);
+        ret.IndexBuffer() = std::move(dst_ib);
+
+        if (src_albedo)
+        {
+            cmd_list.Copy(dst_albedo, src_albedo);
+            ret.AlbedoTexture() = std::move(dst_albedo);
+        }
+
+        gpu_system.Execute(std::move(cmd_list));
+
+        return ret;
+    }
 } // namespace AIHoloImager

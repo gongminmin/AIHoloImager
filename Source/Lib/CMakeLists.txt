@@ -122,6 +122,7 @@ set(aihi_files
     Source/MeshOpt/Shader/DilateCs.hlsl
     Source/MeshOpt/Shader/ExtractMaskCs.hlsl
     Source/MeshOpt/Shader/MergeTextureCs.hlsl
+    Source/MeshOpt/Shader/TransformMeshCs.hlsl
     Source/MeshOpt/MeshOptimizer.cpp
     Source/MeshOpt/MeshOptimizer.hpp
     Source/MeshSimp/MeshSimplification.cpp
@@ -233,6 +234,7 @@ AddShaderFile(Source/MeshGen/Shader/ScatterIndexCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/ExtractMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/MergeTextureCs.hlsl "cs" "main")
+AddShaderFile(Source/MeshOpt/Shader/TransformMeshCs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl "cs" "main")

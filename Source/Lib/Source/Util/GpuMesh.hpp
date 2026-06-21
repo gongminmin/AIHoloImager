@@ -46,4 +46,5 @@ namespace AIHoloImager
 
     Mesh ToMesh(GpuSystem& gpu_system, const GpuMesh& gpu_mesh);
     GpuMesh ToGpuMesh(GpuSystem& gpu_system, const Mesh& mesh);
+    GpuMesh CopyGpuMesh(GpuSystem& gpu_system, const GpuMesh& mesh);
 } // namespace AIHoloImager

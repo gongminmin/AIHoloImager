@@ -30,32 +30,10 @@
 #include "CompiledShader/MeshOpt/DilateCs.h"
 #include "CompiledShader/MeshOpt/ExtractMaskCs.h"
 #include "CompiledShader/MeshOpt/MergeTextureCs.h"
+#include "CompiledShader/MeshOpt/TransformMeshCs.h"
 
 namespace AIHoloImager
 {
-    void TransformMesh(Mesh& mesh, const glm::mat4x4& mtx)
-    {
-        const glm::mat3x3 mtx_it = glm::transpose(glm::inverse(mtx));
-
-        const auto& vertex_desc = mesh.MeshVertexDesc();
-        const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-        const uint32_t normal_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Normal, 0);
-        for (uint32_t i = 0; i < mesh.NumVertices(); ++i)
-        {
-            if (pos_attrib_index != VertexDesc::InvalidIndex)
-            {
-                auto& pos = mesh.VertexData<glm::vec3>(i, pos_attrib_index);
-                const glm::vec4 p = mtx * glm::vec4(pos, 1);
-                pos = glm::vec3(p) / p.w;
-            }
-            if (normal_attrib_index != VertexDesc::InvalidIndex)
-            {
-                auto& normal = mesh.VertexData<glm::vec3>(i, normal_attrib_index);
-                normal = mtx_it * normal;
-            }
-        }
-    }
-
     glm::vec2 CalcNearFarPlane(const glm::mat4x4& view_mtx, const Obb& obb)
     {
         glm::vec3 corners[8];
@@ -103,6 +81,10 @@ namespace AIHoloImager
                 const ShaderInfo shader = {DEFINE_SHADER(ExtractMaskCs)};
                 extract_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
+            {
+                const ShaderInfo shader = {DEFINE_SHADER(TransformMeshCs)};
+                transform_mesh_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
+            }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             tmp_dir_ = aihi_.TmpDir() / "MeshOpt";
@@ -145,10 +127,9 @@ namespace AIHoloImager
 
             PerfRegion opt_perf(profiler, "Optimize transform");
 
-            Mesh cpu_mesh = ToMesh(gpu_system, mg_input.mesh);
-
             Obb obb;
             {
+                const Mesh cpu_mesh = ToMesh(gpu_system, mg_input.mesh);
                 const auto& vertex_desc = cpu_mesh.MeshVertexDesc();
                 const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
                 obb = Obb::FromPoints(
@@ -190,9 +171,9 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                Mesh before_opt_mesh = cpu_mesh;
-                TransformMesh(before_opt_mesh, model_mtx);
-                SaveMesh(before_opt_mesh, tmp_dir_ / "BeforeOpt.glb");
+                GpuMesh before_opt_mesh = CopyGpuMesh(gpu_system, mg_input.mesh);
+                this->TransformMesh(before_opt_mesh, model_mtx);
+                SaveMesh(ToMesh(gpu_system, before_opt_mesh), tmp_dir_ / "BeforeOpt.glb");
             }
             {
                 const auto before_opt_obb = Obb::Transform(obb, model_mtx);
@@ -242,9 +223,9 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
-                Mesh after_opt_mesh = cpu_mesh;
-                TransformMesh(after_opt_mesh, model_mtx);
-                SaveMesh(after_opt_mesh, tmp_dir_ / "AfterOpt.glb");
+                GpuMesh after_opt_mesh = CopyGpuMesh(gpu_system, mg_input.mesh);
+                this->TransformMesh(after_opt_mesh, model_mtx);
+                SaveMesh(ToMesh(gpu_system, after_opt_mesh), tmp_dir_ / "AfterOpt.glb");
             }
             {
                 const auto after_opt_obb = Obb::Transform(obb, model_mtx);
@@ -651,17 +632,15 @@ namespace AIHoloImager
             {
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                Texture dump_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
-                auto rb_future = cmd_list.ReadBackAsync(gsplat_texture_result.color_tex, 0, dump_tex.Data(), dump_tex.DataSize());
+                GpuTexture2D dump_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "dump_tex");
+                cmd_list.Copy(dump_tex, gsplat_texture_result.color_tex);
 
                 gpu_system.Execute(std::move(cmd_list));
 
-                Mesh cpu_mesh = ToMesh(gpu_system, mesh);
-                cpu_mesh.AlbedoTexture() = std::move(dump_tex);
+                GpuMesh dump_mesh = CopyGpuMesh(gpu_system, mesh);
+                dump_mesh.AlbedoTexture() = std::move(dump_tex);
 
-                rb_future.wait();
-
-                SaveMesh(cpu_mesh, tmp_dir_ / "AiMeshGSplat.glb");
+                SaveMesh(ToMesh(gpu_system, dump_mesh), tmp_dir_ / "AiMeshGSplat.glb");
             }
 #endif
 
@@ -933,12 +912,9 @@ namespace AIHoloImager
 
         void AlignMesh(GpuMesh& mesh, const glm::mat4x4& model_mtx, const glm::vec3& local_up_vec)
         {
-            auto& gpu_system = aihi_.GpuSystemInstance();
             auto& profiler = aihi_.PerfProfilerInstance();
 
             PerfRegion aligning_perf(profiler, "Align mesh");
-
-            Mesh cpu_mesh = ToMesh(gpu_system, mesh);
 
             glm::vec3 scale;
             glm::quat rotation;
@@ -949,13 +925,60 @@ namespace AIHoloImager
 
             const glm::mat4x4 adjust_mtx = glm::recompose(
                 scale, glm::normalize(glm::rotation(local_up_vec, glm::vec3(0, 1, 0))), glm::zero<glm::vec3>(), skew, perspective);
-            TransformMesh(cpu_mesh, adjust_mtx);
 
-            mesh = ToGpuMesh(gpu_system, cpu_mesh);
+            this->TransformMesh(mesh, adjust_mtx);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
-            SaveMesh(cpu_mesh, tmp_dir_ / "AiMesh.glb");
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            SaveMesh(ToMesh(gpu_system, mesh), tmp_dir_ / "AiMesh.glb");
 #endif
+        }
+
+        void TransformMesh(GpuMesh& mesh, const glm::mat4x4& transform_mtx)
+        {
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+
+            const uint32_t num_vertices = mesh.NumVertices();
+            const auto& vertex_desc = mesh.MeshVertexDesc();
+            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
+            const uint32_t normal_attrib_index = vertex_desc.FindAttrib("NORMAL", 0);
+
+            const auto vertex_attribs = vertex_desc.Attribs();
+            const uint32_t pos_offset = pos_attrib_index == GpuVertexLayout::InvalidIndex
+                                            ? GpuVertexLayout::InvalidIndex
+                                            : vertex_attribs[pos_attrib_index].offset / sizeof(float);
+            const uint32_t normal_offset = normal_attrib_index == GpuVertexLayout::InvalidIndex
+                                               ? GpuVertexLayout::InvalidIndex
+                                               : vertex_attribs[normal_attrib_index].offset / sizeof(float);
+
+            {
+                constexpr uint32_t BlockDim = 256;
+
+                GpuUnorderedAccessView vertex_buff_uav(gpu_system, mesh.VertexBuffer(), GpuFormat::R32_Float);
+
+                GpuConstantBufferOfType<TransformMeshConstantBuffer> transform_mesh_cb(gpu_system, "transform_mesh_cb");
+                transform_mesh_cb->num_vertices = num_vertices;
+                transform_mesh_cb->stride = mesh.MeshVertexDesc().SlotStrides()[0] / sizeof(float);
+                transform_mesh_cb->pos_offset = pos_offset;
+                transform_mesh_cb->normal_offset = normal_offset;
+                transform_mesh_cb->transform_mtx = glm::transpose(transform_mtx);
+                transform_mesh_cb->transform_it_mtx = glm::inverse(transform_mtx);
+                transform_mesh_cb.UploadStaging();
+                const GpuConstantBufferView transform_mesh_cbv(gpu_system, transform_mesh_cb);
+
+                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                    {"param_cb", &transform_mesh_cbv},
+                };
+                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                    {"vertex_buff", &vertex_buff_uav},
+                };
+                const GpuCommandList::ShaderBinding shader_binding = {cbvs, {}, uavs};
+                cmd_list.Compute(transform_mesh_pipeline_, {DivUp(num_vertices, BlockDim), 1, 1}, shader_binding);
+            }
+
+            gpu_system.Execute(std::move(cmd_list));
         }
 
     private:
@@ -990,6 +1013,17 @@ namespace AIHoloImager
             uint32_t padding[2];
         };
         GpuComputePipeline extract_mask_pipeline_;
+
+        struct TransformMeshConstantBuffer
+        {
+            uint32_t num_vertices;
+            uint32_t stride;
+            uint32_t pos_offset;
+            uint32_t normal_offset;
+            glm::mat4x4 transform_mtx;
+            glm::mat4x4 transform_it_mtx;
+        };
+        GpuComputePipeline transform_mesh_pipeline_;
     };
 
     MeshOptimizer::MeshOptimizer(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
