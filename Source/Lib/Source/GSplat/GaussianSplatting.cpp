@@ -351,7 +351,7 @@ namespace AIHoloImager
             const auto* pos_data = reinterpret_cast<const glm::vec3*>(src_data);
             for (uint32_t i = 0; i < gaussians.num_gaussians; ++i)
             {
-                pc_mesh.VertexData<glm::vec3>(i, PosAttribIndex) = pos_data[i];
+                pc_mesh.VertexData<glm::vec3>(i, PosAttribIndex) = pos_data[i] * 2.0f;
             }
         });
         auto color_rb_future = cmd_list.ReadBackAsync(gaussians.shs, [&pc_mesh, &gaussians](const void* src_data) {
