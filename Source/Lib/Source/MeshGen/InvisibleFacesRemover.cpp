@@ -136,10 +136,9 @@ namespace AIHoloImager
             count_rb_future.wait();
 
             Mesh mesh = ToMesh(gpu_system_, gpu_mesh);
+            mesh = mesh.ExtractMesh(mesh.MeshVertexDesc(), std::span(filtered_indices.get(), filtered_count * 3));
 
-            const uint32_t* filtered_indices_ptr = filtered_indices.get();
-            return ToGpuMesh(
-                gpu_system_, mesh.ExtractMesh(mesh.MeshVertexDesc(), {filtered_indices_ptr, filtered_indices_ptr + filtered_count * 3}));
+            return ToGpuMesh(gpu_system_, mesh);
         }
 
     private:
