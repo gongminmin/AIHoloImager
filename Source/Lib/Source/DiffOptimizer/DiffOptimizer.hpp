@@ -22,8 +22,8 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void OptimizeTransform(
-            const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections);
+        void OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+            std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling);
         void OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
             const GpuTexture2D& mask_tex);
 

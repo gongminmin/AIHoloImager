@@ -12,11 +12,17 @@ from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCac
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
 def ScaleMatrix(scale):
+    if scale.shape[-1] == 1:
+        x_comp = y_comp = z_comp = 0
+    else:
+        x_comp = 0
+        y_comp = 1
+        z_comp = 2
     device = scale.device
     zero = torch.zeros(1, dtype = torch.float32, device = device).squeeze(0)
-    r0 = torch.stack([scale[0], zero.detach().clone(), zero.detach().clone(), zero.detach().clone()], axis = 0)
-    r1 = torch.stack([zero.detach().clone(), scale[1], zero.detach().clone(), zero.detach().clone()], axis = 0)
-    r2 = torch.stack([zero.detach().clone(), zero.detach().clone(), scale[2], zero.detach().clone()], axis = 0)
+    r0 = torch.stack([scale[x_comp], zero.detach().clone(), zero.detach().clone(), zero.detach().clone()], axis = 0)
+    r1 = torch.stack([zero.detach().clone(), scale[y_comp], zero.detach().clone(), zero.detach().clone()], axis = 0)
+    r2 = torch.stack([zero.detach().clone(), zero.detach().clone(), scale[z_comp], zero.detach().clone()], axis = 0)
     r3 = torch.tensor([0, 0, 0, 1], dtype = torch.float32, device = device)
     ret = torch.stack([r0, r1, r2, r3])
     return ret
@@ -73,7 +79,7 @@ class DiffOptimizer:
     def OptimizeTransform(self,
                           mesh_vb, pos_offset, color_offset, mesh_ib,
                           view_images, view_proj_mtxs, vp_offsets, num_views,
-                          scale, rotation, translation):
+                          scale, rotation, translation, uniform_scaling: bool):
         PurgeTorchCache()
 
         num_vertices = mesh_vb.shape[0]
@@ -90,7 +96,10 @@ class DiffOptimizer:
         vp_offsets = TensorFromBytes(vp_offsets, torch.float32, num_views * 2)
         vp_offsets = vp_offsets.reshape(num_views, 2)
 
-        scale = TensorFromBytes(scale, torch.float32, 3)
+        if uniform_scaling:
+            scale = TensorFromBytes(scale, torch.float32, 1)
+        else:
+            scale = TensorFromBytes(scale, torch.float32, 3)
         rotation = TensorFromBytes(rotation, torch.float32, 4)
         translation = TensorFromBytes(translation, torch.float32, 3)
 

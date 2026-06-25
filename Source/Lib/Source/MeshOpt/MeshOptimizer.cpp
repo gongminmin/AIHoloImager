@@ -186,40 +186,8 @@ namespace AIHoloImager
             }
 #endif
 
-            diff_optimizer_.OptimizeTransform(mg_input.mesh, model_mtx, std::span(sfm_input.projections));
-            if (sfm_input.projections.size() == 1)
-            {
-                // When there is only one image, the point cloud only covers the front half of the object. Scale the model to
-                // compensate.
-
-                glm::vec4 z_axis(0, 0, 1, 0);
-                const glm::vec3 local_z = glm::inverse(model_mtx) * z_axis;
-                const glm::vec3 abs_local_z = glm::abs(local_z);
-                glm::vec3 scale(1, 1, 1);
-                if (abs_local_z.x > abs_local_z.y)
-                {
-                    if (abs_local_z.x > abs_local_z.z)
-                    {
-                        scale = glm::vec3(2, 1, 1);
-                    }
-                    else
-                    {
-                        scale = glm::vec3(1, 1, 2);
-                    }
-                }
-                else
-                {
-                    if (abs_local_z.y > abs_local_z.z)
-                    {
-                        scale = glm::vec3(1, 2, 1);
-                    }
-                    else
-                    {
-                        scale = glm::vec3(1, 1, 2);
-                    }
-                }
-                model_mtx *= glm::scale(glm::identity<glm::mat4x4>(), scale);
-            }
+            diff_optimizer_.OptimizeTransform(
+                mg_input.mesh, model_mtx, std::span(sfm_input.projections), sfm_input.projections.size() == 1);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {

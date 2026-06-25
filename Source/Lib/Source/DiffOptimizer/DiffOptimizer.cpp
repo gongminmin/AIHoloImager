@@ -63,8 +63,8 @@ namespace AIHoloImager
             diff_optimizer_module_.reset();
         }
 
-        void OptimizeTransform(
-            const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
+        void OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+            std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling)
         {
             glm::vec3 scale;
             glm::quat rotation;
@@ -150,12 +150,19 @@ namespace AIHoloImager
                     std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
                     std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
                     std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
-                    std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)));
+                    std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)), uniform_scaling);
 
                 const auto scale_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 0));
                 const auto rotate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 1));
                 const auto translate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 2));
-                scale = glm::vec3(scale_opt[0], scale_opt[1], scale_opt[2]);
+                if (uniform_scaling)
+                {
+                    scale = glm::vec3(scale_opt[0], scale_opt[0], scale_opt[0]);
+                }
+                else
+                {
+                    scale = glm::vec3(scale_opt[0], scale_opt[1], scale_opt[2]);
+                }
                 rotation = glm::quat(rotate_opt[3], rotate_opt[0], rotate_opt[1], rotate_opt[2]);
                 translation = glm::vec3(translate_opt[0], translate_opt[1], translate_opt[2]);
                 model_mtx = glm::recompose(scale, rotation, translation, skew, perspective);
@@ -268,10 +275,10 @@ namespace AIHoloImager
     DiffOptimizer::DiffOptimizer(DiffOptimizer&& other) noexcept = default;
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
-    void DiffOptimizer::OptimizeTransform(
-        const GpuMesh& mesh, glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections)
+    void DiffOptimizer::OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+        std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling)
     {
-        impl_->OptimizeTransform(mesh, model_mtx, std::move(projections));
+        impl_->OptimizeTransform(mesh, model_mtx, std::move(projections), uniform_scaling);
     }
 
     void DiffOptimizer::OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx,
