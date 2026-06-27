@@ -1015,40 +1015,42 @@ namespace AIHoloImager
                         for (uint32_t x = 0; x < point_cloud_width; ++x)
                         {
                             const glm::vec3& p = point_cloud[y * point_cloud_width + x];
-                            if (p.z > 0)
+                            if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
                             {
-                                bool valid = true;
-                                for (int32_t dy = -1; valid && (dy <= 1); ++dy)
+                                if (p.z > 0)
                                 {
-                                    for (int32_t dx = -1; valid && (dx <= 1); ++dx)
+                                    bool valid = true;
+                                    for (int32_t dy = -1; valid && (dy <= 1); ++dy)
                                     {
-                                        if ((dx != 0) || (dy != 0))
+                                        for (int32_t dx = -1; valid && (dx <= 1); ++dx)
                                         {
-                                            const int32_t nx = static_cast<int32_t>(x) + dx;
-                                            const int32_t ny = static_cast<int32_t>(y) + dy;
-                                            if ((nx >= 0) && (nx < static_cast<int32_t>(point_cloud_width)) && (ny >= 0) &&
-                                                (ny < static_cast<int32_t>(point_cloud_height)))
+                                            if ((dx != 0) || (dy != 0))
                                             {
-                                                const glm::vec3& np = point_cloud[ny * point_cloud_width + nx];
-                                                if ((np.z > 0) && (p.z - np.z > 0.05f))
+                                                const int32_t nx = static_cast<int32_t>(x) + dx;
+                                                const int32_t ny = static_cast<int32_t>(y) + dy;
+                                                if ((nx >= 0) && (nx < static_cast<int32_t>(point_cloud_width)) && (ny >= 0) &&
+                                                    (ny < static_cast<int32_t>(point_cloud_height)))
                                                 {
-                                                    valid = false;
-                                                    break;
+                                                    const glm::vec3& np = point_cloud[ny * point_cloud_width + nx];
+                                                    if ((np.z > 0) && (p.z - np.z > 0.05f))
+                                                    {
+                                                        valid = false;
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                if (valid)
-                                {
-                                    auto& result_landmark = ret.structure.emplace_back();
-                                    result_landmark.point = {p.x, p.y, p.z};
+                                    if (valid)
+                                    {
+                                        auto& result_landmark = ret.structure.emplace_back();
+                                        result_landmark.point = {p.x, p.y, p.z};
 
-                                    auto& result_observation = result_landmark.obs.emplace_back();
-                                    result_observation.view_id = 0;
-                                    result_observation.point = {
-                                        (x + 0.5f) / point_cloud_width * width, (y + 0.5f) / point_cloud_height * height};
+                                        auto& result_observation = result_landmark.obs.emplace_back();
+                                        result_observation.view_id = 0;
+                                        result_observation.point = {x, y};
+                                    }
                                 }
                             }
                         }

@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 from pathlib import Path
@@ -14,7 +14,7 @@ class PointCloudEstimator:
 
         this_py_dir = Path(__file__).parent.resolve()
 
-        self.model = MoGeModel.FromPretrained(this_py_dir / "Models/moge-vitl/model.pt")
+        self.model = MoGeModel.FromPretrained(this_py_dir / "Models/moge-2-vitl/model.pt")
         self.model.eval()
         self.model = self.model.to(self.device)
 

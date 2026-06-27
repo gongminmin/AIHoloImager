@@ -1,7 +1,7 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
-# Based on MoGe, https://github.com/microsoft/MoGe/blob/main/moge/model/v1.py
+# Based on MoGe 2, https://github.com/microsoft/MoGe/blob/main/moge/model/v2.py
 
 import importlib
 from numbers import Number
@@ -16,203 +16,50 @@ from torch.nn.utils import skip_init
 
 from PythonSystem import GeneralDevice
 from .Geometry import NormalizedViewPlaneUv, RecoverFocalShift, IntrinsicsFromFocalCenter, UnprojectCV, ImageUV
-
-class ResidualConvBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels : int,
-        out_channels : int = None,
-        hidden_channels : int = None,
-        padding_mode : str = "replicate",
-        activation : Literal["relu", "leaky_relu", "silu", "elu"] = "relu",
-        norm: Literal["group_norm", "layer_norm"] = "group_norm",
-        device : Optional[torch.device] = None,
-    ):
-        super(ResidualConvBlock, self).__init__()
-
-        if out_channels is None:
-            out_channels = in_channels
-        if hidden_channels is None:
-            hidden_channels = in_channels
-
-        if activation == "relu":
-            activation_cls = lambda: nn.ReLU(inplace = True)
-        elif activation == "leaky_relu":
-            activation_cls = lambda: nn.LeakyReLU(negative_slope = 0.2, inplace = True)
-        elif activation == "silu":
-            activation_cls = lambda: nn.SiLU(inplace = True)
-        elif activation == "elu":
-            activation_cls = lambda: nn.ELU(inplace = True)
-        else:
-            raise ValueError(f'Unsupported activation function: {activation}')
-
-        self.layers = nn.Sequential(
-            nn.GroupNorm(1, in_channels, device = device),
-            activation_cls(),
-            nn.Conv2d(in_channels, hidden_channels, kernel_size = 3, padding = 1, padding_mode = padding_mode, device = device),
-            nn.GroupNorm(hidden_channels // 32 if norm == "group_norm" else 1, hidden_channels, device = device),
-            activation_cls(),
-            nn.Conv2d(hidden_channels, out_channels, kernel_size = 3, padding = 1, padding_mode = padding_mode, device = device),
-        )
-
-        self.skip_connection = nn.Conv2d(in_channels, out_channels, kernel_size = 1, padding = 0, device = device) if in_channels != out_channels else nn.Identity()
-
-    def forward(self, x):
-        skip = self.skip_connection(x)
-        x = self.layers(x)
-        x = x + skip
-        return x
-
-class Head(nn.Module):
-    def __init__(
-        self,
-        num_features : int,
-        dim_in : int,
-        dim_out : List[int],
-        dim_proj : int = 512,
-        dim_upsample : List[int] = [256, 128, 128],
-        dim_times_res_block_hidden : int = 1,
-        num_res_blocks : int = 1,
-        res_block_norm : Literal["group_norm", "layer_norm"] = "group_norm",
-        last_res_blocks : int = 0,
-        last_conv_channels : int = 32,
-        last_conv_size : int = 1,
-        device : Optional[torch.device] = None,
-    ):
-        super().__init__()
-
-        self.projects = nn.ModuleList([
-            nn.Conv2d(in_channels = dim_in, out_channels = dim_proj, kernel_size = 1, stride=1, padding = 0, device = device) for _ in range(num_features)
-        ])
-
-        self.upsample_blocks = nn.ModuleList([
-            nn.Sequential(
-                self.MakeUpsampler(in_ch + 2, out_ch, device = device),
-                *(ResidualConvBlock(out_ch, out_ch, dim_times_res_block_hidden * out_ch, activation = "relu", norm = res_block_norm, device = device) for _ in range(num_res_blocks))
-            ) for in_ch, out_ch in zip([dim_proj] + dim_upsample[:-1], dim_upsample)
-        ])
-
-        self.output_block = nn.ModuleList([
-            self.MakeOutputBlock(
-                dim_upsample[-1] + 2, do, dim_times_res_block_hidden, last_res_blocks, last_conv_channels, last_conv_size, res_block_norm, device = device
-            ) for do in dim_out
-        ])
-
-    def MakeUpsampler(self, in_channels : int, out_channels : int, device : Optional[torch.device] = None):
-        upsampler = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size = 2, stride = 2, device = device),
-            nn.Conv2d(out_channels, out_channels, kernel_size = 3, stride = 1, padding = 1, padding_mode = "replicate", device = device)
-        )
-        upsampler[0].weight.data[ : ] = upsampler[0].weight.data[ : ,  : , : 1, : 1]
-        return upsampler
-
-    def MakeOutputBlock(
-        self,
-        dim_in : int,
-        dim_out : int,
-        dim_times_res_block_hidden : int,
-        last_res_blocks : int,
-        last_conv_channels: int,
-        last_conv_size: int,
-        res_block_norm: Literal["group_norm", "layer_norm"],
-        device : Optional[torch.device] = None
-    ):
-        return nn.Sequential(
-            nn.Conv2d(dim_in, last_conv_channels, kernel_size = 3, stride = 1, padding = 1, padding_mode = "replicate", device = device),
-            *(ResidualConvBlock(last_conv_channels, last_conv_channels, dim_times_res_block_hidden * last_conv_channels, activation = "relu", norm = res_block_norm, device = device) for _ in range(last_res_blocks)),
-            nn.ReLU(inplace = True),
-            nn.Conv2d(last_conv_channels, dim_out, kernel_size = last_conv_size, stride = 1, padding = last_conv_size // 2, padding_mode = "replicate", device = device),
-        )
-
-    def forward(self, hidden_states : torch.Tensor, image : torch.Tensor):
-        img_h, img_w = image.shape[-2 : ]
-        patch_h, patch_w = img_h // 14, img_w // 14
-
-        # Process the hidden states
-        x = torch.stack([
-            proj(feat.permute(0, 2, 1).unflatten(2, (patch_h, patch_w)).contiguous())
-                for proj, (feat, clstoken) in zip(self.projects, hidden_states)
-        ], dim = 1).sum(dim = 1)
-
-        # Upsample stage
-        # (patch_h, patch_w) -> (patch_h * 2, patch_w * 2) -> (patch_h * 4, patch_w * 4) -> (patch_h * 8, patch_w * 8)
-        for i, block in enumerate(self.upsample_blocks):
-            # UV coordinates is for awareness of image aspect ratio
-            uv = NormalizedViewPlaneUv(width = x.shape[-1], height = x.shape[-2], aspect_ratio = img_w / img_h, dtype = x.dtype, device = x.device)
-            uv = uv.permute(2, 0, 1).unsqueeze(0).expand(x.shape[0], -1, -1, -1)
-            x = torch.cat([x, uv], dim = 1)
-            for layer in block:
-                x = layer(x)
-
-        # (patch_h * 8, patch_w * 8) -> (img_h, img_w)
-        x = functional.interpolate(x, (img_h, img_w), mode = "bilinear", align_corners = False)
-        uv = NormalizedViewPlaneUv(width = x.shape[-1], height = x.shape[-2], aspect_ratio = img_w / img_h, dtype = x.dtype, device = x.device)
-        uv = uv.permute(2, 0, 1).unsqueeze(0).expand(x.shape[0], -1, -1, -1)
-        x = torch.cat([x, uv], dim = 1)
-
-        return [block(x) for block in self.output_block]
+from .Modules import Dinov2Encoder, Mlp, ConvStack
 
 class MoGeModel(nn.Module):
-    image_mean : torch.Tensor
-    image_std : torch.Tensor
+    encoder: Dinov2Encoder
+    neck: ConvStack
+    points_head: ConvStack
+    mask_head: ConvStack
+    scale_head: Mlp
 
     def __init__(self, 
-        encoder : str = "dinov2_vitb14",
-        intermediate_layers : Union[int, List[int]] = 4,
-        dim_proj : int = 512,
-        dim_upsample : List[int] = [256, 128, 128],
-        dim_times_res_block_hidden : int = 1,
-        num_res_blocks : int = 1,
-        remap_output : Literal[False, True, "linear", "sinh", "exp", "sinh_exp"] = "linear",
-        res_block_norm : Literal["group_norm", "layer_norm"] = "group_norm",
-        num_tokens_range : Tuple[int, int] = [1200, 2500],
-        last_res_blocks : int = 0,
-        last_conv_channels : int = 32,
-        last_conv_size : int = 1,
-        mask_threshold : float = 0.5,
+        encoder: Dict[str, Any],
+        neck: Dict[str, Any],
+        points_head: Dict[str, Any] = None,
+        mask_head: Dict[str, Any] = None,
+        scale_head: Dict[str, Any] = None,
+        remap_output: Literal["linear", "sinh", "exp", "sinh_exp"] = "linear",
+        num_tokens_range: List[int] = [1200, 3600],
         device : Optional[torch.device] = None,
         **deprecated_kwargs
     ):
         super(MoGeModel, self).__init__()
 
         if deprecated_kwargs:
-            # Process legacy arguments
-            if "trained_area_range" in deprecated_kwargs:
-                num_tokens_range = [deprecated_kwargs["trained_area_range"][0] // 14 ** 2, deprecated_kwargs["trained_area_range"][1] // 14 ** 2]
-                del deprecated_kwargs["trained_area_range"]
+            warnings.warn(f"The following deprecated/invalid arguments are ignored: {deprecated_kwargs}")
 
-        self.encoder = encoder
         self.remap_output = remap_output
-        self.intermediate_layers = intermediate_layers
         self.num_tokens_range = num_tokens_range
-        self.mask_threshold = mask_threshold
 
-        backbones_module = getattr(importlib.import_module("dinov2.hub.backbones"), encoder)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self.backbone = backbones_module(pretrained = False)
-        dim_feature = self.backbone.blocks[0].attn.qkv.in_features
+        self.encoder = Dinov2Encoder(**encoder, device = device)
+        self.neck = ConvStack(**neck, device = device)
+        if points_head is not None:
+            self.points_head = ConvStack(**points_head, device = device)
+        if mask_head is not None:
+            self.mask_head = ConvStack(**mask_head, device = device)
+        if scale_head is not None:
+            self.scale_head = Mlp(**scale_head, device = device)
 
-        self.head = Head(
-            num_features = intermediate_layers if isinstance(intermediate_layers, int) else len(intermediate_layers),
-            dim_in = dim_feature,
-            dim_out = [3, 1],
-            dim_proj = dim_proj,
-            dim_upsample = dim_upsample,
-            dim_times_res_block_hidden = dim_times_res_block_hidden,
-            num_res_blocks = num_res_blocks,
-            res_block_norm = res_block_norm,
-            last_res_blocks = last_res_blocks,
-            last_conv_channels = last_conv_channels,
-            last_conv_size = last_conv_size,
-            device = device,
-        )
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
 
-        image_mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
-        image_std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
-
-        self.register_buffer("image_mean", image_mean)
-        self.register_buffer("image_std", image_std)
+    @property
+    def dtype(self) -> torch.dtype:
+        return next(self.parameters()).dtype
 
     @classmethod
     def FromPretrained(cls, model_path : Union[str, Path], model_kwargs : Optional[Dict[str, Any]] = None) -> "MoGeModel":
@@ -226,12 +73,15 @@ class MoGeModel(nn.Module):
         ### Returns:
         - A new instance of `MoGe` with the parameters loaded from the checkpoint.
         """
+
         checkpoint = torch.load(model_path, map_location = GeneralDevice(), weights_only = True)
+
         model_config = checkpoint["model_config"]
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = skip_init(cls, **model_config)
         model.load_state_dict(checkpoint["model"])
+
         return model
 
     def RemapPoints(self, points : torch.Tensor) -> torch.Tensor:
@@ -250,36 +100,50 @@ class MoGeModel(nn.Module):
             raise ValueError(f"Invalid remap output type: {self.remap_output}")
         return points
 
-    def forward(self, image : torch.Tensor, num_tokens : int) -> [torch.Tensor, torch.Tensor]:
-        original_height, original_width = image.shape[-2 : ]
+    def forward(self, image : torch.Tensor, num_tokens: Union[int, torch.LongTensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        batch_size, _, img_h, img_w = image.shape
+        device, dtype = image.device, image.dtype
 
-        # Resize to expected resolution defined by num_tokens
-        resize_factor = ((num_tokens * 14 ** 2) / (original_height * original_width)) ** 0.5
-        resized_width, resized_height = int(original_width * resize_factor), int(original_height * resize_factor)
-        image = functional.interpolate(image, (resized_height, resized_width), mode = "bicubic", align_corners = False, antialias = True)
+        aspect_ratio = img_w / img_h
+        base_h, base_w = (num_tokens / aspect_ratio) ** 0.5, (num_tokens * aspect_ratio) ** 0.5
+        if isinstance(base_h, torch.Tensor):
+            base_h, base_w = base_h.round().long(), base_w.round().long()
+        else:
+            base_h, base_w = round(base_h), round(base_w)
 
-        # Apply image transformation for DINOv2
-        image = (image - self.image_mean) / self.image_std
-        image_14 = functional.interpolate(image, (resized_height // 14 * 14, resized_width // 14 * 14), mode = "bilinear", align_corners = False, antialias = True)
+        # Backbones encoding
+        features, cls_token = self.encoder(image, base_h, base_w, return_class_token=True)
+        features = [features, None, None, None, None]
 
-        # Get intermediate layers from the backbone
-        features = self.backbone.get_intermediate_layers(image_14, self.intermediate_layers, return_class_token = True)
+        # Concat UVs for aspect ratio input
+        for level in range(5):
+            uv = NormalizedViewPlaneUv(width = base_w * 2 ** level, height = base_h * 2 ** level, aspect_ratio = aspect_ratio, dtype = dtype, device = device)
+            uv = uv.permute(2, 0, 1).unsqueeze(0).expand(batch_size, -1, -1, -1)
+            if features[level] is None:
+                features[level] = uv
+            else:
+                features[level] = torch.concat([features[level], uv], dim = 1)
 
-        # Predict points (and mask)
-        points, mask = self.head(features, image)
+        # Shared neck
+        features = self.neck(features)
 
-        # Make sure fp32 precision for output
-        with torch.autocast(device_type = image.device.type, dtype = torch.float32):
-            # Resize to original resolution
-            points = functional.interpolate(points, (original_height, original_width), mode = "bilinear", align_corners = False, antialias = False)
-            mask = functional.interpolate(mask, (original_height, original_width), mode = "bilinear", align_corners = False, antialias = False)
+        # Heads decoding
+        points, mask = (getattr(self, head)(features)[-1] if hasattr(self, head) else None for head in ["points_head", "mask_head"])
+        metric_scale = self.scale_head(cls_token) if hasattr(self, "scale_head") else None
 
-            # Post-process points and mask
+        # Resize
+        points, mask = (functional.interpolate(v, (img_h, img_w), mode = "bilinear", align_corners = False, antialias = False) if v is not None else None for v in [points, mask])
+
+        # Remap output
+        if points is not None:
             points = points.permute(0, 2, 3, 1)
             points = self.RemapPoints(points)     # slightly improves the performance in case of very large output values
-            mask = mask.squeeze(1)
+        if mask is not None:
+            mask = mask.squeeze(1).sigmoid()
+        if metric_scale is not None:
+            metric_scale = metric_scale.squeeze(1).exp()
 
-        return points, mask
+        return points, mask, metric_scale
 
     @torch.no_grad()
     def Focal(
@@ -303,6 +167,7 @@ class MoGeModel(nn.Module):
 
         if image.dim() == 3:
             image = image.unsqueeze(0)
+        image = image.to(dtype = self.dtype, device = self.device)
 
         original_height, original_width = image.shape[-2 :]
         area = original_height * original_width
@@ -312,14 +177,23 @@ class MoGeModel(nn.Module):
             min_tokens, max_tokens = self.num_tokens_range
             num_tokens = int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
 
-        with torch.autocast(device_type = image.device.type, dtype = torch.float16, enabled = use_fp16):
-            points, mask = self.forward(image, num_tokens)
+        with torch.autocast(device_type = self.device.type, dtype = torch.float16, enabled = (use_fp16 and self.dtype != torch.float16)):
+            points, mask, _ = self.forward(image, num_tokens = num_tokens)
 
-        mask_binary = mask > self.mask_threshold
+        # Always process the output in fp32 precision
+        points, mask = map(lambda x: x.float() if isinstance(x, torch.Tensor) else x, [points, mask])
 
-        # Focal here is the focal length relative to half the image diagonal
-        focal, _ = RecoverFocalShift(points, mask_binary)
-        fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
+        with torch.autocast(device_type = self.device.type, dtype = torch.float32):
+            if mask is not None:
+                mask_binary = mask > 0.5
+            else:
+                mask_binary = None
+
+            # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
+            # NOTE: Focal here is the focal length relative to half the image diagonal
+            # Recover focal and shift from predicted point map
+            focal, _ = RecoverFocalShift(points, mask_binary)
+            fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
         return fy.item() * original_height
 
     @torch.no_grad()
@@ -346,6 +220,9 @@ class MoGeModel(nn.Module):
         if image.dim() == 3:
             omit_batch_dim = True
             image = image.unsqueeze(0)
+        else:
+            omit_batch_dim = False
+        image = image.to(dtype = self.dtype, device = self.device)
 
         original_height, original_width = image.shape[-2 :]
         area = original_height * original_width
@@ -355,30 +232,46 @@ class MoGeModel(nn.Module):
             min_tokens, max_tokens = self.num_tokens_range
             num_tokens = int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
 
-        min_area = 500 * 500
-        max_area = 700 * 700
-        expected_area = min_area + (max_area - min_area) * (resolution_level / 9)
+        with torch.autocast(device_type = self.device.type, dtype = torch.float16, enabled = (use_fp16 and self.dtype != torch.float16)):
+            points, mask, metric_scale = self.forward(image, num_tokens = num_tokens)
 
-        if expected_area != area:
-            expected_width, expected_height = int(original_width * (expected_area / area) ** 0.5), int(original_height * (expected_area / area) ** 0.5)
-            image = functional.interpolate(image, (expected_height, expected_width), mode = "bicubic", align_corners = False, antialias = True)
+        # Always process the output in fp32 precision
+        points, mask, metric_scale, fov_x = map(lambda x: x.float() if isinstance(x, torch.Tensor) else x, [points, mask, metric_scale, fov_x])
 
-        with torch.autocast(device_type = image.device.type, dtype = torch.float16, enabled = use_fp16):
-            points, mask = self.forward(image, num_tokens)
+        with torch.autocast(device_type = self.device.type, dtype = torch.float32):
+            if mask is not None:
+                mask_binary = mask > 0.5
+            else:
+                mask_binary = None
 
-        mask_binary = mask > self.mask_threshold
+            # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
+            # NOTE: Focal here is the focal length relative to half the image diagonal
+            # Focal is known, recover shift only
+            focal = aspect_ratio / (1 + aspect_ratio ** 2) ** 0.5 / torch.tan(torch.deg2rad(torch.as_tensor(fov_x, device = points.device, dtype = points.dtype) / 2))
+            if focal.ndim == 0:
+                focal = focal[None].expand(points.shape[0])
+            _, shift = RecoverFocalShift(points, mask_binary, focal = focal)
+            fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
+            fx = fy / aspect_ratio
+            intrinsics = IntrinsicsFromFocalCenter(fx, fy, 0.5, 0.5)
+            points[..., 2] += shift[..., None, None]
+            if mask_binary is not None:
+                mask_binary &= points[..., 2] > 0        # in case depth is contains negative values (which should never happen in practice)
+            depth = points[..., 2].clone()
 
-        # Get camera-space point map. (Focal here is the focal length relative to half the image diagonal)
-        focal = aspect_ratio / (1 + aspect_ratio ** 2) ** 0.5 / torch.tan(torch.deg2rad(torch.as_tensor(fov_x, device = points.device, dtype = points.dtype) / 2))
-        if focal.ndim == 0:
-            focal = focal[None].expand(points.shape[0])
-        _, shift = RecoverFocalShift(points, mask_binary, focal = focal)
-        fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
-        fx = fy / aspect_ratio
-        intrinsics = IntrinsicsFromFocalCenter(fx, fy, 0.5, 0.5)
-        depth = points[..., 2] + shift[..., None, None]
+            # Recompute the point map using the actual depth map & intrinsics
+            if depth is not None:
+                points = UnprojectCV(ImageUV(width = depth.shape[-1], height = depth.shape[-2], dtype = points.dtype, device = points.device), depth, intrinsics = intrinsics[..., None, :, :])
 
-        points = UnprojectCV(ImageUV(width = expected_width, height = expected_height, dtype = points.dtype, device = points.device), depth, intrinsics = intrinsics[..., None, :, :])
+            if metric_scale is not None:
+                if points is not None:
+                    points *= metric_scale[:, None, None, None]
+                if depth is not None:
+                    depth *= metric_scale[:, None, None]
+
+            if mask_binary is not None:
+                points = torch.where(mask_binary[..., None], points, torch.inf) if points is not None else None
+                depth = torch.where(mask_binary, depth, torch.inf) if depth is not None else None
 
         if omit_batch_dim:
             points = points.squeeze(0)

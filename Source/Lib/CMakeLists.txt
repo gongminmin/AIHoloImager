@@ -143,6 +143,7 @@ set(aihi_files
     Source/SfM/LightGlue/SuperPoint.py
     Source/SfM/LightGlue/__init__.py
     Source/SfM/MoGe/Geometry.py
+    Source/SfM/MoGe/Modules.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
     Source/SfM/Shader/UndistortCs.hlsl
@@ -352,6 +353,7 @@ set(py_files
     Source/MeshGen/Trellis/Pipelines/__init__.py
     Source/Python/PythonSystem.py
     Source/SfM/MoGe/Geometry.py
+    Source/SfM/MoGe/Modules.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
     Source/SfM/LightGlue/LightGlue.py

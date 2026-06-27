@@ -11,15 +11,15 @@ else()
     endif()
 
     set(ENV{GIT_LFS_SKIP_SMUDGE} 1)
-    UpdateExternalLib(NAME "moge-vitl"
-                      URL "https://huggingface.co/Ruicheng/moge-vitl"
-                      REV "979e84da9415762c30e6c0cf8dc0962896c793df"
+    UpdateExternalLib(NAME "moge-2-vitl"
+                      URL "https://huggingface.co/Ruicheng/moge-2-vitl"
+                      REV "39c4d5e957afe587e04eec59dc2bcc3be5ecd968"
                       NEED_CHECKOUT need_checkout
     )
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
     if(need_checkout)
-        PullLfsFile("moge-vitl" "model.pt")
+        PullLfsFile("moge-2-vitl" "model.pt")
     endif()
 
     set(deployed_files )
@@ -28,7 +28,7 @@ else()
         model.pt
     )
     foreach(src_file ${copy_files})
-        set(src_file moge-vitl/${src_file})
+        set(src_file moge-2-vitl/${src_file})
         set(output_file ${aihi_output_dir}/Models/${src_file})
         add_custom_command(OUTPUT ${output_file}
             COMMAND ${CMAKE_COMMAND} -E create_hardlink ${src_file} ${output_file}
