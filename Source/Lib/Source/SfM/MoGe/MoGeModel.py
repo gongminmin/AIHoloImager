@@ -28,7 +28,7 @@ class MoGeModel(nn.Module):
     def __init__(self, 
         encoder: Dict[str, Any],
         neck: Dict[str, Any],
-        points_head: Dict[str, Any] = None,
+        points_head: Dict[str, Any],
         mask_head: Dict[str, Any] = None,
         scale_head: Dict[str, Any] = None,
         remap_output: Literal["linear", "sinh", "exp", "sinh_exp"] = "linear",
@@ -46,12 +46,15 @@ class MoGeModel(nn.Module):
 
         self.encoder = Dinov2Encoder(**encoder, device = device)
         self.neck = ConvStack(**neck, device = device)
-        if points_head is not None:
-            self.points_head = ConvStack(**points_head, device = device)
+        self.points_head = ConvStack(**points_head, device = device)
         if mask_head is not None:
             self.mask_head = ConvStack(**mask_head, device = device)
+        else:
+            self.mask_head = None
         if scale_head is not None:
             self.scale_head = Mlp(**scale_head, device = device)
+        else:
+            self.scale_head = None
 
     @property
     def device(self) -> torch.device:
@@ -100,19 +103,16 @@ class MoGeModel(nn.Module):
             raise ValueError(f"Invalid remap output type: {self.remap_output}")
         return points
 
-    def forward(self, image : torch.Tensor, num_tokens: Union[int, torch.LongTensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, image : torch.Tensor, num_tokens: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size, _, img_h, img_w = image.shape
         device, dtype = image.device, image.dtype
 
         aspect_ratio = img_w / img_h
-        base_h, base_w = (num_tokens / aspect_ratio) ** 0.5, (num_tokens * aspect_ratio) ** 0.5
-        if isinstance(base_h, torch.Tensor):
-            base_h, base_w = base_h.round().long(), base_w.round().long()
-        else:
-            base_h, base_w = round(base_h), round(base_w)
+        base_w = round((num_tokens * aspect_ratio) ** 0.5)
+        base_h = round((num_tokens / aspect_ratio) ** 0.5)
 
         # Backbones encoding
-        features, cls_token = self.encoder(image, base_h, base_w, return_class_token=True)
+        features, cls_token = self.encoder(image, base_h, base_w, return_class_token = True)
         features = [features, None, None, None, None]
 
         # Concat UVs for aspect ratio input
@@ -122,26 +122,31 @@ class MoGeModel(nn.Module):
             if features[level] is None:
                 features[level] = uv
             else:
-                features[level] = torch.concat([features[level], uv], dim = 1)
+                features[level] = torch.concat((features[level], uv), dim = 1)
 
         # Shared neck
         features = self.neck(features)
 
         # Heads decoding
-        points, mask = (getattr(self, head)(features)[-1] if hasattr(self, head) else None for head in ["points_head", "mask_head"])
-        metric_scale = self.scale_head(cls_token) if hasattr(self, "scale_head") else None
-
+        points = self.points_head(features)[-1]
         # Resize
-        points, mask = (functional.interpolate(v, (img_h, img_w), mode = "bilinear", align_corners = False, antialias = False) if v is not None else None for v in [points, mask])
-
+        points = functional.interpolate(points, (img_h, img_w), mode = "bilinear", align_corners = False, antialias = False)
         # Remap output
-        if points is not None:
-            points = points.permute(0, 2, 3, 1)
-            points = self.RemapPoints(points)     # slightly improves the performance in case of very large output values
-        if mask is not None:
+        points = points.permute(0, 2, 3, 1)
+        points = self.RemapPoints(points)     # slightly improves the performance in case of very large output values
+
+        if self.mask_head is not None:
+            mask = self.mask_head(features)[-1]
+            mask = functional.interpolate(mask, (img_h, img_w), mode = "bilinear", align_corners = False, antialias = False)
             mask = mask.squeeze(1).sigmoid()
-        if metric_scale is not None:
+        else:
+            mask = None
+
+        if self.scale_head is not None:
+            metric_scale = self.scale_head(cls_token)
             metric_scale = metric_scale.squeeze(1).exp()
+        else:
+            metric_scale = None
 
         return points, mask, metric_scale
 
@@ -181,19 +186,18 @@ class MoGeModel(nn.Module):
             points, mask, _ = self.forward(image, num_tokens = num_tokens)
 
         # Always process the output in fp32 precision
-        points, mask = map(lambda x: x.float() if isinstance(x, torch.Tensor) else x, [points, mask])
+        points = points.to(torch.float32)
 
-        with torch.autocast(device_type = self.device.type, dtype = torch.float32):
-            if mask is not None:
-                mask_binary = mask > 0.5
-            else:
-                mask_binary = None
+        if mask is not None:
+            mask_binary = mask > 0.5
+        else:
+            mask_binary = None
 
-            # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
-            # NOTE: Focal here is the focal length relative to half the image diagonal
-            # Recover focal and shift from predicted point map
-            focal, _ = RecoverFocalShift(points, mask_binary)
-            fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
+        # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
+        # NOTE: Focal here is the focal length relative to half the image diagonal
+        # Recover focal and shift from predicted point map
+        focal, _ = RecoverFocalShift(points, mask_binary)
+        fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
         return fy.item() * original_height
 
     @torch.no_grad()
@@ -236,42 +240,38 @@ class MoGeModel(nn.Module):
             points, mask, metric_scale = self.forward(image, num_tokens = num_tokens)
 
         # Always process the output in fp32 precision
-        points, mask, metric_scale, fov_x = map(lambda x: x.float() if isinstance(x, torch.Tensor) else x, [points, mask, metric_scale, fov_x])
+        points = points.to(torch.float32)
+        if isinstance(fov_x, torch.Tensor):
+            fov_x = fov_x.to(torch.float32)
+        else:
+            fov_x = torch.tensor(fov_x, device = self.device, dtype = torch.float32)
 
-        with torch.autocast(device_type = self.device.type, dtype = torch.float32):
-            if mask is not None:
-                mask_binary = mask > 0.5
-            else:
-                mask_binary = None
+        if mask is not None:
+            mask_binary = mask > 0.5
+        else:
+            mask_binary = None
 
-            # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
-            # NOTE: Focal here is the focal length relative to half the image diagonal
-            # Focal is known, recover shift only
-            focal = aspect_ratio / (1 + aspect_ratio ** 2) ** 0.5 / torch.tan(torch.deg2rad(torch.as_tensor(fov_x, device = points.device, dtype = points.dtype) / 2))
-            if focal.ndim == 0:
-                focal = focal[None].expand(points.shape[0])
-            _, shift = RecoverFocalShift(points, mask_binary, focal = focal)
-            fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
-            fx = fy / aspect_ratio
-            intrinsics = IntrinsicsFromFocalCenter(fx, fy, 0.5, 0.5)
-            points[..., 2] += shift[..., None, None]
-            if mask_binary is not None:
-                mask_binary &= points[..., 2] > 0        # in case depth is contains negative values (which should never happen in practice)
-            depth = points[..., 2].clone()
+        # Convert affine point map to camera-space. Recover depth and intrinsics from point map.
+        # NOTE: Focal here is the focal length relative to half the image diagonal
+        # Focal is known, recover shift only
+        focal = aspect_ratio / (1 + aspect_ratio ** 2) ** 0.5 / torch.tan(torch.deg2rad(fov_x / 2))
+        if focal.ndim == 0:
+            focal = focal.unsqueeze(-1).expand(points.shape[0])
+        _, shift = RecoverFocalShift(points, mask_binary, focal = focal)
+        fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5
+        fx = fy / aspect_ratio
+        intrinsics = IntrinsicsFromFocalCenter(fx, fy, 0.5, 0.5)
+        depth = points[..., 2].clone() + shift
 
-            # Recompute the point map using the actual depth map & intrinsics
-            if depth is not None:
-                points = UnprojectCV(ImageUV(width = depth.shape[-1], height = depth.shape[-2], dtype = points.dtype, device = points.device), depth, intrinsics = intrinsics[..., None, :, :])
+        if metric_scale is not None:
+            depth *= metric_scale.to(torch.float32)
 
-            if metric_scale is not None:
-                if points is not None:
-                    points *= metric_scale[:, None, None, None]
-                if depth is not None:
-                    depth *= metric_scale[:, None, None]
+        # Recompute the point map using the actual depth map & intrinsics
+        points = UnprojectCV(ImageUV(width = depth.shape[-1], height = depth.shape[-2], dtype = points.dtype, device = points.device), depth, intrinsics = intrinsics.unsqueeze(-3))
 
-            if mask_binary is not None:
-                points = torch.where(mask_binary[..., None], points, torch.inf) if points is not None else None
-                depth = torch.where(mask_binary, depth, torch.inf) if depth is not None else None
+        if mask_binary is not None:
+            mask_binary &= depth > 0        # in case depth is contains negative values (which should never happen in practice)
+            points = torch.where(mask_binary.unsqueeze(-1), points, torch.inf)
 
         if omit_batch_dim:
             points = points.squeeze(0)

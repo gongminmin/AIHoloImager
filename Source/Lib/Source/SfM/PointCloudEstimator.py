@@ -17,6 +17,7 @@ class PointCloudEstimator:
         self.model = MoGeModel.FromPretrained(this_py_dir / "Models/moge-2-vitl/model.pt")
         self.model.eval()
         self.model = self.model.to(self.device)
+        self.model = self.model.to(torch.float16)
 
     def Destroy(self):
         del self.model
@@ -33,12 +34,11 @@ class PointCloudEstimator:
         return self.model.Focal(image)
 
     @torch.no_grad()
-    def PointCloud(self, image: bytes, image_width: int, image_height: int, channels: int, fov_x: float) -> tuple:
+    def PointCloud(self, image: bytes, image_width: int, image_height: int, channels: int, fov_x: float) -> torch.Tensor:
         image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
         image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
 
         image = image.to(torch.float16).contiguous()
         image /= 255.0
 
-        point_cloud = self.model.PointCloud(image, fov_x)
-        return (point_cloud, point_cloud.shape[-2], point_cloud.shape[-3])
+        return self.model.PointCloud(image, fov_x)

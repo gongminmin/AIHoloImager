@@ -989,13 +989,9 @@ namespace AIHoloImager
                         std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
                     const double fx = intrinsics[0].k[0].x;
                     const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
-                    auto py_point_cloud_items = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image),
-                        width, height, FormatChannels(image.Format()), fov_x);
-
-                    const auto py_point_cloud = python_system.GetTupleItem(*py_point_cloud_items, 0);
-                    const uint32_t point_cloud_width = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 1));
-                    const uint32_t point_cloud_height = python_system.Cast<uint32_t>(*python_system.GetTupleItem(*py_point_cloud_items, 2));
-                    const uint32_t point_cloud_size = point_cloud_width * point_cloud_height;
+                    auto py_point_cloud = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image), width,
+                        height, FormatChannels(image.Format()), fov_x);
+                    const uint32_t point_cloud_size = width * height;
 
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
                     auto& tensor_converter = aihi_.TensorConverterInstance();
@@ -1009,12 +1005,12 @@ namespace AIHoloImager
 
                     rb_future.wait();
 
-                    ret.structure.reserve(point_cloud_width * point_cloud_height);
-                    for (uint32_t y = 0; y < point_cloud_height; ++y)
+                    ret.structure.reserve(point_cloud_size);
+                    for (uint32_t y = 0; y < height; ++y)
                     {
-                        for (uint32_t x = 0; x < point_cloud_width; ++x)
+                        for (uint32_t x = 0; x < width; ++x)
                         {
-                            const glm::vec3& p = point_cloud[y * point_cloud_width + x];
+                            const glm::vec3& p = point_cloud[y * width + x];
                             if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
                             {
                                 if (p.z > 0)
@@ -1028,10 +1024,10 @@ namespace AIHoloImager
                                             {
                                                 const int32_t nx = static_cast<int32_t>(x) + dx;
                                                 const int32_t ny = static_cast<int32_t>(y) + dy;
-                                                if ((nx >= 0) && (nx < static_cast<int32_t>(point_cloud_width)) && (ny >= 0) &&
-                                                    (ny < static_cast<int32_t>(point_cloud_height)))
+                                                if ((nx >= 0) && (nx < static_cast<int32_t>(width)) && (ny >= 0) &&
+                                                    (ny < static_cast<int32_t>(height)))
                                                 {
-                                                    const glm::vec3& np = point_cloud[ny * point_cloud_width + nx];
+                                                    const glm::vec3& np = point_cloud[ny * width + nx];
                                                     if ((np.z > 0) && (p.z - np.z > 0.05f))
                                                     {
                                                         valid = false;

@@ -34,33 +34,37 @@ class ResidualConvBlock(nn.Module):
         if hidden_channels is None:
             hidden_channels = in_channels
 
-        if activation =="relu":
+        if activation == "relu":
             activation_cls = nn.ReLU
         elif activation == "leaky_relu":
-            activation_cls = functools.partial(nn.LeakyReLU, negative_slope=0.2)
-        elif activation =="silu":
+            activation_cls = functools.partial(nn.LeakyReLU, negative_slope = 0.2)
+        elif activation == "silu":
             activation_cls = nn.SiLU
         elif activation == "elu":
             activation_cls = nn.ELU
         else:
             raise ValueError(f"Unsupported activation function: {activation}")
 
-        self.layers = nn.Sequential(
-            nn.GroupNorm(in_channels // 32, in_channels, device = device) if in_norm == "group_norm" else \
-                nn.GroupNorm(1, in_channels, device = device) if in_norm == "layer_norm" else \
-                nn.InstanceNorm2d(in_channels, device = device) if in_norm == "instance_norm" else \
-                nn.Identity(),
-            activation_cls(),
-            nn.Conv2d(in_channels, hidden_channels, kernel_size = kernel_size, padding = kernel_size // 2, padding_mode = padding_mode, device = device),
-            nn.GroupNorm(hidden_channels // 32, hidden_channels, device = device) if hidden_norm == "group_norm" else \
-                nn.GroupNorm(1, hidden_channels, device = device) if hidden_norm == "layer_norm" else \
-                nn.InstanceNorm2d(hidden_channels, device = device) if hidden_norm == "instance_norm" else \
-                nn.Identity(),
-            activation_cls(),
-            nn.Conv2d(hidden_channels, out_channels, kernel_size = kernel_size, padding = kernel_size // 2, padding_mode = padding_mode, device = device)
-        )
+        layers = []
+        norms = (in_norm, hidden_norm)
+        channels = (in_channels, hidden_channels, out_channels)
+        for i in range(len(norms)):
+            if norms[i] == "group_norm":
+                layers.append(nn.GroupNorm(channels[i] // 32, channels[i], device = device))
+            elif norms[i] == "layer_norm":
+                layers.append(nn.GroupNorm(1, channels[i], device = device))
+            elif norms[i] == "instance_norm":
+                layers.append(nn.InstanceNorm2d(channels[i], device = device))
+            else:
+                layers.append(nn.Identity())
+            layers.append(activation_cls())
+            layers.append(nn.Conv2d(channels[i], channels[i + 1], kernel_size = kernel_size, padding = kernel_size // 2, padding_mode = padding_mode, device = device))
+        self.layers = nn.Sequential(*layers)
 
-        self.skip_connection = nn.Conv2d(in_channels, out_channels, kernel_size = 1, padding = 0, device = device) if in_channels != out_channels else nn.Identity()
+        if in_channels != out_channels:
+            self.skip_connection = nn.Conv2d(in_channels, out_channels, kernel_size = 1, padding = 0, device = device)
+        else:
+            self.skip_connection = nn.Identity()
 
     def forward(self, x):
         skip = self.skip_connection(x)
@@ -74,12 +78,11 @@ class Dinov2Encoder(nn.Module):
     image_std: torch.Tensor
     dim_features: int
 
-    def __init__(self, backbone: str, intermediate_layers: Union[int, List[int]], dim_out: int, device : Optional[torch.device] = None, **deprecated_kwargs):
+    def __init__(self, backbone: str, intermediate_layers: Union[int, List[int]], dim_out: int, device : Optional[torch.device] = None):
         super(Dinov2Encoder, self).__init__()
 
         self.intermediate_layers = intermediate_layers
 
-        # Load the backbone
         self.hub_loader = getattr(importlib.import_module("dinov2.hub.backbones"), backbone)
         self.backbone_name = backbone
         with warnings.catch_warnings():
@@ -87,12 +90,15 @@ class Dinov2Encoder(nn.Module):
             self.backbone = self.hub_loader(pretrained = False)
 
         self.dim_features = self.backbone.blocks[0].attn.qkv.in_features
-        self.num_features = intermediate_layers if isinstance(intermediate_layers, int) else len(intermediate_layers)
+        if isinstance(intermediate_layers, int):
+            self.num_features = intermediate_layers
+        else:
+            self.num_features = len(intermediate_layers)
 
-        self.output_projections = nn.ModuleList([
-            nn.Conv2d(in_channels=self.dim_features, out_channels = dim_out, kernel_size = 1, stride = 1, padding = 0, device = device)
-                for _ in range(self.num_features)
-        ])
+        output_projections_layers = []
+        for _ in range(self.num_features):
+            output_projections_layers.append(nn.Conv2d(in_channels = self.dim_features, out_channels = dim_out, kernel_size = 1, stride = 1, padding = 0, device = device))
+        self.output_projections = nn.ModuleList(output_projections_layers)
 
         self.register_buffer("image_mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer("image_std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
@@ -101,14 +107,12 @@ class Dinov2Encoder(nn.Module):
         image_14 = functional.interpolate(image, (token_rows * 14, token_cols * 14), mode = "bilinear", align_corners = False, antialias = True)
         image_14 = (image_14 - self.image_mean) / self.image_std
 
-        # Get intermediate layers from the backbone
         features = self.backbone.get_intermediate_layers(image_14, n = self.intermediate_layers, return_class_token = True)
 
-        # Project features to the desired dimensionality
-        x = torch.stack([
-            proj(feat.permute(0, 2, 1).unflatten(2, (token_rows, token_cols)).contiguous())
-                for proj, (feat, clstoken) in zip(self.output_projections, features)
-        ], dim = 1).sum(dim = 1)
+        x = []
+        for proj, (feat, _) in zip(self.output_projections, features):
+            x.append(proj(feat.permute(0, 2, 1).unflatten(2, (token_rows, token_cols)).contiguous()))
+        x = torch.stack(x, dim = 1).sum(dim = 1)
 
         if return_class_token:
             return x, features[-1][1]
@@ -166,19 +170,19 @@ class Mlp(nn.Sequential):
         nn.Sequential.__init__(self,
             *itertools.chain(*[
                 (nn.Linear(dim_in, dim_out, device = device), nn.ReLU(inplace = True))
-                    for dim_in, dim_out in zip(dims[:-2], dims[1:-1])
+                    for dim_in, dim_out in zip(dims[: -2], dims[1 : -1])
             ]),
             nn.Linear(dims[-2], dims[-1], device = device),
         )
 
 class ConvStack(nn.Module):
-    def __init__(self, 
+    def __init__(self,
         dim_in: List[Optional[int]],
         dim_res_blocks: List[int],
         dim_out: List[Optional[int]],
         resamplers: Union[Literal["pixel_shuffle", "nearest", "bilinear", "conv_transpose", "pixel_unshuffle", "avg_pool", "max_pool"], List],
         dim_times_res_block_hidden: int = 1,
-        num_res_blocks: int = 1,
+        num_res_blocks: Union[int, List] = 1,
         res_block_in_norm: Literal["layer_norm", "group_norm" , "instance_norm", "none"] = "layer_norm",
         res_block_hidden_norm: Literal["layer_norm", "group_norm" , "instance_norm", "none"] = "group_norm",
         activation: Literal["relu", "leaky_relu", "silu", "elu"] = "relu",
@@ -186,33 +190,38 @@ class ConvStack(nn.Module):
     ):
         super().__init__()
 
-        self.input_blocks = nn.ModuleList([
-            nn.Conv2d(dim_in_, dim_res_block_, kernel_size = 1, stride = 1, padding = 0, device = device) if dim_in_ is not None else nn.Identity()
-                for dim_in_, dim_res_block_ in zip(dim_in if isinstance(dim_in, Sequence) else itertools.repeat(dim_in), dim_res_blocks)
-        ])
-        self.resamplers = nn.ModuleList([
-            Resampler(dim_prev, dim_succ, scale_factor = 2, type_ = resampler, device = device)
-                for i, (dim_prev, dim_succ, resampler) in enumerate(zip(
-                    dim_res_blocks[: -1],
-                    dim_res_blocks[1 :],
-                    resamplers if isinstance(resamplers, Sequence) else itertools.repeat(resamplers)
+        input_blocks_layers = []
+        for dim_in_, dim_res_block_ in zip(dim_in if isinstance(dim_in, Sequence) else itertools.repeat(dim_in), dim_res_blocks):
+            if dim_in_ is not None:
+                input_blocks_layers.append(nn.Conv2d(dim_in_, dim_res_block_, kernel_size = 1, stride = 1, padding = 0, device = device))
+            else:
+                input_blocks_layers.append(nn.Identity())
+        self.input_blocks = nn.ModuleList(input_blocks_layers)
+
+        resampler_layers = []
+        for i, (dim_prev, dim_succ, resampler) in enumerate(zip(dim_res_blocks[: -1], dim_res_blocks[1 :], resamplers if isinstance(resamplers, Sequence) else itertools.repeat(resamplers))):
+            resampler_layers.append(Resampler(dim_prev, dim_succ, scale_factor = 2, type_ = resampler, device = device))
+        self.resamplers = nn.ModuleList(resampler_layers)
+
+        res_blocks_layers = []
+        for i, dim_res_block_ in enumerate(dim_res_blocks):
+            layers = []
+            for _ in range(num_res_blocks[i] if isinstance(num_res_blocks, list) else num_res_blocks):
+                layers.append(ResidualConvBlock(
+                    dim_res_block_, dim_res_block_, dim_times_res_block_hidden * dim_res_block_,
+                    activation = activation, in_norm = res_block_in_norm, hidden_norm = res_block_hidden_norm,
+                    device = device
                 ))
-        ])
-        self.res_blocks = nn.ModuleList([
-            nn.Sequential(
-                *(
-                    ResidualConvBlock(
-                        dim_res_block_, dim_res_block_, dim_times_res_block_hidden * dim_res_block_,
-                        activation = activation, in_norm = res_block_in_norm, hidden_norm = res_block_hidden_norm,
-                        device = device
-                    ) for _ in range(num_res_blocks[i] if isinstance(num_res_blocks, list) else num_res_blocks)
-                )
-            ) for i, dim_res_block_ in enumerate(dim_res_blocks)
-        ])
-        self.output_blocks = nn.ModuleList([
-            nn.Conv2d(dim_res_block_, dim_out_, kernel_size = 1, stride = 1, padding = 0, device = device) if dim_out_ is not None else nn.Identity()
-                for dim_out_, dim_res_block_ in zip(dim_out if isinstance(dim_out, Sequence) else itertools.repeat(dim_out), dim_res_blocks)
-        ])
+            res_blocks_layers.append(nn.Sequential(*layers))
+        self.res_blocks = nn.ModuleList(res_blocks_layers)
+
+        output_blocks = []
+        for dim_out_, dim_res_block_ in zip(dim_out if isinstance(dim_out, Sequence) else itertools.repeat(dim_out), dim_res_blocks):
+            if dim_out_ is not None:
+                output_blocks.append(nn.Conv2d(dim_res_block_, dim_out_, kernel_size = 1, stride = 1, padding = 0, device = device))
+            else:
+                output_blocks.append(nn.Identity())
+        self.output_blocks = nn.ModuleList(output_blocks)
 
     def forward(self, in_features: List[torch.Tensor]):
         out_features = []
