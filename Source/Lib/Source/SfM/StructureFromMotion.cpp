@@ -946,6 +946,7 @@ namespace AIHoloImager
             Result ret;
 
             ret.projections.resize(views.size());
+            std::vector<float> fov_xs(views.size());
             for (size_t i = 0; i < views.size(); ++i)
             {
                 auto& projection = ret.projections[i];
@@ -963,94 +964,36 @@ namespace AIHoloImager
 
                 projection.vp_offset = this->CalcViewportOffset(intrinsic);
                 projection.image_offset = {0, 0};
+
+                const double fx = intrinsic.k[0].x;
+                fov_xs[i] = glm::degrees(static_cast<float>(2 * std::atan2(intrinsic.width, 2 * fx)));
             }
 
             const auto& sfm_landmarks = sfm_data.GetLandmarks();
             if (sfm_landmarks.empty())
             {
-                if (!py_init_finished_)
+                PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Gen point cloud");
+
+                const auto& projection = ret.projections[0];
+                const uint32_t width = projection.full_width;
+                const uint32_t height = projection.full_height;
+
+                const auto point_cloud = this->ImageToPointCloud(projection, fov_xs[0]);
+
+                ret.structure.reserve(point_cloud.size());
+                for (uint32_t y = 0; y < height; ++y)
                 {
-                    PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
-                    py_init_future_.wait();
-
-                    py_init_finished_ = true;
-                }
-                {
-                    PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Gen point cloud");
-
-                    const auto& projection = ret.projections[0];
-                    const uint32_t width = projection.full_width;
-                    const uint32_t height = projection.full_height;
-
-                    PythonSystem::GilGuard guard;
-
-                    auto& python_system = aihi_.PythonSystemInstance();
-                    auto& tensor_converter = aihi_.TensorConverterInstance();
-
-                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
-
-                    auto py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, *projection.image));
-                    gpu_system.ExecuteAndReset(cmd_list);
-
-                    const double fx = intrinsics[0].k[0].x;
-                    const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
-                    auto py_point_cloud = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image), fov_x);
-                    const uint32_t point_cloud_size = width * height;
-
-                    GpuBuffer point_cloud_buff;
-                    tensor_converter.ConvertPy(
-                        cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource, "point_cloud_buff");
-                    auto point_cloud = std::make_unique<glm::vec3[]>(point_cloud_size);
-                    const auto rb_future =
-                        cmd_list.ReadBackAsync(point_cloud_buff, point_cloud.get(), point_cloud_size * sizeof(glm::vec3));
-                    gpu_system.Execute(std::move(cmd_list));
-
-                    rb_future.wait();
-
-                    ret.structure.reserve(point_cloud_size);
-                    for (uint32_t y = 0; y < height; ++y)
+                    for (uint32_t x = 0; x < width; ++x)
                     {
-                        for (uint32_t x = 0; x < width; ++x)
+                        const glm::vec3& p = point_cloud[y * width + x];
+                        if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
                         {
-                            const glm::vec3& p = point_cloud[y * width + x];
-                            if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
-                            {
-                                if (p.z > 0)
-                                {
-                                    bool valid = true;
-                                    for (int32_t dy = -1; valid && (dy <= 1); ++dy)
-                                    {
-                                        for (int32_t dx = -1; valid && (dx <= 1); ++dx)
-                                        {
-                                            if ((dx != 0) || (dy != 0))
-                                            {
-                                                const int32_t nx = static_cast<int32_t>(x) + dx;
-                                                const int32_t ny = static_cast<int32_t>(y) + dy;
-                                                if ((nx >= 0) && (nx < static_cast<int32_t>(width)) && (ny >= 0) &&
-                                                    (ny < static_cast<int32_t>(height)))
-                                                {
-                                                    const glm::vec3& np = point_cloud[ny * width + nx];
-                                                    if ((np.z > 0) && (p.z - np.z > 0.05f))
-                                                    {
-                                                        valid = false;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                            auto& result_landmark = ret.structure.emplace_back();
+                            result_landmark.point = {p.x, p.y, p.z};
 
-                                    if (valid)
-                                    {
-                                        auto& result_landmark = ret.structure.emplace_back();
-                                        result_landmark.point = {p.x, p.y, p.z};
-
-                                        auto& result_observation = result_landmark.obs.emplace_back();
-                                        result_observation.view_id = 0;
-                                        result_observation.point = {x, y};
-                                    }
-                                }
-                            }
+                            auto& result_observation = result_landmark.obs.emplace_back();
+                            result_observation.view_id = 0;
+                            result_observation.point = {x, y};
                         }
                     }
                 }
@@ -1073,6 +1016,20 @@ namespace AIHoloImager
                             result_observation.point = {mvg_observation.second.x.x(), mvg_observation.second.x.y()};
                         }
                     }
+                }
+
+                const float scale = this->CalcScale(ret, fov_xs);
+                std::cout << "Scale from SfM to physical world: " << scale << "\n";
+
+                for (auto& landmark : ret.structure)
+                {
+                    landmark.point *= scale;
+                }
+                for (auto& projection : ret.projections)
+                {
+                    projection.view_mtx[3][0] *= scale;
+                    projection.view_mtx[3][1] *= scale;
+                    projection.view_mtx[3][2] *= scale;
                 }
             }
 
@@ -1148,6 +1105,189 @@ namespace AIHoloImager
             const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
             cmd_list.Compute(
                 undistort_pipeline_, {DivUp(output_tex.Width(0), BlockDim), DivUp(output_tex.Height(0), BlockDim), 1}, shader_binding);
+        }
+
+        std::vector<glm::vec3> ImageToPointCloud(const AIHoloImagerInternal::ProjectionDesc& projection, float fov_x)
+        {
+            if (!py_init_finished_)
+            {
+                PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
+                py_init_future_.wait();
+
+                py_init_finished_ = true;
+            }
+
+            auto& python_system = aihi_.PythonSystemInstance();
+            auto& gpu_system = aihi_.GpuSystemInstance();
+            auto& tensor_converter = aihi_.TensorConverterInstance();
+
+            const GpuTexture2D& image = *projection.image;
+            const uint32_t width = projection.full_width;
+            const uint32_t height = projection.full_height;
+
+            PythonSystem::GilGuard guard;
+
+            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+            auto py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
+            gpu_system.ExecuteAndReset(cmd_list);
+
+            auto py_point_cloud = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image), fov_x);
+            const uint32_t point_cloud_size = width * height;
+
+            GpuBuffer point_cloud_buff;
+            tensor_converter.ConvertPy(
+                cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource, "point_cloud_buff");
+
+            std::vector<glm::vec3> point_cloud(point_cloud_size);
+            const auto rb_future = cmd_list.ReadBackAsync(point_cloud_buff, point_cloud.data(), point_cloud_size * sizeof(glm::vec3));
+            gpu_system.Execute(std::move(cmd_list));
+
+            rb_future.wait();
+
+            for (uint32_t y = 0; y < height; ++y)
+            {
+                for (uint32_t x = 0; x < width; ++x)
+                {
+                    auto& p = point_cloud[y * width + x];
+                    if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
+                    {
+                        bool valid = false;
+                        if (p.z > 0)
+                        {
+                            valid = true;
+                            for (int32_t dy = -1; valid && (dy <= 1); ++dy)
+                            {
+                                for (int32_t dx = -1; valid && (dx <= 1); ++dx)
+                                {
+                                    if ((dx != 0) || (dy != 0))
+                                    {
+                                        const int32_t nx = static_cast<int32_t>(x) + dx;
+                                        const int32_t ny = static_cast<int32_t>(y) + dy;
+                                        if ((nx >= 0) && (nx < static_cast<int32_t>(width)) && (ny >= 0) &&
+                                            (ny < static_cast<int32_t>(height)))
+                                        {
+                                            const glm::vec3& np = point_cloud[ny * width + nx];
+                                            if ((np.z > 0) && (p.z - np.z > 0.005f))
+                                            {
+                                                valid = false;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!valid)
+                        {
+                            p = glm::vec3(std::numeric_limits<float>::infinity());
+                        }
+                    }
+                }
+            }
+
+            return point_cloud;
+        }
+
+        float CalcScale(const Result& result, std::span<const float> fov_xs)
+        {
+            struct ControlPointCandidate
+            {
+                uint32_t view_id;
+                glm::vec3 moge_point;
+                glm::vec3 sfm_point;
+            };
+
+            struct ScaleInfo
+            {
+                float variance;
+                float sum_scale;
+                size_t num;
+            };
+
+            const auto& landmarks = result.structure;
+            std::vector<ScaleInfo> scale_map;
+            for (uint32_t i = 0; i < result.projections.size(); ++i)
+            {
+                PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Extract control points");
+
+                const auto& projection = result.projections[i];
+                const auto point_cloud = this->ImageToPointCloud(projection, fov_xs[i]);
+
+                std::vector<ControlPointCandidate> control_point_candidates;
+                control_point_candidates.reserve(landmarks.size());
+                for (const auto& vertex : landmarks)
+                {
+                    if (vertex.obs.size() >= 3)
+                    {
+                        for (const auto& ob : vertex.obs)
+                        {
+                            if (ob.view_id == i)
+                            {
+                                const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
+                                const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
+
+                                const auto& p = point_cloud[y * projection.full_width + x];
+                                if (!(std::isinf(p.x) || std::isinf(p.y) || std::isinf(p.z)))
+                                {
+                                    control_point_candidates.emplace_back(ob.view_id, p, vertex.point);
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (control_point_candidates.size() > 1)
+                {
+                    const size_t num = control_point_candidates.size() - 1;
+
+                    std::vector<float> scales(num);
+                    for (size_t j = 0; j < num; ++j)
+                    {
+                        const float moge_dist =
+                            glm::distance(control_point_candidates[j + 1].moge_point, control_point_candidates[0].moge_point);
+                        const float sfm_dist =
+                            glm::distance(control_point_candidates[j + 1].sfm_point, control_point_candidates[0].sfm_point);
+                        scales[j] = moge_dist / sfm_dist;
+                    }
+
+                    const float sum_scale = std::accumulate(scales.begin(), scales.end(), 0.0f);
+                    const float avg_scale = sum_scale / num;
+
+                    float variance = 0;
+                    for (const float s : scales)
+                    {
+                        const float diff = s - avg_scale;
+                        variance += diff * diff;
+                    }
+                    variance /= num;
+
+                    scale_map.emplace_back(variance, sum_scale, num);
+                }
+            }
+
+            if (scale_map.empty())
+            {
+                return 1;
+            }
+
+            const size_t num_picked = std::min<size_t>(3, scale_map.size());
+            std::nth_element(scale_map.begin(), scale_map.begin() + num_picked, scale_map.end(),
+                [](const auto& lhs, const auto& rhs) { return lhs.variance < rhs.variance; });
+            scale_map.resize(num_picked);
+
+            float sum_scale = 0;
+            size_t num = 0;
+            for (const auto& scale_info : scale_map)
+            {
+                sum_scale += scale_info.sum_scale;
+                num += scale_info.num;
+            }
+
+            return num == 0 ? 1 : sum_scale / num;
         }
 
         static glm::mat4x4 CalcViewMatrix(const View& view)
