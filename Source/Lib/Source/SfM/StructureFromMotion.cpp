@@ -885,8 +885,8 @@ namespace AIHoloImager
 
                     if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) || (distort_gpu_tex.Height(0) != image.Height()))
                     {
-                        distort_gpu_tex = GpuTexture2D(
-                            gpu_system, image.Width(), image.Height(), 1, ColorFmt, GpuResourceFlag::ShaderResource, "distort_gpu_tex");
+                        distort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
+                            GpuResourceFlag::ShaderResource | GpuResourceFlag::Shareable, "distort_gpu_tex");
                     }
 
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
@@ -916,7 +916,8 @@ namespace AIHoloImager
                             (undistort_gpu_tex.Height(0) != image.Height()))
                         {
                             undistort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
-                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "undistort_gpu_tex");
+                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                                "undistort_gpu_tex");
                         }
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
@@ -977,24 +978,25 @@ namespace AIHoloImager
                 {
                     PerfRegion point_cloud_perf(aihi_.PerfProfilerInstance(), "Gen point cloud");
 
-                    const Texture& image = images[0];
-                    const uint32_t width = image.Width();
-                    const uint32_t height = image.Height();
+                    const auto& projection = ret.projections[0];
+                    const uint32_t width = projection.full_width;
+                    const uint32_t height = projection.full_height;
 
                     PythonSystem::GilGuard guard;
 
                     auto& python_system = aihi_.PythonSystemInstance();
-
-                    auto py_image = python_system.MakeObject(
-                        std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
-                    const double fx = intrinsics[0].k[0].x;
-                    const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
-                    auto py_point_cloud = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image), width,
-                        height, FormatChannels(image.Format()), fov_x);
-                    const uint32_t point_cloud_size = width * height;
+                    auto& tensor_converter = aihi_.TensorConverterInstance();
 
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
-                    auto& tensor_converter = aihi_.TensorConverterInstance();
+
+                    auto py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, *projection.image));
+                    gpu_system.ExecuteAndReset(cmd_list);
+
+                    const double fx = intrinsics[0].k[0].x;
+                    const float fov_x = glm::degrees(static_cast<float>(2 * std::atan2(width, 2 * fx)));
+                    auto py_point_cloud = python_system.CallObject(*point_cloud_estimator_point_cloud_method_, std::move(py_image), fov_x);
+                    const uint32_t point_cloud_size = width * height;
+
                     GpuBuffer point_cloud_buff;
                     tensor_converter.ConvertPy(
                         cmd_list, *py_point_cloud, point_cloud_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource, "point_cloud_buff");

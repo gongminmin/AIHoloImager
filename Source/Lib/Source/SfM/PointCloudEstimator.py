@@ -34,9 +34,8 @@ class PointCloudEstimator:
         return self.model.Focal(image)
 
     @torch.no_grad()
-    def PointCloud(self, image: bytes, image_width: int, image_height: int, channels: int, fov_x: float) -> torch.Tensor:
-        image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
-        image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
+    def PointCloud(self, image: torch.Tensor, fov_x: float) -> torch.Tensor:
+        image = image.squeeze(0)[..., 0 : 3].permute(2, 0, 1)
 
         image = image.to(torch.float16).contiguous()
         image /= 255.0
