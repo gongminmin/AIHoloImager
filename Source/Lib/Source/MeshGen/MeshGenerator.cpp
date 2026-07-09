@@ -499,7 +499,7 @@ namespace AIHoloImager
 
             up_vec = glm::vec3(plane);
 
-            constexpr float GroundThreshold = 0.012f;
+            constexpr float GroundThreshold = 0.015f;
 
             bb = Aabb();
             for (size_t i = 0; i < object_points.size(); ++i)
