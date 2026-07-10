@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/sparse_structure_flow.py
 
-from typing import *
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -19,7 +19,7 @@ class TimestepEmbedder(nn.Module):
     Embeds scalar timesteps into vector representations.
     """
 
-    def __init__(self, hidden_size, frequency_embedding_size = 256, device: Optional[torch.device] = None):
+    def __init__(self, hidden_size: int, frequency_embedding_size: int = 256, device: Optional[torch.device] = None) -> None:
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -30,7 +30,7 @@ class TimestepEmbedder(nn.Module):
         self.frequency_embedding_size = frequency_embedding_size
 
     @staticmethod
-    def TimestepEmbedding(t, dim, max_period = 10000):
+    def TimestepEmbedding(t, dim, max_period = 10000) -> torch.Tensor:
         """
         Create sinusoidal timestep embeddings.
 
@@ -55,7 +55,7 @@ class TimestepEmbedder(nn.Module):
             embedding = torch.cat([embedding, torch.zeros_like(embedding[:, : 1])], dim = -1)
         return embedding
 
-    def forward(self, t):
+    def forward(self, t: torch.Tensor) -> torch.Tensor:
         t_freq = self.TimestepEmbedding(t, self.frequency_embedding_size)
         t_emb = self.mlp(t_freq)
         return t_emb
@@ -79,7 +79,7 @@ class SparseStructureFlowModel(nn.Module):
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.resolution = resolution

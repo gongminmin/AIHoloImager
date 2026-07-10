@@ -1,10 +1,10 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/attention/full_attn.py
 
 import math
-from typing import *
+from typing import overload
 
 import torch
 

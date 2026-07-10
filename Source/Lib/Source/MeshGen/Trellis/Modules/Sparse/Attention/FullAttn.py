@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/full_attn.py
 
-from typing import *
+from typing import overload, Union
 
 import torch
 
@@ -85,7 +85,7 @@ def SparseScaledDotProductAttention(q: torch.Tensor, k: SparseTensor, v: SparseT
     """
     ...
 
-def SparseScaledDotProductAttention(*args, **kwargs):
+def SparseScaledDotProductAttention(*args, **kwargs) -> Union[SparseTensor, torch.Tensor]:
     arg_names_dict = {
         1: ["qkv"],
         2: ["q", "kv"],

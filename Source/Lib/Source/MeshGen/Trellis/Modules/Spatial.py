@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/spatial.py
@@ -17,7 +17,7 @@ def PixelShuffle3D(x: torch.Tensor, scale_factor: int) -> torch.Tensor:
     x = x.reshape(batch, channels, height * scale_factor, width * scale_factor, depth * scale_factor)
     return x
 
-def Patchify(x: torch.Tensor, patch_size: int):
+def Patchify(x: torch.Tensor, patch_size: int) -> torch.Tensor:
     """
     Patchify a tensor.
 
@@ -35,7 +35,7 @@ def Patchify(x: torch.Tensor, patch_size: int):
     x = x.reshape(x.shape[0], x.shape[1] * (patch_size ** dim), *(x.shape[-dim :]))
     return x
 
-def Unpatchify(x: torch.Tensor, patch_size: int):
+def Unpatchify(x: torch.Tensor, patch_size: int) -> torch.Tensor:
     """
     Unpatchify a tensor.
 

@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/attention/blocks.py
 
-from typing import *
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ class AbsolutePositionEmbedder(nn.Module):
     Embeds spatial positions into vector representations.
     """
 
-    def __init__(self, channels: int, in_channels: int = 3):
+    def __init__(self, channels: int, in_channels: Optional[int] = 3) -> None:
         super().__init__()
 
         self.channels = channels
@@ -55,7 +55,7 @@ class AbsolutePositionEmbedder(nn.Module):
         return embed
 
 class FeedForwardNet(nn.Module):
-    def __init__(self, channels: int, mlp_ratio: float = 4.0, device: Optional[torch.device] = None):
+    def __init__(self, channels: int, mlp_ratio: Optional[float] = 4.0, device: Optional[torch.device] = None) -> None:
         super().__init__()
 
         self.mlp = nn.Sequential(

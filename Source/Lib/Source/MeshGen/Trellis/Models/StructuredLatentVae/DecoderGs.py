@@ -1,20 +1,20 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_vae/decoder_gs.py
 
-from typing import *
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
 from ...Modules import Sparse as sp
 from .Base import SparseTransformerBase
 
 PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53]
 
-def radical_inverse(base, n):
+def radical_inverse(base, n) -> float:
     val = 0
     inv_base = 1.0 / base
     inv_base_n = inv_base
@@ -25,16 +25,16 @@ def radical_inverse(base, n):
         inv_base_n *= inv_base
     return val
 
-def halton_sequence(dim, n):
+def halton_sequence(dim, n) -> list[float]:
     return [radical_inverse(PRIMES[dim], n) for dim in range(dim)]
 
-def hammersley_sequence(dim, n, num_samples):
+def hammersley_sequence(dim, n, num_samples) -> list[float]:
     return [n / num_samples] + halton_sequence(dim - 1, n)
 
-def inverse_sigmoid(x):
-    return torch.log(x/(1-x))
+def inverse_sigmoid(x) -> torch.Tensor:
+    return torch.log( x / (1 - x))
 
-def strip_lowerdiag(L, device):
+def strip_lowerdiag(L, device) -> torch.Tensor:
     uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device = device)
 
     uncertainty[:, 0] = L[:, 0, 0]
@@ -45,10 +45,10 @@ def strip_lowerdiag(L, device):
     uncertainty[:, 5] = L[:, 2, 2]
     return uncertainty
 
-def strip_symmetric(sym, device):
+def strip_symmetric(sym, device) -> torch.Tensor:
     return strip_lowerdiag(sym, device = device)
 
-def build_scaling_rotation(s, r, device):
+def build_scaling_rotation(s, r, device) -> torch.Tensor:
     L = torch.zeros((s.shape[0], 3, 3), dtype = torch.float, device = device)
     R = build_rotation(r)
 
@@ -69,7 +69,7 @@ class Gaussian:
             opacity_bias: float = 0.1,
             scaling_activation: str = "exp",
             device: Optional[torch.device] = None,
-        ):
+        ) -> None:
 
         self.init_params = {
             'aabb': aabb,
@@ -97,13 +97,13 @@ class Gaussian:
         self._rotation = None
         self._opacity = None
 
-    def setup_functions(self):
-        def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation):
+    def setup_functions(self) -> None:
+        def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation) -> torch.Tensor:
             L = build_scaling_rotation(scaling_modifier * scaling, rotation, device = self.device)
             actual_covariance = L @ L.transpose(1, 2)
             symm = strip_symmetric(actual_covariance, device = self.device)
             return symm
-        
+
         if self.scaling_activation_type == "exp":
             self.scaling_activation = torch.exp
             self.inverse_scaling_activation = torch.log
@@ -124,26 +124,26 @@ class Gaussian:
         self.opacity_bias = self.inverse_opacity_activation(torch.tensor(self.opacity_bias)).to(self.device)
 
     @property
-    def get_scaling(self):
+    def get_scaling(self) -> torch.Tensor:
         scales = self.scaling_activation(self._scaling + self.scale_bias)
         scales = torch.square(scales) + self.mininum_kernel_size ** 2
         scales = torch.sqrt(scales)
         return scales
     
     @property
-    def get_rotation(self):
+    def get_rotation(self) -> torch.Tensor:
         return self.rotation_activation(self._rotation + self.rots_bias[None, :])
     
     @property
-    def get_xyz(self):
+    def get_xyz(self) -> torch.Tensor:
         return self._xyz * self.aabb[None, 3:] + self.aabb[None, :3]
     
     @property
-    def get_features(self):
+    def get_features(self) -> torch.Tensor:
         return torch.cat((self._features_dc, self._features_rest), dim = 2) if self._features_rest is not None else self._features_dc
     
     @property
-    def get_opacity(self):
+    def get_opacity(self) -> torch.Tensor:
         return self.opacity_activation(self._opacity + self.opacity_bias)
 
 class SLatGaussianDecoder(SparseTransformerBase):
@@ -163,7 +163,7 @@ class SLatGaussianDecoder(SparseTransformerBase):
         qk_rms_norm: bool = False,
         representation_config: dict = None,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super(SLatGaussianDecoder, self).__init__(
             in_channels = latent_channels,
             model_channels = model_channels,
@@ -217,7 +217,7 @@ class SLatGaussianDecoder(SparseTransformerBase):
             start += v['size']
         self.out_channels = start
     
-    def ToRepresentation(self, x: sp.SparseTensor) -> List[Gaussian]:
+    def ToRepresentation(self, x: sp.SparseTensor) -> list[Gaussian]:
         """
         Convert a batch of network outputs to 3D representations.
 
@@ -255,9 +255,9 @@ class SLatGaussianDecoder(SparseTransformerBase):
             ret.append(representation)
         return ret
 
-    def forward(self, x: sp.SparseTensor) -> List[Gaussian]:
+    def forward(self, x: sp.SparseTensor) -> list[Gaussian]:
         h = super().forward(x)
         h = h.type(x.dtype)
-        h = h.replace(F.layer_norm(h.feats, h.feats.shape[-1:]))
+        h = h.replace(functional.layer_norm(h.feats, h.feats.shape[-1 :]))
         h = self.out_layer(h)
         return self.ToRepresentation(h)

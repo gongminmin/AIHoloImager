@@ -1,7 +1,8 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 from pathlib import Path
+from typing import Optional
 
 import torch
 from torch.nn.utils import skip_init
@@ -9,28 +10,28 @@ from torch.nn.utils import skip_init
 from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache
 from ModMidas.MidasNet import MidasNet, MidasNetSmall
 
-def Round32(x):
+def Round32(x: int) -> int:
     return (int(x) + 31) & ~31
 
-def SrgbToLinear(img):
+def SrgbToLinear(img: torch.Tensor) -> torch.Tensor:
     return img ** 2.2
 
-def LinearToSrgb(img):
+def LinearToSrgb(img: torch.Tensor) -> torch.Tensor:
     img = img ** (1 / 2.2)
     return img.clip(0, 1)
 
-def Invert(x):
+def Invert(x: torch.Tensor) -> torch.Tensor:
     out = 1.0 / (x + 1.0)
     return out
 
-def Uninvert(x):
+def Uninvert(x: torch.Tensor) -> torch.Tensor:
     out = (1.0 / x) - 1.0
     return out
 
-def GetYFactor():
+def GetYFactor() -> tuple[float, float, float]:
     return (0.299, 0.587, 0.114)
 
-def CalcLum(rgb):
+def CalcLum(rgb: torch.Tensor) -> torch.Tensor:
     r = rgb[:, 0, :, :]
     g = rgb[:, 1, :, :]
     b = rgb[:, 2, :, :]
@@ -39,7 +40,7 @@ def CalcLum(rgb):
     l = r * yuv_factor[0] + g * yuv_factor[1] + b * yuv_factor[2]
     return l
 
-def Rgb2InvLuv(rgb, eps = 0.001):
+def Rgb2InvLuv(rgb, eps: Optional[float] = 0.001) -> torch.Tensor:
     l = CalcLum(rgb)
 
     r = rgb[:, 0, :, :]
@@ -52,7 +53,7 @@ def Rgb2InvLuv(rgb, eps = 0.001):
 
     return torch.stack((inv_l, inv_u, inv_v), axis = 1)
 
-def InvLuv2Rgb(inv_luv, eps = 0.001):
+def InvLuv2Rgb(inv_luv, eps: Optional[float] = 0.001) -> torch.Tensor:
     l = Uninvert(inv_luv[:, 0, :, :].clip(eps))
     u = Uninvert(inv_luv[:, 1, :, :].clip(eps))
     v = Uninvert(inv_luv[:, 2, :, :].clip(eps))
@@ -64,7 +65,7 @@ def InvLuv2Rgb(inv_luv, eps = 0.001):
 
     return torch.stack((r, g, b), axis = 1)
 
-def BaseResize(img, base_dim):
+def BaseResize(img, base_dim: int) -> torch.Tensor:
     h, w = img.shape[-2 :]
 
     max_dim = max(w, h)
@@ -75,7 +76,7 @@ def BaseResize(img, base_dim):
 
     return torch.nn.functional.interpolate(img, size = (new_h, new_w), mode = "bilinear", align_corners = True, antialias = True)
 
-def EqualizePredictions(img, base, full, p = 0.5):
+def EqualizePredictions(img, base: torch.Tensor, full: torch.Tensor, p: Optional[float] = 0.5) -> tuple[torch.Tensor, torch.Tensor]:
     h, w = img.shape[-2 :]
 
     full_shading = Uninvert(full.clip(1e-5))
@@ -100,7 +101,7 @@ def EqualizePredictions(img, base, full, p = 0.5):
     return base, new_full
 
 class Delighter:
-    def __init__(self):
+    def __init__(self) -> None:
         self.ord_model_idx = 0
         self.iid_model_idx = 1
         self.col_model_idx = 2
@@ -118,7 +119,7 @@ class Delighter:
         )
         self.LoadModels(model_paths)
 
-    def Destroy(self):
+    def Destroy(self) -> None:
         del self.models
         PurgeTorchCache()
 
@@ -178,7 +179,7 @@ class Delighter:
         DeviceSync(self.device)
         return result_image
 
-    def LoadModels(self, paths):
+    def LoadModels(self, paths: list[str]) -> None:
         self.models = [None] * 4
 
         ord_state_dict = self.FixStateDict(torch.load(paths[0], map_location = GeneralDevice(), weights_only = True))
@@ -206,7 +207,7 @@ class Delighter:
         alb_model.eval()
         self.models[self.alb_model_idx] = alb_model.to(self.device)
 
-    def FixStateDict(self, state_dict):
+    def FixStateDict(self, state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         new_state_dict = {}
         for key, value in state_dict.items():
             if key.find("resConfUnit") != -1:
@@ -215,7 +216,7 @@ class Delighter:
         return new_state_dict
 
     @torch.no_grad()
-    def RunGrayPipeline(self, img, base_dim, lstsq_p = 0.0):
+    def RunGrayPipeline(self, img: torch.Tensor, base_dim: int, lstsq_p: Optional[float] = 0.0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         orig_h, orig_w = img.shape[-2 :]
 
         img = torch.nn.functional.interpolate(img, size = (Round32(orig_h), Round32(orig_w)), mode = "bilinear", align_corners = True, antialias = True)

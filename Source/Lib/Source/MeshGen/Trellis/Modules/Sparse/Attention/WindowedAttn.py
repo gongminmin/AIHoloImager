@@ -1,10 +1,10 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/windowed_attn.py
 
 import math
-from typing import *
+from typing import Optional, Union
 
 import torch
 
@@ -17,9 +17,9 @@ __all__ = [
 
 def CalcWindowPartition(
     tensor: SparseTensor,
-    window_size: Union[int, Tuple[int, ...]],
-    shift_window: Union[int, Tuple[int, ...]] = 0
-) -> Tuple[torch.Tensor, torch.Tensor, List[int], List[int]]:
+    window_size: Union[int, tuple[int, ...]],
+    shift_window: Optional[Union[int, tuple[int, ...]]] = 0
+) -> tuple[torch.Tensor, torch.Tensor, list[int], list[int]]:
     """
     Calculate serialization and partitioning for a set of coordinates.
 
@@ -61,7 +61,7 @@ def CalcWindowPartition(
 def SparseWindowedScaledDotProductSelfAttention(
     qkv: SparseTensor,
     window_size: int,
-    shift_window: Tuple[int, int, int] = (0, 0, 0)
+    shift_window: Optional[tuple[int, int, int]] = (0, 0, 0)
 ) -> SparseTensor:
     """
     Apply windowed scaled dot product self attention to a sparse tensor.

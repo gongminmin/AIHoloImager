@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 from pathlib import Path
@@ -10,7 +10,7 @@ from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCac
 from U2Net import U2Net, U2NetSmall
 
 class MaskGenerator:
-    def __init__(self):
+    def __init__(self) -> None:
         this_py_dir = Path(__file__).parent.resolve()
 
         self.device = ComputeDevice()
@@ -27,7 +27,7 @@ class MaskGenerator:
         self.u2net_small.eval()
         self.u2net_small.to(self.device)
 
-    def Destroy(self):
+    def Destroy(self) -> None:
         del self.u2net
         del self.u2net_small
         PurgeTorchCache()

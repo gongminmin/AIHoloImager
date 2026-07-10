@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # From https://github.com/xuebinqin/U-2-Net/blob/master/model/u2net.py
@@ -10,25 +10,25 @@ import torch.nn as nn
 import torch.nn.functional as functional
 
 class ReBnConv(nn.Module):
-    def __init__(self, in_ch = 3, out_ch = 3, dirate = 1, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, out_ch: Optional[int] = 3, dirate: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
         super(ReBnConv, self).__init__()
 
         self.conv_s1 = nn.Conv2d(in_ch, out_ch, 3, padding = 1 * dirate, dilation = 1 * dirate, device = device)
         self.bn_s1 = nn.BatchNorm2d(out_ch, device = device)
         self.relu_s1 = nn.ReLU(inplace = True)
 
-    def forward(self,x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
         hx = self.conv_s1(hx)
         hx = self.bn_s1(hx)
         xout = self.relu_s1(hx)
         return xout
 
-def UpsampleLike(src, target):
+def UpsampleLike(src, target: torch.Tensor) -> torch.Tensor:
     return functional.interpolate(src, size = target.shape[2 : ], mode = "bilinear")
 
 class Rsu4(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
         super(Rsu4, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -47,7 +47,7 @@ class Rsu4(nn.Module):
         self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
         self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hxin = self.rebnconvin(hx)
@@ -73,7 +73,7 @@ class Rsu4(nn.Module):
         return hx1d + hxin
 
 class Rsu4F(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
         super(Rsu4F, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -88,7 +88,7 @@ class Rsu4F(nn.Module):
         self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 2, device = device)
         self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
-    def forward(self,x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hxin = self.rebnconvin(hx)
@@ -106,7 +106,7 @@ class Rsu4F(nn.Module):
         return hx1d + hxin
 
 class Rsu5(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
         super(Rsu5, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -129,7 +129,7 @@ class Rsu5(nn.Module):
         self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
         self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
-    def forward(self,x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hxin = self.rebnconvin(hx)
@@ -161,7 +161,7 @@ class Rsu5(nn.Module):
         return hx1d + hxin
 
 class Rsu6(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
         super(Rsu6, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -188,7 +188,7 @@ class Rsu6(nn.Module):
         self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
         self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
-    def forward(self,x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hxin = self.rebnconvin(hx)
@@ -226,7 +226,7 @@ class Rsu6(nn.Module):
         return hx1d + hxin
 
 class Rsu7(nn.Module):
-    def __init__(self, in_ch = 3, mid_ch = 12, out_ch = 3, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
         super(Rsu7, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -257,7 +257,7 @@ class Rsu7(nn.Module):
         self.rebnconv2d = ReBnConv(mid_ch * 2, mid_ch, dirate = 1, device = device)
         self.rebnconv1d = ReBnConv(mid_ch * 2, out_ch, dirate = 1, device = device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
         hxin = self.rebnconvin(hx)
 
@@ -300,7 +300,7 @@ class Rsu7(nn.Module):
         return hx1d + hxin
 
 class U2Net(nn.Module):
-    def __init__(self, in_ch = 3,out_ch = 1, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3, out_ch: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
         super(U2Net, self).__init__()
 
         self.stage1 = Rsu7(in_ch, 32, 64, device = device)
@@ -335,7 +335,7 @@ class U2Net(nn.Module):
 
         self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1, device = device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hx1 = self.stage1(hx)
@@ -394,7 +394,7 @@ class U2Net(nn.Module):
         return functional.sigmoid(d0)
 
 class U2NetSmall(nn.Module):
-    def __init__(self, in_ch = 3,out_ch = 1, device : Optional[torch.device] = None):
+    def __init__(self, in_ch: Optional[int] = 3,out_ch: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
         super(U2NetSmall, self).__init__()
 
         self.stage1 = Rsu7(in_ch, 16, 64, device = device)
@@ -429,7 +429,7 @@ class U2NetSmall(nn.Module):
 
         self.outconv = nn.Conv2d(6 * out_ch, out_ch, 1, device = device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         hx = x
 
         hx1 = self.stage1(hx)

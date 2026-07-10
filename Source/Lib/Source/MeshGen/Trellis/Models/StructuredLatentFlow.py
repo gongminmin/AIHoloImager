@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_flow.py
 
-from typing import *
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -26,7 +26,7 @@ class SparseResBlock3D(nn.Module):
         downsample: bool = False,
         upsample: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         if out_channels is None:
@@ -57,7 +57,7 @@ class SparseResBlock3D(nn.Module):
             x = self.updown(x)
         return x
 
-    def SetGpuSystem(self, gpu_system):
+    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
         self.conv1.SetGpuSystem(gpu_system)
         self.conv2.SetGpuSystem(gpu_system)
 
@@ -90,7 +90,7 @@ class SLatFlowModel(nn.Module):
         mlp_ratio: float = 4,
         patch_size: int = 2,
         num_io_res_blocks: int = 2,
-        io_block_channels: List[int] = None,
+        io_block_channels: list[int] = None,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
         use_skip_connection: bool = True,
@@ -98,7 +98,7 @@ class SLatFlowModel(nn.Module):
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.in_channels = in_channels
@@ -230,7 +230,7 @@ class SLatFlowModel(nn.Module):
         nn.init.constant_(self.out_layer.weight, 0)
         nn.init.constant_(self.out_layer.bias, 0)
 
-    def SetGpuSystem(self, gpu_system):
+    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
         for block in self.input_blocks:
             if isinstance(block, SparseResBlock3D):
                 block.SetGpuSystem(gpu_system)

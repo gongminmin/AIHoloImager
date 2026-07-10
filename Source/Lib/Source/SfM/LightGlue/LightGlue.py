@@ -6,7 +6,7 @@
 import warnings
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -48,7 +48,7 @@ def NormalizeKeypoints(
     kpts = (kpts - shift[..., None, :]) / scale[..., None, None]
     return kpts
 
-def PadToLength(x: torch.Tensor, length: int) -> Tuple[torch.Tensor]:
+def PadToLength(x: torch.Tensor, length: int) -> tuple[torch.Tensor, torch.Tensor]:
     if length <= x.shape[-2]:
         return x, torch.ones_like(x[..., :1], dtype = torch.bool)
     pad = torch.ones(
@@ -89,7 +89,7 @@ class TokenConfidence(nn.Module):
         super().__init__()
         self.token = nn.Sequential(nn.Linear(dim, 1, device = device), nn.Sigmoid())
 
-    def forward(self, desc0: torch.Tensor, desc1: torch.Tensor):
+    def forward(self, desc0: torch.Tensor, desc1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """get confidence tokens"""
         return (
             self.token(desc0.detach()).squeeze(-1),
@@ -198,12 +198,12 @@ class CrossBlock(nn.Module):
         else:
             self.flash = None
 
-    def Map(self, func: Callable, x0: torch.Tensor, x1: torch.Tensor):
+    def Map(self, func: callable, x0: torch.Tensor, x1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         return func(x0), func(x1)
 
     def forward(
         self, x0: torch.Tensor, x1: torch.Tensor, mask: Optional[torch.Tensor] = None
-    ) -> List[torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         qk0, qk1 = self.Map(self.to_qk, x0, x1)
         v0, v1 = self.Map(self.to_v, x0, x1)
         qk0, qk1, v0, v1 = map(
@@ -233,7 +233,7 @@ class CrossBlock(nn.Module):
         return x0, x1
 
 class TransformerLayer(nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__()
 
         self.self_attn = SelfBlock(*args, **kwargs)
@@ -247,7 +247,7 @@ class TransformerLayer(nn.Module):
         encoding1,
         mask0: Optional[torch.Tensor] = None,
         mask1: Optional[torch.Tensor] = None,
-    ):
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if mask0 is not None and mask1 is not None:
             return self.MaskedForward(desc0, desc1, encoding0, encoding1, mask0, mask1)
         else:
@@ -256,7 +256,7 @@ class TransformerLayer(nn.Module):
             return self.cross_attn(desc0, desc1)
 
     # This part is compiled and allows padding inputs
-    def MaskedForward(self, desc0, desc1, encoding0, encoding1, mask0, mask1):
+    def MaskedForward(self, desc0, desc1, encoding0, encoding1, mask0, mask1) -> torch.Tensor:
         mask = mask0 & mask1.transpose(-1, -2)
         mask0 = mask0 & mask0.transpose(-1, -2)
         mask1 = mask1 & mask1.transpose(-1, -2)
@@ -286,7 +286,7 @@ class MatchAssignment(nn.Module):
         self.matchability = nn.Linear(dim, 1, bias = True, device = device)
         self.final_proj = nn.Linear(dim, dim, bias = True, device = device)
 
-    def forward(self, desc0: torch.Tensor, desc1: torch.Tensor):
+    def forward(self, desc0: torch.Tensor, desc1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """build assignment matrix from descriptors"""
         mdesc0, mdesc1 = self.final_proj(desc0), self.final_proj(desc1)
         _, _, d = mdesc0.shape
@@ -300,7 +300,7 @@ class MatchAssignment(nn.Module):
     def GetMatchability(self, desc: torch.Tensor):
         return torch.sigmoid(self.matchability(desc)).squeeze(-1)
 
-def FilterMatches(scores: torch.Tensor, th: float):
+def FilterMatches(scores: torch.Tensor, th: float) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """obtain matches from a log assignment matrix [Bx M+1 x N+1]"""
     max0, max1 = scores[:, : -1, : -1].max(2), scores[:, : -1, : -1].max(1)
     m0, m1 = max0.indices, max1.indices
@@ -440,7 +440,7 @@ class LightGlue(nn.Module):
 
     def compile(
         self, mode = "reduce-overhead", static_lengths = [256, 512, 768, 1024, 1280, 1536]
-    ):
+    ) -> None:
         if self.conf.width_confidence != -1:
             warnings.warn(
                 "Point pruning is partially disabled for compiled forward.",
@@ -455,7 +455,7 @@ class LightGlue(nn.Module):
 
         self.static_lengths = static_lengths
 
-    def forward(self, data: dict) -> dict:
+    def forward(self, data: dict) -> dict[str, Any]:
         """
         Match keypoints and descriptors between two images
 
@@ -473,8 +473,8 @@ class LightGlue(nn.Module):
             matching_scores0: [B x M]
             matches1: [B x N]
             matching_scores1: [B x N]
-            matches: List[[Si x 2]]
-            scores: List[[Si]]
+            matches: list[[Si x 2]]
+            scores: list[[Si]]
             stop: int
             prune0: [B x M]
             prune1: [B x N]
@@ -482,7 +482,7 @@ class LightGlue(nn.Module):
         with torch.autocast(enabled = self.conf.mp, device_type = "cuda"):
             return self._forward(data)
 
-    def _forward(self, data: dict) -> dict:
+    def _forward(self, data: dict) -> dict[str, torch.Tensor]:
         for key in self.required_data_keys:
             assert key in data, f"Missing key {key} in data"
         data0, data1 = data["image0"], data["image1"]
@@ -657,7 +657,7 @@ class LightGlue(nn.Module):
         ratio_confident = 1.0 - (confidences < threshold).float().sum() / num_points
         return ratio_confident > self.conf.depth_confidence
 
-    def PruningMinKpts(self, device: torch.device):
+    def PruningMinKpts(self, device: torch.device) -> int:
         if self.conf.flash and FLASH_AVAILABLE and device.type == "cuda":
             return self.pruning_keypoint_thresholds["flash"]
         else:

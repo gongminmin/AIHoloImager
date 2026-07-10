@@ -1,11 +1,11 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 from typing import *
 
 import torch
 
-def SeedRandom(seed : int):
+def SeedRandom(seed: int) -> None:
     import random
     random.seed(seed)
 
@@ -15,7 +15,7 @@ def SeedRandom(seed : int):
     torch.manual_seed(seed)
 
 compute_device_name = "cpu"
-def InitPySys(device : str):
+def InitPySys(device: str) -> None:
     global compute_device_name
     torch_device = getattr(torch, device, None)
     if (torch_device != None) and hasattr(torch_device, "is_available") and torch_device.is_available():
@@ -33,14 +33,14 @@ def InitPySys(device : str):
         this_py_dir = Path(__file__).parent.resolve()
 
 general_device = None
-def GeneralDevice():
+def GeneralDevice() -> torch.device:
     global general_device
     if general_device == None:
         general_device = torch.device("cpu")
     return general_device
 
 compute_device = None
-def ComputeDevice():
+def ComputeDevice() -> torch.device:
     global compute_device
     if compute_device == None:
         global compute_device_name
@@ -50,19 +50,19 @@ def ComputeDevice():
             compute_device = GeneralDevice()
     return compute_device
 
-def PurgeTorchCache():
+def PurgeTorchCache() -> None:
     global compute_device_name
     torch_device = getattr(torch, compute_device_name, None)
     if (torch_device != None) and hasattr(torch_device, "empty_cache"):
         torch_device.empty_cache()
 
-def DeviceSync(device: torch.device):
+def DeviceSync(device: torch.device) -> None:
     global compute_device_name
     torch_device = getattr(torch, compute_device_name, None)
     if (torch_device != None) and hasattr(torch_device, "synchronize"):
         torch_device.synchronize(device)
 
-def TensorFromBytes(buffer : bytes, dtype : torch.dtype, count : int, device : Optional[torch.device] = None) -> torch.Tensor:
+def TensorFromBytes(buffer: bytes, dtype: torch.dtype, count: int, device: Optional[torch.device] = None) -> torch.Tensor:
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -73,6 +73,6 @@ def TensorFromBytes(buffer : bytes, dtype : torch.dtype, count : int, device : O
         tensor = tensor.to(device)
     return tensor
 
-def TensorToBytes(tensor : torch.Tensor) -> bytes:
+def TensorToBytes(tensor: torch.Tensor) -> bytes:
     tensor = tensor.to(GeneralDevice()).contiguous()
     return tensor.numpy().tobytes()

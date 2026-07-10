@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/basic.py
 
-from typing import *
+from typing import Optional, overload, Union
 
 import torch
 import torch.nn as nn
@@ -22,18 +22,18 @@ class SparseTensor:
     - feats (torch.Tensor): Features of the sparse tensor.
     - coords (torch.Tensor): Coordinates of the sparse tensor.
     - shape (torch.Size): Shape of the sparse tensor.
-    - layout (List[slice]): Layout of the sparse tensor for each batch
+    - layout (list[slice]): Layout of the sparse tensor for each batch
     """
 
     @overload
-    def __init__(self, feats: torch.Tensor, coords: torch.Tensor, shape: Optional[torch.Size] = None, layout: Optional[List[slice]] = None, **kwargs):
+    def __init__(self, feats: torch.Tensor, coords: torch.Tensor, shape: Optional[torch.Size] = None, layout: Optional[list[slice]] = None, **kwargs) -> None:
         ...
 
     @overload
-    def __init__(self, data, shape: Optional[torch.Size] = None, layout: Optional[List[slice]] = None, **kwargs):
+    def __init__(self, data, shape: Optional[torch.Size] = None, layout: Optional[list[slice]] = None, **kwargs) -> None:
         ...
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         feats, coords, shape, layout = args + (None, ) * (4 - len(args))
         if "feats" in kwargs:
             feats = kwargs["feats"]
@@ -83,13 +83,13 @@ class SparseTensor:
         self._scale = scale
         self._spatial_cache = spatial_cache
 
-    def CalcShape(self, feats, coords):
+    def CalcShape(self, feats, coords) -> torch.Size:
         shape = []
         shape.append(coords[:, 0].max().item() + 1)
         shape.extend([*feats.shape[1 :]])
         return torch.Size(shape)
 
-    def CalcLayout(self, coords, batch_size):
+    def CalcLayout(self, coords, batch_size) -> list[slice]:
         seq_len = torch.bincount(coords[:, 0], minlength = batch_size)
         offset = torch.cumsum(seq_len, dim = 0) 
         layout = [slice((offset[i] - seq_len[i]).item(), offset[i].item()) for i in range(batch_size)]
@@ -103,7 +103,7 @@ class SparseTensor:
         return len(self.shape)
 
     @property
-    def layout(self) -> List[slice]:
+    def layout(self) -> list[slice]:
         return self._layout
 
     @property
@@ -111,7 +111,7 @@ class SparseTensor:
         return self.values
 
     @feats.setter
-    def feats(self, value: torch.Tensor):
+    def feats(self, value: torch.Tensor) -> None:
         self.values = value
 
     @property
@@ -119,15 +119,15 @@ class SparseTensor:
         return self.indices
 
     @coords.setter
-    def coords(self, value: torch.Tensor):
+    def coords(self, value: torch.Tensor) -> None:
         self.indices = value
 
     @property
-    def dtype(self):
+    def dtype(self) -> torch.dtype:
         return self.feats.dtype
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         return self.feats.device
 
     @overload
@@ -159,7 +159,7 @@ class SparseTensor:
         new_coords = self.coords.to(device = device)
         return self.replace(new_feats, new_coords)
 
-    def type(self, dtype):
+    def type(self, dtype: torch.dtype) -> "SparseTensor":
         new_feats = self.feats.type(dtype)
         return self.replace(new_feats)
 
@@ -190,7 +190,7 @@ class SparseTensor:
         new_feats = self.feats.reshape(self.feats.shape[0], *shape)
         return self.replace(new_feats)
 
-    def unbind(self, dim: int) -> List["SparseTensor"]:
+    def unbind(self, dim: int) -> list["SparseTensor"]:
         return SparseUnbind(self, dim)
 
     def replace(self, feats: torch.Tensor, coords: Optional[torch.Tensor] = None) -> "SparseTensor":
@@ -204,7 +204,7 @@ class SparseTensor:
         return new_tensor
 
     @staticmethod
-    def full(aabb, dim, value, dtype = torch.float32, device = None) -> "SparseTensor":
+    def full(aabb, dim, value, dtype = torch.float32, device: Optional[torch.device] = None) -> "SparseTensor":
         num, channels = dim
         x = torch.arange(aabb[0], aabb[3] + 1)
         y = torch.arange(aabb[1], aabb[4] + 1)
@@ -271,7 +271,7 @@ class SparseTensor:
     def __rtruediv__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
         return self.__elemwise__(other, lambda x, y: torch.div(y, x))
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: Union[int, slice, torch.Tensor]):
         if isinstance(idx, int):
             idx = [idx]
         elif isinstance(idx, slice):
@@ -336,7 +336,7 @@ def SparseBatchBroadcast(input: SparseTensor, other: torch.Tensor) -> torch.Tens
         broadcasted[input.layout[k]] = other[k]
     return broadcasted
 
-def SparseUnbind(input: SparseTensor, dim: int) -> List[SparseTensor]:
+def SparseUnbind(input: SparseTensor, dim: int) -> list[SparseTensor]:
     """
     Unbind a sparse tensor along a dimension.
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 from pathlib import Path
@@ -9,7 +9,7 @@ from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
-    def __init__(self, gpu_system):
+    def __init__(self, gpu_system: "GpuSystem") -> None:
         this_py_dir = Path(__file__).parent.resolve()
 
         self.device = ComputeDevice()
@@ -19,12 +19,12 @@ class MeshGenerator:
         self.pipeline = TrellisImageTo3DPipeline.FromPretrained(pretrained_dir)
         self.pipeline.to(self.device)
 
-    def Destroy(self):
+    def Destroy(self) -> None:
         del self.pipeline
         PurgeTorchCache()
 
     @torch.no_grad()
-    def GenFeatures(self, images):
+    def GenFeatures(self, images: torch.Tensor) -> None:
         torch_images = []
         for image in images:
             image = image.squeeze(0).permute(2, 0, 1)
@@ -85,7 +85,7 @@ class MeshGenerator:
 
         DeviceSync(self.device)
 
-    def Resolution(self):
+    def Resolution(self) -> int:
         return self.resolution
 
     def Coords(self) -> torch.Tensor:
@@ -100,10 +100,10 @@ class MeshGenerator:
     def ColorFeatures(self) -> torch.Tensor:
         return self.color_features
 
-    def GSplatNumGaussians(self):
+    def GSplatNumGaussians(self) -> int:
         return self.gsplat_positions.shape[0]
 
-    def GSplatShCoefficients(self):
+    def GSplatShCoefficients(self) -> int:
         return self.gsplat_shs.shape[1]
 
     def GSplatPositions(self) -> torch.Tensor:

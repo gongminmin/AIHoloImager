@@ -1,16 +1,18 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/samplers/flow_euler.py
 
-from typing import *
+from typing import Optional, Union
 
 import numpy as np
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 
 from .ClassifierFreeGuidanceMixin import ClassifierFreeGuidanceSamplerMixin
 from .GuidanceIntervalMixin import GuidanceIntervalSamplerMixin
+from ...Modules import Sparse as sp
 
 class FlowEulerSampler:
     """
@@ -23,20 +25,20 @@ class FlowEulerSampler:
     def __init__(
         self,
         sigma_min: float,
-    ):
+    ) -> None:
         self.sigma_min = sigma_min
 
-    def VToXStartEps(self, x_t, t, v):
+    def VToXStartEps(self, x_t: torch.Tensor, t: float, v: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         assert x_t.shape == v.shape
         eps = (1 - t) * v + x_t
         x_0 = (1 - self.sigma_min) * x_t - (self.sigma_min + (1 - self.sigma_min) * t) * v
         return x_0, eps
 
-    def InferenceModel(self, model, x_t, t: float, cond: Optional[torch.Tensor] = None, **kwargs):
+    def InferenceModel(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
         t = torch.tensor([1000 * t] * x_t.shape[0], device = x_t.device, dtype = torch.float32)
         return model(x_t, t, cond, **kwargs)
 
-    def GetModelPrediction(self, model, x_t, t: float, cond: Optional[torch.Tensor] = None, neg_cond: Optional[torch.Tensor] = None, **kwargs):
+    def GetModelPrediction(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: Optional[torch.Tensor] = None, neg_cond: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
         pred_v = self.InferenceModel(model, x_t, t, cond, neg_cond = neg_cond, **kwargs)
         pred_x_0, pred_eps = self.VToXStartEps(x_t = x_t, t = t, v = pred_v)
         return pred_x_0, pred_eps, pred_v
@@ -44,14 +46,14 @@ class FlowEulerSampler:
     @torch.no_grad()
     def SampleOnce(
         self,
-        model,
-        x_t,
+        model: nn.Module,
+        x_t: torch.Tensor,
         t: float,
         t_prev: float,
         cond: Optional[torch.Tensor] = None,
         neg_cond: Optional[torch.Tensor] = None,
         **kwargs
-    ):
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Sample x_{t-1} from the model using Euler method.
 
@@ -77,15 +79,15 @@ class FlowEulerSampler:
     @torch.no_grad()
     def Sample(
         self,
-        model,
-        noise,
+        model: nn.Module,
+        noise: Union[torch.Tensor, sp.SparseTensor],
         cond: Optional[torch.Tensor] = None,
         neg_cond: Optional[torch.Tensor] = None,
-        steps: int = 50,
-        rescale_t: float = 1.0,
-        verbose: bool = True,
+        steps: Optional[int] = 50,
+        rescale_t: Optional[float] = 1.0,
+        verbose: Optional[bool] = True,
         **kwargs
-    ):
+    ) -> torch.Tensor:
         """
         Generate samples from the model using Euler method.
 
@@ -120,16 +122,16 @@ class FlowEulerCfgSampler(ClassifierFreeGuidanceSamplerMixin, FlowEulerSampler):
     @torch.no_grad()
     def Sample(
         self,
-        model,
-        noise,
-        cond,
-        neg_cond,
-        steps: int = 50,
-        rescale_t: float = 1.0,
-        cfg_strength: float = 3.0,
-        verbose: bool = True,
+        model: nn.Module,
+        noise: Union[torch.Tensor, sp.SparseTensor],
+        cond: torch.Tensor,
+        neg_cond: torch.Tensor,
+        steps: Optional[int] = 50,
+        rescale_t: Optional[float] = 1.0,
+        cfg_strength: Optional[float] = 3.0,
+        verbose: Optional[bool] = True,
         **kwargs
-    ):
+    ) -> torch.Tensor:
         """
         Generate samples from the model using Euler method.
 
@@ -158,15 +160,15 @@ class FlowEulerGuidanceIntervalSampler(GuidanceIntervalSamplerMixin, FlowEulerSa
     @torch.no_grad()
     def Sample(
         self,
-        model,
-        noise,
-        cond,
-        neg_cond,
-        steps: int = 50,
-        rescale_t: float = 1.0,
-        cfg_strength: float = 3.0,
-        cfg_interval: Tuple[float, float] = (0.0, 1.0),
-        verbose: bool = True,
+        model: nn.Module,
+        noise: Union[torch.Tensor, sp.SparseTensor],
+        cond: torch.Tensor,
+        neg_cond: torch.Tensor,
+        steps: Optional[int] = 50,
+        rescale_t: Optional[float] = 1.0,
+        cfg_strength: Optional[float] = 3.0,
+        cfg_interval: tuple[float, float] = (0.0, 1.0),
+        verbose: Optional[bool] = True,
         **kwargs
     ):
         """

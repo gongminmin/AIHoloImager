@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/conv/conv_spconv.py
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ from AIHoloImagerSubMConv import SubMConv3DHelper
 subm_helpers = {}
 
 class SparseConv3D(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: Union[int, Tuple[int, int, int]], bias: Optional[bool] = True, indices_key: Optional[str] = None, device: Optional[torch.device] = None):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: Union[int, tuple[int, int, int]], bias: Optional[bool] = True, indices_key: Optional[str] = None, device: Optional[torch.device] = None) -> None:
         super(SparseConv3D, self).__init__()
 
         self.in_channels = in_channels
@@ -34,7 +34,7 @@ class SparseConv3D(nn.Module):
         else:
             self.register_parameter("bias", None)
 
-    def SetGpuSystem(self, gpu_system):
+    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
         self.gpu_system = gpu_system
 
     def forward(self, sp_tensor: SparseTensor) -> SparseTensor:
@@ -101,5 +101,5 @@ class SparseConv3D(nn.Module):
             spatial_cache = sp_tensor._spatial_cache,
         )
 
-    def __call__(self, sp_tensor):
+    def __call__(self, sp_tensor: SparseTensor) -> SparseTensor:
         return self.forward(sp_tensor)

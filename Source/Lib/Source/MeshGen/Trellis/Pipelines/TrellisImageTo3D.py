@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/trellis_image_to_3d.py
@@ -7,7 +7,7 @@ from contextlib import contextmanager
 import importlib
 import json
 from pathlib import Path
-from typing import Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 import warnings
 
 import numpy as np
@@ -32,7 +32,7 @@ class TrellisImageTo3DPipeline:
         slat_sampler_params: Optional[dict] = {},
         slat_normalization: Optional[dict] = None,
         image_cond_model: Optional[str] = None,
-    ):
+    ) -> None:
         assert models != None
         self.models = models
 
@@ -117,7 +117,7 @@ class TrellisImageTo3DPipeline:
         patch_tokens = functional.layer_norm(features, features.shape[-1 :])
         return patch_tokens
 
-    def GetCond(self, images: torch.Tensor) -> Tuple[torch.Tensor]:
+    def GetCond(self, images: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Get the conditioning information for the model.
 
@@ -172,10 +172,10 @@ class TrellisImageTo3DPipeline:
 
     def DecodeSlat(
         self,
-        gpu_system,
+        gpu_system: "GpuSystem",
         slat: sp.SparseTensor,
         output_types: list[str] = ["mesh", "gaussian"],
-    ) -> dict:
+    ) -> dict[str, list[torch.Tensor]]:
         """
         Decode the structured latent.
 
@@ -243,7 +243,7 @@ class TrellisImageTo3DPipeline:
         num_images: int,
         num_steps: int,
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
-    ):
+    ) -> None:
         """
         Inject a sampler with multiple images as condition.
 
@@ -302,7 +302,7 @@ class TrellisImageTo3DPipeline:
         slat_sampler_params: Optional[dict] = {},
         output_types: list[str] = ["mesh", "gaussian"],
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
-    ) -> list:
+    ) -> dict[str, list[torch.Tensor]]:
         """
         Run the pipeline with multiple images as condition
 

@@ -10,7 +10,7 @@ from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorFromB
 from LightGlue import SuperPoint
 
 class Extractor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.device = ComputeDevice()
 
         this_py_dir = Path(__file__).parent.resolve()
@@ -19,12 +19,12 @@ class Extractor:
         self.extractor.eval()
         self.extractor = self.extractor.to(self.device)
 
-    def Destroy(self):
+    def Destroy(self) -> None:
         del self.extractor
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Extract(self, image: bytes, image_width: int, image_height: int, channels: int) -> dict:
+    def Extract(self, image: bytes, image_width: int, image_height: int, channels: int) -> dict[str, torch.Tensor]:
         image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
         image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
 
@@ -36,5 +36,5 @@ class Extractor:
         DeviceSync(self.device)
         return self.extractor.Extract(gray_image)
 
-    def ExportFeatures(self, features: dict) -> tuple:
+    def ExportFeatures(self, features: dict) -> tuple[bytes, bytes, bytes]:
         return (TensorToBytes(features["descriptors"]), TensorToBytes(features["keypoints"]), TensorToBytes(features["image_size"]))

@@ -11,22 +11,22 @@ MobileNetV3 models that maintain weight compatibility with original Tensorflow m
 Copyright 2020 Ross Wightman
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
 
-def IsStaticPad(kernel_size, stride = 1, dilation = 1, **kwargs):
+def IsStaticPad(kernel_size: int, stride: Optional[int] = 1, dilation: Optional[int] = 1, **kwargs) -> int:
     return (stride == 1) and ((dilation * (kernel_size - 1)) % 2 == 0)
 
-def GetPadding(kernel_size, stride = 1, dilation = 1, **kwargs):
+def GetPadding(kernel_size: int, stride: Optional[int] = 1, dilation: Optional[int] = 1, **kwargs) -> int:
     return ((stride - 1) + dilation * (kernel_size - 1)) // 2
 
-def CalcSamePad(i : int, k : int, s : int, d : int):
+def CalcSamePad(i: int, k: int, s: int, d: int) -> int:
     return max((-(i // -s) - 1) * s + (k - 1) * d + 1 - i, 0)
 
-def Conv2dSameFunc(x, weight : torch.Tensor, bias : Optional[torch.Tensor] = None, stride : Tuple[int, int] = (1, 1),
-                   padding : Tuple[int, int] = (0, 0), dilation : Tuple[int, int] = (1, 1), groups : int = 1):
+def Conv2dSameFunc(x, weight: torch.Tensor, bias: Optional[torch.Tensor] = None, stride: Optional[tuple[int, int]] = (1, 1),
+                   padding: Optional[tuple[int, int]] = (0, 0), dilation: Optional[tuple[int, int]] = (1, 1), groups: Optional[int] = 1) -> torch.Tensor:
     ih, iw = x.size()[-2 : ]
     kh, kw = weight.size()[-2 : ]
     pad_h = CalcSamePad(ih, kh, stride[0], dilation[0])
@@ -39,15 +39,15 @@ class Conv2dSame(nn.Conv2d):
     """
 
     # pylint: disable=unused-argument
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1,
-                 padding = 0, dilation = 1, groups = 1, bias = True, device : Optional[torch.device] = None):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: Optional[int] = 1,
+                 padding: Optional[int] = 0, dilation: Optional[int] = 1, groups: Optional[int] = 1, bias: Optional[bool] = True, device: Optional[torch.device] = None) -> None:
         super(Conv2dSame, self).__init__(
               in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias, device = device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return Conv2dSameFunc(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
-def GetPaddingValue(padding, kernel_size, **kwargs):
+def GetPaddingValue(padding: Union[int, str], kernel_size: int, **kwargs) -> tuple[int, bool]:
     dynamic = False
     if isinstance(padding, str):
         # for any string padding, the padding will be calculated for you, one of three ways
@@ -69,7 +69,7 @@ def GetPaddingValue(padding, kernel_size, **kwargs):
             padding = GetPadding(kernel_size, **kwargs)
     return padding, dynamic
 
-def CreateConv2dPad(in_channels, out_channels, kernel_size, **kwargs):
+def CreateConv2dPad(in_channels: int, out_channels: int, kernel_size: int, **kwargs) -> torch.Tensor:
     padding = kwargs.pop("padding", "")
     kwargs.setdefault("bias", False)
     padding, is_dynamic = GetPaddingValue(padding, kernel_size, **kwargs)
@@ -78,7 +78,7 @@ def CreateConv2dPad(in_channels, out_channels, kernel_size, **kwargs):
     else:
         return nn.Conv2d(in_channels, out_channels, kernel_size, padding = padding, **kwargs)
 
-def SelectConv2d(in_channels, out_channels, kernel_size, **kwargs):
+def SelectConv2d(in_channels: int, out_channels: int, kernel_size: int, **kwargs) -> torch.Tensor:
     assert("groups" not in kwargs)  # only use 'depthwise' bool arg
     depthwise = kwargs.pop("depthwise", False)
     groups = out_channels if depthwise else 1

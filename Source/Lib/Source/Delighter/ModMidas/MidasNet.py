@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Simplified from https://github.com/CCareaga/MiDaS/blob/master/altered_midas/midas_net.py
@@ -10,7 +10,7 @@ This file contains code that is adapted from
 https://github.com/thomasjpfan/pytorch_refinenet/blob/master/pytorch_refinenet/refinenet/refinenet_4cascade.py
 """
 
-from typing import Optional
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,7 @@ import torch.nn as nn
 from .Blocks import FeatureFusionBlock, Interpolate, MakeEncoder
 
 class MidasNet(nn.Module):
-    def __init__(self, activation = "sigmoid", features = 256, in_channels = 3, out_channels = 1, group_width = 8, last_residual = False, device : Optional[torch.device] = None):
+    def __init__(self, activation: Literal["sigmoid", "relu", "Identity"] = "sigmoid", features: Optional[int] = 256, in_channels: Optional[int] = 3, out_channels: Optional[int] = 1, group_width: Optional[int] = 8, last_residual: Optional[bool] = False, device: Optional[torch.device] = None) -> None:
         super(MidasNet, self).__init__()
 
         self.out_channels = out_channels
@@ -54,7 +54,7 @@ class MidasNet(nn.Module):
             out_act
         ])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         layer_1 = self.pretrained.layer1(x)
         layer_2 = self.pretrained.layer2(layer_1)
         layer_3 = self.pretrained.layer3(layer_2)
@@ -84,7 +84,7 @@ class MidasNet(nn.Module):
         return out
 
 class MidasNetSmall(nn.Module):
-    def __init__(self, activation = "sigmoid", features = 64, in_channels = 3, out_channels = 1, out_bias = 0, device : Optional[torch.device] = None):
+    def __init__(self, activation: Literal["sigmoid", "tanh", "Identity"] = "sigmoid", features: Optional[int] = 64, in_channels: Optional[int] = 3, out_channels: Optional[int] = 1, out_bias: Optional[int] = 0, device: Optional[torch.device] = None) -> None:
         super(MidasNetSmall, self).__init__()
 
         self.pretrained, self.scratch = MakeEncoder(
@@ -94,8 +94,8 @@ class MidasNetSmall(nn.Module):
             expand = True,
             device = device,
         )
-  
-        self.scratch.activation = nn.ReLU(False)    
+
+        self.scratch.activation = nn.ReLU(False)
 
         self.scratch.refinenet4 = FeatureFusionBlock(features * 8, self.scratch.activation, expand = True, custom = True, device = device)
         self.scratch.refinenet3 = FeatureFusionBlock(features * 4, self.scratch.activation, expand = True, custom = True, device = device)
@@ -108,7 +108,7 @@ class MidasNetSmall(nn.Module):
             output_act = nn.Tanh()
         else:
             output_act = nn.Identity()
-        
+
         self.scratch.output_conv = nn.Sequential(
             nn.Conv2d(features, features // 2, kernel_size = 3, stride = 1, padding = 1, groups = 1, device = device),
             Interpolate(scale_factor = 2, mode = "bilinear"),
@@ -119,12 +119,12 @@ class MidasNetSmall(nn.Module):
         )
         self.scratch.output_conv[-2].bias = torch.nn.Parameter(torch.ones(out_channels, device = device) * out_bias)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         layer_1 = self.pretrained.layer1(x)
         layer_2 = self.pretrained.layer2(layer_1)
         layer_3 = self.pretrained.layer3(layer_2)
         layer_4 = self.pretrained.layer4(layer_3)
-        
+
         layer_1_rn = self.scratch.layer1_rn(layer_1)
         layer_2_rn = self.scratch.layer2_rn(layer_2)
         layer_3_rn = self.scratch.layer3_rn(layer_3)
@@ -134,7 +134,7 @@ class MidasNetSmall(nn.Module):
         path_3 = self.scratch.refinenet3(path_4, layer_3_rn)
         path_2 = self.scratch.refinenet2(path_3, layer_2_rn)
         path_1 = self.scratch.refinenet1(path_2, layer_1_rn)
-        
+
         out = self.scratch.output_conv(path_1)
 
         return out

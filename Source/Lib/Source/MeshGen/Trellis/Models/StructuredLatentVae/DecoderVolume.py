@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_vae/decoder_mesh.py
 
-from typing import *
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ from ...Modules import Sparse as sp
 from .Base import SparseTransformerBase
 
 class SparseVolumeExtractResult:
-    def __init__(self, resolution: int, x: sp.SparseTensor):
+    def __init__(self, resolution: int, x: sp.SparseTensor) -> None:
         self.resolution = resolution
         self.coords = x.coords[:, 1 :].to(torch.int32)
         self.feats = x.feats.to(torch.float16)
@@ -36,7 +36,7 @@ class SparseSubdivideBlock3D(nn.Module):
         out_channels: Optional[int] = None,
         num_groups: int = 32,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super(SparseSubdivideBlock3D, self).__init__()
 
         out_resolution = resolution * 2
@@ -65,7 +65,7 @@ class SparseSubdivideBlock3D(nn.Module):
         else:
             self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indices_key = indices_key, device = device)
 
-    def SetGpuSystem(self, gpu_system):
+    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
         for layer in self.out_layers:
             if isinstance(layer, sp.SparseConv3D):
                 layer.SetGpuSystem(gpu_system)
@@ -106,7 +106,7 @@ class SLatMeshDecoder(SparseTransformerBase):
         qk_rms_norm: bool = False,
         representation_config: dict = None,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super(SLatMeshDecoder, self).__init__(
             in_channels = latent_channels,
             model_channels = model_channels,
@@ -159,12 +159,12 @@ class SLatMeshDecoder(SparseTransformerBase):
         super().ConvertToFp16()
         self.upsample.apply(ConvertModuleToFp16)
 
-    def SetGpuSystem(self, gpu_system):
+    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
         for block in self.upsample:
             if isinstance(block, SparseSubdivideBlock3D):
                 block.SetGpuSystem(gpu_system)
 
-    def ToRepresentation(self, x: sp.SparseTensor) -> List[SparseVolumeExtractResult]:
+    def ToRepresentation(self, x: sp.SparseTensor) -> list[SparseVolumeExtractResult]:
         """
         Convert a batch of network outputs to 3D representations.
 
@@ -180,7 +180,7 @@ class SLatMeshDecoder(SparseTransformerBase):
             ret.append(SparseVolumeExtractResult(self.resolution * 4, x[i]))
         return ret
 
-    def forward(self, x: sp.SparseTensor) -> List[SparseVolumeExtractResult]:
+    def forward(self, x: sp.SparseTensor) -> list[SparseVolumeExtractResult]:
         h = super().forward(x)
         for block in self.upsample:
             h = block(h)

@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/attention/modules.py
 
-from typing import *
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
@@ -12,7 +12,7 @@ import torch.nn.functional as functional
 from .FullAttn import ScaledDotProductAttention
 
 class MultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None):
+    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None) -> None:
         super().__init__()
 
         self.scale = dim ** 0.5
@@ -22,7 +22,7 @@ class MultiHeadRMSNorm(nn.Module):
         return (functional.normalize(x.float(), dim = -1) * self.gamma * self.scale).to(x.dtype)
 
 class RotaryPositionEmbedder(nn.Module):
-    def __init__(self, hidden_size: int, in_channels: int = 3):
+    def __init__(self, hidden_size: int, in_channels: Optional[int] = 3) -> None:
         super().__init__()
 
         assert hidden_size % 2 == 0, "Hidden size must be divisible by 2"
@@ -44,7 +44,7 @@ class RotaryPositionEmbedder(nn.Module):
         x_embed = torch.view_as_real(x_rotated).reshape(*x_rotated.shape[: -1], -1).to(x.dtype)
         return x_embed
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, indices: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, q: torch.Tensor, k: torch.Tensor, indices: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             q (torch.Tensor): [..., N, D] tensor of queries
@@ -79,7 +79,7 @@ class MultiHeadAttention(nn.Module):
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         assert channels % num_heads == 0

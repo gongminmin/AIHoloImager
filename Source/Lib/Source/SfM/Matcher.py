@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 from LightGlue import LightGlue
-from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorToBytes
 
 class Matcher:
     def __init__(self):

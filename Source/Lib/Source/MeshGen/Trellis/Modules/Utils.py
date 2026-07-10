@@ -3,14 +3,14 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/utils.py
 
-from typing import *
+from typing import Optional, Sequence
 
 import torch
 import torch.nn as nn
 
 from ..Modules import Sparse as sp
 
-def ConvertModuleToFp16(l):
+def ConvertModuleToFp16(l: nn.Module) -> torch.Tensor:
     """
     Convert primitive modules to float16.
     """
@@ -31,7 +31,7 @@ def ConvertModuleToFp16(l):
         for p in l.parameters():
             p.data = p.data.half()
 
-def ZeroModule(module):
+def ZeroModule(module: nn.Module) -> nn.Module:
     """
     Zero out the parameters of a module and return it.
     """
@@ -40,7 +40,7 @@ def ZeroModule(module):
         p.detach().zero_()
     return module
 
-def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, attn_mask: torch.Tensor = None) -> torch.Tensor:
+def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
     """
     Memory-efficient attention using PyTorch's built-in scaled dot-product attention.
     """
@@ -53,7 +53,7 @@ def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.T
     output = nn.functional.scaled_dot_product_attention(query, key, value, attn_mask)
     return output.permute(0, 2, 1, 3)   # [N, L, H, C]
 
-def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Optional[Sequence[int]] = None, causal = False) -> torch.Tensor:
+def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Optional[Sequence[int]] = None, causal: Optional[bool] = False) -> torch.Tensor:
     """
     Create a block-diagonal attention mask using nested tensors.
 

@@ -13,7 +13,7 @@ from ...Modules.Transformer import AbsolutePositionEmbedder
 from ...Modules.Utils import ConvertModuleToFp16
 from ...Modules import Sparse as sp
 
-def BlockAttnConfig(num_blocks, attn_mode, window_size):
+def BlockAttnConfig(num_blocks, attn_mode, window_size) -> None:
     """
     Return the attention configuration of the model.
     """
@@ -44,7 +44,7 @@ class SparseTransformerBase(nn.Module):
         use_fp16: bool = False,
         qk_rms_norm: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         if num_heads is None:

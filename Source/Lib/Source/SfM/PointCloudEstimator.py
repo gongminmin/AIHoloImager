@@ -9,7 +9,7 @@ from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes
 from MoGe import MoGeModel
 
 class PointCloudEstimator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.device = ComputeDevice()
 
         this_py_dir = Path(__file__).parent.resolve()

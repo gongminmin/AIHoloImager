@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/norm.py
@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 class LayerNorm32(nn.LayerNorm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -18,14 +18,14 @@ class GroupNorm32(nn.GroupNorm):
     A GroupNorm layer that converts to float32 before the forward pass.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return super().forward(x.float()).type(x.dtype)
 
 class ChannelLayerNorm32(LayerNorm32):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/transformer/blocks.py
 
-from typing import *
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ from ..Nonlinearity import SparseGELU
 from ...Norm import LayerNorm32
 
 class SparseFeedForwardNet(nn.Module):
-    def __init__(self, channels: int, mlp_ratio: float = 4.0, device: Optional[torch.device] = None):
+    def __init__(self, channels: int, mlp_ratio: Optional[float] = 4.0, device: Optional[torch.device] = None) -> None:
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -36,16 +36,16 @@ class SparseTransformerBlock(nn.Module):
         self,
         channels: int,
         num_heads: int,
-        mlp_ratio: float = 4.0,
+        mlp_ratio: Optional[float] = 4.0,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "full",
         window_size: Optional[int] = None,
-        shift_window: Optional[Tuple[int, int, int]] = None,
-        use_rope: bool = False,
-        qk_rms_norm: bool = False,
-        qkv_bias: bool = True,
-        ln_affine: bool = False,
+        shift_window: Optional[tuple[int, int, int]] = None,
+        use_rope: Optional[bool] = False,
+        qk_rms_norm: Optional[bool] = False,
+        qkv_bias: Optional[bool] = True,
+        ln_affine: Optional[bool] = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.norm1 = LayerNorm32(channels, elementwise_affine = ln_affine, eps = 1e-6, device = device)

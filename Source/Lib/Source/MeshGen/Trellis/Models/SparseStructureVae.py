@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/sparse_structure_vae.py
 
-from typing import *
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
@@ -28,7 +28,7 @@ class ResBlock3D(nn.Module):
         out_channels: Optional[int] = None,
         norm_type: Literal["group", "layer"] = "layer",
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         if out_channels is None:
@@ -59,7 +59,7 @@ class UpsampleBlock3D(nn.Module):
         out_channels: int,
         mode: Literal["conv", "nearest"] = "conv",
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         assert mode in ["conv", "nearest"], f"Invalid mode {mode}"
@@ -95,12 +95,12 @@ class SparseStructureDecoder(nn.Module):
         out_channels: int,
         latent_channels: int,
         num_res_blocks: int,
-        channels: List[int],
+        channels: list[int],
         num_res_blocks_middle: int = 2,
         norm_type: Literal["group", "layer"] = "layer",
         use_fp16: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.use_fp16 = use_fp16

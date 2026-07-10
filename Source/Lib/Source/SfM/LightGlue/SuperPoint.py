@@ -54,7 +54,7 @@ from torch.nn.utils import skip_init
 
 from PythonSystem import GeneralDevice
 
-def SimpleNms(scores, nms_radius: int):
+def SimpleNms(scores: torch.Tensor, nms_radius: int) -> torch.Tensor:
     """Fast Non-maximum suppression to remove nearby points"""
     assert nms_radius >= 0
 
@@ -72,13 +72,13 @@ def SimpleNms(scores, nms_radius: int):
         max_mask = max_mask | (new_max_mask & (~supp_mask))
     return torch.where(max_mask, scores, zeros)
 
-def TopKKeypoints(keypoints, scores, k):
+def TopKKeypoints(keypoints: torch.Tensor, scores: torch.Tensor, k: int) -> tuple[torch.Tensor, torch.Tensor]:
     if k >= len(keypoints):
         return keypoints, scores
-    scores, indices = torch.topk(scores, k, dim = 0, sorted= True)
+    scores, indices = torch.topk(scores, k, dim = 0, sorted = True)
     return keypoints[indices], scores
 
-def SampleDescriptors(keypoints, descriptors, s: int = 8):
+def SampleDescriptors(keypoints: torch.Tensor, descriptors: torch.Tensor, s: Optional[int] = 8) -> torch.Tensor:
     """Interpolate descriptors at keypoint locations"""
     b, c, h, w = descriptors.shape
     keypoints = keypoints - s / 2 + 0.5
@@ -114,7 +114,7 @@ class SuperPoint(torch.nn.Module):
         "remove_borders": 4,
     }
 
-    def __init__(self, device : Optional[torch.device] = None, **conf):
+    def __init__(self, device : Optional[torch.device] = None, **conf) -> None:
         super().__init__()
 
         self.conf = SimpleNamespace(**{**self.default_conf, **conf})  # Update with default configuration.
@@ -153,7 +153,7 @@ class SuperPoint(torch.nn.Module):
 
         return sp
 
-    def forward(self, image: torch.Tensor) -> dict:
+    def forward(self, image: torch.Tensor) -> dict[str, torch.Tensor]:
         """Compute keypoints, scores, descriptors for image"""
         assert image.shape[1] == 1
 
@@ -229,7 +229,7 @@ class SuperPoint(torch.nn.Module):
         }
 
     @torch.no_grad()
-    def Extract(self, img: torch.Tensor, **conf) -> dict:
+    def Extract(self, img: torch.Tensor, **conf) -> dict[str, torch.Tensor]:
         """Perform extraction with online resizing"""
         if img.dim() == 3:
             img = img.unsqueeze(0)  # add batch dim

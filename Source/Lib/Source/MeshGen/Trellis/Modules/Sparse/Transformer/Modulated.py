@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/transformer/modulated.py
 
-from typing import *
+from typing import Literal, Optional
 
 import torch
 import torch.nn as nn
@@ -23,18 +23,18 @@ class ModulatedSparseTransformerCrossBlock(nn.Module):
         channels: int,
         ctx_channels: int,
         num_heads: int,
-        mlp_ratio: float = 4.0,
+        mlp_ratio: Optional[float] = 4.0,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "full",
         window_size: Optional[int] = None,
         shift_sequence: Optional[int] = None,
-        shift_window: Optional[Tuple[int, int, int]] = None,
-        use_rope: bool = False,
-        qk_rms_norm: bool = False,
-        qk_rms_norm_cross: bool = False,
-        qkv_bias: bool = True,
-        share_mod: bool = False,
+        shift_window: Optional[tuple[int, int, int]] = None,
+        use_rope: Optional[bool] = False,
+        qk_rms_norm: Optional[bool] = False,
+        qk_rms_norm_cross: Optional[bool] = False,
+        qkv_bias: Optional[bool] = True,
+        share_mod: Optional[bool] = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.share_mod = share_mod

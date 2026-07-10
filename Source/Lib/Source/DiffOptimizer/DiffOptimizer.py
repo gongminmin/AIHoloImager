@@ -2,6 +2,7 @@
 #
 
 import random
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -11,7 +12,7 @@ import torch.optim as optim
 from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
 
-def ScaleMatrix(scale):
+def ScaleMatrix(scale: torch.Tensor) -> torch.Tensor:
     if scale.shape[-1] == 1:
         x_comp = y_comp = z_comp = 0
     else:
@@ -27,7 +28,7 @@ def ScaleMatrix(scale):
     ret = torch.stack([r0, r1, r2, r3])
     return ret
 
-def TranslateMatrix(translation):
+def TranslateMatrix(translation: torch.Tensor):
     device = translation.device
     r0 = torch.tensor([1, 0, 0, 0], dtype = torch.float32, device = device)
     r1 = torch.tensor([0, 1, 0, 0], dtype = torch.float32, device = device)
@@ -36,7 +37,7 @@ def TranslateMatrix(translation):
     ret = torch.stack([r0, r1, r2, r3])
     return ret
 
-def RotationMatrix(rot):
+def RotationMatrix(rot: torch.Tensor):
     device = rot.device
     zero = torch.zeros(1, dtype = torch.float32, device = device).squeeze(0)
     r0 = torch.stack([1 - 2 * rot[1] ** 2 - 2 * rot[2] ** 2, 2 * rot[0] * rot[1] + 2 * rot[2] * rot[3], 2 * rot[0] * rot[2] - 2 * rot[1] * rot[3], zero.detach().clone()])
@@ -46,21 +47,21 @@ def RotationMatrix(rot):
     ret = torch.stack([r0, r1, r2, r3])
     return ret
 
-def ComposeMatrix(scale, rotation, translation):
+def ComposeMatrix(scale: torch.Tensor, rotation: torch.Tensor, translation: torch.Tensor):
     scale_mtx = ScaleMatrix(scale)
     rotation_mtx = RotationMatrix(rotation)
     translation_mtx = TranslateMatrix(translation)
     return torch.matmul(torch.matmul(scale_mtx, rotation_mtx), translation_mtx)
 
-def NormalizeQuat(q):
+def NormalizeQuat(q: torch.Tensor):
     return q / torch.sum(q ** 2) ** 0.5
 
-def LogNextPowerOf2(x):
+def LogNextPowerOf2(x: int):
     assert(x > 0)
     return (x - 1).bit_length() + 1
 
 class DiffOptimizer:
-    def __init__(self, gpu_system):
+    def __init__(self, gpu_system: "GpuSystem") -> None:
         self.downsampling = True
         self.enable_mip = True
 
@@ -71,15 +72,15 @@ class DiffOptimizer:
         self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float16, device = self.device) / 64
         self.kernel = self.kernel.expand(self.image_channels, 1, self.kernel.shape[0], self.kernel.shape[1])
 
-    def Destroy(self):
+    def Destroy(self) -> None:
         del self.kernel
         del self.gpu_dr
         PurgeTorchCache()
 
     def OptimizeTransform(self,
-                          mesh_vb, pos_offset, color_offset, mesh_ib,
-                          view_images, view_proj_mtxs, vp_offsets, num_views,
-                          scale, rotation, translation, uniform_scaling: bool):
+                          mesh_vb: torch.Tensor, pos_offset: int, color_offset: int, mesh_ib: torch.Tensor,
+                          view_images: torch.Tensor, view_proj_mtxs: bytes, vp_offsets: bytes, num_views: int,
+                          scale: bytes, rotation: bytes, translation: bytes, uniform_scaling: bool) -> tuple[bytes, bytes, bytes]:
         PurgeTorchCache()
 
         num_vertices = mesh_vb.shape[0]
@@ -169,12 +170,12 @@ class DiffOptimizer:
         DeviceSync(self.device)
         return (TensorToBytes(scale), TensorToBytes(rotation), TensorToBytes(translation))
 
-    def DownsampleImage(self, img):
+    def DownsampleImage(self, img: torch.Tensor) -> torch.Tensor:
         img = functional.conv2d(img.permute(0, 3, 1, 2), self.kernel, padding = 1, stride = 2, groups = img.shape[-1])
         img = img.permute(0, 2, 3, 1)
         return img
 
-    def Render(self, mvp_mtx, viewport, vtx_positions, indices, opposite_vertices, resolution, roi, **kwargs):
+    def Render(self, mvp_mtx: torch.Tensor, viewport: Viewport, vtx_positions: torch.Tensor, indices: torch.Tensor, opposite_vertices, resolution: tuple[int, int], roi: torch.Tensor, **kwargs) -> torch.Tensor:
         pos_clip = torch.matmul(vtx_positions, mvp_mtx)
 
         if "vtx_colors" in kwargs:
@@ -201,10 +202,10 @@ class DiffOptimizer:
         return image.contiguous()
 
     def FitTransform(self,
-                     scale, rotation, translation,
-                     vtx_positions, vtx_colors, indices,
-                     crop_images, view_proj_mtxs, viewports, rois,
-                     resolutions, num_iter = 300):
+                     scale: torch.Tensor, rotation: torch.Tensor, translation: torch.Tensor,
+                     vtx_positions: torch.Tensor, vtx_colors: torch.Tensor, indices: torch.Tensor,
+                     crop_images: list[torch.Tensor], view_proj_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
+                     resolutions: list[tuple[int, int]], num_iter: Optional[int] = 300) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
@@ -265,9 +266,9 @@ class DiffOptimizer:
         return scale_best, rotation_best, translation_best
 
     def OptimizeTexture(self,
-                        mesh_vb, pos_offset, uv_offset, mesh_ib,
-                        view_images, mvp_mtxs, vp_offsets, num_views,
-                        texture, mask_tex):
+                        mesh_vb: torch.Tensor, pos_offset: int, uv_offset: int, mesh_ib: torch.Tensor,
+                        view_images: torch.Tensor, mvp_mtxs: bytes, vp_offsets: bytes, num_views: int,
+                        texture: torch.Tensor, mask_tex: torch.Tensor) -> torch.Tensor:
         PurgeTorchCache()
 
         num_vertices = mesh_vb.shape[0]
@@ -364,7 +365,7 @@ class DiffOptimizer:
         DeviceSync(self.device)
         return texture
 
-    def Dilate(self, image, mask, times):
+    def Dilate(self, image: torch.Tensor, mask: torch.Tensor, times: int) -> torch.Tensor:
         image[:, :, 3] *= mask
         kernel = torch.ones(1, 1, 3, 3, dtype = torch.float32, device = image.device) / 9.0
         kernel_rgb = torch.eye(3, 3, dtype = torch.float32, device = image.device).view(3, 3, 1, 1) * kernel
@@ -393,10 +394,10 @@ class DiffOptimizer:
         return image
 
     def FitTexture(self,
-                   texture, mask_tex, mip_levels,
-                   vtx_positions, vtx_uv, indices,
-                   crop_images, mvp_mtxs, viewports, rois,
-                   resolutions, num_iter = 150):
+                   texture: torch.Tensor, mask_tex: torch.Tensor, mip_levels: int,
+                   vtx_positions: torch.Tensor, vtx_uv: torch.Tensor, indices: torch.Tensor,
+                   crop_images: list[torch.Tensor], mvp_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
+                   resolutions: list[tuple[int, int]], num_iter: Optional[int] = 150) -> torch.Tensor:
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 

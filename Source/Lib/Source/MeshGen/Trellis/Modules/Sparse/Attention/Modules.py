@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/modules.py
 
-from typing import *
+from typing import Literal, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ from .WindowedAttn import SparseWindowedScaledDotProductSelfAttention
 from ...Attention import RotaryPositionEmbedder
 
 class SparseMultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None):
+    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None) -> None:
         super().__init__()
 
         self.scale = dim ** 0.5
@@ -39,12 +39,12 @@ class SparseMultiHeadAttention(nn.Module):
         type: Literal["self", "cross"] = "self",
         attn_mode: Literal["full", "windowed"] = "full",
         window_size: Optional[int] = None,
-        shift_window: Optional[Tuple[int, int, int]] = None,
+        shift_window: Optional[tuple[int, int, int]] = None,
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
         device: Optional[torch.device] = None,
-    ):
+    ) -> None:
         super().__init__()
 
         assert channels % num_heads == 0
@@ -87,7 +87,7 @@ class SparseMultiHeadAttention(nn.Module):
             return module(x)
 
     @staticmethod
-    def ReshapeChs(x: Union[SparseTensor, torch.Tensor], shape: Tuple[int, ...]) -> Union[SparseTensor, torch.Tensor]:
+    def ReshapeChs(x: Union[SparseTensor, torch.Tensor], shape: tuple[int, ...]) -> Union[SparseTensor, torch.Tensor]:
         if isinstance(x, SparseTensor):
             return x.reshape(*shape)
         else:
