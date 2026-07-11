@@ -80,6 +80,7 @@
     #include "AIHoloImager/Mesh.hpp"
 #endif
 
+#include "CompiledShader/SfM/GrayCs.h"
 #include "CompiledShader/SfM/UndistortCs.h"
 
 using namespace openMVG;
@@ -202,11 +203,18 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            const GpuStaticSampler bilinear_sampler(
-                gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+            {
+                const ShaderInfo shader = {DEFINE_SHADER(GrayCs)};
+                gray_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
+            }
 
-            const ShaderInfo shader = {DEFINE_SHADER(UndistortCs)};
-            undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
+            {
+                const GpuStaticSampler bilinear_sampler(
+                    gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
+
+                const ShaderInfo shader = {DEFINE_SHADER(UndistortCs)};
+                undistort_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span(&bilinear_sampler, 1));
+            }
 
             tmp_dir_ = aihi_.TmpDir() / "Sfm";
             std::filesystem::create_directories(tmp_dir_);
@@ -263,7 +271,7 @@ namespace AIHoloImager
         {
             PerfRegion process_perf(aihi_.PerfProfilerInstance(), "SfM process");
 
-            std::vector<Texture> images;
+            std::vector<GpuTexture2D> images;
             SfM_Data sfm_data = this->IntrinsicAnalysis(input_path, images);
             if (images.size() > 1)
             {
@@ -282,7 +290,7 @@ namespace AIHoloImager
         }
 
     private:
-        SfM_Data IntrinsicAnalysis(const std::filesystem::path& input_path, std::vector<Texture>& images) const
+        SfM_Data IntrinsicAnalysis(const std::filesystem::path& input_path, std::vector<GpuTexture2D>& images) const
         {
             // Reference from openMVG/src/software/SfM/main_SfMInit_ImageListing.cpp
 
@@ -350,16 +358,38 @@ namespace AIHoloImager
 
             std::vector<CameraInfo> camera_infos;
             {
+                auto& gpu_system = aihi_.GpuSystemInstance();
+
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
                 exif::Exif_IO_EasyExif exif_reader;
                 for (size_t i = 0; i < input_image_paths.size(); ++i)
                 {
                     const std::filesystem::path image_file_path = image_dir / input_image_paths[i];
 
                     auto& image = images[i];
-                    image = LoadTexture(image_file_path);
-                    image.Convert(ElementFormat::RGBA8_UNorm);
+                    {
+                        Texture image_cpu = LoadTexture(image_file_path);
+                        image_cpu.Convert(ElementFormat::RGBA8_UNorm);
 
-                    CameraInfo camera_info = {"unknown Unknown", image.Width(), image.Height()};
+                        image = GpuTexture2D(gpu_system, image_cpu.Width(), image_cpu.Height(), 1, ColorFmt,
+                            GpuResourceFlag::ShaderResource | GpuResourceFlag::Shareable, std::format("input_image_{}", i));
+
+                        cmd_list.Upload(image, 0, [&image_cpu](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
+                            const uint32_t width = image_cpu.Width();
+                            const uint32_t height = image_cpu.Height();
+                            const uint32_t src_channels = FormatChannels(image_cpu.Format());
+                            assert(src_channels == FormatChannels(ColorFmt));
+                            const std::byte* src = image_cpu.Data();
+                            std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
+                            for (uint32_t y = 0; y < height; ++y)
+                            {
+                                std::memcpy(&dst[y * row_pitch], &src[y * width * src_channels], width * src_channels);
+                            }
+                        });
+                    }
+
+                    CameraInfo camera_info = {"unknown Unknown", image.Width(0), image.Height(0)};
                     if (exif_reader.open(image_file_path.string()))
                     {
                         if (exif_reader.doesHaveExifInfo())
@@ -409,6 +439,8 @@ namespace AIHoloImager
                         camera_infos.emplace_back(std::move(camera_info));
                     }
                 }
+
+                gpu_system.Execute(std::move(cmd_list));
             }
 
             SfM_Data sfm_data;
@@ -419,7 +451,7 @@ namespace AIHoloImager
             {
                 const IndexT id = static_cast<IndexT>(views.size());
                 views[id] = std::make_shared<openMVG::sfm::View>(
-                    input_image_paths[i].string(), id, UndefinedIndexT, id, images[i].Width(), images[i].Height());
+                    input_image_paths[i].string(), id, UndefinedIndexT, id, images[i].Width(0), images[i].Height(0));
             }
 
             Intrinsics& intrinsics = sfm_data.intrinsics;
@@ -456,6 +488,10 @@ namespace AIHoloImager
                         py_init_finished_ = true;
                     }
 
+                    auto& gpu_system = aihi_.GpuSystemInstance();
+                    auto& python_system = aihi_.PythonSystemInstance();
+                    auto& tensor_converter = aihi_.TensorConverterInstance();
+
                     double sum_focal = 0;
                     for (const uint32_t image_id : camera_info.image_ids)
                     {
@@ -463,11 +499,11 @@ namespace AIHoloImager
                         {
                             PythonSystem::GilGuard guard;
 
-                            auto& python_system = aihi_.PythonSystemInstance();
-                            auto py_image = python_system.MakeObject(
-                                std::span<const std::byte>(reinterpret_cast<const std::byte*>(image.Data()), image.DataSize()));
-                            auto py_focal = python_system.CallObject(*point_cloud_estimator_focal_method_, std::move(py_image),
-                                image.Width(), image.Height(), FormatChannels(image.Format()));
+                            auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+                            auto py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
+                            gpu_system.Execute(std::move(cmd_list));
+
+                            auto py_focal = python_system.CallObject(*point_cloud_estimator_focal_method_, std::move(py_image));
                             sum_focal += python_system.Cast<double>(*py_focal);
                         }
                     }
@@ -501,7 +537,7 @@ namespace AIHoloImager
             return sfm_data;
         }
 
-        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data, const std::vector<Texture>& images) const
+        FeatureRegions FeatureExtraction(const SfM_Data& sfm_data, std::span<const GpuTexture2D> images) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeFeatures.cpp
 
@@ -509,6 +545,74 @@ namespace AIHoloImager
 
             FeatureRegions regions;
             regions.feature_regions.resize(sfm_data.views.size());
+
+            auto& gpu_system = aihi_.GpuSystemInstance();
+
+            const uint32_t num_images = static_cast<uint32_t>(sfm_data.views.size());
+
+#if USES_SP_LG
+            std::vector<GpuTexture2D> gray_images(num_images);
+#else
+            std::vector<Image<unsigned char>> gray_images_cpu(num_images);
+#endif
+            {
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
+
+#if !USES_SP_LG
+                std::vector<std::future<void>> rb_futures(num_images);
+#endif
+                for (uint32_t i = 0; i < num_images; ++i)
+                {
+                    const auto& image = images[i];
+
+#if USES_SP_LG
+                    auto& gray_image = gray_images[i];
+#else
+                    GpuTexture2D gray_image;
+#endif
+                    gray_image = GpuTexture2D(gpu_system, image.Width(0), image.Height(0), 1, GpuFormat::R8_UNorm,
+                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, std::format("gray_image_{}", i));
+
+                    constexpr uint32_t BlockDim = 16;
+
+                    GpuConstantBufferOfType<GrayConstantBuffer> gray_cb(gpu_system, "gray_cb");
+
+                    gray_cb->width_height = {image.Width(0), image.Height(0)};
+                    gray_cb.UploadStaging();
+
+                    const GpuConstantBufferView gray_cbv(gpu_system, gray_cb);
+                    const GpuShaderResourceView input_srv(gpu_system, image);
+                    GpuUnorderedAccessView output_uav(gpu_system, gray_image);
+
+                    std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
+                        {"param_cb", &gray_cbv},
+                    };
+                    std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
+                        {"input_tex", &input_srv},
+                    };
+                    std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
+                        {"gray_tex", &output_uav},
+                    };
+                    const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
+                    cmd_list.Compute(
+                        gray_pipeline_, {DivUp(image.Width(0), BlockDim), DivUp(image.Height(0), BlockDim), 1}, shader_binding);
+
+#if !USES_SP_LG
+                    gray_images_cpu[i] = Image<unsigned char>(gray_image.Width(0), gray_image.Height(0));
+                    rb_futures[i] =
+                        cmd_list.ReadBackAsync(gray_image, 0, gray_images_cpu[i].data(), gray_images_cpu[i].size() * sizeof(unsigned char));
+#endif
+                }
+
+                gpu_system.Execute(std::move(cmd_list));
+
+#if !USES_SP_LG
+                for (auto& future : rb_futures)
+                {
+                    future.wait();
+                }
+#endif
+            }
 
 #if USES_SP_LG
             if (!py_init_finished_)
@@ -521,20 +625,21 @@ namespace AIHoloImager
 
             SuperPointImageDescriber image_describer;
 
-            PythonSystem::GilGuard guard;
             auto& python_system = aihi_.PythonSystemInstance();
+            auto& tensor_converter = aihi_.TensorConverterInstance();
 
-            const uint32_t num_images = static_cast<uint32_t>(sfm_data.views.size());
+            PythonSystem::GilGuard guard;
 
             py_features_ = python_system.MakeTupleOfSize(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
-                const auto& image = images[i];
-                assert(image.Format() == ElementFormat::RGBA8_UNorm);
+                const auto& gray_image = gray_images[i];
 
-                auto py_image = python_system.MakeObject(std::span<const std::byte>(image.Data(), image.DataSize()));
-                PyObjectPtr py_feature = python_system.CallObject(
-                    *extractor_extract_method_, std::move(py_image), image.Width(), image.Height(), FormatChannels(image.Format()));
+                auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+                auto py_gray_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gray_image));
+                gpu_system.Execute(std::move(cmd_list));
+
+                PyObjectPtr py_feature = python_system.CallObject(*extractor_extract_method_, std::move(py_gray_image));
                 PyObjectPtr py_exported_feature = python_system.CallObject(*extractor_export_features_method_, *py_feature);
 
                 auto py_descriptors = python_system.GetTupleItem(*py_exported_feature, 0);
@@ -556,26 +661,7 @@ namespace AIHoloImager
     #endif
             for (int i = 0; i < static_cast<int>(sfm_data.views.size()); ++i)
             {
-                const auto& image = images[i];
-                const uint8_t* image_data = reinterpret_cast<const uint8_t*>(image.Data());
-                const uint32_t width = image.Width();
-                const uint32_t height = image.Height();
-                assert(image.Format() == ElementFormat::RGBA8_UNorm);
-
-                Image<unsigned char> image_gray(width, height);
-                for (uint32_t y = 0; y < height; ++y)
-                {
-                    for (uint32_t x = 0; x < width; ++x)
-                    {
-                        const uint32_t offset = (y * width + x) * 4;
-                        const uint8_t r = image_data[offset + 0];
-                        const uint8_t g = image_data[offset + 1];
-                        const uint8_t b = image_data[offset + 2];
-                        image_gray(y, x) = static_cast<uint8_t>(std::clamp(static_cast<int>(0.299f * r + 0.587f * g + 0.114f * b), 0, 255));
-                    }
-                }
-
-                regions.feature_regions[i] = image_describer.Describe(image_gray);
+                regions.feature_regions[i] = image_describer.Describe(gray_images_cpu[i]);
             }
 #endif
 
@@ -594,7 +680,7 @@ namespace AIHoloImager
             {
                 const auto& image = images[mvg_view.first];
                 const auto& region = *regions.feature_regions[mvg_view.first];
-                features::Features2SVG((root_dir / mvg_view.second->s_Img_path).string(), {image.Width(), image.Height()},
+                features::Features2SVG((root_dir / mvg_view.second->s_Img_path).string(), {image.Width(0), image.Height(0)},
                     region.GetRegionsPositions(), (features_tmp_dir / std::format("{}.svg", mvg_view.first)).string());
 
                 total_regions += region.RegionCount();
@@ -606,7 +692,7 @@ namespace AIHoloImager
         }
 
         PairWiseMatches PairMatching(const SfM_Data& sfm_data, [[maybe_unused]] const FeatureRegions& regions,
-            [[maybe_unused]] const std::vector<Texture>& images) const
+            [[maybe_unused]] std::span<const GpuTexture2D> images) const
         {
             // Reference from openMVG/src/software/SfM/main_ComputeMatches.cpp
 
@@ -685,9 +771,9 @@ namespace AIHoloImager
                 const auto path_left = root_dir / sfm_data.views.at(id_left)->s_Img_path;
                 const auto path_right = root_dir / sfm_data.views.at(id_right)->s_Img_path;
 
-                matching::Matches2SVG(path_left.string(), {image_left.Width(), image_left.Height()},
+                matching::Matches2SVG(path_left.string(), {image_left.Width(0), image_left.Height(0)},
                     regions.feature_regions[id_left]->GetRegionsPositions(), path_right.string(),
-                    {image_right.Width(), image_right.Height()}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
+                    {image_right.Width(0), image_right.Height(0)}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
                     (matching_tmp_dir / std::format("{}_{}.svg", id_left, id_right)).string());
             }
 #endif
@@ -696,7 +782,7 @@ namespace AIHoloImager
         }
 
         PairWiseMatches GeometricFilter(const SfM_Data& sfm_data, const PairWiseMatches& putative_matches, const FeatureRegions& regions,
-            bool sequential, [[maybe_unused]] const std::vector<Texture>& images) const
+            bool sequential, [[maybe_unused]] std::span<const GpuTexture2D> images) const
         {
             // Reference from openMVG/src/software/SfM/main_GeometricFilter.cpp
 
@@ -763,9 +849,9 @@ namespace AIHoloImager
                 const auto path_left = root_dir / sfm_data.views.at(id_left)->s_Img_path;
                 const auto path_right = root_dir / sfm_data.views.at(id_right)->s_Img_path;
 
-                matching::Matches2SVG(path_left.string(), {image_left.Width(), image_left.Height()},
+                matching::Matches2SVG(path_left.string(), {image_left.Width(0), image_left.Height(0)},
                     regions.feature_regions[id_left]->GetRegionsPositions(), path_right.string(),
-                    {image_right.Width(), image_right.Height()}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
+                    {image_right.Width(0), image_right.Height(0)}, regions.feature_regions[id_right]->GetRegionsPositions(), match.second,
                     (matching_tmp_dir / std::format("{}_{}.svg", id_left, id_right)).string());
             }
 #endif
@@ -830,7 +916,7 @@ namespace AIHoloImager
             return processed_sfm_data;
         }
 
-        Result ExportResult(const SfM_Data& sfm_data, const std::vector<Texture>& images)
+        Result ExportResult(const SfM_Data& sfm_data, std::span<GpuTexture2D> images)
         {
             // Reference from openMVG/src/software/SfM/export/main_openMVG2openMVS.cpp
 
@@ -859,7 +945,6 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            GpuTexture2D distort_gpu_tex;
             GpuTexture2D undistort_gpu_tex;
 
             std::vector<View> views;
@@ -881,43 +966,20 @@ namespace AIHoloImager
                     const auto& center = mvg_pose.center();
                     result_view.center = {center.x(), center.y(), center.z()};
 
-                    const Texture& image = images[mvg_view.first];
-
-                    if (!distort_gpu_tex || (distort_gpu_tex.Width(0) != image.Width()) || (distort_gpu_tex.Height(0) != image.Height()))
-                    {
-                        distort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
-                            GpuResourceFlag::ShaderResource | GpuResourceFlag::Shareable, "distort_gpu_tex");
-                    }
+                    GpuTexture2D& distort_gpu_tex = images[mvg_view.first];
 
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
-
-                    cmd_list.Upload(
-                        distort_gpu_tex, 0, [&image](void* dst_data, uint32_t row_pitch, [[maybe_unused]] uint32_t slice_pitch) {
-                            const uint32_t width = image.Width();
-                            const uint32_t height = image.Height();
-                            const uint32_t src_channels = FormatChannels(image.Format());
-                            const uint32_t dst_channels = FormatChannels(ColorFmt);
-                            const std::byte* src = image.Data();
-                            std::byte* dst = reinterpret_cast<std::byte*>(dst_data);
-                            for (uint32_t y = 0; y < height; ++y)
-                            {
-                                for (uint32_t x = 0; x < width; ++x)
-                                {
-                                    std::memcpy(&dst[y * row_pitch + x * dst_channels], &src[(y * width + x) * src_channels], src_channels);
-                                }
-                            }
-                        });
 
                     GpuTexture2D* process_tex;
                     const auto& camera = *sfm_data.intrinsics.at(mvg_view.second->id_intrinsic);
                     if (camera.have_disto())
                     {
-                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != image.Width()) ||
-                            (undistort_gpu_tex.Height(0) != image.Height()))
+                        if (!undistort_gpu_tex || (undistort_gpu_tex.Width(0) != distort_gpu_tex.Width(0)) ||
+                            (undistort_gpu_tex.Height(0) != distort_gpu_tex.Height(0)))
                         {
-                            undistort_gpu_tex = GpuTexture2D(gpu_system, image.Width(), image.Height(), 1, ColorFmt,
+                            undistort_gpu_tex = GpuTexture2D(gpu_system, distort_gpu_tex.Width(0), distort_gpu_tex.Height(0), 1, ColorFmt,
                                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
-                                "undistort_gpu_tex");
+                                std::format("undistort_gpu_tex_{}", mvg_view.first));
                         }
 
                         assert(dynamic_cast<const Pinhole_Intrinsic_Radial_K3*>(&camera) != nullptr);
@@ -931,6 +993,10 @@ namespace AIHoloImager
                         process_tex = &distort_gpu_tex;
                     }
 
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    process_tex->Transition(cmd_list, GpuResourceState::Common);
+#endif
+
                     result_view.image = std::move(*process_tex);
                     gpu_system.Execute(std::move(cmd_list));
                 }
@@ -940,7 +1006,6 @@ namespace AIHoloImager
                 }
             }
 
-            distort_gpu_tex = GpuTexture2D();
             undistort_gpu_tex = GpuTexture2D();
 
             Result ret;
@@ -1035,6 +1100,26 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
+                auto read_back_images = std::make_unique<Texture[]>(views.size());
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
+
+                    std::vector<std::future<void>> rb_futures(views.size());
+                    for (size_t i = 0; i < views.size(); ++i)
+                    {
+                        const auto& image = *ret.projections[i].image;
+                        read_back_images[i] = Texture(image.Width(0), image.Height(0), ElementFormat::RGBA8_UNorm);
+                        rb_futures[i] = cmd_list.ReadBackAsync(image, 0, read_back_images[i].Data(), read_back_images[i].DataSize());
+                    }
+
+                    gpu_system.Execute(std::move(cmd_list));
+
+                    for (auto& future : rb_futures)
+                    {
+                        future.wait();
+                    }
+                }
+
                 const VertexAttrib pos_clr_vertex_attribs[] = {
                     {VertexAttrib::Semantic::Position, 0, 3},
                     {VertexAttrib::Semantic::Color, 0, 3},
@@ -1044,7 +1129,7 @@ namespace AIHoloImager
                 const VertexDesc pos_clr_vertex_desc(pos_clr_vertex_attribs);
 
                 {
-                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
+                    Mesh pc_mesh(pos_clr_vertex_desc, 0, 0);
 
                     for (const auto& landmark : ret.structure)
                     {
@@ -1056,7 +1141,7 @@ namespace AIHoloImager
                         const auto& ob = landmark.obs[0];
                         const uint32_t x = static_cast<uint32_t>(std::round(ob.point.x));
                         const uint32_t y = static_cast<uint32_t>(std::round(ob.point.y));
-                        const auto& image = images[ob.view_id];
+                        const auto& image = read_back_images[ob.view_id];
                         const std::byte* image_data = image.Data();
                         const uint32_t offset = (y * image.Width() + x) * FormatChannels(image.Format());
 
@@ -1339,6 +1424,13 @@ namespace AIHoloImager
 
         std::future<void> py_init_future_;
         mutable bool py_init_finished_ = false;
+
+        struct GrayConstantBuffer
+        {
+            glm::uvec2 width_height;
+            uint32_t padding[2];
+        };
+        GpuComputePipeline gray_pipeline_;
 
         struct UndistortConstantBuffer
         {

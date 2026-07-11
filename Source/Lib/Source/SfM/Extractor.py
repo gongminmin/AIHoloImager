@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorFromBytes, TensorToBytes
+from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorToBytes
 from LightGlue import SuperPoint
 
 class Extractor:
@@ -24,17 +24,13 @@ class Extractor:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Extract(self, image: bytes, image_width: int, image_height: int, channels: int) -> dict[str, torch.Tensor]:
-        image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
-        image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
+    def Extract(self, gray_image: torch.Tensor) -> dict[str, torch.Tensor]:
+        gray_image = gray_image.squeeze(0).permute(2, 0, 1)
+        gray_image = gray_image.to(torch.float32) / 255
 
-        image = image.to(torch.float32) / 255
-
-        scale = torch.tensor((0.299, 0.587, 0.114), device = self.device, dtype = image.dtype).view(1, 3, 1, 1)
-        gray_image = (image * scale).sum(1, keepdim = True)
-
+        features = self.extractor.Extract(gray_image)
         DeviceSync(self.device)
-        return self.extractor.Extract(gray_image)
+        return features
 
-    def ExportFeatures(self, features: dict) -> tuple[bytes, bytes, bytes]:
+    def ExportFeatures(self, features: dict[str, torch.Tensor]) -> tuple[bytes, bytes, bytes]:
         return (TensorToBytes(features["descriptors"]), TensorToBytes(features["keypoints"]), TensorToBytes(features["image_size"]))

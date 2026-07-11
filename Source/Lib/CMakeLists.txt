@@ -146,6 +146,7 @@ set(aihi_files
     Source/SfM/MoGe/Modules.py
     Source/SfM/MoGe/MoGeModel.py
     Source/SfM/MoGe/__init__.py
+    Source/SfM/Shader/GrayCs.hlsl
     Source/SfM/Shader/UndistortCs.hlsl
     Source/SfM/ConvertDatasheet.py
     Source/SfM/Extractor.py
@@ -240,6 +241,7 @@ AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl "cs" "main")
 AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUintCs.hlsl "cs" "main")
+AddShaderFile(Source/SfM/Shader/GrayCs.hlsl "cs" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
 AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint_Uint.hlsl "cs" "main")
 AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint2_Uint.hlsl "cs" "main")

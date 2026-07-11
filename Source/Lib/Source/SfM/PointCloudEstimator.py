@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from PythonSystem import ComputeDevice, PurgeTorchCache, TensorFromBytes
+from PythonSystem import ComputeDevice, PurgeTorchCache
 from MoGe import MoGeModel
 
 class PointCloudEstimator:
@@ -24,9 +24,8 @@ class PointCloudEstimator:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Focal(self, image: bytes, image_width: int, image_height: int, channels: int) -> float:
-        image = TensorFromBytes(image, torch.uint8, image_height * image_width * channels, self.device)
-        image = image.reshape(image_height, image_width, channels)[..., 0 : 3].permute(2, 0, 1)
+    def Focal(self, image: torch.Tensor) -> float:
+        image = image.squeeze(0)[..., 0 : 3].permute(2, 0, 1)
 
         image = image.to(torch.float16).contiguous()
         image /= 255.0
