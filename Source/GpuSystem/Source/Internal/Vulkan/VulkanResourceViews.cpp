@@ -227,8 +227,13 @@ namespace AIHoloImager
             format = texture.Format();
         }
 
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        };
         VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = vulkan_image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = ToVkFormat(format),
@@ -269,8 +274,13 @@ namespace AIHoloImager
             format = texture_array.Format();
         }
 
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        };
         VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = vulkan_image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY,
             .format = ToVkFormat(format),
@@ -309,8 +319,13 @@ namespace AIHoloImager
             format = texture.Format();
         }
 
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+        };
         VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = vulkan_image,
             .viewType = VK_IMAGE_VIEW_TYPE_3D,
             .format = ToVkFormat(format),
@@ -404,8 +419,13 @@ namespace AIHoloImager
             .layerCount = 1,
         };
 
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        };
         const VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = vulkan_image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = ToVkFormat(format == GpuFormat::Unknown ? texture.Format() : format),
@@ -493,8 +513,13 @@ namespace AIHoloImager
             .layerCount = 1,
         };
 
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        };
         VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = vulkan_image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = ToVkFormat(format == GpuFormat::Unknown ? texture.Format() : format),
@@ -843,8 +868,13 @@ namespace AIHoloImager
 
     void VulkanTextureUnorderedAccessView::CreateImageView(VkDevice device, VkImage image, VkImageViewType type, GpuFormat format)
     {
+        const VkImageViewUsageCreateInfo usage_create_info{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = VK_IMAGE_USAGE_STORAGE_BIT,
+        };
         const VkImageViewCreateInfo view_create_info{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &usage_create_info,
             .image = image,
             .viewType = type,
             .format = ToVkFormat(format),

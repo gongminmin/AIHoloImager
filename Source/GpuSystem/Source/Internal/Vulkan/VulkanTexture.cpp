@@ -28,7 +28,7 @@ namespace AIHoloImager
         image_create_info_ = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = ToVulkanImageType(type),
-            .format = ToVkFormat(format),
+            .format = ToVkFormat(ToLinearFormat(format)),
             .extent{
                 .width = width,
                 .height = height,
@@ -43,11 +43,30 @@ namespace AIHoloImager
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
+        if (IsSRGBFormat(format) || (format != ToSRGBFormat(format)))
+        {
+            const VkFormat compatible_fmts[] = {
+                image_create_info_.format,
+                ToVkFormat(ToSRGBFormat(format)),
+            };
+
+            const VkImageFormatListCreateInfo format_list_info{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
+                .pNext = image_create_info_.pNext,
+                .viewFormatCount = static_cast<uint32_t>(std::size(compatible_fmts)),
+                .pViewFormats = compatible_fmts,
+            };
+
+            image_create_info_.pNext = &format_list_info;
+            image_create_info_.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+        }
+
         VkExternalMemoryImageCreateInfo external_mem_image_create_info;
         if (EnumHasAny(flags, GpuResourceFlag::Shareable))
         {
             external_mem_image_create_info = {
                 .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+                .pNext = image_create_info_.pNext,
                 .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT,
             };
 
