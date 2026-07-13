@@ -93,8 +93,7 @@ namespace AIHoloImager
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
-                const auto output_roi_image = python_system.CallObject(
-                    *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(projection.image->Format()));
+                const auto output_roi_image = python_system.CallObject(*delighter_process_method_, std::move(roi_tensor));
                 tensor_converter.ConvertPy(cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm_SRGB,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "delighted_tex");
 

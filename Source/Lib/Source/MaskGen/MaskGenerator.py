@@ -33,8 +33,10 @@ class MaskGenerator:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Gen(self, norm_img: torch.Tensor, width: int, height: int, num_channels: int, large_model: bool) -> torch.Tensor:
-        norm_img = norm_img.reshape(1, num_channels, height, width)
+    def Gen(self, norm_img: torch.Tensor, num_channels: int, large_model: bool) -> torch.Tensor:
+        width = norm_img.shape[-2]
+        height = norm_img.shape[-3] // num_channels
+        norm_img = norm_img.reshape(1, num_channels, height, width).to(self.device)
 
         if large_model:
             pred = self.u2net(norm_img)

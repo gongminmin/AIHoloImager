@@ -335,8 +335,8 @@ namespace AIHoloImager
             {
                 PythonSystem::GilGuard guard;
 
-                auto py_pred = python_system.CallObject(*mask_generator_gen_method_, std::move(normalized_image_tensor), U2NetInputDim,
-                    U2NetInputDim, U2NetInputChannels, large_model);
+                auto py_pred = python_system.CallObject(
+                    *mask_generator_gen_method_, std::move(normalized_image_tensor), U2NetInputChannels, large_model);
                 tensor_converter.ConvertPy(
                     cmd_list, *py_pred, pred_gpu_tex_, GpuFormat::R32_Float, GpuResourceFlag::UnorderedAccess, "pred_gpu_tex_");
             }

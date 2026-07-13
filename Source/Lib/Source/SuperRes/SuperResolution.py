@@ -31,13 +31,11 @@ class SuperResolution:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Process(self, image: torch.Tensor, width: int, height: int, num_channels: int, ignore_alpha: Optional[bool] = False) -> torch.Tensor:
-        image = image.reshape(height, width, num_channels).to(self.device)
-
-        image = image.permute(2, 0, 1)
-        image = image.to(torch.float16).contiguous()
+    def Process(self, image: torch.Tensor, ignore_alpha: Optional[bool] = False) -> torch.Tensor:
+        num_channels = image.shape[-1]
+        image = image.permute(0, 3, 1, 2)
+        image = image.to(torch.float16).to(self.device).contiguous()
         image /= 255.0
-        image = image.unsqueeze(0)
 
         alpha = None
         if num_channels == 4:

@@ -123,8 +123,7 @@ namespace AIHoloImager
                 PyObjectPtr py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
                 gpu_system.ExecuteAndReset(cmd_list);
 
-                auto py_upsampled_image = python_system.CallObject(
-                    *super_res_process_method_, py_image, image.Width(0), image.Height(0), FormatChannels(image.Format()), false);
+                auto py_upsampled_image = python_system.CallObject(*super_res_process_method_, std::move(py_image), false);
 
                 tensor_converter.ConvertPy(cmd_list, *py_upsampled_image, upsampled_residual_tex, GpuFormat::RGBA8_UNorm,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "upsampled_residual_tex");

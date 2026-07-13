@@ -124,11 +124,9 @@ class Delighter:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Process(self, image: torch.Tensor, width: int, height: int, channels: int) -> torch.Tensor:
-        image = image.reshape(height, width, channels)
-
-        float_image = image.permute(2, 0, 1)
-        float_image = float_image[0 : 3, :, :].float().contiguous()
+    def Process(self, image: torch.Tensor) -> torch.Tensor:
+        image = image.squeeze(0).permute(2, 0, 1)
+        float_image = image[0 : 3, :, :].to(torch.float32).to(self.device).contiguous()
         float_image /= 255.0
 
         float_image = float_image.unsqueeze(0)

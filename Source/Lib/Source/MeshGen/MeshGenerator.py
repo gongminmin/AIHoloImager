@@ -28,7 +28,7 @@ class MeshGenerator:
         torch_images = []
         for image in images:
             image = image.squeeze(0).permute(2, 0, 1)
-            image = image[0 : 3, :, :].float() / 255
+            image = image[0 : 3, :, :].to(torch.float32).to(self.device) / 255
             torch_images.append(image)
         images = torch.stack(torch_images).contiguous()
 
