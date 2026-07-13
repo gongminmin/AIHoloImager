@@ -717,7 +717,7 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 16;
 
-                GpuShaderResourceView input_srv(gpu_system, photo_texture_result.color_tex);
+                const GpuShaderResourceView input_srv(gpu_system, photo_texture_result.color_tex);
                 GpuUnorderedAccessView mask_uav(gpu_system, mask_gpu_tex);
 
                 GpuConstantBufferOfType<ExtractMaskConstantBuffer> extract_mask_cb(gpu_system, "extract_mask_cb");
@@ -738,12 +738,11 @@ namespace AIHoloImager
                 cmd_list.Compute(extract_mask_pipeline_, {DivUp(texture_size, BlockDim), DivUp(texture_size, BlockDim), 1}, shader_binding);
             }
 
-            GpuTexture2D dilated_tmp_gpu_tex(gpu_system, photo_texture_result.color_tex.Width(0), photo_texture_result.color_tex.Height(0),
-                1, photo_texture_result.color_tex.Format(), GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
-                "dilated_tmp_tex");
-
-            GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, photo_texture_result.color_tex, dilated_tmp_gpu_tex);
-            cmd_list.Copy(albedo_gpu_tex, *dilated_gpu_tex);
+            GpuTexture2D* dilated_gpu_tex = this->DilateTexture(cmd_list, photo_texture_result.color_tex, albedo_gpu_tex);
+            if (dilated_gpu_tex != &albedo_gpu_tex)
+            {
+                cmd_list.Copy(albedo_gpu_tex, *dilated_gpu_tex);
+            }
             albedo_gpu_tex.Transition(cmd_list, GpuResourceState::Common);
 
             gpu_system.Execute(std::move(cmd_list));
