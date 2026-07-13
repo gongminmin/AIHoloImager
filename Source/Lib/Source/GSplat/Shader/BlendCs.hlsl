@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
+#include "Util/Shader/Utils.hlslh"
+
 static const uint32_t BlockDim = 16;
 
 cbuffer param_cb
@@ -28,6 +30,6 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     const float4 gsplat = gsplat_image[coord];
 
-    const float3 bg_clr = rendered_image[coord].rgb;
-    rendered_image[coord] = float4(gsplat.rgb + gsplat.a * bg_clr, 1);
+    const float3 bg_clr = SRGBToLinear(rendered_image[coord].rgb);
+    rendered_image[coord] = float4(LinearToSRGB(gsplat.rgb + gsplat.a * bg_clr), 1);
 }

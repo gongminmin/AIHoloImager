@@ -95,7 +95,7 @@ namespace AIHoloImager
 
                 const auto output_roi_image = python_system.CallObject(
                     *delighter_process_method_, std::move(roi_tensor), width, height, FormatChannels(projection.image->Format()));
-                tensor_converter.ConvertPy(cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm,
+                tensor_converter.ConvertPy(cmd_list, *output_roi_image, delighted_tex, GpuFormat::RGBA8_UNorm_SRGB,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "delighted_tex");
 
                 {
@@ -103,7 +103,7 @@ namespace AIHoloImager
 
                     const GpuShaderResourceView image_srv(gpu_system, *projection.image);
 
-                    GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex);
+                    GpuUnorderedAccessView delighted_uav(gpu_system, delighted_tex, ToLinearFormat(delighted_tex.Format()));
 
                     GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, "merge_mask_cb");
                     merge_mask_cb->dest_size = {width, height};

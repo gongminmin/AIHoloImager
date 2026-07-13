@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "AIHoloImager/ElementFormat.hpp"
@@ -32,6 +32,7 @@ namespace AIHoloImager
             return 3;
 
         case ElementFormat::RGBA8_UNorm:
+        case ElementFormat::RGBA8_UNorm_SRGB:
         case ElementFormat::RGBA32_Float:
             return 4;
 
@@ -51,6 +52,7 @@ namespace AIHoloImager
         case ElementFormat::RG8_UNorm:
         case ElementFormat::RGB8_UNorm:
         case ElementFormat::RGBA8_UNorm:
+        case ElementFormat::RGBA8_UNorm_SRGB:
             return 1;
 
         case ElementFormat::R32_Float:

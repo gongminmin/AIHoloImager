@@ -222,7 +222,7 @@ namespace AIHoloImager
 
             {
                 const GpuShaderResourceView input_srv(gpu_system, image_gpu_tex);
-                GpuUnorderedAccessView output_uav(gpu_system, downsampled_x_gpu_tex_);
+                GpuUnorderedAccessView output_uav(gpu_system, downsampled_x_gpu_tex_, ToLinearFormat(downsampled_x_gpu_tex_.Format()));
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_x_cb(gpu_system, "downsample_x_cb");
                 downsample_x_cb->src_roi = roi;
@@ -246,7 +246,7 @@ namespace AIHoloImager
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, downsampled_x_gpu_tex_);
-                GpuUnorderedAccessView output_uav(gpu_system, downsampled_gpu_tex_);
+                GpuUnorderedAccessView output_uav(gpu_system, downsampled_gpu_tex_, ToLinearFormat(downsampled_gpu_tex_.Format()));
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> downsample_y_cb(gpu_system, "downsample_y_cb");
                 downsample_y_cb->src_roi = {0, 0, U2NetInputDim, roi_height};
@@ -292,7 +292,8 @@ namespace AIHoloImager
                 cmd_list.Compute(stat_image_pipeline_, {DivUp(U2NetInputDim, BlockDim), DivUp(U2NetInputDim, BlockDim), 1}, shader_binding);
             }
             {
-                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
+                // Treat it as linear format due to the normalization weights are based on sRGB data
+                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_, ToLinearFormat(downsampled_gpu_tex_.Format()));
                 const GpuShaderResourceView max_srv(gpu_system, image_max_gpu_buff_, GpuFormat::R32_Float);
                 GpuUnorderedAccessView normalized_uav(gpu_system, normalized_gpu_tex_);
 
@@ -553,7 +554,7 @@ namespace AIHoloImager
                 const uint32_t height = image_gpu_tex.Height(0);
 
                 const GpuShaderResourceView input_srv(gpu_system, mask_gpu_tex_);
-                GpuUnorderedAccessView output_uav(gpu_system, image_gpu_tex);
+                GpuUnorderedAccessView output_uav(gpu_system, image_gpu_tex, ToLinearFormat(image_gpu_tex.Format()));
 
                 GpuConstantBufferOfType<MergeMaskConstantBuffer> merge_mask_cb(gpu_system, "merge_mask_cb");
                 merge_mask_cb->texture_size = {width, height};
@@ -666,7 +667,7 @@ namespace AIHoloImager
         GpuComputePipeline merge_mask_pipeline_;
 
         static constexpr GpuFormat MaskFmt = GpuFormat::R8_UNorm;
-        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm_SRGB;
         static constexpr uint32_t U2NetInputDim = 320;
         static constexpr uint32_t U2NetInputChannels = 3;
     };

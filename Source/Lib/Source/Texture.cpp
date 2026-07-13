@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "AIHoloImager/Texture.hpp"
@@ -85,7 +85,7 @@ namespace AIHoloImager
                 {
                     const uint32_t channels = FormatChannels(format_);
 
-                    if ((format == ElementFormat::RGBA8_UNorm))
+                    if ((format == ElementFormat::RGBA8_UNorm) || (format == ElementFormat::RGBA8_UNorm_SRGB))
                     {
 #ifdef _OPENMP
     #pragma omp parallel
@@ -237,7 +237,7 @@ namespace AIHoloImager
         int width, height;
         uint8_t* data = stbi_load(path.string().c_str(), &width, &height, nullptr, 4);
 
-        Texture tex(width, height, ElementFormat::RGBA8_UNorm);
+        Texture tex(width, height, ElementFormat::RGBA8_UNorm_SRGB);
         if (data != nullptr)
         {
             std::memcpy(tex.Data(), data, tex.DataSize());

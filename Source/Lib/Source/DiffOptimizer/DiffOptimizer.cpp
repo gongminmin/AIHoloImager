@@ -249,7 +249,7 @@ namespace AIHoloImager
                     std::move(py_albedo_img), std::move(py_mask_img));
 
                 tensor_converter.ConvertPy(
-                    cmd_list, *py_opt_texture, mesh.AlbedoTexture(), GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "albedo_tex");
+                    cmd_list, *py_opt_texture, mesh.AlbedoTexture(), GpuFormat::RGBA8_UNorm_SRGB, GpuResourceFlag::None, "albedo_tex");
                 gpu_system.Execute(std::move(cmd_list));
             }
         }

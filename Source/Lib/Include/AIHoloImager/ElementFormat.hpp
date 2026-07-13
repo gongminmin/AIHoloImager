@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -15,6 +15,7 @@ namespace AIHoloImager
         RG8_UNorm,
         RGB8_UNorm,
         RGBA8_UNorm,
+        RGBA8_UNorm_SRGB,
 
         R32_Float,
         RG32_Float,

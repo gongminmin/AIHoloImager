@@ -542,7 +542,7 @@ namespace AIHoloImager
                 projection.image_offset = glm::uvec2(0, 0);
 
                 projection.image =
-                    std::make_shared<GpuTexture2D>(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm,
+                    std::make_shared<GpuTexture2D>(gpu_system, GSplatRenderedSize, GSplatRenderedSize, 1, GpuFormat::RGBA8_UNorm_SRGB,
                         GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget | GpuResourceFlag::UnorderedAccess,
                         std::format("gsplat_rendered_{}", i));
 
@@ -581,7 +581,7 @@ namespace AIHoloImager
 
                     const uint32_t width = projection.image->Width(0);
                     const uint32_t height = projection.image->Height(0);
-                    Texture gsplat_rb_tex(width, height, ElementFormat::RGBA8_UNorm);
+                    Texture gsplat_rb_tex(width, height, ElementFormat::RGBA8_UNorm_SRGB);
                     auto rb_future = cmd_list.ReadBackAsync(*projection.image, 0, gsplat_rb_tex.Data(), gsplat_rb_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
 
@@ -600,7 +600,8 @@ namespace AIHoloImager
             {
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                GpuTexture2D dump_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm, GpuResourceFlag::None, "dump_tex");
+                GpuTexture2D dump_tex(
+                    gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm_SRGB, GpuResourceFlag::None, "dump_tex");
                 cmd_list.Copy(dump_tex, gsplat_texture_result.color_tex);
 
                 gpu_system.Execute(std::move(cmd_list));
@@ -649,7 +650,7 @@ namespace AIHoloImager
 
                     const uint32_t width = updated_projections[i].image->Width(0);
                     const uint32_t height = updated_projections[i].image->Height(0);
-                    Texture super_res_rb_tex(width, height, ElementFormat::RGBA8_UNorm);
+                    Texture super_res_rb_tex(width, height, ElementFormat::RGBA8_UNorm_SRGB);
                     auto rb_future =
                         cmd_list.ReadBackAsync(*updated_projections[i].image, 0, super_res_rb_tex.Data(), super_res_rb_tex.DataSize());
                     gpu_system.Execute(std::move(cmd_list));
@@ -704,7 +705,7 @@ namespace AIHoloImager
 
             const uint32_t texture_size = photo_texture_result.color_tex.Width(0);
 
-            GpuTexture2D albedo_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+            GpuTexture2D albedo_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm_SRGB,
                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "albedo_gpu_tex");
             GpuTexture2D mask_gpu_tex(gpu_system, texture_size, texture_size, 1, GpuFormat::R8_UNorm,
                 GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "mask_gpu_tex");
@@ -762,7 +763,7 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            GpuUnorderedAccessView merged_uav(gpu_system, merged_tex);
+            GpuUnorderedAccessView merged_uav(gpu_system, merged_tex, ToLinearFormat(merged_tex.Format()));
 
             const uint32_t texture_width = merged_tex.Width(0);
             const uint32_t texture_height = merged_tex.Height(0);
@@ -804,8 +805,8 @@ namespace AIHoloImager
             const GpuConstantBufferView dilate_cbv(gpu_system, dilate_cb);
             const GpuShaderResourceView tex_srv(gpu_system, tex);
             const GpuShaderResourceView tmp_tex_srv(gpu_system, tmp_tex);
-            GpuUnorderedAccessView tex_uav(gpu_system, tex);
-            GpuUnorderedAccessView tmp_tex_uav(gpu_system, tmp_tex);
+            GpuUnorderedAccessView tex_uav(gpu_system, tex, ToLinearFormat(tex.Format()));
+            GpuUnorderedAccessView tmp_tex_uav(gpu_system, tmp_tex, ToLinearFormat(tmp_tex.Format()));
 
             GpuTexture2D* texs[] = {&tex, &tmp_tex};
             const GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
@@ -853,7 +854,7 @@ namespace AIHoloImager
             {
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm_SRGB);
                 const auto rb_future = cmd_list.ReadBackAsync(mesh.AlbedoTexture(), 0, albedo_tex.Data(), albedo_tex.DataSize());
                 gpu_system.Execute(std::move(cmd_list));
                 rb_future.wait();
@@ -869,7 +870,7 @@ namespace AIHoloImager
             {
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                Texture albedo_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm_SRGB);
                 const auto rb_future = cmd_list.ReadBackAsync(mesh.AlbedoTexture(), 0, albedo_tex.Data(), albedo_tex.DataSize());
                 gpu_system.Execute(std::move(cmd_list));
                 rb_future.wait();

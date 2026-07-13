@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Util/FormatConversion.hpp"
@@ -20,6 +20,8 @@ namespace AIHoloImager
             return GpuFormat::RG8_UNorm;
         case ElementFormat::RGBA8_UNorm:
             return GpuFormat::RGBA8_UNorm;
+        case ElementFormat::RGBA8_UNorm_SRGB:
+            return GpuFormat::RGBA8_UNorm_SRGB;
 
         case ElementFormat::R32_Float:
             return GpuFormat::R32_Float;
@@ -48,6 +50,8 @@ namespace AIHoloImager
             return ElementFormat::RG8_UNorm;
         case GpuFormat::RGBA8_UNorm:
             return ElementFormat::RGBA8_UNorm;
+        case GpuFormat::RGBA8_UNorm_SRGB:
+            return ElementFormat::RGBA8_UNorm_SRGB;
 
         case GpuFormat::R32_Float:
             return ElementFormat::R32_Float;

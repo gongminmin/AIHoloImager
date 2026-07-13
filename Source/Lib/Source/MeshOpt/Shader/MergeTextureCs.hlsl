@@ -1,6 +1,8 @@
 // Copyright (c) 2024-2026 Minmin Gong
 //
 
+#include "Util/Shader/Utils.hlslh"
+
 static const uint32_t BlockDim = 16;
 
 cbuffer param_cb
@@ -30,5 +32,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    merged_tex[dtid.xy] = saturate(gsplat_color_tex[dtid.xy]);
+    merged_tex[dtid.xy] = saturate(LinearToSRGB(gsplat_color_tex[dtid.xy]));
 }

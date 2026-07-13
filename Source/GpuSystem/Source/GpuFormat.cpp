@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include "Gpu/GpuFormat.hpp"
@@ -194,9 +194,52 @@ namespace AIHoloImager
         return (fmt == GpuFormat::D16_UNorm) || (fmt == GpuFormat::D24_UNorm_S8_Uint) || (fmt == GpuFormat::D32_Float) ||
                (fmt == GpuFormat::D32_Float_S8X24_Uint);
     }
-
     bool IsStencilFormat(GpuFormat fmt) noexcept
     {
         return (fmt == GpuFormat::D24_UNorm_S8_Uint) || (fmt == GpuFormat::D32_Float_S8X24_Uint);
+    }
+    bool IsSRGBFormat(GpuFormat fmt) noexcept
+    {
+        switch (fmt)
+        {
+        case GpuFormat::RGBA8_UNorm_SRGB:
+        case GpuFormat::BGRA8_UNorm_SRGB:
+        case GpuFormat::BGRX8_UNorm_SRGB:
+            return true;
+
+        default:
+            return false;
+        }
+    }
+
+    GpuFormat ToLinearFormat(GpuFormat fmt) noexcept
+    {
+        switch (fmt)
+        {
+        case GpuFormat::RGBA8_UNorm_SRGB:
+            return GpuFormat::RGBA8_UNorm;
+        case GpuFormat::BGRA8_UNorm_SRGB:
+            return GpuFormat::BGRA8_UNorm;
+        case GpuFormat::BGRX8_UNorm_SRGB:
+            return GpuFormat::BGRX8_UNorm;
+
+        default:
+            return fmt;
+        }
+    }
+    GpuFormat ToSRGBFormat(GpuFormat fmt) noexcept
+    {
+        switch (fmt)
+        {
+        case GpuFormat::RGBA8_UNorm:
+            return GpuFormat::RGBA8_UNorm_SRGB;
+        case GpuFormat::BGRA8_UNorm:
+            return GpuFormat::BGRA8_UNorm_SRGB;
+        case GpuFormat::BGRX8_UNorm:
+            return GpuFormat::BGRX8_UNorm_SRGB;
+
+        default:
+            return fmt;
+        }
     }
 } // namespace AIHoloImager

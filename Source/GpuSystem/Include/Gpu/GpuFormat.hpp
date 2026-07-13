@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -68,4 +68,8 @@ namespace AIHoloImager
 
     bool IsDepthStencilFormat(GpuFormat fmt) noexcept;
     bool IsStencilFormat(GpuFormat fmt) noexcept;
+    bool IsSRGBFormat(GpuFormat fmt) noexcept;
+
+    GpuFormat ToLinearFormat(GpuFormat fmt) noexcept;
+    GpuFormat ToSRGBFormat(GpuFormat fmt) noexcept;
 } // namespace AIHoloImager

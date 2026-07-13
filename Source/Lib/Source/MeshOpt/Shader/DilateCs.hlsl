@@ -1,6 +1,8 @@
 // Copyright (c) 2024-2026 Minmin Gong
 //
 
+#include "Util/Shader/Utils.hlslh"
+
 static const uint32_t BlockDim = 16;
 
 cbuffer param_cb
@@ -29,7 +31,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     [branch]
     if (curr.a > 0)
     {
-        dilated_tex[dtid.xy] = curr;
+        dilated_tex[dtid.xy] = LinearToSRGB(curr);
         return;
     }
 
@@ -55,5 +57,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         sum.rgb /= sum.a;
     }
 
-    dilated_tex[dtid.xy] = sum;
+    dilated_tex[dtid.xy] = LinearToSRGB(sum);
 }

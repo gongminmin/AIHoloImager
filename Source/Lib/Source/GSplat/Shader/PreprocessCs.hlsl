@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
+#include "Util/Shader/Utils.hlslh"
+
 static const uint32_t BlockDim = 256;
 static const float AlphaThreshold = 1 / 255.0f;
 
@@ -212,6 +214,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
         screen_pos_extents_buff[offset] = screen_pos_extents;
         conic_opacity_buff[offset] = conic_opacity;
+
+        color = SRGBToLinear(color);
         color_buff[offset * 3 + 0] = color.x;
         color_buff[offset * 3 + 1] = color.y;
         color_buff[offset * 3 + 2] = color.z;

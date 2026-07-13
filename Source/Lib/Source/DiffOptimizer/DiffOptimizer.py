@@ -60,6 +60,24 @@ def LogNextPowerOf2(x: int):
     assert(x > 0)
     return (x - 1).bit_length() + 1
 
+def SRGBToLinear(data: torch.Tensor) -> torch.Tensor:
+    Alpha = 0.055
+    rgb = data[..., 0 : 3]
+    region_mask = rgb <= 0.04045
+    rgb[region_mask] /= 12.92
+    rgb[~region_mask] = ((rgb[~region_mask] + Alpha) / (1 + Alpha)) ** 2.4
+    data[..., 0 : 3] = rgb.clip(0, 1)
+    return data
+
+def LinearToSRGB(data: torch.Tensor) -> torch.Tensor:
+    Alpha = 0.055
+    rgb = data[..., 0 : 3]
+    region_mask = rgb <= 0.0031308
+    rgb[region_mask] *= 12.92
+    rgb[~region_mask] = (1 + Alpha) * (rgb[~region_mask] ** (1 / 2.4)) - Alpha
+    data[..., 0 : 3] = rgb.clip(0, 1)
+    return data
+
 class DiffOptimizer:
     def __init__(self, gpu_system: "GpuSystem") -> None:
         self.downsampling = True
@@ -139,7 +157,7 @@ class DiffOptimizer:
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()
             crop_img = crop_img * torch.clamp(crop_img[..., -1 : ], 0, 1)
-            crop_images.append(crop_img)
+            crop_images.append(SRGBToLinear(crop_img))
             resolutions.append(resolution)
 
         merged_roi = rois[0].clone()
@@ -322,7 +340,7 @@ class DiffOptimizer:
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()
             crop_img = crop_img * torch.clamp(crop_img[..., -1 : ], 0, 1)
-            crop_images.append(crop_img)
+            crop_images.append(SRGBToLinear(crop_img))
             resolutions.append(resolution)
 
         merged_roi = rois[0].clone()
@@ -404,7 +422,7 @@ class DiffOptimizer:
         interval = 50
         lr_base = 1e-2
 
-        texture_opt = nn.Parameter(texture)
+        texture_opt = nn.Parameter(SRGBToLinear(texture))
 
         parameters = [texture_opt]
         optimizer = optim.Adam(parameters, betas = (0.9, 0.999), lr = lr_base)
@@ -447,4 +465,4 @@ class DiffOptimizer:
                 loss_sum = 0.0
                 n = 0
 
-        return texture_best
+        return LinearToSRGB(texture_best)

@@ -1,5 +1,7 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
+
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 
@@ -73,5 +75,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         color.rgb = distorted_tex.SampleLevel(bilinear_sampler, distort_coord * width_height.zw, 0).rgb;
     }
 
-    undistorted_tex[undistort_coord] = color;
+    undistorted_tex[undistort_coord] = LinearToSRGB(color);
 }

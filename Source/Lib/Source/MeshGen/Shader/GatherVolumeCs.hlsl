@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
+
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 
@@ -72,7 +74,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
                 density += density_features[index];
                 deformation += float3(deformation_features[index * 3 + 0], deformation_features[index * 3 + 1], deformation_features[index * 3 + 2]);
-                color += float4(color_features[index * 3 + 0], color_features[index * 3 + 1], color_features[index * 3 + 2], 1);
+                color += SRGBToLinear(float4(color_features[index * 3 + 0], color_features[index * 3 + 1], color_features[index * 3 + 2], 1));
             }
         }
     }
@@ -87,7 +89,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         deformation = 1.0f / (grid_res * DeformationMultiplier) * tanh(deformation);
         deformation *= size;
 
-        color.xyz = Sigmoid(color.xyz);
+        color.xyz = Sigmoid(LinearToSRGB(color.xyz));
     }
     else
     {

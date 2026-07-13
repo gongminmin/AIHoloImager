@@ -232,7 +232,7 @@ namespace AIHoloImager
 
                 const GpuShaderResourceView gsplat_srv(gpu_system, intermediate_cache_.gsplat_image, 0);
 
-                GpuUnorderedAccessView rendered_image_uav(gpu_system, rendered_image, 0);
+                GpuUnorderedAccessView rendered_image_uav(gpu_system, rendered_image, 0, ToLinearFormat(rendered_image.Format()));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &blend_cbv},
@@ -307,7 +307,7 @@ namespace AIHoloImager
             GpuTexture2D gsplat_image;
         };
         IntermediateCache intermediate_cache_;
-        static constexpr GpuFormat GSplatFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat GSplatFmt = GpuFormat::RGBA8_UNorm_SRGB;
     };
 
     GaussianSplatting::GaussianSplatting() noexcept = default;

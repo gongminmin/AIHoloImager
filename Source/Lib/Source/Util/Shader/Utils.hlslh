@@ -8,3 +8,25 @@ T DivUp(T a, T b)
 {
     return (a + b - 1) / b;
 }
+
+float3 SRGBToLinear(float3 rgb)
+{
+    const float Alpha = 0.055f;
+    return select(rgb <= 0.04045f, rgb / 12.92f, pow((rgb + Alpha) / (1 + Alpha), 2.4f));
+}
+
+float4 SRGBToLinear(float4 rgba)
+{
+    return float4(SRGBToLinear(rgba.rgb), rgba.a);
+}
+
+float3 LinearToSRGB(float3 rgb)
+{
+    const float Alpha = 0.055f;
+    return select(rgb <= 0.0031308f, 12.92f * rgb, (1 + Alpha) * pow(rgb, 1 / 2.4f) - Alpha);
+}
+
+float4 LinearToSRGB(float4 rgba)
+{
+    return float4(LinearToSRGB(rgba.rgb), rgba.a);
+}

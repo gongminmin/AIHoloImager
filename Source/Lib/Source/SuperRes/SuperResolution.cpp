@@ -148,8 +148,8 @@ namespace AIHoloImager
                 const GpuConstantBufferView blend_cbv(gpu_system, blend_cb);
 
                 const GpuShaderResourceView upsampled_residual_srv(gpu_system, upsampled_residual_tex);
-                const GpuShaderResourceView input_srv(gpu_system, image);
-                GpuUnorderedAccessView upsampled_net_uav(gpu_system, upsampled_tex);
+                const GpuShaderResourceView input_srv(gpu_system, image, ToLinearFormat(image.Format()));
+                GpuUnorderedAccessView upsampled_net_uav(gpu_system, upsampled_tex, ToLinearFormat(upsampled_tex.Format()));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &blend_cbv},
@@ -192,7 +192,7 @@ namespace AIHoloImager
                 const GpuConstantBufferView resize_x_cbv(gpu_system, resize_x_cb);
 
                 const GpuShaderResourceView input_srv(gpu_system, upsampled_tex);
-                GpuUnorderedAccessView output_uav(gpu_system, resized_x_tex);
+                GpuUnorderedAccessView output_uav(gpu_system, resized_x_tex, ToLinearFormat(resized_x_tex.Format()));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &resize_x_cbv},
@@ -209,7 +209,7 @@ namespace AIHoloImager
             }
             {
                 const GpuShaderResourceView input_srv(gpu_system, resized_x_tex);
-                GpuUnorderedAccessView output_uav(gpu_system, resized_image);
+                GpuUnorderedAccessView output_uav(gpu_system, resized_image, ToLinearFormat(resized_image.Format()));
 
                 GpuConstantBufferOfType<ResizeConstantBuffer> resize_y_cb(gpu_system, "resize_y_cb");
                 resize_y_cb->src_roi = {0, 0, target_width, upsampled_tex.Height(0)};

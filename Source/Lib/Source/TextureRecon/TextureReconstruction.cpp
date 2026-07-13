@@ -137,7 +137,7 @@ namespace AIHoloImager
             {
                 SaveMesh(ToMesh(gpu_system_, mesh), output_dir / "MeshTextured.glb");
 
-                Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm);
+                Texture projective_tex(texture_size, texture_size, ElementFormat::RGBA8_UNorm_SRGB);
                 const auto rb_future = cmd_list.ReadBackAsync(result.color_tex, 0, projective_tex.Data(), projective_tex.DataSize());
                 gpu_system_.ExecuteAndReset(cmd_list);
 
@@ -207,9 +207,9 @@ namespace AIHoloImager
 
             const uint32_t num_indices = static_cast<uint32_t>(mesh_ib.Size() / sizeof(uint32_t));
 
-            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, GpuFormat::RGBA8_UNorm,
+            GpuTexture2D accum_color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt,
                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "TextureReconstruction.accum_color_tex");
-            GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex);
+            GpuUnorderedAccessView accum_color_uav(gpu_system_, accum_color_tex, ToLinearFormat(accum_color_tex.Format()));
 
             {
                 const float black[] = {0, 0, 0, 0};
@@ -241,7 +241,7 @@ namespace AIHoloImager
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
-                    Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm);
+                    Texture color_tex(accum_color_tex.Width(0), accum_color_tex.Height(0), ElementFormat::RGBA8_UNorm_SRGB);
                     const auto rb_future = cmd_list.ReadBackAsync(accum_color_tex, 0, color_tex.Data(), color_tex.DataSize());
                     gpu_system_.ExecuteAndReset(cmd_list);
                     rb_future.wait();
@@ -329,7 +329,7 @@ namespace AIHoloImager
 
             GpuTexture2D color_tex(gpu_system_, texture_size, texture_size, 1, ColorFmt,
                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "TextureReconstruction.color_tex");
-            GpuUnorderedAccessView color_uav(gpu_system_, color_tex);
+            GpuUnorderedAccessView color_uav(gpu_system_, color_tex, ToLinearFormat(color_tex.Format()));
 
             const GpuShaderResourceView accum_color_srv(gpu_system_, accum_color_tex);
 
@@ -392,7 +392,7 @@ namespace AIHoloImager
         };
         GpuComputePipeline resolve_texture_pipeline_;
 
-        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm_SRGB;
         static constexpr GpuFormat PositionFmt = GpuFormat::RGBA32_Float;
         static constexpr GpuFormat NormalFmt = GpuFormat::RGBA8_UNorm;
         static constexpr GpuFormat DepthFmt = GpuFormat::D32_Float;

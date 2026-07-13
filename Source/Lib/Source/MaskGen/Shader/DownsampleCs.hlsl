@@ -2,6 +2,7 @@
 //
 
 #include "Util/Shader/Lanczos.hlslh"
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 static const uint32_t KernelRadius = 3;
@@ -30,5 +31,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    output_tex[dtid.xy] = LanczosResample(input_tex, dtid.xy, src_roi, scale, KernelRadius, x_dir, float4(0, 0, 0, 0), float4(1, 1, 1, 1));
+    output_tex[dtid.xy] = LinearToSRGB(LanczosResample(input_tex, dtid.xy, src_roi, scale, KernelRadius, x_dir, float4(0, 0, 0, 0), float4(1, 1, 1, 1)));
 }

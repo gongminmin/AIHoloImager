@@ -370,7 +370,7 @@ namespace AIHoloImager
                     auto& image = images[i];
                     {
                         Texture image_cpu = LoadTexture(image_file_path);
-                        image_cpu.Convert(ElementFormat::RGBA8_UNorm);
+                        image_cpu.Convert(ElementFormat::RGBA8_UNorm_SRGB);
 
                         image = GpuTexture2D(gpu_system, image_cpu.Width(), image_cpu.Height(), 1, ColorFmt,
                             GpuResourceFlag::ShaderResource | GpuResourceFlag::Shareable, std::format("input_image_{}", i));
@@ -581,7 +581,8 @@ namespace AIHoloImager
                     gray_cb.UploadStaging();
 
                     const GpuConstantBufferView gray_cbv(gpu_system, gray_cb);
-                    const GpuShaderResourceView input_srv(gpu_system, image);
+                    // Treat it as linear format due to the Y factors are based on sRGB data
+                    const GpuShaderResourceView input_srv(gpu_system, image, ToLinearFormat(image.Format()));
                     GpuUnorderedAccessView output_uav(gpu_system, gray_image);
 
                     std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
@@ -1108,7 +1109,7 @@ namespace AIHoloImager
                     for (size_t i = 0; i < views.size(); ++i)
                     {
                         const auto& image = *ret.projections[i].image;
-                        read_back_images[i] = Texture(image.Width(0), image.Height(0), ElementFormat::RGBA8_UNorm);
+                        read_back_images[i] = Texture(image.Width(0), image.Height(0), ElementFormat::RGBA8_UNorm_SRGB);
                         rb_futures[i] = cmd_list.ReadBackAsync(image, 0, read_back_images[i].Data(), read_back_images[i].DataSize());
                     }
 
@@ -1176,7 +1177,7 @@ namespace AIHoloImager
 
             const GpuConstantBufferView undistort_cbv(gpu_system, undistort_cb);
             const GpuShaderResourceView input_srv(gpu_system, input_tex);
-            GpuUnorderedAccessView output_uav(gpu_system, output_tex);
+            GpuUnorderedAccessView output_uav(gpu_system, output_tex, ToLinearFormat(output_tex.Format()));
 
             std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                 {"param_cb", &undistort_cbv},
@@ -1442,7 +1443,7 @@ namespace AIHoloImager
         };
         GpuComputePipeline undistort_pipeline_;
 
-        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm;
+        static constexpr GpuFormat ColorFmt = GpuFormat::RGBA8_UNorm_SRGB;
     };
 
     StructureFromMotion::StructureFromMotion(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))

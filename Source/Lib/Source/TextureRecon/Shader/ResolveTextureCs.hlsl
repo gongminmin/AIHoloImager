@@ -1,5 +1,7 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
+
+#include "Util/Shader/Utils.hlslh"
 
 static const uint32_t BlockDim = 16;
 
@@ -34,5 +36,5 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
         color.a = 1;
     }
 
-    color_tex[dtid.xy] = color;
+    color_tex[dtid.xy] = LinearToSRGB(color);
 }
