@@ -270,7 +270,8 @@ namespace AIHoloImager
             }
 
             {
-                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_);
+                // Treat it as linear format due to the the statistics assume the data is in sRGB
+                const GpuShaderResourceView input_srv(gpu_system, downsampled_gpu_tex_, ToLinearFormat(downsampled_gpu_tex_.Format()));
                 GpuUnorderedAccessView max_uav(
                     gpu_system, image_max_gpu_buff_, GpuFormat::R32_Uint); // Float as uint due to atomic operations
 
