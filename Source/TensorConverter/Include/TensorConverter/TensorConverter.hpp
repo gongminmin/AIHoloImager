@@ -7,17 +7,10 @@
 #include <span>
 
 #include "Base/MiniWindows.hpp"
+#include "Base/Symbol.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
-
-#ifdef _WIN32
-    #define AIHI_SYMBOL_EXPORT __declspec(dllexport)
-    #define AIHI_SYMBOL_IMPORT __declspec(dllimport)
-#else
-    #define AIHI_SYMBOL_EXPORT __attribute__((visibility("default")))
-    #define AIHI_SYMBOL_IMPORT
-#endif
 
 #ifdef AIHoloImagerTensorConverter_EXPORTS
     #define AIHI_TC_API AIHI_SYMBOL_EXPORT

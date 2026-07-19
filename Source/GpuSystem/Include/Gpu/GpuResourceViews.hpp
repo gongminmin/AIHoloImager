@@ -11,6 +11,7 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -29,16 +30,16 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuConstantBufferView)
 
     public:
-        GpuConstantBufferView() noexcept;
-        GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer);
-        ~GpuConstantBufferView();
+        AIHI_GPU_SYS_API GpuConstantBufferView() noexcept;
+        AIHI_GPU_SYS_API GpuConstantBufferView(GpuSystem& gpu_system, const GpuConstantBuffer& cbuffer);
+        AIHI_GPU_SYS_API ~GpuConstantBufferView();
 
-        GpuConstantBufferView(GpuConstantBufferView&& other) noexcept;
-        GpuConstantBufferView& operator=(GpuConstantBufferView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuConstantBufferView(GpuConstantBufferView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuConstantBufferView& operator=(GpuConstantBufferView&& other) noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;
@@ -53,35 +54,36 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuShaderResourceView)
 
     public:
-        GpuShaderResourceView() noexcept;
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, GpuFormat format);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, GpuFormat format);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, GpuFormat format);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource);
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView() noexcept;
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuShaderResourceView(
+            GpuSystem& gpu_system, const GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
         // Typed buffer
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format);
-        GpuShaderResourceView(
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, GpuFormat format);
+        AIHI_GPU_SYS_API GpuShaderResourceView(
             GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
         // Structured buffer
-        GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size);
-        GpuShaderResourceView(
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size);
+        AIHI_GPU_SYS_API GpuShaderResourceView(
             GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
-        ~GpuShaderResourceView();
+        AIHI_GPU_SYS_API ~GpuShaderResourceView();
 
-        GpuShaderResourceView(GpuShaderResourceView&& other) noexcept;
-        GpuShaderResourceView& operator=(GpuShaderResourceView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuShaderResourceView(GpuShaderResourceView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuShaderResourceView& operator=(GpuShaderResourceView&& other) noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;
@@ -96,19 +98,19 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuRenderTargetView)
 
     public:
-        GpuRenderTargetView() noexcept;
-        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
-        ~GpuRenderTargetView();
+        AIHI_GPU_SYS_API GpuRenderTargetView() noexcept;
+        AIHI_GPU_SYS_API GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        AIHI_GPU_SYS_API GpuRenderTargetView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API ~GpuRenderTargetView();
 
-        GpuRenderTargetView(GpuRenderTargetView&& other) noexcept;
-        GpuRenderTargetView& operator=(GpuRenderTargetView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuRenderTargetView(GpuRenderTargetView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuRenderTargetView& operator=(GpuRenderTargetView&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;
@@ -123,19 +125,19 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuDepthStencilView)
 
     public:
-        GpuDepthStencilView() noexcept;
-        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
-        ~GpuDepthStencilView();
+        AIHI_GPU_SYS_API GpuDepthStencilView() noexcept;
+        AIHI_GPU_SYS_API GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        AIHI_GPU_SYS_API GpuDepthStencilView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API ~GpuDepthStencilView();
 
-        GpuDepthStencilView(GpuDepthStencilView&& other) noexcept;
-        GpuDepthStencilView& operator=(GpuDepthStencilView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuDepthStencilView(GpuDepthStencilView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuDepthStencilView& operator=(GpuDepthStencilView&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;
@@ -150,37 +152,39 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuUnorderedAccessView)
 
     public:
-        GpuUnorderedAccessView() noexcept;
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView() noexcept;
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2D& texture, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(
+            GpuSystem& gpu_system, GpuTexture2DArray& texture_array, uint32_t sub_resource, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuTexture3D& texture, uint32_t sub_resource, GpuFormat format);
         // Typed buffer
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format);
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, GpuFormat format);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(
+            GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, GpuFormat format);
         // Structured buffer
-        GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size);
-        GpuUnorderedAccessView(
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size);
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(
             GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size);
-        ~GpuUnorderedAccessView();
+        AIHI_GPU_SYS_API ~GpuUnorderedAccessView();
 
-        GpuUnorderedAccessView(GpuUnorderedAccessView&& other) noexcept;
-        GpuUnorderedAccessView& operator=(GpuUnorderedAccessView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuUnorderedAccessView(GpuUnorderedAccessView&& other) noexcept;
+        AIHI_GPU_SYS_API GpuUnorderedAccessView& operator=(GpuUnorderedAccessView&& other) noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list) const;
 
-        GpuResource* Resource() noexcept;
-        const GpuResource* Resource() const noexcept;
+        AIHI_GPU_SYS_API GpuResource* Resource() noexcept;
+        AIHI_GPU_SYS_API const GpuResource* Resource() const noexcept;
 
     private:
         class Impl;

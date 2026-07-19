@@ -27,6 +27,7 @@ set(aihi_gpu_system_files
     Include/Gpu/GpuTexture.hpp
     Include/Gpu/GpuVertexLayout.hpp
     Include/Gpu/InternalDefine.hpp
+    Include/Gpu/Symbol.hpp
     Source/Internal/GpuBufferInternal.cpp
     Source/Internal/GpuBufferInternal.hpp
     Source/Internal/GpuCommandListInternal.cpp
@@ -162,7 +163,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${aihi_gpu_system_files})
 
 AddShaderFile(Source/Shader/GenMipmapCs.hlsl "cs" "main")
 
-add_library(AIHoloImagerGpuSystem STATIC
+add_library(AIHoloImagerGpuSystem SHARED
     ${aihi_gpu_system_files}
 )
 

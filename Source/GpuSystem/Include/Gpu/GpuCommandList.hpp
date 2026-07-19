@@ -17,6 +17,7 @@
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuTexture.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -105,69 +106,74 @@ namespace AIHoloImager
         };
 
     public:
-        GpuCommandList() noexcept;
-        GpuCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type);
-        ~GpuCommandList();
+        AIHI_GPU_SYS_API GpuCommandList() noexcept;
+        AIHI_GPU_SYS_API GpuCommandList(GpuSystem& gpu_system, GpuCommandPool& cmd_pool, GpuSystem::CmdQueueType type);
+        AIHI_GPU_SYS_API ~GpuCommandList();
 
-        GpuCommandList(GpuCommandList&& other) noexcept;
-        GpuCommandList& operator=(GpuCommandList&& other) noexcept;
+        AIHI_GPU_SYS_API GpuCommandList(GpuCommandList&& other) noexcept;
+        AIHI_GPU_SYS_API GpuCommandList& operator=(GpuCommandList&& other) noexcept;
 
-        GpuSystem::CmdQueueType Type() const noexcept;
-        void Name(std::string_view name);
-        GpuSystem& GpuSys() noexcept;
+        AIHI_GPU_SYS_API GpuSystem::CmdQueueType Type() const noexcept;
+        AIHI_GPU_SYS_API void Name(std::string_view name);
+        AIHI_GPU_SYS_API GpuSystem& GpuSys() noexcept;
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        void* NativeCommandListBase() const noexcept;
+        AIHI_GPU_SYS_API void* NativeCommandListBase() const noexcept;
         template <typename Traits>
         typename Traits::CommandListType NativeCommandListBase() const noexcept
         {
             return reinterpret_cast<typename Traits::CommandListType>(this->NativeCommandListBase());
         }
 
-        void Clear(GpuRenderTargetView& rtv, const float color[4]);
-        void Clear(GpuUnorderedAccessView& uav, const float color[4]);
-        void Clear(GpuUnorderedAccessView& uav, const uint32_t color[4]);
-        void ClearDepth(GpuDepthStencilView& dsv, float depth);
-        void ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil);
-        void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
+        AIHI_GPU_SYS_API void Clear(GpuRenderTargetView& rtv, const float color[4]);
+        AIHI_GPU_SYS_API void Clear(GpuUnorderedAccessView& uav, const float color[4]);
+        AIHI_GPU_SYS_API void Clear(GpuUnorderedAccessView& uav, const uint32_t color[4]);
+        AIHI_GPU_SYS_API void ClearDepth(GpuDepthStencilView& dsv, float depth);
+        AIHI_GPU_SYS_API void ClearStencil(GpuDepthStencilView& dsv, uint8_t stencil);
+        AIHI_GPU_SYS_API void ClearDepthStencil(GpuDepthStencilView& dsv, float depth, uint8_t stencil);
 
-        void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuRenderArguments& args,
-            std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
-            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
-        void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const GpuBuffer& indirect_args,
-            std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv,
-            std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
-        void RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs, const IndexBufferBinding& ib,
-            const GpuRenderIndexedArguments& args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
+        AIHI_GPU_SYS_API void Render(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+            const GpuRenderArguments& args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
             GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
-        void RenderIndexedIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+        AIHI_GPU_SYS_API void RenderIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+            const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings, std::span<GpuRenderTargetView*> rtvs,
+            GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports, std::span<const GpuRect> scissor_rects);
+        AIHI_GPU_SYS_API void RenderIndexed(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
+            const IndexBufferBinding& ib, const GpuRenderIndexedArguments& args, std::span<const ShaderBinding> shader_bindings,
+            std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
+            std::span<const GpuRect> scissor_rects);
+        AIHI_GPU_SYS_API void RenderIndexedIndirect(const GpuRenderPipeline& pipeline, std::span<const VertexBufferBinding> vbs,
             const IndexBufferBinding& ib, const GpuBuffer& indirect_args, std::span<const ShaderBinding> shader_bindings,
             std::span<GpuRenderTargetView*> rtvs, GpuDepthStencilView* dsv, std::span<const GpuViewport> viewports,
             std::span<const GpuRect> scissor_rects);
-        void Compute(const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const ShaderBinding& shader_binding);
-        void ComputeIndirect(const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);
-        void Copy(GpuBuffer& dest, const GpuBuffer& src);
-        void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);
-        void Copy(GpuTexture& dest, const GpuTexture& src);
-        void Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z, const GpuTexture& src,
-            uint32_t src_sub_resource, const GpuBox& src_box);
+        AIHI_GPU_SYS_API void Compute(
+            const GpuComputePipeline& pipeline, const GpuComputeArguments& args, const ShaderBinding& shader_binding);
+        AIHI_GPU_SYS_API void ComputeIndirect(
+            const GpuComputePipeline& pipeline, const GpuBuffer& indirect_args, const ShaderBinding& shader_binding);
+        AIHI_GPU_SYS_API void Copy(GpuBuffer& dest, const GpuBuffer& src);
+        AIHI_GPU_SYS_API void Copy(GpuBuffer& dest, uint32_t dst_offset, const GpuBuffer& src, uint32_t src_offset, uint32_t src_size);
+        AIHI_GPU_SYS_API void Copy(GpuTexture& dest, const GpuTexture& src);
+        AIHI_GPU_SYS_API void Copy(GpuTexture& dest, uint32_t dest_sub_resource, uint32_t dst_x, uint32_t dst_y, uint32_t dst_z,
+            const GpuTexture& src, uint32_t src_sub_resource, const GpuBox& src_box);
 
-        void Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func);
-        void Upload(GpuBuffer& dest, const void* src_data, uint32_t src_size);
-        void Upload(GpuTexture& dest, uint32_t sub_resource,
+        AIHI_GPU_SYS_API void Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func);
+        AIHI_GPU_SYS_API void Upload(GpuBuffer& dest, const void* src_data, uint32_t src_size);
+        AIHI_GPU_SYS_API void Upload(GpuTexture& dest, uint32_t sub_resource,
             const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
-        void Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size);
-        [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func);
-        [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size);
-        [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
+        AIHI_GPU_SYS_API void Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size);
+        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(
+            const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func);
+        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size);
+        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
-        [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size);
+        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(
+            const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size);
 
-        void Close();
-        void Reset(GpuCommandPool& cmd_pool);
+        AIHI_GPU_SYS_API void Close();
+        AIHI_GPU_SYS_API void Reset(GpuCommandPool& cmd_pool);
 
-        void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
+        AIHI_GPU_SYS_API void GenerateMipmaps(GpuTexture2D& texture, GpuSampler::Filter filter);
 
     private:
         class Impl;

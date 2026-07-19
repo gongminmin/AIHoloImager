@@ -11,6 +11,7 @@
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuBuffer.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -19,11 +20,11 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryPage)
 
     public:
-        GpuMemoryPage(GpuSystem& gpu_system, bool is_upload, uint32_t size_in_bytes);
-        ~GpuMemoryPage() noexcept;
+        AIHI_GPU_SYS_API GpuMemoryPage(GpuSystem& gpu_system, bool is_upload, uint32_t size_in_bytes);
+        AIHI_GPU_SYS_API ~GpuMemoryPage() noexcept;
 
-        GpuMemoryPage(GpuMemoryPage&& other) noexcept;
-        GpuMemoryPage& operator=(GpuMemoryPage&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryPage(GpuMemoryPage&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryPage& operator=(GpuMemoryPage&& other) noexcept;
 
         const GpuBuffer& Buffer() const noexcept
         {
@@ -61,14 +62,14 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryBlock)
 
     public:
-        GpuMemoryBlock() noexcept;
-        ~GpuMemoryBlock();
+        AIHI_GPU_SYS_API GpuMemoryBlock() noexcept;
+        AIHI_GPU_SYS_API ~GpuMemoryBlock();
 
-        GpuMemoryBlock(GpuMemoryBlock&& other) noexcept;
-        GpuMemoryBlock& operator=(GpuMemoryBlock&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryBlock(GpuMemoryBlock&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryBlock& operator=(GpuMemoryBlock&& other) noexcept;
 
-        void Reset() noexcept;
-        void Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
+        AIHI_GPU_SYS_API void Reset() noexcept;
+        AIHI_GPU_SYS_API void Reset(GpuMemoryPage& page, uint32_t offset, uint32_t size) noexcept;
 
         const GpuBuffer* Buffer() const noexcept
         {
@@ -120,18 +121,18 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuMemoryAllocator)
 
     public:
-        GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept;
-        ~GpuMemoryAllocator();
+        AIHI_GPU_SYS_API GpuMemoryAllocator(GpuSystem& gpu_system, bool is_upload) noexcept;
+        AIHI_GPU_SYS_API ~GpuMemoryAllocator();
 
-        GpuMemoryAllocator(GpuMemoryAllocator&& other) noexcept;
-        GpuMemoryAllocator& operator=(GpuMemoryAllocator&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryAllocator(GpuMemoryAllocator&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMemoryAllocator& operator=(GpuMemoryAllocator&& other) noexcept;
 
-        GpuMemoryBlock Allocate(uint32_t size_in_bytes, uint32_t alignment);
-        void Deallocate(GpuMemoryBlock&& mem_block);
-        void Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API GpuMemoryBlock Allocate(uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API void Deallocate(GpuMemoryBlock&& mem_block);
+        AIHI_GPU_SYS_API void Reallocate(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void ClearStallPages(const GpuSystem::WaitFences& wait_fences);
-        void Clear();
+        AIHI_GPU_SYS_API void ClearStallPages(const GpuSystem::WaitFences& wait_fences);
+        AIHI_GPU_SYS_API void Clear();
 
     private:
         void Allocate(std::lock_guard<std::mutex>& proof_of_lock, GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);

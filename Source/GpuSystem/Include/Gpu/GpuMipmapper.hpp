@@ -7,6 +7,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSampler.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -19,14 +20,14 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuMipmapper)
 
     public:
-        GpuMipmapper();
-        explicit GpuMipmapper(GpuSystem& gpu_system);
-        ~GpuMipmapper() noexcept;
+        AIHI_GPU_SYS_API GpuMipmapper();
+        AIHI_GPU_SYS_API explicit GpuMipmapper(GpuSystem& gpu_system);
+        AIHI_GPU_SYS_API ~GpuMipmapper() noexcept;
 
-        GpuMipmapper(GpuMipmapper&& other) noexcept;
-        GpuMipmapper& operator=(GpuMipmapper&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMipmapper(GpuMipmapper&& other) noexcept;
+        AIHI_GPU_SYS_API GpuMipmapper& operator=(GpuMipmapper&& other) noexcept;
 
-        void Generate(GpuCommandList& cmd_list, GpuTexture2D& texture, GpuSampler::Filter filter);
+        AIHI_GPU_SYS_API void Generate(GpuCommandList& cmd_list, GpuTexture2D& texture, GpuSampler::Filter filter);
 
     private:
         class Impl;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -14,6 +14,7 @@
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/GpuVertexLayout.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 #ifdef AIHI_ENABLE_D3D12
     #ifdef AIHI_ENABLE_VULKAN
@@ -143,15 +144,15 @@ namespace AIHoloImager
         };
 
     public:
-        GpuRenderPipeline() noexcept;
-        GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
+        AIHI_GPU_SYS_API GpuRenderPipeline() noexcept;
+        AIHI_GPU_SYS_API GpuRenderPipeline(GpuSystem& gpu_system, PrimitiveTopology topology, std::span<const ShaderInfo> shaders,
             const GpuVertexLayout& vertex_layout, std::span<const GpuStaticSampler> static_samplers, const States& states);
-        ~GpuRenderPipeline();
+        AIHI_GPU_SYS_API ~GpuRenderPipeline();
 
-        GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
-        GpuRenderPipeline& operator=(GpuRenderPipeline&& other) noexcept;
+        AIHI_GPU_SYS_API GpuRenderPipeline(GpuRenderPipeline&& other) noexcept;
+        AIHI_GPU_SYS_API GpuRenderPipeline& operator=(GpuRenderPipeline&& other) noexcept;
 
-        void Bind(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Bind(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;
@@ -166,14 +167,15 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuComputePipeline)
 
     public:
-        GpuComputePipeline() noexcept;
-        GpuComputePipeline(GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers);
-        ~GpuComputePipeline();
+        AIHI_GPU_SYS_API GpuComputePipeline() noexcept;
+        AIHI_GPU_SYS_API GpuComputePipeline(
+            GpuSystem& gpu_system, const ShaderInfo& shader, std::span<const GpuStaticSampler> static_samplers);
+        AIHI_GPU_SYS_API ~GpuComputePipeline();
 
-        GpuComputePipeline(GpuComputePipeline&& other) noexcept;
-        GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
+        AIHI_GPU_SYS_API GpuComputePipeline(GpuComputePipeline&& other) noexcept;
+        AIHI_GPU_SYS_API GpuComputePipeline& operator=(GpuComputePipeline&& other) noexcept;
 
-        void Bind(GpuCommandList& cmd_list) const;
+        AIHI_GPU_SYS_API void Bind(GpuCommandList& cmd_list) const;
 
     private:
         class Impl;

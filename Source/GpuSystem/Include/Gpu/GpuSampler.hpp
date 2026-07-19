@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -7,6 +7,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -27,10 +28,10 @@ namespace AIHoloImager
             Filter mag;
             Filter mip;
 
-            Filters() noexcept;
-            Filters(Filter filter) noexcept;
-            Filters(Filter min_filter, Filter mag_filter) noexcept;
-            Filters(Filter min_filter, Filter mag_filter, Filter mip_filter) noexcept;
+            AIHI_GPU_SYS_API Filters() noexcept;
+            AIHI_GPU_SYS_API Filters(Filter filter) noexcept;
+            AIHI_GPU_SYS_API Filters(Filter min_filter, Filter mag_filter) noexcept;
+            AIHI_GPU_SYS_API Filters(Filter min_filter, Filter mag_filter, Filter mip_filter) noexcept;
         };
 
         enum class AddressMode
@@ -48,9 +49,9 @@ namespace AIHoloImager
             AddressMode v;
             AddressMode w;
 
-            AddressModes() noexcept;
-            AddressModes(AddressMode uvw) noexcept;
-            AddressModes(AddressMode amu, AddressMode amv, AddressMode amw) noexcept;
+            AIHI_GPU_SYS_API AddressModes() noexcept;
+            AIHI_GPU_SYS_API AddressModes(AddressMode uvw) noexcept;
+            AIHI_GPU_SYS_API AddressModes(AddressMode amu, AddressMode amv, AddressMode amw) noexcept;
         };
 
         const GpuSampler::Filters& SamplerFilters() const noexcept
@@ -79,13 +80,14 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuStaticSampler)
 
     public:
-        GpuStaticSampler() noexcept;
-        explicit GpuStaticSampler(GpuSystem& gpu_system);
-        GpuStaticSampler(GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
-        ~GpuStaticSampler() noexcept;
+        AIHI_GPU_SYS_API GpuStaticSampler() noexcept;
+        AIHI_GPU_SYS_API explicit GpuStaticSampler(GpuSystem& gpu_system);
+        AIHI_GPU_SYS_API GpuStaticSampler(
+            GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
+        AIHI_GPU_SYS_API ~GpuStaticSampler() noexcept;
 
-        GpuStaticSampler(GpuStaticSampler&& other) noexcept;
-        GpuStaticSampler& operator=(GpuStaticSampler&& other) noexcept;
+        AIHI_GPU_SYS_API GpuStaticSampler(GpuStaticSampler&& other) noexcept;
+        AIHI_GPU_SYS_API GpuStaticSampler& operator=(GpuStaticSampler&& other) noexcept;
 
     private:
         class Impl;
@@ -100,13 +102,14 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuDynamicSampler)
 
     public:
-        GpuDynamicSampler() noexcept;
-        explicit GpuDynamicSampler(GpuSystem& gpu_system);
-        GpuDynamicSampler(GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
-        ~GpuDynamicSampler() noexcept;
+        AIHI_GPU_SYS_API GpuDynamicSampler() noexcept;
+        AIHI_GPU_SYS_API explicit GpuDynamicSampler(GpuSystem& gpu_system);
+        AIHI_GPU_SYS_API GpuDynamicSampler(
+            GpuSystem& gpu_system, const GpuSampler::Filters& filters, const GpuSampler::AddressModes& addr_modes);
+        AIHI_GPU_SYS_API ~GpuDynamicSampler() noexcept;
 
-        GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
-        GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
+        AIHI_GPU_SYS_API GpuDynamicSampler(GpuDynamicSampler&& other) noexcept;
+        AIHI_GPU_SYS_API GpuDynamicSampler& operator=(GpuDynamicSampler&& other) noexcept;
 
     private:
         class Impl;

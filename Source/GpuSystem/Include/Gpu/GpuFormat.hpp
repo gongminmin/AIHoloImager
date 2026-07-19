@@ -5,6 +5,8 @@
 
 #include <cstdint>
 
+#include "Gpu/Symbol.hpp"
+
 namespace AIHoloImager
 {
     enum class GpuBaseFormat
@@ -60,16 +62,16 @@ namespace AIHoloImager
         NV12,
     };
 
-    uint32_t FormatSize(GpuFormat fmt);
-    GpuBaseFormat BaseFormat(GpuFormat fmt);
-    uint32_t FormatChannels(GpuFormat fmt);
-    uint32_t FormatChannelSize(GpuFormat fmt);
-    uint32_t NumPlanes(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API uint32_t FormatSize(GpuFormat fmt);
+    AIHI_GPU_SYS_API GpuBaseFormat BaseFormat(GpuFormat fmt);
+    AIHI_GPU_SYS_API uint32_t FormatChannels(GpuFormat fmt);
+    AIHI_GPU_SYS_API uint32_t FormatChannelSize(GpuFormat fmt);
+    AIHI_GPU_SYS_API uint32_t NumPlanes(GpuFormat fmt) noexcept;
 
-    bool IsDepthStencilFormat(GpuFormat fmt) noexcept;
-    bool IsStencilFormat(GpuFormat fmt) noexcept;
-    bool IsSRGBFormat(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API bool IsDepthStencilFormat(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API bool IsStencilFormat(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API bool IsSRGBFormat(GpuFormat fmt) noexcept;
 
-    GpuFormat ToLinearFormat(GpuFormat fmt) noexcept;
-    GpuFormat ToSRGBFormat(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API GpuFormat ToLinearFormat(GpuFormat fmt) noexcept;
+    AIHI_GPU_SYS_API GpuFormat ToSRGBFormat(GpuFormat fmt) noexcept;
 } // namespace AIHoloImager

@@ -10,6 +10,7 @@
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -22,50 +23,50 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuResource)
 
     public:
-        GpuTexture() noexcept;
-        ~GpuTexture() override;
+        AIHI_GPU_SYS_API GpuTexture() noexcept;
+        AIHI_GPU_SYS_API ~GpuTexture() override;
 
-        GpuTexture(GpuTexture&& other) noexcept;
-        GpuTexture& operator=(GpuTexture&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture(GpuTexture&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture& operator=(GpuTexture&& other) noexcept;
 
-        void Name(std::string_view name) override;
+        AIHI_GPU_SYS_API void Name(std::string_view name) override;
 
-        void* NativeResource() const noexcept override;
+        AIHI_GPU_SYS_API void* NativeResource() const noexcept override;
         template <typename Traits>
         typename Traits::ResourceType NativeResource() const noexcept
         {
             return reinterpret_cast<typename Traits::ResourceType>(this->NativeResource());
         }
-        void* NativeTexture() const noexcept;
+        AIHI_GPU_SYS_API void* NativeTexture() const noexcept;
         template <typename Traits>
         typename Traits::TextureType NativeTexture() const noexcept
         {
             return reinterpret_cast<typename Traits::TextureType>(this->NativeTexture());
         }
 
-        explicit operator bool() const noexcept override;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept override;
 
-        void* SharedHandle() const noexcept override;
+        AIHI_GPU_SYS_API void* SharedHandle() const noexcept override;
 
-        GpuHeap Heap() const noexcept override;
-        GpuResourceType Type() const noexcept override;
-        GpuResourceFlag Flags() const noexcept override;
-        uint32_t AllocationSize() const noexcept override;
+        AIHI_GPU_SYS_API GpuHeap Heap() const noexcept override;
+        AIHI_GPU_SYS_API GpuResourceType Type() const noexcept override;
+        AIHI_GPU_SYS_API GpuResourceFlag Flags() const noexcept override;
+        AIHI_GPU_SYS_API uint32_t AllocationSize() const noexcept override;
 
-        uint32_t Width(uint32_t mip) const noexcept;
-        uint32_t Height(uint32_t mip) const noexcept;
-        uint32_t Depth(uint32_t mip) const noexcept;
-        uint32_t ArraySize() const noexcept;
-        uint32_t MipLevels() const noexcept;
-        uint32_t Planes() const noexcept;
-        GpuFormat Format() const noexcept;
+        AIHI_GPU_SYS_API uint32_t Width(uint32_t mip) const noexcept;
+        AIHI_GPU_SYS_API uint32_t Height(uint32_t mip) const noexcept;
+        AIHI_GPU_SYS_API uint32_t Depth(uint32_t mip) const noexcept;
+        AIHI_GPU_SYS_API uint32_t ArraySize() const noexcept;
+        AIHI_GPU_SYS_API uint32_t MipLevels() const noexcept;
+        AIHI_GPU_SYS_API uint32_t Planes() const noexcept;
+        AIHI_GPU_SYS_API GpuFormat Format() const noexcept;
 
-        void Reset();
+        AIHI_GPU_SYS_API void Reset();
 
-        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
-        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
+        AIHI_GPU_SYS_API const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     protected:
         GpuTexture(GpuSystem& gpu_system, GpuResourceType type, uint32_t width, uint32_t height, uint32_t depth, uint32_t array_size,
@@ -81,13 +82,13 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture2D)
 
     public:
-        GpuTexture2D() noexcept;
-        GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format, GpuResourceFlag flags,
-            std::string_view name = "");
-        ~GpuTexture2D() override;
+        AIHI_GPU_SYS_API GpuTexture2D() noexcept;
+        AIHI_GPU_SYS_API GpuTexture2D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t mip_levels, GpuFormat format,
+            GpuResourceFlag flags, std::string_view name = "");
+        AIHI_GPU_SYS_API ~GpuTexture2D() override;
 
-        GpuTexture2D(GpuTexture2D&& other) noexcept;
-        GpuTexture2D& operator=(GpuTexture2D&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture2D(GpuTexture2D&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture2D& operator=(GpuTexture2D&& other) noexcept;
     };
 
     class GpuTexture2DArray final : public GpuTexture
@@ -95,13 +96,13 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture2DArray)
 
     public:
-        GpuTexture2DArray() noexcept;
-        GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
+        AIHI_GPU_SYS_API GpuTexture2DArray() noexcept;
+        AIHI_GPU_SYS_API GpuTexture2DArray(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t array_size, uint32_t mip_levels,
             GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
-        ~GpuTexture2DArray() override;
+        AIHI_GPU_SYS_API ~GpuTexture2DArray() override;
 
-        GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
-        GpuTexture2DArray& operator=(GpuTexture2DArray&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture2DArray(GpuTexture2DArray&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture2DArray& operator=(GpuTexture2DArray&& other) noexcept;
     };
 
     class GpuTexture3D final : public GpuTexture
@@ -109,17 +110,17 @@ namespace AIHoloImager
         DISALLOW_COPY_AND_ASSIGN(GpuTexture3D)
 
     public:
-        GpuTexture3D() noexcept;
-        GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels, GpuFormat format,
-            GpuResourceFlag flags, std::string_view name = "");
-        ~GpuTexture3D() override;
+        AIHI_GPU_SYS_API GpuTexture3D() noexcept;
+        AIHI_GPU_SYS_API GpuTexture3D(GpuSystem& gpu_system, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels,
+            GpuFormat format, GpuResourceFlag flags, std::string_view name = "");
+        AIHI_GPU_SYS_API ~GpuTexture3D() override;
 
-        GpuTexture3D(GpuTexture3D&& other) noexcept;
-        GpuTexture3D& operator=(GpuTexture3D&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture3D(GpuTexture3D&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTexture3D& operator=(GpuTexture3D&& other) noexcept;
     };
 
-    void DecomposeSubResource(uint32_t sub_resource, uint32_t num_mip_levels, uint32_t array_size, uint32_t& mip_slice,
+    AIHI_GPU_SYS_API void DecomposeSubResource(uint32_t sub_resource, uint32_t num_mip_levels, uint32_t array_size, uint32_t& mip_slice,
         uint32_t& array_slice, uint32_t& plane_slice) noexcept;
-    uint32_t CalcSubResource(
+    AIHI_GPU_SYS_API uint32_t CalcSubResource(
         uint32_t mip_slice, uint32_t array_slice, uint32_t plane_slice, uint32_t num_mip_levels, uint32_t array_size) noexcept;
 } // namespace AIHoloImager

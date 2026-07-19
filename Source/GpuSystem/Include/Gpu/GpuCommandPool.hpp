@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #pragma once
@@ -8,6 +8,7 @@
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -19,12 +20,12 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuCommandPool)
 
     public:
-        GpuCommandPool() noexcept;
-        GpuCommandPool(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
-        ~GpuCommandPool() noexcept;
+        AIHI_GPU_SYS_API GpuCommandPool() noexcept;
+        AIHI_GPU_SYS_API GpuCommandPool(GpuSystem& gpu_system, GpuSystem::CmdQueueType type);
+        AIHI_GPU_SYS_API ~GpuCommandPool() noexcept;
 
-        GpuCommandPool(GpuCommandPool&& other) noexcept;
-        GpuCommandPool& operator=(GpuCommandPool&& other) noexcept;
+        AIHI_GPU_SYS_API GpuCommandPool(GpuCommandPool&& other) noexcept;
+        AIHI_GPU_SYS_API GpuCommandPool& operator=(GpuCommandPool&& other) noexcept;
 
     private:
         class Impl;

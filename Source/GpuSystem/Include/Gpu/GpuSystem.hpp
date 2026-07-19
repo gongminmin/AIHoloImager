@@ -11,6 +11,7 @@
 #include "Base/MiniWindows.hpp"
 #include "Base/Noncopyable.hpp"
 #include "Gpu/GpuMipmapper.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -54,62 +55,62 @@ namespace AIHoloImager
         {
             uint64_t fence_values[static_cast<uint32_t>(GpuSystem::CmdQueueType::Num)] = {};
 
-            static WaitFences Forever();
-            static WaitFences Ignore();
+            AIHI_GPU_SYS_API static WaitFences Forever();
+            AIHI_GPU_SYS_API static WaitFences Ignore();
         };
 
     public:
-        GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr, bool enable_sharing = false,
-            bool enable_debug = false, bool enable_async_compute = true, bool enable_async_copy = true);
-        ~GpuSystem();
+        AIHI_GPU_SYS_API GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr,
+            bool enable_sharing = false, bool enable_debug = false, bool enable_async_compute = true, bool enable_async_copy = true);
+        AIHI_GPU_SYS_API ~GpuSystem();
 
-        GpuSystem(GpuSystem&& other) noexcept;
-        GpuSystem& operator=(GpuSystem&& other) noexcept;
+        AIHI_GPU_SYS_API GpuSystem(GpuSystem&& other) noexcept;
+        AIHI_GPU_SYS_API GpuSystem& operator=(GpuSystem&& other) noexcept;
 
-        Api NativeApi() const noexcept;
+        AIHI_GPU_SYS_API Api NativeApi() const noexcept;
 
-        void* NativeDevice() const noexcept;
+        AIHI_GPU_SYS_API void* NativeDevice() const noexcept;
         template <typename Traits>
         typename Traits::DeviceType NativeDevice() const noexcept
         {
             return reinterpret_cast<typename Traits::DeviceType>(this->NativeDevice());
         }
 
-        LUID DeviceLuid() const noexcept;
+        AIHI_GPU_SYS_API LUID DeviceLuid() const noexcept;
 
-        GpuCommandQueue* CommandQueue(CmdQueueType type) noexcept;
-        const GpuCommandQueue* CommandQueue(CmdQueueType type) const noexcept;
+        AIHI_GPU_SYS_API GpuCommandQueue* CommandQueue(CmdQueueType type) noexcept;
+        AIHI_GPU_SYS_API const GpuCommandQueue* CommandQueue(CmdQueueType type) const noexcept;
 
-        void* SharedFenceHandle(CmdQueueType type) const noexcept;
+        AIHI_GPU_SYS_API void* SharedFenceHandle(CmdQueueType type) const noexcept;
         template <typename Traits>
         typename Traits::SharedHandleType SharedFenceHandle() const noexcept
         {
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedFenceHandle());
         }
 
-        [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
-        uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
-        uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
+        AIHI_GPU_SYS_API [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
+        AIHI_GPU_SYS_API uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
+        AIHI_GPU_SYS_API uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
 
-        uint32_t ConstantDataAlignment() const noexcept;
-        uint32_t StructuredDataAlignment() const noexcept;
-        uint32_t TextureDataAlignment() const noexcept;
+        AIHI_GPU_SYS_API uint32_t ConstantDataAlignment() const noexcept;
+        AIHI_GPU_SYS_API uint32_t StructuredDataAlignment() const noexcept;
+        AIHI_GPU_SYS_API uint32_t TextureDataAlignment() const noexcept;
 
-        GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment);
-        void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block);
-        void ReallocUploadMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API GpuMemoryBlock AllocUploadMemBlock(uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API void DeallocUploadMemBlock(GpuMemoryBlock&& mem_block);
+        AIHI_GPU_SYS_API void ReallocUploadMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        GpuMemoryBlock AllocReadBackMemBlock(uint32_t size_in_bytes, uint32_t alignment);
-        void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
-        void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API GpuMemoryBlock AllocReadBackMemBlock(uint32_t size_in_bytes, uint32_t alignment);
+        AIHI_GPU_SYS_API void DeallocReadBackMemBlock(GpuMemoryBlock&& mem_block);
+        AIHI_GPU_SYS_API void ReallocReadBackMemBlock(GpuMemoryBlock& mem_block, uint32_t size_in_bytes, uint32_t alignment);
 
-        void CpuWait(const WaitFences& wait_fences = WaitFences::Forever());
-        void GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences = WaitFences::Forever());
-        uint64_t FenceValue(CmdQueueType type) const noexcept;
+        AIHI_GPU_SYS_API void CpuWait(const WaitFences& wait_fences = WaitFences::Forever());
+        AIHI_GPU_SYS_API void GpuWait(CmdQueueType target_queue_type, const WaitFences& wait_fences = WaitFences::Forever());
+        AIHI_GPU_SYS_API uint64_t FenceValue(CmdQueueType type) const noexcept;
 
-        void HandleDeviceLost();
+        AIHI_GPU_SYS_API void HandleDeviceLost();
 
-        GpuMipmapper& Mipmapper() noexcept;
+        AIHI_GPU_SYS_API GpuMipmapper& Mipmapper() noexcept;
 
     private:
         class Impl;
@@ -121,5 +122,5 @@ namespace AIHoloImager
         return (a + b - 1) / b;
     }
 
-    GpuSystem::WaitFences ToWaitFences(std::span<const GpuSystem::WaitQueueFence> wait_queue_fences);
+    AIHI_GPU_SYS_API GpuSystem::WaitFences ToWaitFences(std::span<const GpuSystem::WaitQueueFence> wait_queue_fences);
 } // namespace AIHoloImager

@@ -8,6 +8,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -22,21 +23,21 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuTimerQuery)
 
     public:
-        GpuTimerQuery() noexcept;
-        explicit GpuTimerQuery(GpuSystem& gpu_system);
-        ~GpuTimerQuery() noexcept;
+        AIHI_GPU_SYS_API GpuTimerQuery() noexcept;
+        AIHI_GPU_SYS_API explicit GpuTimerQuery(GpuSystem& gpu_system);
+        AIHI_GPU_SYS_API ~GpuTimerQuery() noexcept;
 
-        GpuTimerQuery(GpuTimerQuery&& other) noexcept;
-        GpuTimerQuery& operator=(GpuTimerQuery&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTimerQuery(GpuTimerQuery&& other) noexcept;
+        AIHI_GPU_SYS_API GpuTimerQuery& operator=(GpuTimerQuery&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        void Begin(GpuCommandList& cmd_list);
-        void End(GpuCommandList& cmd_list);
+        AIHI_GPU_SYS_API void Begin(GpuCommandList& cmd_list);
+        AIHI_GPU_SYS_API void End(GpuCommandList& cmd_list);
 
         // The caller is responsible for ensuring that the command list has been executed and the GPU has completed processing the commands
         // before calling this method.
-        std::chrono::duration<double> Elapsed() const;
+        AIHI_GPU_SYS_API std::chrono::duration<double> Elapsed() const;
 
     private:
         class Impl;

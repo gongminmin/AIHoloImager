@@ -7,6 +7,7 @@
 
 #include "Base/Noncopyable.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -20,32 +21,32 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuFence)
 
     public:
-        GpuFence() noexcept;
-        explicit GpuFence(GpuSystem& gpu_system, uint64_t init_val, bool enable_sharing);
-        ~GpuFence() noexcept;
+        AIHI_GPU_SYS_API GpuFence() noexcept;
+        AIHI_GPU_SYS_API explicit GpuFence(GpuSystem& gpu_system, uint64_t init_val, bool enable_sharing);
+        AIHI_GPU_SYS_API ~GpuFence() noexcept;
 
-        GpuFence(GpuFence&& other) noexcept;
-        GpuFence& operator=(GpuFence&& other) noexcept;
+        AIHI_GPU_SYS_API GpuFence(GpuFence&& other) noexcept;
+        AIHI_GPU_SYS_API GpuFence& operator=(GpuFence&& other) noexcept;
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        void* NativeFence() const noexcept;
+        AIHI_GPU_SYS_API void* NativeFence() const noexcept;
         template <typename Traits>
         typename Traits::FenceType NativeFence() const noexcept
         {
             return reinterpret_cast<typename Traits::FenceType>(this->NativeFence());
         }
 
-        void* SharedFenceHandle() const noexcept;
+        AIHI_GPU_SYS_API void* SharedFenceHandle() const noexcept;
         template <typename Traits>
         typename Traits::SharedHandleType SharedFenceHandle() const noexcept
         {
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedFenceHandle());
         }
 
-        uint64_t CompletedValue() const;
+        AIHI_GPU_SYS_API uint64_t CompletedValue() const;
 
-        void CpuWait(uint64_t value) const;
+        AIHI_GPU_SYS_API void CpuWait(uint64_t value) const;
 
     private:
         class Impl;

@@ -10,6 +10,7 @@
 
 #include "Gpu/GpuFormat.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -35,20 +36,21 @@ namespace AIHoloImager
         static const uint32_t InvalidIndex = ~0U;
 
     public:
-        GpuVertexLayout() noexcept;
-        GpuVertexLayout(GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
-        ~GpuVertexLayout() noexcept;
+        AIHI_GPU_SYS_API GpuVertexLayout() noexcept;
+        AIHI_GPU_SYS_API GpuVertexLayout(
+            GpuSystem& gpu_system, std::span<const GpuVertexAttrib> attribs, std::span<const uint32_t> slot_strides = {});
+        AIHI_GPU_SYS_API ~GpuVertexLayout() noexcept;
 
-        GpuVertexLayout(const GpuVertexLayout& other);
-        GpuVertexLayout& operator=(const GpuVertexLayout& other);
+        AIHI_GPU_SYS_API GpuVertexLayout(const GpuVertexLayout& other);
+        AIHI_GPU_SYS_API GpuVertexLayout& operator=(const GpuVertexLayout& other);
 
-        GpuVertexLayout(GpuVertexLayout&& other) noexcept;
-        GpuVertexLayout& operator=(GpuVertexLayout&& other) noexcept;
+        AIHI_GPU_SYS_API GpuVertexLayout(GpuVertexLayout&& other) noexcept;
+        AIHI_GPU_SYS_API GpuVertexLayout& operator=(GpuVertexLayout&& other) noexcept;
 
-        std::span<const GpuVertexAttrib> Attribs() const noexcept;
-        std::span<const uint32_t> SlotStrides() const noexcept;
+        AIHI_GPU_SYS_API std::span<const GpuVertexAttrib> Attribs() const noexcept;
+        AIHI_GPU_SYS_API std::span<const uint32_t> SlotStrides() const noexcept;
 
-        uint32_t FindAttrib(std::string_view semantic, uint32_t index) const;
+        AIHI_GPU_SYS_API uint32_t FindAttrib(std::string_view semantic, uint32_t index) const;
 
     private:
         class Impl;

@@ -7,6 +7,7 @@
 
 #include "Base/Enum.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -63,7 +64,7 @@ namespace AIHoloImager
     class GpuResource
     {
     public:
-        virtual ~GpuResource() noexcept;
+        AIHI_GPU_SYS_API virtual ~GpuResource() noexcept;
 
         virtual void Name(std::string_view name) = 0;
 

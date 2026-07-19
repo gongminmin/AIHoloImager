@@ -10,6 +10,7 @@
 #include "Gpu/GpuResource.hpp"
 #include "Gpu/GpuSystem.hpp"
 #include "Gpu/InternalDefine.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
@@ -27,46 +28,46 @@ namespace AIHoloImager
         DEFINE_INTERNAL(GpuResource)
 
     public:
-        GpuBuffer() noexcept;
-        GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name = "");
-        ~GpuBuffer() override;
+        AIHI_GPU_SYS_API GpuBuffer() noexcept;
+        AIHI_GPU_SYS_API GpuBuffer(GpuSystem& gpu_system, uint32_t size, GpuHeap heap, GpuResourceFlag flags, std::string_view name = "");
+        AIHI_GPU_SYS_API ~GpuBuffer() override;
 
-        GpuBuffer(GpuBuffer&& other) noexcept;
-        GpuBuffer& operator=(GpuBuffer&& other) noexcept;
+        AIHI_GPU_SYS_API GpuBuffer(GpuBuffer&& other) noexcept;
+        AIHI_GPU_SYS_API GpuBuffer& operator=(GpuBuffer&& other) noexcept;
 
-        void Name(std::string_view name) override;
+        AIHI_GPU_SYS_API void Name(std::string_view name) override;
 
-        void* NativeResource() const noexcept override;
+        AIHI_GPU_SYS_API void* NativeResource() const noexcept override;
         template <typename Traits>
         typename Traits::ResourceType NativeResource() const noexcept
         {
             return reinterpret_cast<typename Traits::ResourceType>(this->NativeResource());
         }
-        void* NativeBuffer() const noexcept;
+        AIHI_GPU_SYS_API void* NativeBuffer() const noexcept;
         template <typename Traits>
         typename Traits::BufferType NativeBuffer() const noexcept
         {
             return reinterpret_cast<typename Traits::BufferType>(this->NativeBuffer());
         }
 
-        explicit operator bool() const noexcept override;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept override;
 
-        void* SharedHandle() const noexcept override;
+        AIHI_GPU_SYS_API void* SharedHandle() const noexcept override;
 
-        GpuHeap Heap() const noexcept override;
-        GpuResourceType Type() const noexcept override;
-        GpuResourceFlag Flags() const noexcept override;
-        uint32_t AllocationSize() const noexcept override;
+        AIHI_GPU_SYS_API GpuHeap Heap() const noexcept override;
+        AIHI_GPU_SYS_API GpuResourceType Type() const noexcept override;
+        AIHI_GPU_SYS_API GpuResourceFlag Flags() const noexcept override;
+        AIHI_GPU_SYS_API uint32_t AllocationSize() const noexcept override;
 
-        uint32_t Size() const noexcept;
+        AIHI_GPU_SYS_API uint32_t Size() const noexcept;
 
-        void* Map(const GpuRange& read_range);
-        const void* Map(const GpuRange& read_range) const;
-        void* Map();
-        const void* Map() const;
-        void Unmap(const GpuRange& write_range);
-        void Unmap();
-        void Unmap() const;
+        AIHI_GPU_SYS_API void* Map(const GpuRange& read_range);
+        AIHI_GPU_SYS_API const void* Map(const GpuRange& read_range) const;
+        AIHI_GPU_SYS_API void* Map();
+        AIHI_GPU_SYS_API const void* Map() const;
+        AIHI_GPU_SYS_API void Unmap(const GpuRange& write_range);
+        AIHI_GPU_SYS_API void Unmap();
+        AIHI_GPU_SYS_API void Unmap() const;
 
         template <typename T>
         T* Map(const GpuRange& read_range)
@@ -89,12 +90,12 @@ namespace AIHoloImager
             return reinterpret_cast<T*>(this->Map());
         }
 
-        void Reset() override;
+        AIHI_GPU_SYS_API void Reset() override;
 
-        void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
-        void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list, uint32_t sub_resource, GpuResourceState target_state) const override;
+        AIHI_GPU_SYS_API void Transition(GpuCommandList& cmd_list, GpuResourceState target_state) const override;
 
-        const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
+        AIHI_GPU_SYS_API const std::shared_ptr<GpuSystem::WaitFences>& StalledWaitFences() const noexcept override;
 
     private:
         class Impl;

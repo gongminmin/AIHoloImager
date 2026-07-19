@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -9,19 +9,20 @@
 
 #include "Gpu/GpuMemoryAllocator.hpp"
 #include "Gpu/GpuSystem.hpp"
+#include "Gpu/Symbol.hpp"
 
 namespace AIHoloImager
 {
     class GpuConstantBuffer
     {
     public:
-        virtual ~GpuConstantBuffer();
+        AIHI_GPU_SYS_API virtual ~GpuConstantBuffer();
 
-        explicit operator bool() const noexcept;
+        AIHI_GPU_SYS_API explicit operator bool() const noexcept;
 
-        const GpuMemoryBlock& MemBlock() const noexcept;
+        AIHI_GPU_SYS_API const GpuMemoryBlock& MemBlock() const noexcept;
 
-        void* NativeResource() const noexcept;
+        AIHI_GPU_SYS_API void* NativeResource() const noexcept;
         template <typename Traits>
         typename Traits::BufferType NativeResource() const noexcept
         {
@@ -29,11 +30,11 @@ namespace AIHoloImager
         }
 
     protected:
-        GpuConstantBuffer() noexcept;
-        GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::string_view name = "");
+        AIHI_GPU_SYS_API GpuConstantBuffer() noexcept;
+        AIHI_GPU_SYS_API GpuConstantBuffer(GpuSystem& gpu_system, uint32_t size, std::string_view name = "");
 
-        GpuConstantBuffer(GpuConstantBuffer&& other) noexcept;
-        GpuConstantBuffer& operator=(GpuConstantBuffer&& other) noexcept;
+        AIHI_GPU_SYS_API GpuConstantBuffer(GpuConstantBuffer&& other) noexcept;
+        AIHI_GPU_SYS_API GpuConstantBuffer& operator=(GpuConstantBuffer&& other) noexcept;
 
     protected:
         GpuSystem* gpu_system_ = nullptr;
