@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Minmin Gong
+# Copyright (c) 2024-2026 Minmin Gong
 #
 
 UpdateExternalLib(NAME "openMVG"
@@ -36,7 +36,7 @@ add_subdirectory(openMVG/src EXCLUDE_FROM_ALL)
 list(REMOVE_ITEM CMAKE_CONFIGURATION_TYPES "Maintainer")
 set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "" FORCE)
 
-get_all_targets(all_targets)
+GetAllTargets(all_targets)
 foreach(target ${all_targets})
     get_target_property(vs_folder ${target} FOLDER)
     if(NOT vs_folder)

@@ -373,9 +373,9 @@ foreach(py_file ${py_files})
     list(REMOVE_AT path_list 0 1)
     list(REMOVE_AT path_list -1)
     string(REPLACE ";" "/" rel_dir "${path_list}")
-    get_filename_component(py_file_dir ${py_file} DIRECTORY)
-    get_filename_component(py_file_name ${py_file} NAME)
-    get_filename_component(py_file_stem ${py_file} NAME_WE)
+    cmake_path(GET py_file PARENT_PATH py_file_dir)
+    cmake_path(GET py_file FILENAME py_file_name)
+    cmake_path(GET py_file STEM py_file_stem)
     set(py_file_dst "${aihi_output_dir}/${rel_dir}/${py_file_stem}.pyc")
     add_custom_command(OUTPUT ${py_file_dst}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${py_file}
