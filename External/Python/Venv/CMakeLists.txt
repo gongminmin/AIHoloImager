@@ -970,7 +970,21 @@ set(py_files
     torch/fft/__init__.py
     torch/func/__init__.py
     torch/futures/__init__.py
+    torch/fx/experimental/unification/multipledispatch/conflict.py
+    torch/fx/experimental/unification/multipledispatch/core.py
+    torch/fx/experimental/unification/multipledispatch/dispatcher.py
+    torch/fx/experimental/unification/multipledispatch/utils.py
+    torch/fx/experimental/unification/multipledispatch/variadic.py
+    torch/fx/experimental/unification/multipledispatch/__init__.py
+    torch/fx/experimental/unification/core.py
+    torch/fx/experimental/unification/dispatch.py
+    torch/fx/experimental/unification/more.py
+    torch/fx/experimental/unification/unification_tools.py
+    torch/fx/experimental/unification/utils.py
+    torch/fx/experimental/unification/variable.py
+    torch/fx/experimental/unification/__init__.py
     torch/fx/experimental/const_fold.py
+    torch/fx/experimental/dynamic_spec.py
     torch/fx/experimental/proxy_tensor.py
     torch/fx/experimental/recording.py
     torch/fx/experimental/symbolic_shapes.py
@@ -1011,6 +1025,7 @@ set(py_files
     torch/fx/operator_schemas.py
     torch/fx/proxy.py
     torch/fx/subgraph_rewriter.py
+    torch/fx/tensor_type.py
     torch/fx/traceback.py
     torch/fx/_compatibility.py
     torch/fx/_lazy_graph_module.py
@@ -1096,6 +1111,7 @@ set(py_files
     torch/nn/modules/instancenorm.py
     torch/nn/modules/lazy.py
     torch/nn/modules/linear.py
+    torch/nn/modules/linear_cross_entropy_options.py
     torch/nn/modules/loss.py
     torch/nn/modules/module.py
     torch/nn/modules/normalization.py
@@ -1210,6 +1226,7 @@ set(py_files
     torch/optim/_adafactor.py
     torch/optim/_functional.py
     torch/optim/_muon.py
+    torch/optim/_stateless.py
     torch/optim/__init__.py
     torch/package/analyze/find_first_use_of_broken_modules.py
     torch/package/analyze/is_from_package.py
@@ -1231,6 +1248,7 @@ set(py_files
     torch/package/__init__.py
     torch/profiler/itt.py
     torch/profiler/profiler.py
+    torch/profiler/_cupti_monitor.py
     torch/profiler/_memory_profiler.py
     torch/profiler/_utils.py
     torch/profiler/__init__.py
@@ -1403,6 +1421,7 @@ set(py_files
     torch/_dynamo/variables/lists.py
     torch/_dynamo/variables/misc.py
     torch/_dynamo/variables/nn_module.py
+    torch/_dynamo/variables/object_protocol.py
     torch/_dynamo/variables/optimizer.py
     torch/_dynamo/variables/script_object.py
     torch/_dynamo/variables/sdpa.py
@@ -1484,6 +1503,7 @@ set(py_files
     torch/_functorch/config.py
     torch/_functorch/deprecated.py
     torch/_functorch/eager_transforms.py
+    torch/_functorch/einops.py
     torch/_functorch/functional_call.py
     torch/_functorch/make_functional.py
     torch/_functorch/predispatch.py
@@ -1536,6 +1556,7 @@ set(py_files
     torch/_inductor/standalone_compile.py
     torch/_inductor/test_operators.py
     torch/_inductor/utils.py
+    torch/_inductor/_functionalize_collectives.py
     torch/_inductor/__init__.py
     torch/_library/autograd.py
     torch/_library/custom_ops.py
@@ -1553,6 +1574,17 @@ set(py_files
     torch/_logging/_internal.py
     torch/_logging/_registrations.py
     torch/_logging/__init__.py
+    torch/_native/ops/bmm_outer_product/triton_impl.py
+    torch/_native/ops/bmm_outer_product/__init__.py
+    torch/_native/ops/foreach_mm/impl.py
+    torch/_native/ops/foreach_mm/__init__.py
+    torch/_native/ops/scatter_add/cutedsl_impl.py
+    torch/_native/ops/scatter_add/__init__.py
+    torch/_native/ops/norm/rmsnorm_impl.py
+    torch/_native/ops/norm/__init__.py
+    torch/_native/ops/topk/cutedsl_impl.py
+    torch/_native/ops/topk/_common.py
+    torch/_native/ops/topk/__init__.py
     torch/_native/ops/__init__.py
     torch/_native/common_utils.py
     torch/_native/cutedsl_utils.py
@@ -1626,7 +1658,6 @@ set(py_files
     torch/_lobpcg.py
     torch/_lowrank.py
     torch/_meta_registrations.py
-    torch/_namedtensor_internals.py
     torch/_opaque_base.py
     torch/_ops.py
     torch/_size_docs.py
@@ -1634,6 +1665,7 @@ set(py_files
     torch/_storage_docs.py
     torch/_tensor.py
     torch/_tensor_docs.py
+    torch/_tensor_iterator.py
     torch/_tensor_str.py
     torch/_torch_docs.py
     torch/_utils.py
