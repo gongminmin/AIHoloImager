@@ -66,7 +66,7 @@ function(AddShaderFile file_name shader_type entry_point)
         set(variable_name ${file_base_name}_${curr_target})
         set(extra_opts )
         if(i EQUAL 0)
-            set(extra_opts VERBATIM COMMAND_EXPAND_LISTS)
+            set(extra_opts VERBATIM COMMAND_EXPAND_LISTS USES_TERMINAL)
         else()
             set(extra_opts APPEND)
         endif()
@@ -81,7 +81,6 @@ function(AddShaderFile file_name shader_type entry_point)
                 ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
-            DEPENDS ${file_name}
             ${extra_opts}
         )
     endforeach()

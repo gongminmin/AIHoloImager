@@ -23,12 +23,14 @@ stages:
           vmImage: windows-2025-vs2026
           configuration: Debug
           folder: 18
-          opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
+          #opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
+          opts: '-G Ninja -DCMAKE_BUILD_TYPE=$(configuration)'
         Windows_vc145_Release:
           vmImage: windows-2025-vs2026
           configuration: Release
           folder: 18
-          opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
+          #opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
+          opts: '-G Ninja -DCMAKE_BUILD_TYPE=$(configuration)'
         Windows_vc143_Debug:
           vmImage: windows-2025
           configuration: Debug

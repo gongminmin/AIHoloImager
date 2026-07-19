@@ -1848,6 +1848,7 @@ foreach(src_file ${py_files})
         COMMAND ${CMAKE_COMMAND} -E create_hardlink "Venv/${pyc_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
         DEPENDS Venv/${src_file}
+        BYPRODUCTS Venv/${pyc_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
@@ -2169,6 +2170,7 @@ foreach(src_file ${py_files})
         COMMAND ${CMAKE_COMMAND} -E create_hardlink ${pyc_file} ${dst_file}
         COMMENT "Deploying ${src_file} ..."
         DEPENDS ${src_file}
+        BYPRODUCTS ${pyc_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )
