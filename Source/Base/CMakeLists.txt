@@ -5,7 +5,7 @@ set(aihi_base_files
     Include/Base/ComPtr.hpp
     Include/Base/Dll.hpp
     Include/Base/Enum.hpp
-    Include/Base/Errorhandling.hpp
+    Include/Base/ErrorHandling.hpp
     Include/Base/MiniWindows.hpp
     Include/Base/Noncopyable.hpp
     Include/Base/SmartPtrHelper.hpp
@@ -14,7 +14,7 @@ set(aihi_base_files
     Include/Base/Util.hpp
     Include/Base/Uuid.hpp
     Source/Dll.cpp
-    Source/Errorhandling.cpp
+    Source/ErrorHandling.cpp
     Source/pch.hpp
     Source/Timer.cpp
     Source/Util.cpp
