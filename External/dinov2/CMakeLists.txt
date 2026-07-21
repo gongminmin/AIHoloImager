@@ -34,7 +34,7 @@ foreach(src_file ${py_files})
     set(dst_file "${aihi_output_dir}/${rel_dir}/${src_file_stem}.pyc")
     add_custom_command(OUTPUT ${dst_file}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${src_file}
-        COMMAND ${CMAKE_COMMAND} -E copy ${pyc_file} ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink ${pyc_file} ${dst_file}
         COMMENT "Compiling ${src_file} ..."
         MAIN_DEPENDENCY ${src_file}
         DEPENDS ${src_file}

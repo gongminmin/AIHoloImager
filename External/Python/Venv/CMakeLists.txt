@@ -1845,7 +1845,7 @@ foreach(src_file ${py_files})
     set(dst_file "${aihi_output_dir}/Python/${pyc_file}")
     add_custom_command(OUTPUT ${dst_file}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> Venv/${src_file}
-        COMMAND ${CMAKE_COMMAND} -E copy "Venv/${pyc_file}" ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink "Venv/${pyc_file}" ${dst_file}
         COMMENT "Deploying ${src_file} ..."
         DEPENDS Venv/${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -2166,7 +2166,7 @@ foreach(src_file ${py_files})
     set(dst_file "${aihi_output_dir}/${pyc_file}")
     add_custom_command(OUTPUT ${dst_file}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${src_file}
-        COMMAND ${CMAKE_COMMAND} -E copy ${pyc_file} ${dst_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink ${pyc_file} ${dst_file}
         COMMENT "Deploying ${src_file} ..."
         DEPENDS ${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

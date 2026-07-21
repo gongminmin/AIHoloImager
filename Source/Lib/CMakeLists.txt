@@ -379,7 +379,7 @@ foreach(py_file ${py_files})
     set(py_file_dst "${aihi_output_dir}/${rel_dir}/${py_file_stem}.pyc")
     add_custom_command(OUTPUT ${py_file_dst}
         COMMAND ${Python3_EXECUTABLE} -m compileall -b -o $<IF:$<CONFIG:Debug>,0,1> ${py_file}
-        COMMAND ${CMAKE_COMMAND} -E copy ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
         COMMENT "Compiling ${rel_dir}/${py_file_name} ..."
         MAIN_DEPENDENCY ${py_file}
         DEPENDS ${py_file}
