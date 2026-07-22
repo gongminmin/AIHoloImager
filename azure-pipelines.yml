@@ -23,18 +23,22 @@ stages:
           vmImage: windows-2025-vs2026
           configuration: Debug
           folder: 18
+          opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
         Windows_vc145_Release:
           vmImage: windows-2025-vs2026
           configuration: Release
           folder: 18
+          opts: '-G "Visual Studio 18 2026" -T v145 -A x64'
         Windows_vc143_Debug:
           vmImage: windows-2025
           configuration: Debug
           folder: 2022
+          opts: '-G Ninja -DCMAKE_BUILD_TYPE=$(configuration)'
         Windows_vc143_Release:
           vmImage: windows-2025
           configuration: Release
           folder: 2022
+          opts: '-G Ninja -DCMAKE_BUILD_TYPE=$(configuration)'
 
     pool:
       vmImage: $(vmImage)
@@ -68,8 +72,8 @@ stages:
 
       - script: |
           call "C:\Program Files\Microsoft Visual Studio\$(folder)\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_LINKER=link
-          cmake --build Build -j
+          cmake -B Build $(opts) . -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_LINKER=link
+          cmake --build Build --config $(configuration) -j
         displayName: 'Build'
 
       - bash: |
