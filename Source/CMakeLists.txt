@@ -31,8 +31,8 @@ if(num_shader_targets EQUAL 0)
     message(FATAL_ERROR "At least one GPU API must be enabled.")
 endif()
 
-macro(AddShaderFile file_name shader_type entry_point)
-    get_filename_component(file_base_name ${file_name} NAME_WE)
+function(AddShaderFile file_name shader_type entry_point)
+    cmake_path(GET file_name STEM file_base_name)
     string(REPLACE "/" ";" path_list ${file_name})
     list(REMOVE_AT path_list 0 2)
     list(REMOVE_AT path_list -1)
@@ -75,17 +75,17 @@ macro(AddShaderFile file_name shader_type entry_point)
                 "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>"
                 -HV 2021 -enable-16bit-types
                 -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo
-                "${CMAKE_CURRENT_SOURCE_DIR}/${file_name}"
+                "${CMAKE_CURRENT_LIST_DIR}/${file_name}"
                 -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source"
                 -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader"
                 ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
-            DEPENDS ${file_name} ${common_header}
+            DEPENDS ${file_name}
             ${extra_opts}
         )
     endforeach()
-endmacro()
+endfunction()
 
 add_subdirectory(Base)
 add_subdirectory(GpuSystem)
