@@ -43,7 +43,7 @@ foreach(src_file ${py_files})
     )
 endforeach()
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${py_files})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/dinov2 FILES ${py_files})
 
 add_library(dinov2 INTERFACE
     ${py_files}
