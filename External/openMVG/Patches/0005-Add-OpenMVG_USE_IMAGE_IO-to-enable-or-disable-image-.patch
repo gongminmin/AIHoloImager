@@ -1,0 +1,170 @@
+From d3ef97b03028680ef380f81c71ffd9400838bee7 Mon Sep 17 00:00:00 2001
+From: Minmin Gong <gongminmin@msn.com>
+Date: Sat, 25 Jul 2026 11:11:04 -0700
+Subject: [PATCH 5/5] Add OpenMVG_USE_IMAGE_IO to enable or disable image io
+ libraries
+
+---
+ src/CMakeLists.txt             | 10 +++--
+ src/openMVG/CMakeLists.txt     |  4 +-
+ src/openMVG/sfm/CMakeLists.txt |  7 +++-
+ src/third_party/CMakeLists.txt | 74 +++++++++++++++++-----------------
+ 4 files changed, 54 insertions(+), 41 deletions(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index cb8f1317..e1c1896a 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -69,6 +69,8 @@ option(OpenMVG_USE_OCVSIFT "Add or not OpenCV SIFT in available features" OFF)
+ # ==============================================================================
+ option(OpenMVG_USE_LIGT "Add or not LiGT in available" ON)
+ 
++option(OpenMVG_USE_IMAGE_IO "Enable Image IO libraries" ON)
++
+ # ==============================================================================
+ # OpenMVG version
+ # ==============================================================================
+@@ -200,9 +202,11 @@ endif()
+ # ==============================================================================
+ # IMAGE IO detection
+ # ==============================================================================
+-find_package(JPEG QUIET)
+-find_package(PNG QUIET)
+-find_package(TIFF QUIET)
++if (OpenMVG_USE_IMAGE_IO)
++  find_package(JPEG QUIET)
++  find_package(PNG QUIET)
++  find_package(TIFF QUIET)
++endif()
+ 
+ # Folders
+ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+diff --git a/src/openMVG/CMakeLists.txt b/src/openMVG/CMakeLists.txt
+index 3f02237b..63815c87 100644
+--- a/src/openMVG/CMakeLists.txt
++++ b/src/openMVG/CMakeLists.txt
+@@ -4,7 +4,9 @@ add_subdirectory(exif)
+ add_subdirectory(features)
+ add_subdirectory(graph)
+ add_subdirectory(graphics)
+-add_subdirectory(image)
++if (OpenMVG_USE_IMAGE_IO)
++  add_subdirectory(image)
++endif()
+ add_subdirectory(linearProgramming)
+ add_subdirectory(geodesy)
+ add_subdirectory(geometry)
+diff --git a/src/openMVG/sfm/CMakeLists.txt b/src/openMVG/sfm/CMakeLists.txt
+index 5e5e15da..7816cb0c 100644
+--- a/src/openMVG/sfm/CMakeLists.txt
++++ b/src/openMVG/sfm/CMakeLists.txt
+@@ -31,12 +31,17 @@ target_link_libraries(openMVG_sfm
+ 
+ target_link_libraries(openMVG_sfm
+   LINK_PRIVATE
+-    openMVG_image
+     openMVG_lInftyComputerVision
+     openMVG_system
+     ${CERES_LIBRARIES}
+     ${STLPLUS_LIBRARY}
+ )
++if (OpenMVG_USE_IMAGE_IO)
++  target_link_libraries(openMVG_sfm
++    LINK_PRIVATE
++      openMVG_image
++  )
++endif()
+ target_include_directories(openMVG_sfm
+   PRIVATE
+     ${CERES_INCLUDE_DIRS}
+diff --git a/src/third_party/CMakeLists.txt b/src/third_party/CMakeLists.txt
+index a8fee63f..9cbdab73 100644
+--- a/src/third_party/CMakeLists.txt
++++ b/src/third_party/CMakeLists.txt
+@@ -23,45 +23,47 @@ if(DEFINED OpenMVG_USE_INTERNAL_LEMON)
+   set(LEMON_LIBRARY openMVG_lemon PARENT_SCOPE)
+ endif()
+ 
+-##
+-# Image I/O
+-##
+-if(NOT JPEG_FOUND)
+-  set(OpenMVG_USE_INTERNAL_JPEG ON PARENT_SCOPE)
+-  add_subdirectory(jpeg)
+-  list(APPEND JPEG_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/jpeg ${CMAKE_CURRENT_BINARY_DIR}/jpeg/config)
+-  set(JPEG_INCLUDE_DIR ${JPEG_INCLUDE_DIRECTORIES})
+-  set(JPEG_LIBRARIES openMVG_jpeg PARENT_SCOPE)
+-  set(JPEG_INCLUDE_DIR ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
+-endif(NOT JPEG_FOUND)
++if(OpenMVG_USE_IMAGE_IO)
++  ##
++  # Image I/O
++  ##
++  if(NOT JPEG_FOUND)
++    set(OpenMVG_USE_INTERNAL_JPEG ON PARENT_SCOPE)
++    add_subdirectory(jpeg)
++    list(APPEND JPEG_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/jpeg ${CMAKE_CURRENT_BINARY_DIR}/jpeg/config)
++    set(JPEG_INCLUDE_DIR ${JPEG_INCLUDE_DIRECTORIES})
++    set(JPEG_LIBRARIES openMVG_jpeg PARENT_SCOPE)
++    set(JPEG_INCLUDE_DIR ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
++  endif(NOT JPEG_FOUND)
+ 
+-# TIFF and PNG depend on zlib, if one of them is not found add the internal zlib
+-if(NOT PNG_FOUND OR NOT TIFF_FOUND)
+-  add_subdirectory(zlib)
+-endif(NOT PNG_FOUND OR NOT TIFF_FOUND)
++  # TIFF and PNG depend on zlib, if one of them is not found add the internal zlib
++  if(NOT PNG_FOUND OR NOT TIFF_FOUND)
++    add_subdirectory(zlib)
++  endif(NOT PNG_FOUND OR NOT TIFF_FOUND)
+ 
+-if (NOT PNG_FOUND)
+-  set(OpenMVG_USE_INTERNAL_PNG ON PARENT_SCOPE)
+-  add_subdirectory(png)
+-  set(PNG_LIBRARIES openMVG_png openMVG_zlib)
+-  list(APPEND PNG_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/png ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_CURRENT_BINARY_DIR}/png/config)
+-  set(PNG_INCLUDE_DIRS ${PNG_INCLUDE_DIRECTORIES})
+-  set(PNG_LIBRARIES ${PNG_LIBRARIES} PARENT_SCOPE)
+-  set(PNG_INCLUDE_DIRS ${PNG_INCLUDE_DIRS} PARENT_SCOPE)
+-endif (NOT PNG_FOUND)
++  if (NOT PNG_FOUND)
++    set(OpenMVG_USE_INTERNAL_PNG ON PARENT_SCOPE)
++    add_subdirectory(png)
++    set(PNG_LIBRARIES openMVG_png openMVG_zlib)
++    list(APPEND PNG_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/png ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_CURRENT_BINARY_DIR}/png/config)
++    set(PNG_INCLUDE_DIRS ${PNG_INCLUDE_DIRECTORIES})
++    set(PNG_LIBRARIES ${PNG_LIBRARIES} PARENT_SCOPE)
++    set(PNG_INCLUDE_DIRS ${PNG_INCLUDE_DIRS} PARENT_SCOPE)
++  endif (NOT PNG_FOUND)
+ 
+-if (NOT TIFF_FOUND)
+-  set(OpenMVG_USE_INTERNAL_TIFF ON PARENT_SCOPE)
+-  add_subdirectory(tiff)
+-  list(APPEND TIFF_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/tiff ${CMAKE_CURRENT_BINARY_DIR}/tiff)
+-  set(TIFF_INCLUDE_DIR ${TIFF_INCLUDE_DIRECTORIES})
+-  set(TIFF_LIBRARIES openMVG_tiff)
+-  set(TIFF_LIBRARIES ${TIFF_LIBRARIES} PARENT_SCOPE)
+-  set(TIFF_INCLUDE_DIR ${TIFF_INCLUDE_DIR} PARENT_SCOPE)
+-endif (NOT TIFF_FOUND)
+-##
+-# End - Image I/O
+-##
++  if (NOT TIFF_FOUND)
++    set(OpenMVG_USE_INTERNAL_TIFF ON PARENT_SCOPE)
++    add_subdirectory(tiff)
++    list(APPEND TIFF_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/tiff ${CMAKE_CURRENT_BINARY_DIR}/tiff)
++    set(TIFF_INCLUDE_DIR ${TIFF_INCLUDE_DIRECTORIES})
++    set(TIFF_LIBRARIES openMVG_tiff)
++    set(TIFF_LIBRARIES ${TIFF_LIBRARIES} PARENT_SCOPE)
++    set(TIFF_INCLUDE_DIR ${TIFF_INCLUDE_DIR} PARENT_SCOPE)
++  endif (NOT TIFF_FOUND)
++  ##
++  # End - Image I/O
++  ##
++endif()
+ 
+ # Add ceres-solver (A Nonlinear Least Squares Minimizer)
+ if (DEFINED OpenMVG_USE_INTERNAL_CERES)
+-- 
+2.43.0.windows.1
+

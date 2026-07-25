@@ -1,0 +1,32 @@
+From 224a94767839cf8ef4f2d2910ea8d7f1b018adce Mon Sep 17 00:00:00 2001
+From: Minmin Gong <gongminmin@msn.com>
+Date: Sat, 25 Jul 2026 10:52:40 -0700
+Subject: [PATCH 4/5] Correctly skip LiGT files when OpenMVG_USE_LIGT is off
+
+---
+ src/openMVG/multiview/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/openMVG/multiview/CMakeLists.txt b/src/openMVG/multiview/CMakeLists.txt
+index a3485986..3ee892d4 100644
+--- a/src/openMVG/multiview/CMakeLists.txt
++++ b/src/openMVG/multiview/CMakeLists.txt
+@@ -3,13 +3,13 @@ file(
+   GLOB
+   multiview_files_header
+   *.hpp
+-  ./LiGT/*.hpp
++  LiGT/*.hpp
+ )
+ file(
+   GLOB
+   multiview_files_cpp
+   *.cpp
+-  ./LiGT/*.cpp
++  LiGT/*.cpp
+ )
+ file(GLOB_RECURSE REMOVEFILESUNITTEST *_test.cpp)
+ file(GLOB_RECURSE REMOVEFILESUNITTEST_HEADER *_test.hpp)
+-- 
+2.43.0.windows.1
+

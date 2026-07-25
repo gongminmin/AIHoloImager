@@ -8,7 +8,8 @@ UpdateExternalLib(NAME "openMVG"
                   NEED_CHECKOUT need_patch
 )
 if(need_patch)
-    foreach(patch "0001-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE_DIR" "0002-Enable-to-load-from-memory-data-in-Matches_Provider-" "0003-Remove-pragma-warning-once-so-that-these-warnings-ca")
+    foreach(patch "0001-Use-PROJECT_SOURCE_DIR-to-replace-CMAKE_SOURCE_DIR" "0002-Enable-to-load-from-memory-data-in-Matches_Provider-" "0003-Remove-pragma-warning-once-so-that-these-warnings-ca"
+            "0004-Correctly-skip-LiGT-files-when-OpenMVG_USE_LIGT-is-o" "0005-Add-OpenMVG_USE_IMAGE_IO-to-enable-or-disable-image-")
         ApplyPatch("openMVG" "${CMAKE_CURRENT_SOURCE_DIR}/Patches/${patch}.patch")
     endforeach()
 endif()
@@ -25,6 +26,7 @@ set(OpenMVG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(OpenMVG_USE_LIGT OFF CACHE BOOL "" FORCE)
 set(OPENMVG_USE_OPENMP ON CACHE BOOL "" FORCE)
 set(OpenMVG_USE_RERUN OFF CACHE BOOL "" FORCE)
+set(OpenMVG_USE_IMAGE_IO OFF CACHE BOOL "" FORCE)
 
 # Force to use OpenMVG's internal dependencies
 set(CMAKE_DISABLE_FIND_PACKAGE_cereal TRUE)
