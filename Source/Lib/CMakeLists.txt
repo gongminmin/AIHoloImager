@@ -7,7 +7,6 @@ add_custom_command(OUTPUT ${camera_database_dst}
     COMMAND ${Python3_EXECUTABLE} ConvertDatasheet.py ${camera_database_src} ${camera_database_dst}
     COMMENT "Converting camera database ..."
     MAIN_DEPENDENCY ${camera_database_src}
-    DEPENDS ${camera_database_src}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Source/SfM
     VERBATIM COMMAND_EXPAND_LISTS
 )
@@ -382,7 +381,6 @@ foreach(py_file ${py_files})
         COMMAND ${CMAKE_COMMAND} -E create_hardlink ${py_file_dir}/${py_file_stem}.pyc ${py_file_dst}
         COMMENT "Compiling ${rel_dir}/${py_file_name} ..."
         MAIN_DEPENDENCY ${py_file}
-        DEPENDS ${py_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )

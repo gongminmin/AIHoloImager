@@ -37,7 +37,6 @@ foreach(src_file ${py_files})
         COMMAND ${CMAKE_COMMAND} -E create_hardlink ${pyc_file} ${dst_file}
         COMMENT "Compiling ${src_file} ..."
         MAIN_DEPENDENCY ${src_file}
-        DEPENDS ${src_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         VERBATIM COMMAND_EXPAND_LISTS
     )

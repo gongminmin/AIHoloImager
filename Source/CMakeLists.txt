@@ -81,7 +81,6 @@ function(AddShaderFile file_name shader_type entry_point)
                 ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
-            DEPENDS ${file_name}
             ${extra_opts}
         )
     endforeach()
