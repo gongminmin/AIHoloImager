@@ -45,7 +45,7 @@ namespace AIHoloImager
         GaussianSplatting& operator=(GaussianSplatting&& other) noexcept;
 
         void Render(const Gaussians& gaussians, const glm::mat4x4& model_mtx, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
-            float kernel_size, GpuTexture2D& rendered_image);
+            const GpuViewport& viewport, float kernel_size, GpuTexture2D& rendered_image);
 
     private:
         class Impl;

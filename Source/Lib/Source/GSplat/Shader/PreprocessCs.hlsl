@@ -26,7 +26,7 @@ cbuffer param_cb
     float2 focal;
     float2 tan_fov;
 
-    uint32_t2 width_height;
+    uint32_t2 vp_width_height;
 };
 
 Buffer<float3> pos_buff;
@@ -204,10 +204,10 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
                         const float2 xy_max = sqrt(cov.xz * coeff_ln);
                         const float2 adaptive_radius = min(radius, xy_max);
 
-                        const float2 screen_pos = Ndc2Screen(pos_ps / pos_ps.w, width_height);
+                        const float2 screen_pos = Ndc2Screen(pos_ps / pos_ps.w, vp_width_height);
 
                         [branch]
-                        if (RectOverlap(float4(screen_pos - adaptive_radius, screen_pos + adaptive_radius), float4(0, 0, width_height)))
+                        if (RectOverlap(float4(screen_pos - adaptive_radius, screen_pos + adaptive_radius), float4(0, 0, vp_width_height)))
                         {
                             visible = 1;
 

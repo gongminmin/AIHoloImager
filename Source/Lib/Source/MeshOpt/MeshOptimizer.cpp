@@ -573,7 +573,11 @@ namespace AIHoloImager
                     gpu_system.Execute(std::move(cmd_list));
                 }
 
-                gsplat_.Render(gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, 0.1f, *projection.image);
+                const GpuViewport viewport = {projection.vp_offset.x - projection.image_offset.x,
+                    projection.vp_offset.y - projection.image_offset.y, static_cast<float>(projection.full_width),
+                    static_cast<float>(projection.full_height)};
+                gsplat_.Render(gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, viewport,
+                    GSplatKernelSize, *projection.image);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
@@ -991,6 +995,8 @@ namespace AIHoloImager
             glm::mat4x4 transform_it_mtx;
         };
         GpuComputePipeline transform_mesh_pipeline_;
+
+        static constexpr float GSplatKernelSize = 0.1f;
     };
 
     MeshOptimizer::MeshOptimizer(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))

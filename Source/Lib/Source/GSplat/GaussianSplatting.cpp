@@ -85,16 +85,14 @@ namespace AIHoloImager
         }
 
         void Render(const Gaussians& gaussians, const glm::mat4x4& model_mtx, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
-            float kernel_size, GpuTexture2D& rendered_image)
+            const GpuViewport& viewport, float kernel_size, GpuTexture2D& rendered_image)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            const uint32_t width = rendered_image.Width(0);
-            const uint32_t height = rendered_image.Height(0);
             const float tan_fov_x = 1 / proj_mtx[0][0];
             const float tan_fov_y = 1 / proj_mtx[1][1];
-            const float focal_x = width * proj_mtx[0][0] / 2;
-            const float focal_y = height * proj_mtx[1][1] / 2;
+            const float focal_x = viewport.width * proj_mtx[0][0] / 2;
+            const float focal_y = viewport.height * proj_mtx[1][1] / 2;
 
             auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -120,9 +118,10 @@ namespace AIHoloImager
 
                 intermediate_cache_.num_gaussians_allocated = gaussians.num_gaussians;
             }
-            if ((intermediate_cache_.gsplat_image.Width(0) != width) || (intermediate_cache_.gsplat_image.Height(0) != height))
+            if ((intermediate_cache_.gsplat_image.Width(0) != rendered_image.Width(0)) ||
+                (intermediate_cache_.gsplat_image.Height(0) != rendered_image.Height(0)))
             {
-                intermediate_cache_.gsplat_image = GpuTexture2D(gpu_system, width, height, 1, GSplatFmt,
+                intermediate_cache_.gsplat_image = GpuTexture2D(gpu_system, rendered_image.Width(0), rendered_image.Height(0), 1, GSplatFmt,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget, "gsplat.intermediate_cache_.gsplat_image");
             }
 
@@ -148,7 +147,7 @@ namespace AIHoloImager
                 preprocess_cb->view_proj_mtx = glm::transpose(proj_mtx * view_mtx);
                 preprocess_cb->focal = {focal_x, focal_y};
                 preprocess_cb->tan_fov = {tan_fov_x, tan_fov_y};
-                preprocess_cb->width_height = {width, height};
+                preprocess_cb->vp_width_height = {viewport.width, viewport.height};
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system, preprocess_cb);
 
@@ -204,7 +203,7 @@ namespace AIHoloImager
 
             {
                 GpuConstantBufferOfType<RenderConstantBuffer> render_cb(gpu_system, "render_cb");
-                render_cb->width_height = {width, height};
+                render_cb->viewport = {viewport.left, viewport.top, viewport.width, viewport.height};
                 render_cb.UploadStaging();
                 const GpuConstantBufferView render_cbv(gpu_system, render_cb);
 
@@ -233,7 +232,6 @@ namespace AIHoloImager
 
                 GpuRenderTargetView* rtvs[] = {&gsplat_image_rtv};
 
-                const GpuViewport viewport = {0, 0, static_cast<float>(width), static_cast<float>(height)};
                 cmd_list.RenderIndexedIndirect(render_pipeline_, vb_bindings, ib_binding,
                     intermediate_cache_.num_visible_gaussians_indirect_args, shader_bindings, rtvs, nullptr, std::span(&viewport, 1), {});
             }
@@ -242,7 +240,7 @@ namespace AIHoloImager
                 constexpr uint32_t BlockDim = 16;
 
                 GpuConstantBufferOfType<BlendConstantBuffer> blend_cb(gpu_system, "blend_cb");
-                blend_cb->width_height = {width, height};
+                blend_cb->width_height = {rendered_image.Width(0), rendered_image.Height(0)};
                 blend_cb.UploadStaging();
                 const GpuConstantBufferView blend_cbv(gpu_system, blend_cb);
 
@@ -260,7 +258,8 @@ namespace AIHoloImager
                     {"rendered_image", &rendered_image_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(blend_pipeline_, {DivUp(width, BlockDim), DivUp(height, BlockDim), 1}, shader_binding);
+                cmd_list.Compute(blend_pipeline_, {DivUp(rendered_image.Width(0), BlockDim), DivUp(rendered_image.Height(0), BlockDim), 1},
+                    shader_binding);
             }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
@@ -293,15 +292,14 @@ namespace AIHoloImager
             glm::vec2 focal;
             glm::vec2 tan_fov;
 
-            glm::uvec2 width_height;
+            glm::uvec2 vp_width_height;
             glm::uvec2 padding2;
         };
         GpuComputePipeline preprocess_pipeline_;
 
         struct RenderConstantBuffer
         {
-            glm::uvec2 width_height;
-            glm::uvec2 padding;
+            glm::vec4 viewport;
         };
         GpuRenderPipeline render_pipeline_;
 
@@ -343,9 +341,9 @@ namespace AIHoloImager
     GaussianSplatting& GaussianSplatting::operator=(GaussianSplatting&& other) noexcept = default;
 
     void GaussianSplatting::Render(const Gaussians& gaussians, const glm::mat4x4& model_mtx, const glm::mat4x4& view_mtx,
-        const glm::mat4x4& proj_mtx, float kernel_size, GpuTexture2D& rendered_image)
+        const glm::mat4x4& proj_mtx, const GpuViewport& viewport, float kernel_size, GpuTexture2D& rendered_image)
     {
-        impl_->Render(gaussians, model_mtx, view_mtx, proj_mtx, kernel_size, rendered_image);
+        impl_->Render(gaussians, model_mtx, view_mtx, proj_mtx, viewport, kernel_size, rendered_image);
     }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
