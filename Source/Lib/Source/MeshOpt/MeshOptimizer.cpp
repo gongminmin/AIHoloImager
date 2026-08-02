@@ -573,7 +573,7 @@ namespace AIHoloImager
                     gpu_system.Execute(std::move(cmd_list));
                 }
 
-                gsplat_.Render(gaussians, projection.view_mtx, projection.proj_mtx, 0.1f, *projection.image);
+                gsplat_.Render(gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, 0.1f, *projection.image);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {

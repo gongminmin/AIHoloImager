@@ -16,6 +16,10 @@ cbuffer param_cb
     uint32_t num_coeffs;
     float kernel_size;
 
+    float3 model_scale;
+    float4 model_rotation;
+    float3 model_translation;
+
     float4x4 view_mtx;
     float4x4 view_proj_mtx;
 
@@ -49,9 +53,9 @@ bool RectOverlap(T rect1, T rect2)
     return (rect1.x < rect2.z) && (rect1.z > rect2.x) && (rect1.y < rect2.w) && (rect1.w > rect2.y);
 }
 
-float4 ComputeCov2D(float3 pos, float2 focal, float2 tan_fov, float kernel_size, float cov_3d[6], float4x4 view_mtx)
+float4 ComputeCov2D(float3 pos_ws, float2 focal, float2 tan_fov, float kernel_size, float cov_3d[6], float4x4 view_mtx)
 {
-    float4 t = mul(float4(pos, 1), view_mtx);
+    float4 t = mul(float4(pos_ws, 1), view_mtx);
     t /= t.w;
 
     const float lim_x = 1.3f * tan_fov.x;
@@ -118,12 +122,27 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
     cov_3d[5] = sigma[2].z;
 }
 
-float3 ComputeColorFromSh(uint32_t index, uint32_t degrees, uint32_t num_coeffs, float3 pos, Buffer<float3> sh_buff)
+float3 ComputeColorFromSh(uint32_t index, uint32_t degrees, uint32_t num_coeffs, Buffer<float3> sh_buff)
 {
     static const float Sh_C0 = 0.28209479177387814f;
 
     const float3 sh = sh_buff[index * num_coeffs + 0];
     return max(Sh_C0 * sh + 0.5f, 0);
+}
+
+float4 MulQuat(float4 lhs, float4 rhs)
+{
+    float4 c, r;
+    c.xyz = cross(rhs.xyz, lhs.xyz);
+    c.w = -dot(rhs.xyz, lhs.xyz);
+    r = lhs * rhs.w + c;
+    r.xyz = rhs.xyz * lhs.w + r.xyz;
+    return r;
+}
+
+float3 TransformQuat(float3 v, float4 quat)
+{
+    return v + cross(quat.xyz, cross(quat.xyz, v) + quat.w * v) * 2;
 }
 
 groupshared uint32_t group_offset;
@@ -147,18 +166,21 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     [branch]
     if (index < num_gaussians)
     {
-        const float3 pos_os = pos_buff[index];
-        const float4 pos_ps = mul(float4(pos_os, 1), view_proj_mtx);
+        const float3 pos_ws = TransformQuat(pos_buff[index] * model_scale, model_rotation) + model_translation;
+        const float4 pos_ps = mul(float4(pos_ws, 1), view_proj_mtx);
 
         depth = pos_ps.w;
 
         [branch]
         if ((depth > 0.2f) && all(bool4(abs(pos_ps.xy) < abs(1.3f * pos_ps.w), pos_ps.z >= 0, pos_ps.z <= pos_ps.w)))
         {
-            float cov_3d[6];
-            ComputeCov3D(scale_buff[index], rotation_buff[index], cov_3d);
+            const float3 scale = scale_buff[index] * model_scale;
+            const float4 rotation = MulQuat(rotation_buff[index].yzwx, model_rotation).wxyz;
 
-            const float4 cov = ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, view_mtx);
+            float cov_3d[6];
+            ComputeCov3D(scale, rotation, cov_3d);
+
+            const float4 cov = ComputeCov2D(pos_ws, focal, tan_fov, kernel_size, cov_3d, view_mtx);
 
             const float det = cov.x * cov.z - cov.y * cov.y;
             [branch]
@@ -190,7 +212,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
                             visible = 1;
 
                             screen_pos_extents = float4(screen_pos, adaptive_radius);
-                            color = ComputeColorFromSh(index, sh_degrees, num_coeffs, pos_os, sh_buff);
+                            color = ComputeColorFromSh(index, sh_degrees, num_coeffs, sh_buff);
                             conic_opacity = float4(cov.zyx / det, opacity);
                         }
                     }

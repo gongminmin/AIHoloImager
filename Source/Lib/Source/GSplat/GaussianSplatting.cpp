@@ -7,6 +7,12 @@
     #include <fstream>
 #endif
 
+#include <glm/gtc/quaternion.hpp>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+    #define GLM_ENABLE_EXPERIMENTAL
+#endif
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
@@ -78,8 +84,8 @@ namespace AIHoloImager
             }
         }
 
-        void Render(const Gaussians& gaussians, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx, float kernel_size,
-            GpuTexture2D& rendered_image)
+        void Render(const Gaussians& gaussians, const glm::mat4x4& model_mtx, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx,
+            float kernel_size, GpuTexture2D& rendered_image)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -123,11 +129,21 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 256;
 
+                glm::vec3 scale;
+                glm::quat rotation;
+                glm::vec3 translation;
+                glm::vec3 skew;
+                glm::vec4 perspective;
+                glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
+
                 GpuConstantBufferOfType<PreprocessConstantBuffer> preprocess_cb(gpu_system, "preprocess_cb");
                 preprocess_cb->num_gaussians = gaussians.num_gaussians;
                 preprocess_cb->sh_degrees = gaussians.sh_degrees;
                 preprocess_cb->num_coeffs = NumCoefficientsFromShDegrees(gaussians.sh_degrees);
                 preprocess_cb->kernel_size = kernel_size;
+                preprocess_cb->model_scale = scale;
+                preprocess_cb->model_rotation = rotation;
+                preprocess_cb->model_translation = translation;
                 preprocess_cb->view_mtx = glm::transpose(view_mtx);
                 preprocess_cb->view_proj_mtx = glm::transpose(proj_mtx * view_mtx);
                 preprocess_cb->focal = {focal_x, focal_y};
@@ -265,6 +281,12 @@ namespace AIHoloImager
             uint32_t num_coeffs;
             float kernel_size;
 
+            glm::vec3 model_scale;
+            float padding0;
+            glm::quat model_rotation;
+            glm::vec3 model_translation;
+            float padding1;
+
             glm::mat4x4 view_mtx;
             glm::mat4x4 view_proj_mtx;
 
@@ -272,7 +294,7 @@ namespace AIHoloImager
             glm::vec2 tan_fov;
 
             glm::uvec2 width_height;
-            glm::uvec2 padding;
+            glm::uvec2 padding2;
         };
         GpuComputePipeline preprocess_pipeline_;
 
@@ -320,10 +342,10 @@ namespace AIHoloImager
     GaussianSplatting::GaussianSplatting(GaussianSplatting&& other) noexcept = default;
     GaussianSplatting& GaussianSplatting::operator=(GaussianSplatting&& other) noexcept = default;
 
-    void GaussianSplatting::Render(const Gaussians& gaussians, const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx, float kernel_size,
-        GpuTexture2D& rendered_image)
+    void GaussianSplatting::Render(const Gaussians& gaussians, const glm::mat4x4& model_mtx, const glm::mat4x4& view_mtx,
+        const glm::mat4x4& proj_mtx, float kernel_size, GpuTexture2D& rendered_image)
     {
-        impl_->Render(gaussians, view_mtx, proj_mtx, kernel_size, rendered_image);
+        impl_->Render(gaussians, model_mtx, view_mtx, proj_mtx, kernel_size, rendered_image);
     }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
