@@ -547,7 +547,7 @@ namespace AIHoloImager
                         std::format("gsplat_rendered_{}", i));
 
                 const glm::vec2 angle = SphereHammersleySequence(i, GSplatNumViews);
-                const glm::vec3 camera_pos = SphericalCameraPose(angle.x, angle.y, 1.5f);
+                const glm::vec3 camera_pos = SphericalCameraPose(angle.x, angle.y, 3.0f);
                 const glm::vec3 camera_dir = -glm::normalize(camera_pos);
                 glm::vec3 camera_up_vec;
                 if (std::abs(camera_dir.z) > 0.95f)
@@ -560,7 +560,7 @@ namespace AIHoloImager
                 }
 
                 projection.view_mtx = glm::lookAtRH(camera_pos, glm::vec3(0, 0, 0), camera_up_vec);
-                projection.proj_mtx = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.5f, 2.5f);
+                projection.proj_mtx = glm::perspectiveRH_ZO(glm::radians(45.0f), 1.0f, 0.5f, 5.0f);
 
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
@@ -592,9 +592,8 @@ namespace AIHoloImager
 #endif
             }
 
-            TextureReconstruction::Result gsplat_texture_result =
-                texture_recon_.Process(mesh, glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(0.5f)),
-                    std::span(gsplat_projections.get(), GSplatNumViews), texture_size);
+            TextureReconstruction::Result gsplat_texture_result = texture_recon_.Process(
+                mesh, glm::identity<glm::mat4x4>(), std::span(gsplat_projections.get(), GSplatNumViews), texture_size);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
