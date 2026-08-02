@@ -135,6 +135,8 @@ namespace AIHoloImager
                 glm::vec4 perspective;
                 glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
+                const glm::vec4 eye_pos = glm::vec4(0, 0, 0, 1) * glm::inverse(view_mtx);
+
                 GpuConstantBufferOfType<PreprocessConstantBuffer> preprocess_cb(gpu_system, "preprocess_cb");
                 preprocess_cb->num_gaussians = gaussians.num_gaussians;
                 preprocess_cb->sh_degrees = gaussians.sh_degrees;
@@ -148,6 +150,7 @@ namespace AIHoloImager
                 preprocess_cb->focal = {focal_x, focal_y};
                 preprocess_cb->tan_fov = {tan_fov_x, tan_fov_y};
                 preprocess_cb->vp_width_height = {viewport.width, viewport.height};
+                preprocess_cb->eye_pos = glm::vec3(eye_pos.x, eye_pos.y, eye_pos.z) / eye_pos.w;
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system, preprocess_cb);
 
@@ -294,6 +297,9 @@ namespace AIHoloImager
 
             glm::uvec2 vp_width_height;
             glm::uvec2 padding2;
+
+            glm::vec3 eye_pos;
+            float padding3;
         };
         GpuComputePipeline preprocess_pipeline_;
 

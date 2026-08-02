@@ -2,6 +2,7 @@
 //
 
 #include "Util/Shader/Utils.hlslh"
+#include "Sh.hlslh"
 
 static const uint32_t BlockDim = 256;
 static const float AlphaThreshold = 1 / 255.0f;
@@ -27,6 +28,8 @@ cbuffer param_cb
     float2 tan_fov;
 
     uint32_t2 vp_width_height;
+
+    float3 eye_pos;
 };
 
 Buffer<float3> pos_buff;
@@ -122,12 +125,37 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
     cov_3d[5] = sigma[2].z;
 }
 
-float3 ComputeColorFromSh(uint32_t index, uint32_t degrees, uint32_t num_coeffs, Buffer<float3> sh_buff)
+template <uint32_t Degrees>
+float3 ComputeColorFromSh(uint32_t index, float3 pos, float3 eye_pos, Buffer<float3> sh_buff)
 {
-    static const float Sh_C0 = 0.28209479177387814f;
+    const float3 dir = normalize(pos - eye_pos);
 
-    const float3 sh = sh_buff[index * num_coeffs + 0];
-    return max(Sh_C0 * sh + 0.5f, 0);
+    static const uint32_t NumCoeffs = (Degrees + 1) * (Degrees + 1);
+    float basis[16];
+    switch (Degrees)
+    {
+    case 0:
+        ShEvalBasis0(basis);
+        break;
+    case 1:
+        ShEvalBasis1(dir, basis);
+        break;
+    case 2:
+        ShEvalBasis2(dir, basis);
+        break;
+    case 3:
+        ShEvalBasis3(dir, basis);
+        break;
+    }
+
+    const uint32_t offset = index * NumCoeffs;
+    float3 rgb = 0;
+    for (uint32_t c = 0; c < NumCoeffs; ++c)
+    {
+        rgb += basis[c] * sh_buff[offset + c];
+    }
+
+    return max(rgb + 0.5f, 0);
 }
 
 float4 MulQuat(float4 lhs, float4 rhs)
@@ -212,7 +240,21 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
                             visible = 1;
 
                             screen_pos_extents = float4(screen_pos, adaptive_radius);
-                            color = ComputeColorFromSh(index, sh_degrees, num_coeffs, sh_buff);
+                            switch (sh_degrees)
+                            {
+                            case 0:
+                                color = ComputeColorFromSh<0>(index, pos_ws, eye_pos, sh_buff);
+                                break;
+                            case 1:
+                                color = ComputeColorFromSh<1>(index, pos_ws, eye_pos, sh_buff);
+                                break;
+                            case 2:
+                                color = ComputeColorFromSh<2>(index, pos_ws, eye_pos, sh_buff);
+                                break;
+                            case 3:
+                                color = ComputeColorFromSh<3>(index, pos_ws, eye_pos, sh_buff);
+                                break;
+                            }
                             conic_opacity = float4(cov.zyx / det, opacity);
                         }
                     }

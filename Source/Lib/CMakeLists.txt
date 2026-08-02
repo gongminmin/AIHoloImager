@@ -41,6 +41,7 @@ set(aihi_files
     Source/GSplat/Shader/RenderGs.hlsl
     Source/GSplat/Shader/RenderPs.hlsl
     Source/GSplat/Shader/RenderVs.hlsl
+    Source/GSplat/Shader/Sh.hlslh
     Source/GSplat/GaussianSplatting.cpp
     Source/GSplat/GaussianSplatting.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl

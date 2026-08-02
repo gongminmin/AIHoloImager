@@ -1,0 +1,79 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+#pragma once
+
+// https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Real_spherical_harmonics
+
+template <uint32_t N>
+void ShEvalBasis0(out float b[N])
+{
+    static const float Sh_C0 = 0.28209479177387814f; // 1/2 * sqrt(1/pi)
+    b[0] = Sh_C0; // l=0,m=0
+}
+
+template <uint32_t N>
+void ShEvalBasis1(float3 dir, out float b[N])
+{
+    ShEvalBasis0(b);
+
+    static const float Sh_C1[] = {
+        -0.48860251190291992f, // sqrt(3/(4 * pi))
+        +0.48860251190291992f,
+        -0.48860251190291992f,
+    };
+
+    b[1] = Sh_C1[0] * dir.y; // l=1,m=-1
+    b[2] = Sh_C1[1] * dir.z; // l=1,m=0
+    b[3] = Sh_C1[2] * dir.x; // l=1,m=+1
+}
+
+template <uint32_t N>
+void ShEvalBasis2(float3 dir, out float b[N])
+{
+    ShEvalBasis1(dir, b);
+
+    static const float Sh_C2[] = {
+        +1.09254843059207920f, // 1/2 * sqrt(15/pi)
+        -1.09254843059207920f,
+        +0.31539156525252005f, // 1/4 * sqrt(5/pi)
+        -1.09254843059207920f,
+        +0.54627421529603959f, // 1/4 * sqrt(15/pi)
+    };
+
+    const float z2 = dir.z * dir.z;
+
+    b[4] = Sh_C2[0] * dir.x * dir.y; // l=2,m=-2
+    b[5] = Sh_C2[1] * dir.z * dir.y; // l=2,m=-1
+    b[6] = Sh_C2[2] * (3 * z2 - 1); // l=2,m=0
+    b[7] = Sh_C2[3] * dir.x * dir.z; // l=2,m=+1
+    b[8] = Sh_C2[4] * (dir.x * dir.x - dir.y * dir.y); // l=2,m=+2
+}
+
+template <uint32_t N>
+void ShEvalBasis3(float3 dir, out float b[N])
+{
+    ShEvalBasis2(dir, b);
+
+    static const float Sh_C3[] = {
+        -0.59004358992664352f, // 1/4 * sqrt(35/(2*pi))
+        +2.89061144264055420f, // 1/2 * sqrt(105/pi)
+        -0.45704579946446577f, // 1/4 * sqrt(21/(2*pi))
+        +0.37317633259011540f, // 1/4 * sqrt(7/pi)
+        -0.45704579946446577f,
+        +1.44530572132027710f, // 1/4 * sqrt(105/pi)
+        -0.59004358992664352f,
+    };
+
+    const float x2 = dir.x * dir.x;
+    const float y2 = dir.y * dir.y;
+    const float z2 = dir.z * dir.z;
+
+    b[9] = Sh_C3[0] * dir.y * (3 * x2 - y2); // l=3,m=-3
+    b[10] = Sh_C3[1] * dir.x * dir.y * dir.z; // l=3,m=-2
+    b[11] = Sh_C3[2] * dir.y * (5 * z2 - 1); // l=3,m=-1
+    b[12] = Sh_C3[3] * dir.z * (5 * z2 - 3); // l=3,m=0
+    b[13] = Sh_C3[4] * dir.x * (5 * z2 - 1); // l=3,m=+1
+    b[14] = Sh_C3[5] * dir.z * (x2 - y2); // l=3,m=+2
+    b[15] = Sh_C3[6] * dir.x * (x2 - 3 * y2); // l=3,m=+3
+}
