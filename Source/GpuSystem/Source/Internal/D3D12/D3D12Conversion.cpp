@@ -291,6 +291,9 @@ namespace AIHoloImager
         case GpuResourceState::CopyDst:
             return D3D12_RESOURCE_STATE_COPY_DEST;
 
+        case GpuResourceState::RayTracingAS:
+            return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+
         default:
             Unreachable("Invalid resource state");
         }
