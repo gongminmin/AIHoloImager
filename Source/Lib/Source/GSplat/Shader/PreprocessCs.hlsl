@@ -155,7 +155,7 @@ float3 ComputeColorFromSh(uint32_t index, float3 pos, float3 eye_pos, Buffer<flo
         rgb += basis[c] * sh_buff[offset + c];
     }
 
-    return max(rgb + 0.5f, 0);
+    return max(rgb, 0);
 }
 
 float4 MulQuat(float4 lhs, float4 rhs)

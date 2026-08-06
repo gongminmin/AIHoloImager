@@ -140,7 +140,11 @@ class Gaussian:
     
     @property
     def get_features(self) -> torch.Tensor:
-        return torch.cat((self._features_dc, self._features_rest), dim = 2) if self._features_rest is not None else self._features_dc
+        dc_term = self._features_dc
+        Sh_C0 = 0.28209479177387814  # 1/2 * sqrt(1/pi)
+        dc_term += 0.5 / Sh_C0       # To remove the bias of 0.5 to final RGB, add it to SH degree 0
+        features = torch.cat((dc_term, self._features_rest), dim = 2) if self._features_rest is not None else dc_term
+        return features
     
     @property
     def get_opacity(self) -> torch.Tensor:
