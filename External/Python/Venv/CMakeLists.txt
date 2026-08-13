@@ -1885,21 +1885,21 @@ set(copy_files
     torch/fx/experimental/_config.py
     torch/lib/c10.dll
     torch/lib/c10_cuda.dll
-    torch/lib/cublas64_12.dll
-    torch/lib/cublasLt64_12.dll
-    torch/lib/cudart64_12.dll
+    torch/lib/cublas64_13.dll
+    torch/lib/cublasLt64_13.dll
+    torch/lib/cudart64_13.dll
     torch/lib/cudnn64_9.dll
     torch/lib/cudnn_engines_precompiled64_9.dll
     torch/lib/cudnn_engines_runtime_compiled64_9.dll
     torch/lib/cudnn_graph64_9.dll
     torch/lib/cudnn_heuristic64_9.dll
     torch/lib/cudnn_ops64_9.dll
-    torch/lib/cufft64_11.dll
-    torch/lib/cupti64_2024.3.2.dll
-    torch/lib/cusolver64_11.dll
+    torch/lib/cufft64_12.dll
+    torch/lib/cupti64_2026.1.1.dll
+    torch/lib/cusolver64_12.dll
     torch/lib/cusparse64_12.dll
     torch/lib/libiomp5md.dll
-    torch/lib/nvJitLink_120_0.dll
+    torch/lib/nvJitLink_130_0.dll
     torch/lib/nvToolsExt64_1.dll
     torch/lib/shm.dll
     torch/lib/torch_cpu.dll
@@ -1915,7 +1915,7 @@ set(copy_files
     torchvision/libpng16.dll
     torchvision/libsharpyuv.dll
     torchvision/libwebp.dll
-    torchvision/nvjpeg64_12.dll
+    torchvision/nvjpeg64_13.dll
     torchvision/zlib.dll
     torchvision/models/densenet.py
 )
