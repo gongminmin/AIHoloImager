@@ -247,7 +247,8 @@ namespace AIHoloImager
                 blend_cb.UploadStaging();
                 const GpuConstantBufferView blend_cbv(gpu_system, blend_cb);
 
-                const GpuShaderResourceView gsplat_srv(gpu_system, intermediate_cache_.gsplat_image, 0);
+                const GpuShaderResourceView gsplat_srv(
+                    gpu_system, intermediate_cache_.gsplat_image, 0, ToSRGBFormat(intermediate_cache_.gsplat_image.Format()));
 
                 GpuUnorderedAccessView rendered_image_uav(gpu_system, rendered_image, 0, ToLinearFormat(rendered_image.Format()));
 
@@ -333,7 +334,7 @@ namespace AIHoloImager
             GpuTexture2D gsplat_image;
         };
         IntermediateCache intermediate_cache_;
-        static constexpr GpuFormat GSplatFmt = GpuFormat::RGBA8_UNorm_SRGB;
+        static constexpr GpuFormat GSplatFmt = GpuFormat::RGBA8_UNorm;
     };
 
     GaussianSplatting::GaussianSplatting() noexcept = default;
