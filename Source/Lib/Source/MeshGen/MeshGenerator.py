@@ -1,6 +1,7 @@
 # Copyright (c) 2024-2026 Minmin Gong
 #
 
+from __future__ import annotations
 from pathlib import Path
 
 import torch
@@ -9,7 +10,7 @@ from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache
 from Trellis.Pipelines import TrellisImageTo3DPipeline
 
 class MeshGenerator:
-    def __init__(self, gpu_system: "GpuSystem") -> None:
+    def __init__(self, gpu_system: GpuSystem) -> None:
         this_py_dir = Path(__file__).parent.resolve()
 
         self.device = ComputeDevice()

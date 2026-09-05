@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/full_attn.py
 
-from typing import overload, Union
+from typing import overload
 
 import torch
 
@@ -25,7 +25,7 @@ def SparseScaledDotProductAttention(qkv: SparseTensor) -> SparseTensor:
     ...
 
 @overload
-def SparseScaledDotProductAttention(q: SparseTensor, kv: Union[SparseTensor, torch.Tensor]) -> SparseTensor:
+def SparseScaledDotProductAttention(q: SparseTensor, kv: SparseTensor | torch.Tensor) -> SparseTensor:
     """
     Apply scaled dot product attention to a sparse tensor.
 
@@ -85,7 +85,7 @@ def SparseScaledDotProductAttention(q: torch.Tensor, k: SparseTensor, v: SparseT
     """
     ...
 
-def SparseScaledDotProductAttention(*args, **kwargs) -> Union[SparseTensor, torch.Tensor]:
+def SparseScaledDotProductAttention(*args, **kwargs) -> SparseTensor | torch.Tensor:
     arg_names_dict = {
         1: ["qkv"],
         2: ["q", "kv"],

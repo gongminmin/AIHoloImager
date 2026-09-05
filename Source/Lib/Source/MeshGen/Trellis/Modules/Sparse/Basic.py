@@ -3,7 +3,9 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/basic.py
 
-from typing import Optional, overload, Union
+from __future__ import annotations
+from collections.abc import Callable
+from typing import overload
 
 import torch
 import torch.nn as nn
@@ -26,11 +28,11 @@ class SparseTensor:
     """
 
     @overload
-    def __init__(self, feats: torch.Tensor, coords: torch.Tensor, shape: Optional[torch.Size] = None, layout: Optional[list[slice]] = None, **kwargs) -> None:
+    def __init__(self, feats: torch.Tensor, coords: torch.Tensor, shape: torch.Size | None = None, layout: list[slice] | None = None, **kwargs) -> None:
         ...
 
     @overload
-    def __init__(self, data, shape: Optional[torch.Size] = None, layout: Optional[list[slice]] = None, **kwargs) -> None:
+    def __init__(self, data, shape: torch.Size | None = None, layout: list[slice] | None = None, **kwargs) -> None:
         ...
 
     def __init__(self, *args, **kwargs) -> None:
@@ -131,14 +133,14 @@ class SparseTensor:
         return self.feats.device
 
     @overload
-    def to(self, dtype: torch.dtype) -> "SparseTensor":
+    def to(self, dtype: torch.dtype) -> SparseTensor:
         ...
 
     @overload
-    def to(self, device: Optional[Union[str, torch.device]] = None, dtype: Optional[torch.dtype] = None) -> "SparseTensor":
+    def to(self, device: str | torch.device | None = None, dtype: torch.dtype | None = None) -> SparseTensor:
         ...
 
-    def to(self, *args, **kwargs) -> "SparseTensor":
+    def to(self, *args, **kwargs) -> SparseTensor:
         device = None
         dtype = None
         if len(args) == 2:
@@ -159,41 +161,41 @@ class SparseTensor:
         new_coords = self.coords.to(device = device)
         return self.replace(new_feats, new_coords)
 
-    def type(self, dtype: torch.dtype) -> "SparseTensor":
+    def type(self, dtype: torch.dtype) -> SparseTensor:
         new_feats = self.feats.type(dtype)
         return self.replace(new_feats)
 
-    def cpu(self) -> "SparseTensor":
+    def cpu(self) -> SparseTensor:
         new_feats = self.feats.cpu()
         new_coords = self.coords.cpu()
         return self.replace(new_feats, new_coords)
 
-    def cuda(self) -> "SparseTensor":
+    def cuda(self) -> SparseTensor:
         new_feats = self.feats.cuda()
         new_coords = self.coords.cuda()
         return self.replace(new_feats, new_coords)
 
-    def half(self) -> "SparseTensor":
+    def half(self) -> SparseTensor:
         new_feats = self.feats.half()
         return self.replace(new_feats)
 
-    def float(self) -> "SparseTensor":
+    def float(self) -> SparseTensor:
         new_feats = self.feats.float()
         return self.replace(new_feats)
 
-    def detach(self) -> "SparseTensor":
+    def detach(self) -> SparseTensor:
         new_coords = self.coords.detach()
         new_feats = self.feats.detach()
         return self.replace(new_feats, new_coords)
 
-    def reshape(self, *shape) -> "SparseTensor":
+    def reshape(self, *shape) -> SparseTensor:
         new_feats = self.feats.reshape(self.feats.shape[0], *shape)
         return self.replace(new_feats)
 
-    def unbind(self, dim: int) -> list["SparseTensor"]:
+    def unbind(self, dim: int) -> list[SparseTensor]:
         return SparseUnbind(self, dim)
 
-    def replace(self, feats: torch.Tensor, coords: Optional[torch.Tensor] = None) -> "SparseTensor":
+    def replace(self, feats: torch.Tensor, coords: torch.Tensor | None = None) -> SparseTensor:
         new_shape = [self.shape[0]]
         new_shape.extend(feats.shape[1 :])
         indices = self.coords
@@ -204,7 +206,7 @@ class SparseTensor:
         return new_tensor
 
     @staticmethod
-    def full(aabb, dim, value, dtype = torch.float32, device: Optional[torch.device] = None) -> "SparseTensor":
+    def full(aabb, dim, value, dtype = torch.float32, device: torch.device | None = None) -> SparseTensor:
         num, channels = dim
         x = torch.arange(aabb[0], aabb[3] + 1)
         y = torch.arange(aabb[1], aabb[4] + 1)
@@ -217,7 +219,7 @@ class SparseTensor:
         feats = torch.full((coords.shape[0], channels), value, dtype = dtype, device = device)
         return SparseTensor(feats = feats, coords = coords)
 
-    def __merge_sparse_cache(self, other: "SparseTensor") -> dict:
+    def __merge_sparse_cache(self, other: SparseTensor) -> dict:
         new_cache = {}
         for k in set(list(self._spatial_cache.keys()) + list(other._spatial_cache.keys())):
             if k in self._spatial_cache:
@@ -229,10 +231,10 @@ class SparseTensor:
                     new_cache[k].update(other._spatial_cache[k])
         return new_cache
 
-    def __neg__(self) -> "SparseTensor":
+    def __neg__(self) -> SparseTensor:
         return self.replace(-self.feats)
 
-    def __elemwise__(self, other: Union[torch.Tensor, "SparseTensor"], op: callable) -> "SparseTensor":
+    def __elemwise__(self, other: torch.Tensor | SparseTensor, op: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]) -> SparseTensor:
         if isinstance(other, torch.Tensor):
             try:
                 other = torch.broadcast_to(other, self.shape)
@@ -247,31 +249,31 @@ class SparseTensor:
             new_tensor._spatial_cache = self.__merge_sparse_cache(other)
         return new_tensor
 
-    def __add__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __add__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.add)
 
-    def __radd__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __radd__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.add)
 
-    def __sub__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __sub__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.sub)
 
-    def __rsub__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __rsub__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, lambda x, y: torch.sub(y, x))
 
-    def __mul__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __mul__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.mul)
 
-    def __rmul__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __rmul__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.mul)
 
-    def __truediv__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __truediv__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, torch.div)
 
-    def __rtruediv__(self, other: Union[torch.Tensor, "SparseTensor", float]) -> "SparseTensor":
+    def __rtruediv__(self, other: torch.Tensor | SparseTensor | float) -> SparseTensor:
         return self.__elemwise__(other, lambda x, y: torch.div(y, x))
 
-    def __getitem__(self, idx: Union[int, slice, torch.Tensor]):
+    def __getitem__(self, idx: int | slice | torch.Tensor):
         if isinstance(idx, int):
             idx = [idx]
         elif isinstance(idx, slice):
@@ -327,7 +329,6 @@ def SparseBatchBroadcast(input: SparseTensor, other: torch.Tensor) -> torch.Tens
     Args:
         input (torch.Tensor): 1D tensor to broadcast.
         target (SparseTensor): Sparse tensor to broadcast to.
-        op (callable): Operation to perform after broadcasting. Defaults to torch.add.
     """
 
     coords, feats = input.coords, input.feats

@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/attention/modules.py
 
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -12,7 +12,7 @@ import torch.nn.functional as functional
 from .FullAttn import ScaledDotProductAttention
 
 class MultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None) -> None:
+    def __init__(self, dim: int, heads: int, device: torch.device | None = None) -> None:
         super().__init__()
 
         self.scale = dim ** 0.5
@@ -22,7 +22,7 @@ class MultiHeadRMSNorm(nn.Module):
         return (functional.normalize(x.float(), dim = -1) * self.gamma * self.scale).to(x.dtype)
 
 class RotaryPositionEmbedder(nn.Module):
-    def __init__(self, hidden_size: int, in_channels: Optional[int] = 3) -> None:
+    def __init__(self, hidden_size: int, in_channels: int = 3) -> None:
         super().__init__()
 
         assert hidden_size % 2 == 0, "Hidden size must be divisible by 2"
@@ -44,7 +44,7 @@ class RotaryPositionEmbedder(nn.Module):
         x_embed = torch.view_as_real(x_rotated).reshape(*x_rotated.shape[: -1], -1).to(x.dtype)
         return x_embed
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, indices: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, q: torch.Tensor, k: torch.Tensor, indices: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             q (torch.Tensor): [..., N, D] tensor of queries
@@ -72,13 +72,13 @@ class MultiHeadAttention(nn.Module):
         self,
         channels: int,
         num_heads: int,
-        ctx_channels: Optional[int] = None,
+        ctx_channels: int | None = None,
         type: Literal["self", "cross"] = "self",
         attn_mode: Literal["full", "windowed"] = "full",
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -114,7 +114,7 @@ class MultiHeadAttention(nn.Module):
         if use_rope:
             self.rope = RotaryPositionEmbedder(channels)
 
-    def forward(self, x: torch.Tensor, context: Optional[torch.Tensor] = None, indices: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, context: torch.Tensor | None = None, indices: torch.Tensor | None = None) -> torch.Tensor:
         batch, length, channels = x.shape
         if self.type == "self":
             qkv = self.to_qkv(x)

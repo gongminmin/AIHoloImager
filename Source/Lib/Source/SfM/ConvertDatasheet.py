@@ -1,10 +1,10 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 import struct
 import sys
 
-def ParseDatabase(file_path) -> dict[str, float]:
+def ParseDatabase(file_path: str) -> dict[str, float]:
     database = {}
     try:
         with open(file_path, "r") as file:
@@ -23,7 +23,7 @@ def ParseDatabase(file_path) -> dict[str, float]:
         print(f"Error: An unexpected error occurred. {e}")
         return {}
 
-def WriteToBinary(database, file_path) -> None:
+def WriteToBinary(database: dict[str, float], file_path: str) -> None:
     try:
         with open(file_path, "wb") as file:
             file.write(struct.pack("<i", len(database)))

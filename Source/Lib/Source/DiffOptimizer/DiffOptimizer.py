@@ -1,8 +1,8 @@
 # Copyright (c) 2024-2026 Minmin Gong
 #
 
+from __future__ import annotations
 import random
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -79,7 +79,7 @@ def LinearToSRGB(data: torch.Tensor) -> torch.Tensor:
     return data
 
 class DiffOptimizer:
-    def __init__(self, gpu_system: "GpuSystem") -> None:
+    def __init__(self, gpu_system: GpuSystem) -> None:
         self.downsampling = True
         self.enable_mip = True
 
@@ -223,7 +223,7 @@ class DiffOptimizer:
                      scale: torch.Tensor, rotation: torch.Tensor, translation: torch.Tensor,
                      vtx_positions: torch.Tensor, vtx_colors: torch.Tensor, indices: torch.Tensor,
                      crop_images: list[torch.Tensor], view_proj_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
-                     resolutions: list[tuple[int, int]], num_iter: Optional[int] = 300) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                     resolutions: list[tuple[int, int]], num_iter: int = 300) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
@@ -415,7 +415,7 @@ class DiffOptimizer:
                    texture: torch.Tensor, mask_tex: torch.Tensor, mip_levels: int,
                    vtx_positions: torch.Tensor, vtx_uv: torch.Tensor, indices: torch.Tensor,
                    crop_images: list[torch.Tensor], mvp_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
-                   resolutions: list[tuple[int, int]], num_iter: Optional[int] = 150) -> torch.Tensor:
+                   resolutions: list[tuple[int, int]], num_iter: int = 150) -> torch.Tensor:
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 

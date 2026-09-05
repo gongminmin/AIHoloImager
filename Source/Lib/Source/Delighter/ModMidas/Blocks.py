@@ -1,9 +1,7 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Simplified from https://github.com/CCareaga/MiDaS/blob/master/altered_midas/blocks.py
-
-from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -12,7 +10,7 @@ from .Effnet.Conv2dLayers import Conv2dSame
 from .Effnet.EfficientNet import TfEfficientNetLite3
 from .Wsl import Resnext101_32
 
-def MakeEncoder(backbone: str, features: torch.Tensor, expand: Optional[bool] = False, in_channels: Optional[int] = 3, group_width: Optional[int] = 8, device: Optional[torch.device] = None) -> tuple[nn.Module, nn.Module]:
+def MakeEncoder(backbone: str, features: torch.Tensor, expand: bool = False, in_channels: int = 3, group_width: int = 8, device: torch.device | None = None) -> tuple[nn.Module, nn.Module]:
     if backbone == "resnext101_wsl":
         model = MakeResnext101(in_channels, group_width, device = device)
         scratch = MakeScratch((256, 512, 1024, 2048), features, expand, device = device)
@@ -25,7 +23,7 @@ def MakeEncoder(backbone: str, features: torch.Tensor, expand: Optional[bool] = 
 
     return model, scratch
 
-def MakeScratch(in_shape: int, out_shape: int, expand: Optional[bool] = False, device: Optional[torch.device] = None) -> nn.Module:
+def MakeScratch(in_shape: int, out_shape: int, expand: bool = False, device: torch.device | None = None) -> nn.Module:
     scratch = nn.Module()
 
     if expand:
@@ -57,7 +55,7 @@ def MakeScratch(in_shape: int, out_shape: int, expand: Optional[bool] = False, d
 
     return scratch
 
-def MakeResnext101(in_channels: Optional[int] = 3, group_width: Optional[int] = 8, device: Optional[torch.device] = None) -> nn.Module:
+def MakeResnext101(in_channels: int = 3, group_width: int = 8, device: torch.device | None = None) -> nn.Module:
     resnet = Resnext101_32(group_width)
     if in_channels != 3:
         resnet.conv1 = torch.nn.Conv2d(in_channels, 64, 7, 2, 3, bias = False, device = device)
@@ -72,7 +70,7 @@ def MakeResnext101(in_channels: Optional[int] = 3, group_width: Optional[int] = 
 
     return model
 
-def MakeEfficientNetLite3(in_channels: Optional[int] = 3, device: Optional[torch.device] = None) -> nn.Module:
+def MakeEfficientNetLite3(in_channels: int = 3, device: torch.device | None = None) -> nn.Module:
     effnet = TfEfficientNetLite3(device = device)
     if in_channels != 3:
         effnet.conv_stem = Conv2dSame(in_channels, 32, kernel_size = (3, 3), stride = (2, 2), bias = False, device = device)
@@ -88,7 +86,7 @@ def MakeEfficientNetLite3(in_channels: Optional[int] = 3, device: Optional[torch
     return model
 
 class Interpolate(nn.Module):
-    def __init__(self, scale_factor: Union[float, tuple[float, ...]], mode: str, align_corners: Optional[bool] = False) -> None:
+    def __init__(self, scale_factor: float | tuple[float, ...], mode: str, align_corners: bool = False) -> None:
         super(Interpolate, self).__init__()
 
         self.scale_factor = scale_factor
@@ -102,7 +100,7 @@ class Interpolate(nn.Module):
         return x
 
 class ResidualConvUnit(nn.Module):
-    def __init__(self, features: int, activation: Optional[nn.Module] = nn.ReLU(True), device: Optional[torch.device] = None) -> None:
+    def __init__(self, features: int, activation: nn.Module = nn.ReLU(True), device: torch.device | None = None) -> None:
         super(ResidualConvUnit, self).__init__()
 
         self.conv1 = nn.Conv2d(
@@ -124,7 +122,7 @@ class ResidualConvUnit(nn.Module):
         return out + x
 
 class FeatureFusionBlock(nn.Module):
-    def __init__(self, features, activation: Optional[nn.Module] = nn.ReLU(True), expand: Optional[bool] = False, custom: Optional[bool] = False, device: Optional[torch.device] = None) -> None:
+    def __init__(self, features, activation: nn.Module = nn.ReLU(True), expand: bool = False, custom: bool = False, device: torch.device | None = None) -> None:
         super(FeatureFusionBlock, self).__init__()
 
         if custom:
@@ -136,7 +134,7 @@ class FeatureFusionBlock(nn.Module):
         self.res_conv_unit1 = ResidualConvUnit(features, activation, device = device)
         self.res_conv_unit2 = ResidualConvUnit(features, activation, device = device)
 
-    def forward(self, *xs, size: Optional[Union[int, tuple[int, ...]]] = None) -> torch.Tensor:
+    def forward(self, *xs, size: int | tuple[int, ...] | None = None) -> torch.Tensor:
         output = xs[0]
 
         if len(xs) == 2:

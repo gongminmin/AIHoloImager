@@ -10,7 +10,7 @@ This file contains code that is adapted from
 https://github.com/thomasjpfan/pytorch_refinenet/blob/master/pytorch_refinenet/refinenet/refinenet_4cascade.py
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,7 @@ import torch.nn as nn
 from .Blocks import FeatureFusionBlock, Interpolate, MakeEncoder
 
 class MidasNet(nn.Module):
-    def __init__(self, activation: Literal["sigmoid", "relu", "Identity"] = "sigmoid", features: Optional[int] = 256, in_channels: Optional[int] = 3, out_channels: Optional[int] = 1, group_width: Optional[int] = 8, last_residual: Optional[bool] = False, device: Optional[torch.device] = None) -> None:
+    def __init__(self, activation: Literal["sigmoid", "relu", "Identity"] = "sigmoid", features: int = 256, in_channels: int = 3, out_channels: int = 1, group_width: int = 8, last_residual: bool = False, device: torch.device | None = None) -> None:
         super(MidasNet, self).__init__()
 
         self.out_channels = out_channels
@@ -84,7 +84,7 @@ class MidasNet(nn.Module):
         return out
 
 class MidasNetSmall(nn.Module):
-    def __init__(self, activation: Literal["sigmoid", "tanh", "Identity"] = "sigmoid", features: Optional[int] = 64, in_channels: Optional[int] = 3, out_channels: Optional[int] = 1, out_bias: Optional[int] = 0, device: Optional[torch.device] = None) -> None:
+    def __init__(self, activation: Literal["sigmoid", "tanh", "Identity"] = "sigmoid", features: int = 64, in_channels: int = 3, out_channels: int = 1, out_bias: int = 0, device: torch.device | None = None) -> None:
         super(MidasNetSmall, self).__init__()
 
         self.pretrained, self.scratch = MakeEncoder(

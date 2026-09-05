@@ -1,9 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_vae/base.py
 
-from typing import *
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -35,15 +35,15 @@ class SparseTransformerBase(nn.Module):
         in_channels: int,
         model_channels: int,
         num_blocks: int,
-        num_heads: Optional[int] = None,
-        num_head_channels: Optional[int] = 64,
+        num_heads: int | None = None,
+        num_head_channels: int = 64,
         mlp_ratio: float = 4.0,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "full",
-        window_size: Optional[int] = None,
+        window_size: int | None = None,
         pe_mode: Literal["ape", "rope"] = "ape",
         use_fp16: bool = False,
         qk_rms_norm: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 

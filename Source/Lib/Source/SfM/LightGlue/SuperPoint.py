@@ -44,9 +44,9 @@
 
 # Adapted from https://github.com/cvg/LightGlue/blob/main/lightglue/superpoint.py
 
+from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional, Union
 
 import torch
 from torch import nn
@@ -78,7 +78,7 @@ def TopKKeypoints(keypoints: torch.Tensor, scores: torch.Tensor, k: int) -> tupl
     scores, indices = torch.topk(scores, k, dim = 0, sorted = True)
     return keypoints[indices], scores
 
-def SampleDescriptors(keypoints: torch.Tensor, descriptors: torch.Tensor, s: Optional[int] = 8) -> torch.Tensor:
+def SampleDescriptors(keypoints: torch.Tensor, descriptors: torch.Tensor, s: int = 8) -> torch.Tensor:
     """Interpolate descriptors at keypoint locations"""
     b, c, h, w = descriptors.shape
     keypoints = keypoints - s / 2 + 0.5
@@ -114,7 +114,7 @@ class SuperPoint(torch.nn.Module):
         "remove_borders": 4,
     }
 
-    def __init__(self, device : Optional[torch.device] = None, **conf) -> None:
+    def __init__(self, device : torch.device | None = None, **conf) -> None:
         super().__init__()
 
         self.conf = SimpleNamespace(**{**self.default_conf, **conf})  # Update with default configuration.
@@ -144,7 +144,7 @@ class SuperPoint(torch.nn.Module):
             raise ValueError("max_num_keypoints must be positive or None")
 
     @classmethod
-    def FromPretrained(cls, path: Union[str, Path], **conf) -> "SuperPoint":
+    def FromPretrained(cls, path: str | Path, **conf) -> SuperPoint:
         sp = skip_init(cls, **conf)
 
         pth_path = Path(path) / "superpoint_v1.pth"

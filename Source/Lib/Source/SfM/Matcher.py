@@ -10,7 +10,7 @@ from LightGlue import LightGlue
 from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache, TensorToBytes
 
 class Matcher:
-    def __init__(self):
+    def __init__(self) -> None:
         self.device = ComputeDevice()
 
         this_py_dir = Path(__file__).parent.resolve()
@@ -24,7 +24,7 @@ class Matcher:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Match(self, features: tuple, image_idx0: int, image_idx1: int) -> tuple:
+    def Match(self, features: tuple[int, torch.Tensor], image_idx0: int, image_idx1: int) -> tuple[bytes, int]:
         num_images = len(features)
 
         features0 = features[image_idx0]

@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/utils.py
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import torch
 import torch.nn as nn
@@ -40,7 +40,7 @@ def ZeroModule(module: nn.Module) -> nn.Module:
         p.detach().zero_()
     return module
 
-def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, attn_mask: torch.Tensor | None = None) -> torch.Tensor:
     """
     Memory-efficient attention using PyTorch's built-in scaled dot-product attention.
     """
@@ -53,13 +53,13 @@ def MemEfficientAttention(query: torch.Tensor, key: torch.Tensor, value: torch.T
     output = nn.functional.scaled_dot_product_attention(query, key, value, attn_mask)
     return output.permute(0, 2, 1, 3)   # [N, L, H, C]
 
-def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Optional[Sequence[int]] = None, causal: Optional[bool] = False) -> torch.Tensor:
+def BlockDiagonalMaskFromSeqlens(q_seqlen: Sequence[int], kv_seqlen: Sequence[int] | None = None, causal: bool = False) -> torch.Tensor:
     """
     Create a block-diagonal attention mask using nested tensors.
 
     Args:
         q_seqlen (Sequence[int]): Query sequence lengths.
-        kv_seqlen (Optional[Sequence[int]]): Key/value sequence lengths.
+        kv_seqlen (Sequence[int] | None): Key/value sequence lengths.
         causal (bool): If True, apply causal masking within each sequence.
 
     Returns:

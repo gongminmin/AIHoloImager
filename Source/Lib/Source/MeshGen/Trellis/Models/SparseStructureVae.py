@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/sparse_structure_vae.py
 
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -25,9 +25,9 @@ class ResBlock3D(nn.Module):
     def __init__(
         self,
         channels: int,
-        out_channels: Optional[int] = None,
+        out_channels: int | None = None,
         norm_type: Literal["group", "layer"] = "layer",
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -58,7 +58,7 @@ class UpsampleBlock3D(nn.Module):
         in_channels: int,
         out_channels: int,
         mode: Literal["conv", "nearest"] = "conv",
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -99,7 +99,7 @@ class SparseStructureDecoder(nn.Module):
         num_res_blocks_middle: int = 2,
         norm_type: Literal["group", "layer"] = "layer",
         use_fp16: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 

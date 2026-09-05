@@ -3,8 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/spatial.py
 
-from typing import Union
-
 import torch
 import torch.nn as nn
 
@@ -22,7 +20,7 @@ class SparseDownsample(nn.Module):
     Implemented as average pooling.
     """
 
-    def __init__(self, factor: Union[int, tuple[int, ...], list[int]]) -> None:
+    def __init__(self, factor: int | tuple[int, ...] | list[int]) -> None:
         super(SparseDownsample, self).__init__()
         self.factor = tuple(factor) if isinstance(factor, (list, tuple)) else factor
 
@@ -68,7 +66,7 @@ class SparseUpsample(nn.Module):
     Implemented as nearest neighbor interpolation.
     """
 
-    def __init__(self, factor: Union[int, tuple[int, int, int], list[int]]) -> None:
+    def __init__(self, factor: int | tuple[int, int, int] | list[int]) -> None:
         super(SparseUpsample, self).__init__()
         self.factor = tuple(factor) if isinstance(factor, (list, tuple)) else factor
 

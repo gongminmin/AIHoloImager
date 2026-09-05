@@ -3,8 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/samplers/flow_euler.py
 
-from typing import Optional, Union
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -34,11 +32,11 @@ class FlowEulerSampler:
         x_0 = (1 - self.sigma_min) * x_t - (self.sigma_min + (1 - self.sigma_min) * t) * v
         return x_0, eps
 
-    def InferenceModel(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
+    def InferenceModel(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: torch.Tensor | None = None, **kwargs) -> torch.Tensor:
         t = torch.tensor([1000 * t] * x_t.shape[0], device = x_t.device, dtype = torch.float32)
         return model(x_t, t, cond, **kwargs)
 
-    def GetModelPrediction(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: Optional[torch.Tensor] = None, neg_cond: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
+    def GetModelPrediction(self, model: nn.Module, x_t: torch.Tensor, t: float, cond: torch.Tensor | None = None, neg_cond: torch.Tensor | None = None, **kwargs) -> torch.Tensor:
         pred_v = self.InferenceModel(model, x_t, t, cond, neg_cond = neg_cond, **kwargs)
         pred_x_0, pred_eps = self.VToXStartEps(x_t = x_t, t = t, v = pred_v)
         return pred_x_0, pred_eps, pred_v
@@ -50,8 +48,8 @@ class FlowEulerSampler:
         x_t: torch.Tensor,
         t: float,
         t_prev: float,
-        cond: Optional[torch.Tensor] = None,
-        neg_cond: Optional[torch.Tensor] = None,
+        cond: torch.Tensor | None = None,
+        neg_cond: torch.Tensor | None = None,
         **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -80,12 +78,12 @@ class FlowEulerSampler:
     def Sample(
         self,
         model: nn.Module,
-        noise: Union[torch.Tensor, sp.SparseTensor],
-        cond: Optional[torch.Tensor] = None,
-        neg_cond: Optional[torch.Tensor] = None,
-        steps: Optional[int] = 50,
-        rescale_t: Optional[float] = 1.0,
-        verbose: Optional[bool] = True,
+        noise: torch.Tensor | sp.SparseTensor,
+        cond: torch.Tensor | None = None,
+        neg_cond: torch.Tensor | None = None,
+        steps: int = 50,
+        rescale_t: float = 1.0,
+        verbose: bool = True,
         **kwargs
     ) -> torch.Tensor:
         """
@@ -123,13 +121,13 @@ class FlowEulerCfgSampler(ClassifierFreeGuidanceSamplerMixin, FlowEulerSampler):
     def Sample(
         self,
         model: nn.Module,
-        noise: Union[torch.Tensor, sp.SparseTensor],
+        noise: torch.Tensor | sp.SparseTensor,
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
-        steps: Optional[int] = 50,
-        rescale_t: Optional[float] = 1.0,
-        cfg_strength: Optional[float] = 3.0,
-        verbose: Optional[bool] = True,
+        steps: int = 50,
+        rescale_t: float = 1.0,
+        cfg_strength: float = 3.0,
+        verbose: bool = True,
         **kwargs
     ) -> torch.Tensor:
         """
@@ -161,14 +159,14 @@ class FlowEulerGuidanceIntervalSampler(GuidanceIntervalSamplerMixin, FlowEulerSa
     def Sample(
         self,
         model: nn.Module,
-        noise: Union[torch.Tensor, sp.SparseTensor],
+        noise: torch.Tensor | sp.SparseTensor,
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
-        steps: Optional[int] = 50,
-        rescale_t: Optional[float] = 1.0,
-        cfg_strength: Optional[float] = 3.0,
+        steps: int = 50,
+        rescale_t: float = 1.0,
+        cfg_strength: float = 3.0,
         cfg_interval: tuple[float, float] = (0.0, 1.0),
-        verbose: Optional[bool] = True,
+        verbose: bool = True,
         **kwargs
     ):
         """

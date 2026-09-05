@@ -3,14 +3,12 @@
 
 # From https://github.com/xuebinqin/U-2-Net/blob/master/model/u2net.py
 
-from typing import Optional
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
 class ReBnConv(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, out_ch: Optional[int] = 3, dirate: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, out_ch: int = 3, dirate: int = 1, device: torch.device | None = None) -> None:
         super(ReBnConv, self).__init__()
 
         self.conv_s1 = nn.Conv2d(in_ch, out_ch, 3, padding = 1 * dirate, dilation = 1 * dirate, device = device)
@@ -28,7 +26,7 @@ def UpsampleLike(src, target: torch.Tensor) -> torch.Tensor:
     return functional.interpolate(src, size = target.shape[2 : ], mode = "bilinear")
 
 class Rsu4(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3, device: torch.device | None = None) -> None:
         super(Rsu4, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -73,7 +71,7 @@ class Rsu4(nn.Module):
         return hx1d + hxin
 
 class Rsu4F(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3, device: torch.device | None = None) -> None:
         super(Rsu4F, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -106,7 +104,7 @@ class Rsu4F(nn.Module):
         return hx1d + hxin
 
 class Rsu5(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3, device: torch.device | None = None) -> None:
         super(Rsu5, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -161,7 +159,7 @@ class Rsu5(nn.Module):
         return hx1d + hxin
 
 class Rsu6(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3, device: torch.device | None = None) -> None:
         super(Rsu6, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -226,7 +224,7 @@ class Rsu6(nn.Module):
         return hx1d + hxin
 
 class Rsu7(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, mid_ch: Optional[int] = 12, out_ch: Optional[int] = 3, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, mid_ch: int = 12, out_ch: int = 3, device: torch.device | None = None) -> None:
         super(Rsu7, self).__init__()
 
         self.rebnconvin = ReBnConv(in_ch, out_ch, dirate = 1, device = device)
@@ -300,7 +298,7 @@ class Rsu7(nn.Module):
         return hx1d + hxin
 
 class U2Net(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3, out_ch: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3, out_ch: int = 1, device: torch.device | None = None) -> None:
         super(U2Net, self).__init__()
 
         self.stage1 = Rsu7(in_ch, 32, 64, device = device)
@@ -394,7 +392,7 @@ class U2Net(nn.Module):
         return functional.sigmoid(d0)
 
 class U2NetSmall(nn.Module):
-    def __init__(self, in_ch: Optional[int] = 3,out_ch: Optional[int] = 1, device: Optional[torch.device] = None) -> None:
+    def __init__(self, in_ch: int = 3,out_ch: int = 1, device: torch.device | None = None) -> None:
         super(U2NetSmall, self).__init__()
 
         self.stage1 = Rsu7(in_ch, 16, 64, device = device)

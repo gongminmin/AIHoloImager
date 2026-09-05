@@ -1,10 +1,9 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/__init__.py
 
 import importlib
-from typing import *
 
 __attributes = {
     "SparseTensor": "Basic",

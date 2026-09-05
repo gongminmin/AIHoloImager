@@ -1,8 +1,8 @@
 # Copyright (c) 2026 Minmin Gong
 #
 
+from __future__ import annotations
 from pathlib import Path
-from typing import List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -17,13 +17,13 @@ class SrVggNetCompact(nn.Module):
 
     def __init__(
         self,
-        in_channels: Optional[int] = 3,
-        out_channels: Optional[int] = 3,
-        num_feat: Optional[int] = 64,
-        num_conv: Optional[int] = 16,
-        upscale: Optional[float] = 4,
-        act_type: Optional[str] = "prelu",
-        device : Optional[torch.device] = None
+        in_channels: int = 3,
+        out_channels: int = 3,
+        num_feat: int = 64,
+        num_conv: int = 16,
+        upscale: float = 4,
+        act_type: str = "prelu",
+        device : torch.device | None = None
     ):
         super(SrVggNetCompact, self).__init__()
 
@@ -44,7 +44,7 @@ class SrVggNetCompact(nn.Module):
         self.body = nn.Sequential(*body_layers)
 
     @staticmethod
-    def FromPretrained(paths: List[Union[str, Path]], dni_weights: List[float]) -> "SrVggNetCompact":
+    def FromPretrained(paths: list[str | Path], dni_weights: list[float]) -> SrVggNetCompact:
         model = skip_init(SrVggNetCompact, in_channels = 3, out_channels = 3, num_feat = 64, num_conv = 32, upscale = 4, act_type = "prelu")
 
         load_net = SrVggNetCompact.DeepNNetworkInterpolation(paths, dni_weights)
@@ -56,7 +56,7 @@ class SrVggNetCompact(nn.Module):
         return model
 
     @staticmethod
-    def DeepNNetworkInterpolation(paths: List[Union[str, Path]], dni_weights: List[float], key: Optional[str] = "params") -> dict:
+    def DeepNNetworkInterpolation(paths: list[str | Path], dni_weights: list[float], key: str = "params") -> dict:
         """
         Deep Network Interpolation for Continuous Imagery Effect Transition
         """

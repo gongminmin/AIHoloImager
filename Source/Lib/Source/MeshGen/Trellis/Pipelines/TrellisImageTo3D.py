@@ -3,11 +3,12 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/trellis_image_to_3d.py
 
+from __future__ import annotations
 from contextlib import contextmanager
 import importlib
 import json
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 import warnings
 
 import numpy as np
@@ -27,11 +28,11 @@ class TrellisImageTo3DPipeline:
         self,
         models: dict[str, nn.Module],
         sparse_structure_sampler: Samplers.FlowEuler.FlowEulerGuidanceIntervalSampler = None,
-        sparse_structure_sampler_params: Optional[dict] = {},
+        sparse_structure_sampler_params: dict = {},
         slat_sampler: Samplers.FlowEuler.FlowEulerGuidanceIntervalSampler = None,
-        slat_sampler_params: Optional[dict] = {},
-        slat_normalization: Optional[dict] = None,
-        image_cond_model: Optional[str] = None,
+        slat_sampler_params: dict = {},
+        slat_normalization: dict | None = None,
+        image_cond_model: str | None = None,
     ) -> None:
         assert models != None
         self.models = models
@@ -65,7 +66,7 @@ class TrellisImageTo3DPipeline:
             model.eval()
 
     @staticmethod
-    def FromPretrained(path: Union[str, Path]) -> "TrellisImageTo3DPipeline":
+    def FromPretrained(path: str | Path) -> TrellisImageTo3DPipeline:
         config_file_path = Path(path) / "pipeline.json"
 
         with open(config_file_path, "r") as file:
@@ -137,8 +138,8 @@ class TrellisImageTo3DPipeline:
         self,
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
-        num_samples: Optional[int] = 1,
-        sampler_params: Optional[dict] = {},
+        num_samples: int = 1,
+        sampler_params: dict = {},
     ) -> torch.Tensor:
         """
         Sample sparse structures with the given conditioning.
@@ -172,7 +173,7 @@ class TrellisImageTo3DPipeline:
 
     def DecodeSlat(
         self,
-        gpu_system: "GpuSystem",
+        gpu_system: GpuSystem,
         slat: sp.SparseTensor,
         output_types: list[str] = ["mesh", "gaussian"],
     ) -> dict[str, list[torch.Tensor]]:
@@ -202,7 +203,7 @@ class TrellisImageTo3DPipeline:
         cond: torch.Tensor,
         neg_cond: torch.Tensor,
         coords: torch.Tensor,
-        sampler_params: Optional[dict] = {},
+        sampler_params: dict = {},
     ) -> sp.SparseTensor:
         """
         Sample structured latent with the given conditioning.
@@ -297,9 +298,9 @@ class TrellisImageTo3DPipeline:
         self,
         gpu_system,
         images: torch.Tensor,
-        num_samples: Optional[int] = 1,
-        sparse_structure_sampler_params: Optional[dict] = {},
-        slat_sampler_params: Optional[dict] = {},
+        num_samples: int = 1,
+        sparse_structure_sampler_params: dict = {},
+        slat_sampler_params: dict = {},
         output_types: list[str] = ["mesh", "gaussian"],
         mode: Literal["stochastic", "multidiffusion"] = "stochastic",
     ) -> dict[str, list[torch.Tensor]]:

@@ -3,10 +3,11 @@
 
 # Based on MoGe 2, https://github.com/microsoft/MoGe/blob/main/moge/model/v2.py
 
+from __future__ import annotations
 import importlib
 from numbers import Number
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal
 import warnings
 
 import torch
@@ -26,14 +27,14 @@ class MoGeModel(nn.Module):
     scale_head: Mlp
 
     def __init__(self, 
-        encoder: Dict[str, Any],
-        neck: Dict[str, Any],
-        points_head: Dict[str, Any],
-        mask_head: Dict[str, Any] = None,
-        scale_head: Dict[str, Any] = None,
+        encoder: dict[str, Any],
+        neck: dict[str, Any],
+        points_head: dict[str, Any],
+        mask_head: dict[str, Any] = None,
+        scale_head: dict[str, Any] = None,
         remap_output: Literal["linear", "sinh", "exp", "sinh_exp"] = "linear",
-        num_tokens_range: List[int] = [1200, 3600],
-        device : Optional[torch.device] = None,
+        num_tokens_range: list[int] = [1200, 3600],
+        device : torch.device | None = None,
         **deprecated_kwargs
     ):
         super(MoGeModel, self).__init__()
@@ -65,7 +66,7 @@ class MoGeModel(nn.Module):
         return next(self.parameters()).dtype
 
     @classmethod
-    def FromPretrained(cls, model_path : Union[str, Path], model_kwargs : Optional[Dict[str, Any]] = None) -> "MoGeModel":
+    def FromPretrained(cls, model_path: str | Path, model_kwargs: dict[str, Any] | None = None) -> MoGeModel:
         """
         Load a model from a checkpoint file.
 
@@ -103,7 +104,7 @@ class MoGeModel(nn.Module):
             raise ValueError(f"Invalid remap output type: {self.remap_output}")
         return points
 
-    def forward(self, image : torch.Tensor, num_tokens: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, image : torch.Tensor, num_tokens: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size, _, img_h, img_w = image.shape
         device, dtype = image.device, image.dtype
 
@@ -204,7 +205,7 @@ class MoGeModel(nn.Module):
     def PointCloud(
         self, 
         image: torch.Tensor,
-        fov_x: Union[Number, torch.Tensor],
+        fov_x: Number | torch.Tensor,
         resolution_level: int = 9,
         num_tokens : int = None,
         use_fp16 : bool = True,

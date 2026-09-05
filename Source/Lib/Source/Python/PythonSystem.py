@@ -1,8 +1,6 @@
 # Copyright (c) 2025-2026 Minmin Gong
 #
 
-from typing import *
-
 import torch
 
 def SeedRandom(seed: int) -> None:
@@ -62,7 +60,7 @@ def DeviceSync(device: torch.device) -> None:
     if (torch_device != None) and hasattr(torch_device, "synchronize"):
         torch_device.synchronize(device)
 
-def TensorFromBytes(buffer: bytes, dtype: torch.dtype, count: int, device: Optional[torch.device] = None) -> torch.Tensor:
+def TensorFromBytes(buffer: bytes, dtype: torch.dtype, count: int, device: torch.device | None = None) -> torch.Tensor:
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

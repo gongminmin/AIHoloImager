@@ -3,10 +3,11 @@
 
 # Adapted from https://github.com/cvg/LightGlue/blob/main/lightglue/lightglue.py
 
-import warnings
+from __future__ import annotations
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+import warnings
 
 import numpy as np
 import torch
@@ -36,7 +37,7 @@ AMP_CUSTOM_FWD_F32 = (
 
 @AMP_CUSTOM_FWD_F32
 def NormalizeKeypoints(
-    kpts: torch.Tensor, size: Optional[torch.Tensor] = None
+    kpts: torch.Tensor, size: torch.Tensor | None = None
 ) -> torch.Tensor:
     if size is None:
         size = 1 + kpts.max(-2).values - kpts.min(-2).values
@@ -68,7 +69,7 @@ def ApplyCachedRotaryEmb(freqs: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     return (t * freqs[0]) + (RotateHalf(t) * freqs[1])
 
 class LearnableFourierPositionalEncoding(nn.Module):
-    def __init__(self, M: int, dim: int, F_dim: int = None, gamma: float = 1.0, device : Optional[torch.device] = None) -> None:
+    def __init__(self, M: int, dim: int, F_dim: int = None, gamma: float = 1.0, device : torch.device | None = None) -> None:
         super().__init__()
 
         F_dim = F_dim if F_dim is not None else dim
@@ -85,7 +86,7 @@ class LearnableFourierPositionalEncoding(nn.Module):
         return emb.repeat_interleave(2, dim = -1)
 
 class TokenConfidence(nn.Module):
-    def __init__(self, dim: int, device : Optional[torch.device] = None) -> None:
+    def __init__(self, dim: int, device : torch.device | None = None) -> None:
         super().__init__()
         self.token = nn.Sequential(nn.Linear(dim, 1, device = device), nn.Sigmoid())
 
@@ -113,7 +114,7 @@ class Attention(nn.Module):
         if self.has_sdp:
             torch.backends.cuda.enable_flash_sdp(allow_flash)
 
-    def forward(self, q, k, v, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, q, k, v, mask: torch.Tensor | None = None) -> torch.Tensor:
         if q.shape[-2] == 0 or k.shape[-2] == 0:
             return q.new_zeros((*q.shape[: -1], v.shape[-1]))
         if self.enable_flash and q.device.type == "cuda":
@@ -141,7 +142,7 @@ class Attention(nn.Module):
 
 class SelfBlock(nn.Module):
     def __init__(
-        self, embed_dim: int, num_heads: int, flash: bool = False, bias: bool = True, device : Optional[torch.device] = None
+        self, embed_dim: int, num_heads: int, flash: bool = False, bias: bool = True, device : torch.device | None = None
     ) -> None:
         super().__init__()
 
@@ -163,7 +164,7 @@ class SelfBlock(nn.Module):
         self,
         x: torch.Tensor,
         encoding: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         qkv = self.Wqkv(x)
         qkv = qkv.unflatten(-1, (self.num_heads, -1, 3)).transpose(1, 2)
@@ -176,7 +177,7 @@ class SelfBlock(nn.Module):
 
 class CrossBlock(nn.Module):
     def __init__(
-        self, embed_dim: int, num_heads: int, flash: bool = False, bias: bool = True, device : Optional[torch.device] = None
+        self, embed_dim: int, num_heads: int, flash: bool = False, bias: bool = True, device : torch.device | None = None
     ) -> None:
         super().__init__()
 
@@ -198,11 +199,11 @@ class CrossBlock(nn.Module):
         else:
             self.flash = None
 
-    def Map(self, func: callable, x0: torch.Tensor, x1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def Map(self, func: Callable[[torch.Tensor], torch.Tensor], x0: torch.Tensor, x1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         return func(x0), func(x1)
 
     def forward(
-        self, x0: torch.Tensor, x1: torch.Tensor, mask: Optional[torch.Tensor] = None
+        self, x0: torch.Tensor, x1: torch.Tensor, mask: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
         qk0, qk1 = self.Map(self.to_qk, x0, x1)
         v0, v1 = self.Map(self.to_v, x0, x1)
@@ -245,8 +246,8 @@ class TransformerLayer(nn.Module):
         desc1,
         encoding0,
         encoding1,
-        mask0: Optional[torch.Tensor] = None,
-        mask1: Optional[torch.Tensor] = None,
+        mask0: torch.Tensor | None = None,
+        mask1: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if mask0 is not None and mask1 is not None:
             return self.MaskedForward(desc0, desc1, encoding0, encoding1, mask0, mask1)
@@ -279,7 +280,7 @@ def SigmoidLogDoubleSoftmax(
     return scores
 
 class MatchAssignment(nn.Module):
-    def __init__(self, dim: int, device : Optional[torch.device] = None) -> None:
+    def __init__(self, dim: int, device : torch.device | None = None) -> None:
         super().__init__()
 
         self.dim = dim
@@ -373,7 +374,7 @@ class LightGlue(nn.Module):
         },
     }
 
-    def __init__(self, features = "superpoint", device : Optional[torch.device] = None, **conf) -> None:
+    def __init__(self, features = "superpoint", device : torch.device | None = None, **conf) -> None:
         super().__init__()
 
         self.conf = conf = SimpleNamespace(**{**self.default_conf, **conf})
@@ -417,7 +418,7 @@ class LightGlue(nn.Module):
         self.static_lengths = None
 
     @classmethod
-    def FromPretrained(cls, path: Union[str, Path], features = "superpoint", **conf) -> "LightGlue":
+    def FromPretrained(cls, path: str | Path, features = "superpoint", **conf) -> LightGlue:
         lightglue = skip_init(cls, features, **conf)
 
         pth_path = Path(path) / f"{lightglue.conf.weights}.pth"
@@ -455,7 +456,7 @@ class LightGlue(nn.Module):
 
         self.static_lengths = static_lengths
 
-    def forward(self, data: dict) -> dict[str, Any]:
+    def forward(self, data: dict) -> dict[str, torch.Tensor]:
         """
         Match keypoints and descriptors between two images
 

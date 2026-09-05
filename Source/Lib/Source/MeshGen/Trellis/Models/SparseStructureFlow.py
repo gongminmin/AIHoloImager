@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/sparse_structure_flow.py
 
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import torch
@@ -19,7 +19,7 @@ class TimestepEmbedder(nn.Module):
     Embeds scalar timesteps into vector representations.
     """
 
-    def __init__(self, hidden_size: int, frequency_embedding_size: int = 256, device: Optional[torch.device] = None) -> None:
+    def __init__(self, hidden_size: int, frequency_embedding_size: int = 256, device: torch.device | None = None) -> None:
         super().__init__()
 
         self.mlp = nn.Sequential(
@@ -69,8 +69,8 @@ class SparseStructureFlowModel(nn.Module):
         cond_channels: int,
         out_channels: int,
         num_blocks: int,
-        num_heads: Optional[int] = None,
-        num_head_channels: Optional[int] = 64,
+        num_heads: int | None = None,
+        num_head_channels: int = 64,
         mlp_ratio: float = 4,
         patch_size: int = 2,
         pe_mode: Literal["ape", "rope"] = "ape",
@@ -78,7 +78,7 @@ class SparseStructureFlowModel(nn.Module):
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 

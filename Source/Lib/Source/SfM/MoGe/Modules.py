@@ -3,11 +3,12 @@
 
 # Based on MoGe 2, https://github.com/microsoft/MoGe/blob/main/moge/model/modules.py
 
+from collections.abc import Sequence
 import functools
 import importlib
 import itertools
 from numbers import Number
-from typing import List, Literal, Optional, Sequence, Tuple, Union
+from typing import Literal
 import warnings
 
 import torch
@@ -25,7 +26,7 @@ class ResidualConvBlock(nn.Module):
         activation: Literal["relu", "leaky_relu", "silu", "elu"] = "relu",
         in_norm: Literal["group_norm", "layer_norm", "instance_norm", "none"] = "layer_norm",
         hidden_norm: Literal["group_norm", "layer_norm", "instance_norm"] = "group_norm",
-        device : Optional[torch.device] = None,
+        device : torch.device | None = None,
     ):
         super(ResidualConvBlock, self).__init__()
 
@@ -78,7 +79,7 @@ class Dinov2Encoder(nn.Module):
     image_std: torch.Tensor
     dim_features: int
 
-    def __init__(self, backbone: str, intermediate_layers: Union[int, List[int]], dim_out: int, device : Optional[torch.device] = None):
+    def __init__(self, backbone: str, intermediate_layers: int | list[int], dim_out: int, device : torch.device | None = None):
         super(Dinov2Encoder, self).__init__()
 
         self.intermediate_layers = intermediate_layers
@@ -103,7 +104,7 @@ class Dinov2Encoder(nn.Module):
         self.register_buffer("image_mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer("image_std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
 
-    def forward(self, image: torch.Tensor, token_rows: Union[int, torch.LongTensor], token_cols: Union[int, torch.LongTensor], return_class_token: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, image: torch.Tensor, token_rows: int | torch.LongTensor, token_cols: int | torch.LongTensor, return_class_token: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
         image_14 = functional.interpolate(image, (token_rows * 14, token_cols * 14), mode = "bilinear", align_corners = False, antialias = True)
         image_14 = (image_14 - self.image_mean) / self.image_std
 
@@ -125,7 +126,7 @@ class Resampler(nn.Sequential):
         out_channels: int,
         type_: Literal["pixel_shuffle", "nearest", "bilinear", "conv_transpose", "pixel_unshuffle", "avg_pool", "max_pool"],
         scale_factor: int = 2,
-        device : Optional[torch.device] = None,
+        device : torch.device | None = None,
     ):
         if type_ == "pixel_shuffle":
             nn.Sequential.__init__(self,
@@ -166,7 +167,7 @@ class Resampler(nn.Sequential):
             raise ValueError(f"Unsupported resampler type: {type_}")
 
 class Mlp(nn.Sequential):
-    def __init__(self, dims: Sequence[int], device : Optional[torch.device] = None):
+    def __init__(self, dims: Sequence[int], device : torch.device | None = None):
         nn.Sequential.__init__(self,
             *itertools.chain(*[
                 (nn.Linear(dim_in, dim_out, device = device), nn.ReLU(inplace = True))
@@ -177,16 +178,16 @@ class Mlp(nn.Sequential):
 
 class ConvStack(nn.Module):
     def __init__(self,
-        dim_in: List[Optional[int]],
-        dim_res_blocks: List[int],
-        dim_out: List[Optional[int]],
-        resamplers: Union[Literal["pixel_shuffle", "nearest", "bilinear", "conv_transpose", "pixel_unshuffle", "avg_pool", "max_pool"], List],
+        dim_in: list[int | None],
+        dim_res_blocks: list[int],
+        dim_out: list[int | None],
+        resamplers: Literal["pixel_shuffle", "nearest", "bilinear", "conv_transpose", "pixel_unshuffle", "avg_pool", "max_pool"] | list,
         dim_times_res_block_hidden: int = 1,
-        num_res_blocks: Union[int, List] = 1,
+        num_res_blocks: int | list = 1,
         res_block_in_norm: Literal["layer_norm", "group_norm" , "instance_norm", "none"] = "layer_norm",
         res_block_hidden_norm: Literal["layer_norm", "group_norm" , "instance_norm", "none"] = "group_norm",
         activation: Literal["relu", "leaky_relu", "silu", "elu"] = "relu",
-        device : Optional[torch.device] = None,
+        device : torch.device | None = None,
     ):
         super().__init__()
 
@@ -223,7 +224,7 @@ class ConvStack(nn.Module):
                 output_blocks.append(nn.Identity())
         self.output_blocks = nn.ModuleList(output_blocks)
 
-    def forward(self, in_features: List[torch.Tensor]):
+    def forward(self, in_features: list[torch.Tensor]):
         out_features = []
         for i in range(len(self.res_blocks)):
             feature = self.input_blocks[i](in_features[i])

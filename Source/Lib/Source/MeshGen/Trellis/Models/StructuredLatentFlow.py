@@ -1,9 +1,10 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_flow.py
 
-from typing import Literal, Optional
+from __future__ import annotations
+from typing import Literal
 
 import numpy as np
 import torch
@@ -22,10 +23,10 @@ class SparseResBlock3D(nn.Module):
         self,
         channels: int,
         emb_channels: int,
-        out_channels: Optional[int] = None,
+        out_channels: int | None = None,
         downsample: bool = False,
         upsample: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -57,7 +58,7 @@ class SparseResBlock3D(nn.Module):
             x = self.updown(x)
         return x
 
-    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
+    def SetGpuSystem(self, gpu_system: GpuSystem) -> None:
         self.conv1.SetGpuSystem(gpu_system)
         self.conv2.SetGpuSystem(gpu_system)
 
@@ -85,8 +86,8 @@ class SLatFlowModel(nn.Module):
         cond_channels: int,
         out_channels: int,
         num_blocks: int,
-        num_heads: Optional[int] = None,
-        num_head_channels: Optional[int] = 64,
+        num_heads: int | None = None,
+        num_head_channels: int = 64,
         mlp_ratio: float = 4,
         patch_size: int = 2,
         num_io_res_blocks: int = 2,
@@ -97,7 +98,7 @@ class SLatFlowModel(nn.Module):
         share_mod: bool = False,
         qk_rms_norm: bool = False,
         qk_rms_norm_cross: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -230,7 +231,7 @@ class SLatFlowModel(nn.Module):
         nn.init.constant_(self.out_layer.weight, 0)
         nn.init.constant_(self.out_layer.bias, 0)
 
-    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
+    def SetGpuSystem(self, gpu_system: GpuSystem) -> None:
         for block in self.input_blocks:
             if isinstance(block, SparseResBlock3D):
                 block.SetGpuSystem(gpu_system)

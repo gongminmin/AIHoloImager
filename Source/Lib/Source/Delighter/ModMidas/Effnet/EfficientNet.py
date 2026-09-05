@@ -11,7 +11,6 @@ Copyright 2020 Ross Wightman
 
 from copy import deepcopy
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -28,17 +27,17 @@ from .Conv2dLayers import SelectConv2d
 #
 BatchNormEpsTfDefault = 1e-3
 
-def Sigmoid(x: torch.Tensor, inplace: Optional[bool] = False) -> torch.Tensor:
+def Sigmoid(x: torch.Tensor, inplace: bool = False) -> torch.Tensor:
     return x.sigmoid_() if inplace else x.sigmoid()
 
-def MakeDivisible(v: int, divisor: Optional[int] = 8, min_value: Optional[int] = None) -> int:
+def MakeDivisible(v: int, divisor: int = 8, min_value: int | None = None) -> int:
     min_value = min_value or divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
     if new_v < 0.9 * v:  # ensure round down does not go down by more than 10%.
         new_v += divisor
     return new_v
 
-def RoundChannels(channels: int, multiplier: Optional[float] = 1.0, divisor: Optional[int] = 8, channel_min: Optional[int] = None) -> int:
+def RoundChannels(channels: int, multiplier: float = 1.0, divisor: int = 8, channel_min: int | None = None) -> int:
     """Round number of filters based on depth multiplier."""
     if not multiplier:
         return channels
@@ -63,8 +62,8 @@ class DepthwiseSeparableConv(nn.Module):
     Used for DS convs in MobileNet-V1 and in the place of IR blocks with an expansion
     factor of 1.0. This is an alternative to having a IR with optional first pw conv.
     """
-    def __init__(self, block_def: BlockDefine, in_channels: int, pad_type: Optional[str] = "", act_layer: Optional[nn.Module] = nn.ReLU,
-                 norm_layer: Optional[nn.Module] = nn.BatchNorm2d, norm_kwargs: Optional[dict] = None, device: Optional[torch.device] = None) -> None:
+    def __init__(self, block_def: BlockDefine, in_channels: int, pad_type: str = "", act_layer: nn.Module = nn.ReLU,
+                 norm_layer: nn.Module = nn.BatchNorm2d, norm_kwargs: dict | None = None, device: torch.device | None = None) -> None:
         super(DepthwiseSeparableConv, self).__init__()
 
         assert(block_def.stride in [1, 2])
@@ -102,8 +101,8 @@ class DepthwiseSeparableConv(nn.Module):
 class InvertedResidual(nn.Module):
     """ Inverted residual block w/ optional SE"""
 
-    def __init__(self, block_def: BlockDefine, in_channels: int, pad_type: Optional[str] = "", act_layer: Optional[nn.Module] = nn.ReLU,
-                 norm_layer: Optional[nn.Module] = nn.BatchNorm2d, norm_kwargs: Optional[dict] = None, device: Optional[torch.device] = None) -> None:
+    def __init__(self, block_def: BlockDefine, in_channels: int, pad_type: str = "", act_layer: nn.Module = nn.ReLU,
+                 norm_layer: nn.Module = nn.BatchNorm2d, norm_kwargs: dict | None = None, device: torch.device | None = None) -> None:
         super(InvertedResidual, self).__init__()
 
         norm_kwargs = norm_kwargs or {}
@@ -160,9 +159,9 @@ class EfficientNetBuilder:
     https://github.com/facebookresearch/maskrcnn-benchmark/blob/master/maskrcnn_benchmark/modeling/backbone/fbnet_builder.py
     """
 
-    def __init__(self, channel_multiplier: Optional[float] = 1.0, channel_divisor: Optional[int] = 8, channel_min: Optional[int] = None,
-                 pad_type: Optional[str] = "", act_layer: Optional[nn.Module] = None,
-                 norm_layer: Optional[nn.Module] = nn.BatchNorm2d, norm_kwargs: Optional[dict] = None) -> None:
+    def __init__(self, channel_multiplier: float = 1.0, channel_divisor: int = 8, channel_min: int = None,
+                 pad_type: str = "", act_layer: nn.Module | None = None,
+                 norm_layer: nn.Module = nn.BatchNorm2d, norm_kwargs: dict | None = None) -> None:
         self.channel_multiplier = channel_multiplier
         self.channel_divisor = channel_divisor
         self.channel_min = channel_min
@@ -176,7 +175,7 @@ class EfficientNetBuilder:
         # updated during build
         self.in_channels = None
 
-    def MakeBlock(self, block_def: BlockDefine, device: Optional[torch.device] = None) -> nn.Module:
+    def MakeBlock(self, block_def: BlockDefine, device: torch.device | None = None) -> nn.Module:
         if block_def.block_type == "ir":
             block = InvertedResidual(block_def, self.in_channels, self.pad_type, self.act_layer, self.norm_layer, self.norm_kwargs, device = device)
         elif block_def.block_type == "ds":
@@ -186,7 +185,7 @@ class EfficientNetBuilder:
             assert(False)
         return block
 
-    def MakeStack(self, stack_args: list[BlockDefine], device: Optional[torch.device] = None) -> nn.Sequential:
+    def MakeStack(self, stack_args: list[BlockDefine], device: torch.device | None = None) -> nn.Sequential:
         blocks = []
         # each stack (stage) contains a list of block arguments
         for i, block_args in enumerate(stack_args):
@@ -199,7 +198,7 @@ class EfficientNetBuilder:
             self.in_channels = block_def.out_channels  # update in_channels for arg of next block
         return nn.Sequential(*blocks)
 
-    def __call__(self, in_channels: int, block_args: list[list[BlockDefine]], device: Optional[torch.device] = None) -> list[nn.Sequential]:
+    def __call__(self, in_channels: int, block_args: list[list[BlockDefine]], device: torch.device | None = None) -> list[nn.Sequential]:
         self.in_channels = in_channels
         blocks = []
         # outer list of block_args defines the stacks ("stages" by some conventions)
@@ -208,7 +207,7 @@ class EfficientNetBuilder:
             blocks.append(self.MakeStack(stack, device = device))
         return blocks
 
-def ScaleStageDepth(block_args: BlockDefine, num_repeat: int, depth_multiplier: Optional[float] = 1.0, depth_trunc: Optional[str] = "ceil"):
+def ScaleStageDepth(block_args: BlockDefine, num_repeat: int, depth_multiplier: float = 1.0, depth_trunc: str = "ceil"):
     """ Per-stage depth scaling
     Scales the block repeats in each stage. This depth scaling impl maintains
     compatibility with the EfficientNet scaling method, while allowing sensible
@@ -238,7 +237,7 @@ def ScaleStageDepth(block_args: BlockDefine, num_repeat: int, depth_multiplier: 
         sa_scaled.append(block_args)
     return sa_scaled
 
-def DecodeArchDef(arch_defs: list[ArchDefine], depth_multiplier: Optional[float] = 1.0, depth_trunc: Optional[str] = "ceil", fix_first_last: Optional[bool] = False):
+def DecodeArchDef(arch_defs: list[ArchDefine], depth_multiplier: float = 1.0, depth_trunc: str = "ceil", fix_first_last: bool = False):
     arch_args = []
     for stack_idx, arch_def in enumerate(arch_defs):
         if fix_first_last and ((stack_idx == 0) or (stack_idx == len(arch_defs) - 1)):
@@ -248,7 +247,7 @@ def DecodeArchDef(arch_defs: list[ArchDefine], depth_multiplier: Optional[float]
         arch_args.append(ScaleStageDepth(arch_def.block_def, arch_def.num_repeat, dm, depth_trunc))
     return arch_args
 
-def InitializeWeightTf(model, name: Optional[str] = "", fix_group_fanout: Optional[bool] = True):
+def InitializeWeightTf(model, name: str = "", fix_group_fanout: bool = True):
     # weight init as per Tensorflow Official impl
     # https://github.com/tensorflow/tpu/blob/master/models/official/mnasnet/mnasnet_model.py
     if isinstance(model, nn.Conv2d):
@@ -281,9 +280,9 @@ class EfficientNet(nn.Module):
       * Single-Path NAS Pixel1
     """
 
-    def __init__(self, block_args: list[list[BlockDefine]], num_classes: Optional[int] = 1000, in_channels: Optional[int] = 3, num_features: Optional[int] = 1280, stem_size: Optional[int] = 32, fix_stem: Optional[bool] = False,
-                 channel_multiplier: Optional[float] = 1.0, channel_divisor: Optional[int] = 8, channel_min: Optional[int] = None, pad_type: Optional[str] = "", act_layer: Optional[nn.Module] = nn.ReLU,
-                 norm_layer: Optional[nn.Module] = nn.BatchNorm2d, norm_kwargs: Optional[dict] = None, device: Optional[torch.device] = None) -> None:
+    def __init__(self, block_args: list[list[BlockDefine]], num_classes: int = 1000, in_channels: int = 3, num_features: int = 1280, stem_size: int = 32, fix_stem: bool = False,
+                 channel_multiplier: float = 1.0, channel_divisor: int = 8, channel_min: int | None = None, pad_type: str = "", act_layer: nn.Module = nn.ReLU,
+                 norm_layer: nn.Module = nn.BatchNorm2d, norm_kwargs: dict | None = None, device: torch.device | None = None) -> None:
         super(EfficientNet, self).__init__()
 
         if not fix_stem:
@@ -320,7 +319,7 @@ class EfficientNet(nn.Module):
         x = x.flatten(1)
         return self.classifier(x)
 
-def TfEfficientNetLite3(device: Optional[torch.device] = None) -> EfficientNet:
+def TfEfficientNetLite3(device: torch.device | None = None) -> EfficientNet:
     """
     EfficientNet-Lite3. Tensorflow compatible variant
     Creates an EfficientNet-Lite model.

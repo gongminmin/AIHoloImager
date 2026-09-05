@@ -2,7 +2,6 @@
 #
 
 from pathlib import Path
-from typing import Optional
 
 import torch
 from torch.nn.utils import skip_init
@@ -40,7 +39,7 @@ def CalcLum(rgb: torch.Tensor) -> torch.Tensor:
     l = r * yuv_factor[0] + g * yuv_factor[1] + b * yuv_factor[2]
     return l
 
-def Rgb2InvLuv(rgb, eps: Optional[float] = 0.001) -> torch.Tensor:
+def Rgb2InvLuv(rgb, eps: float = 0.001) -> torch.Tensor:
     l = CalcLum(rgb)
 
     r = rgb[:, 0, :, :]
@@ -53,7 +52,7 @@ def Rgb2InvLuv(rgb, eps: Optional[float] = 0.001) -> torch.Tensor:
 
     return torch.stack((inv_l, inv_u, inv_v), axis = 1)
 
-def InvLuv2Rgb(inv_luv, eps: Optional[float] = 0.001) -> torch.Tensor:
+def InvLuv2Rgb(inv_luv, eps: float = 0.001) -> torch.Tensor:
     l = Uninvert(inv_luv[:, 0, :, :].clip(eps))
     u = Uninvert(inv_luv[:, 1, :, :].clip(eps))
     v = Uninvert(inv_luv[:, 2, :, :].clip(eps))
@@ -76,7 +75,7 @@ def BaseResize(img, base_dim: int) -> torch.Tensor:
 
     return torch.nn.functional.interpolate(img, size = (new_h, new_w), mode = "bilinear", align_corners = True, antialias = True)
 
-def EqualizePredictions(img, base: torch.Tensor, full: torch.Tensor, p: Optional[float] = 0.5) -> tuple[torch.Tensor, torch.Tensor]:
+def EqualizePredictions(img, base: torch.Tensor, full: torch.Tensor, p: float = 0.5) -> tuple[torch.Tensor, torch.Tensor]:
     h, w = img.shape[-2 :]
 
     full_shading = Uninvert(full.clip(1e-5))
@@ -214,7 +213,7 @@ class Delighter:
         return new_state_dict
 
     @torch.no_grad()
-    def RunGrayPipeline(self, img: torch.Tensor, base_dim: int, lstsq_p: Optional[float] = 0.0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def RunGrayPipeline(self, img: torch.Tensor, base_dim: int, lstsq_p: float = 0.0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         orig_h, orig_w = img.shape[-2 :]
 
         img = torch.nn.functional.interpolate(img, size = (Round32(orig_h), Round32(orig_w)), mode = "bilinear", align_corners = True, antialias = True)

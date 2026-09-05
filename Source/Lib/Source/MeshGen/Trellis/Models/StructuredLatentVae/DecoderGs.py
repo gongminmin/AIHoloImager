@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_vae/decoder_gs.py
 
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -68,7 +68,7 @@ class Gaussian:
             scaling_bias: float = 0.01,
             opacity_bias: float = 0.1,
             scaling_activation: str = "exp",
-            device: Optional[torch.device] = None,
+            device: torch.device | None = None,
         ) -> None:
 
         self.init_params = {
@@ -157,8 +157,8 @@ class SLatGaussianDecoder(SparseTransformerBase):
         model_channels: int,
         latent_channels: int,
         num_blocks: int,
-        num_heads: Optional[int] = None,
-        num_head_channels: Optional[int] = 64,
+        num_heads: int | None = None,
+        num_head_channels: int = 64,
         mlp_ratio: float = 4,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "swin",
         window_size: int = 8,
@@ -166,7 +166,7 @@ class SLatGaussianDecoder(SparseTransformerBase):
         use_fp16: bool = False,
         qk_rms_norm: bool = False,
         representation_config: dict = None,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super(SLatGaussianDecoder, self).__init__(
             in_channels = latent_channels,

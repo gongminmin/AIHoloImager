@@ -3,8 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/norm.py
 
-from typing import Optional
-
 import torch
 import torch.nn as nn
 
@@ -16,7 +14,7 @@ __all__ = [
 ]
 
 class SparseGroupNorm(nn.GroupNorm):
-    def __init__(self, num_groups, num_channels, eps = 1e-5, affine = True, device: Optional[torch.device] = None) -> None:
+    def __init__(self, num_groups, num_channels, eps = 1e-5, affine = True, device: torch.device | None = None) -> None:
         super(SparseGroupNorm, self).__init__(num_groups, num_channels, eps, affine, device = device)
 
     def forward(self, input: SparseTensor) -> SparseTensor:

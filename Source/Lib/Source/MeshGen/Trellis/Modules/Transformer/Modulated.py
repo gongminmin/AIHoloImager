@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/attention/modulated.py
 
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -22,14 +22,14 @@ class ModulatedTransformerCrossBlock(nn.Module):
         channels: int,
         ctx_channels: int,
         num_heads: int,
-        mlp_ratio: Optional[float] = 4.0,
+        mlp_ratio: float = 4.0,
         attn_mode: Literal["full", "windowed"] = "full",
-        use_rope: Optional[bool] = False,
-        qk_rms_norm: Optional[bool] = False,
-        qk_rms_norm_cross: Optional[bool] = False,
-        qkv_bias: Optional[bool] = True,
-        share_mod: Optional[bool] = False,
-        device: Optional[torch.device] = None,
+        use_rope: bool = False,
+        qk_rms_norm: bool = False,
+        qk_rms_norm_cross: bool = False,
+        qkv_bias: bool = True,
+        share_mod: bool = False,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 

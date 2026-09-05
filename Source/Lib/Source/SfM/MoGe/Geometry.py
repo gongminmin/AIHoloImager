@@ -4,14 +4,13 @@
 # Based on MoGe, https://github.com/microsoft/MoGe/blob/main/moge/utils/geometry_numpy.py and https://github.com/microsoft/MoGe/blob/main/moge/utils/geometry_torch.py
 
 import math
-from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
 @torch.enable_grad()
-def SolveOptimalFocalShift(uv : torch.Tensor, xyz : torch.Tensor, focal: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+def SolveOptimalFocalShift(uv : torch.Tensor, xyz : torch.Tensor, focal: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
     "Solve `min |focal * xy / (z + shift) - uv|` with respect to shift and focal"
 
     criterion = nn.MSELoss(reduction = "sum")
@@ -62,7 +61,7 @@ def SolveOptimalFocalShift(uv : torch.Tensor, xyz : torch.Tensor, focal: Optiona
 
     return optim_focal, optim_shift
 
-def NormalizedViewPlaneUv(width : int, height : int, aspect_ratio : Optional[float] = None, dtype : Optional[torch.dtype] = None, device : Optional[torch.device] = None) -> torch.Tensor:
+def NormalizedViewPlaneUv(width : int, height : int, aspect_ratio : float | None = None, dtype : torch.dtype | None = None, device : torch.device | None = None) -> torch.Tensor:
     "UV with left-top corner as (-width / diagonal, -height / diagonal) and right-bottom corner as (width / diagonal, height / diagonal)"
     if aspect_ratio is None:
         aspect_ratio = width / height
@@ -76,7 +75,7 @@ def NormalizedViewPlaneUv(width : int, height : int, aspect_ratio : Optional[flo
     uv = torch.stack([u, v], dim = -1)
     return uv
 
-def RecoverFocalShift(points: torch.Tensor, mask: Optional[torch.Tensor] = None, focal: Optional[torch.Tensor] = None, downsample_size: Optional[Tuple[int, int]] = (64, 64)):
+def RecoverFocalShift(points: torch.Tensor, mask: torch.Tensor | None = None, focal: torch.Tensor | None = None, downsample_size: tuple[int, int] = (64, 64)):
     """
     Recover the depth map and FoV from a point map with unknown z shift and focal.
 
@@ -89,7 +88,7 @@ def RecoverFocalShift(points: torch.Tensor, mask: Optional[torch.Tensor] = None,
     - `points: torch.Tensor` of shape (..., H, W, 3)
     - `mask: torch.Tensor` of shape (..., H, W). Optional.
     - `focal: torch.Tensor` of shape (...). Optional.
-    - `downsample_size: Tuple[int, int]` in (height, width), the size of the downsampled map. Downsampling produces approximate solution and is efficient for large maps.
+    - `downsample_size: tuple[int, int]` in (height, width), the size of the downsampled map. Downsampling produces approximate solution and is efficient for large maps.
 
     ### Returns:
     - `focal`: torch.Tensor of shape (...) the estimated focal length, relative to the half diagonal of the map
@@ -131,8 +130,8 @@ def RecoverFocalShift(points: torch.Tensor, mask: Optional[torch.Tensor] = None,
 def IntrinsicsFromFocalCenter(
     fx: torch.Tensor,
     fy: torch.Tensor,
-    cx: Union[float, torch.Tensor],
-    cy: Union[float, torch.Tensor]
+    cx: float | torch.Tensor,
+    cy: float | torch.Tensor
 ) -> torch.Tensor:
     """
     Get OpenCV intrinsics matrix
@@ -161,7 +160,7 @@ def UnprojectCV(
     uv_coord: torch.Tensor,
     depth: torch.Tensor,
     intrinsics: torch.Tensor,
-    extrinsics: Optional[torch.Tensor] = None
+    extrinsics: torch.Tensor | None = None
 ) -> torch.Tensor:
     """
     Unproject uv coordinates to 3D view space following the OpenCV convention
@@ -185,7 +184,7 @@ def UnprojectCV(
         points = (points @ torch.inverse(extrinsics).transpose(-2, -1))[..., : 3]
     return points
 
-def ImageUV(height: int, width: int, left: Optional[int] = None, top: Optional[int] = None, right: Optional[int] = None, bottom: Optional[int] = None, device: Optional[torch.device] = None, dtype: Optional[torch.dtype] = None) -> torch.Tensor:
+def ImageUV(height: int, width: int, left: int | None = None, top: int | None = None, right: int | None = None, bottom: int | None = None, device: torch.device | None = None, dtype: torch.dtype | None = None) -> torch.Tensor:
     """
     Get image space UV grid, ranging in [0, 1]. 
 

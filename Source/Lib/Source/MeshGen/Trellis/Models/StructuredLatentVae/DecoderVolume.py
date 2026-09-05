@@ -3,7 +3,8 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_vae/decoder_mesh.py
 
-from typing import Literal, Optional
+from __future__ import annotations
+from typing import Literal
 
 import numpy as np
 import torch
@@ -33,9 +34,9 @@ class SparseSubdivideBlock3D(nn.Module):
         self,
         channels: int,
         resolution: int,
-        out_channels: Optional[int] = None,
+        out_channels: int | None = None,
         num_groups: int = 32,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super(SparseSubdivideBlock3D, self).__init__()
 
@@ -65,7 +66,7 @@ class SparseSubdivideBlock3D(nn.Module):
         else:
             self.skip_connection = sp.SparseConv3D(channels, out_channels, 1, indices_key = indices_key, device = device)
 
-    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
+    def SetGpuSystem(self, gpu_system: GpuSystem) -> None:
         for layer in self.out_layers:
             if isinstance(layer, sp.SparseConv3D):
                 layer.SetGpuSystem(gpu_system)
@@ -96,8 +97,8 @@ class SLatMeshDecoder(SparseTransformerBase):
         model_channels: int,
         latent_channels: int,
         num_blocks: int,
-        num_heads: Optional[int] = None,
-        num_head_channels: Optional[int] = 64,
+        num_heads: int | None = None,
+        num_head_channels: int = 64,
         mlp_ratio: float = 4,
         attn_mode: Literal["full", "shift_window", "shift_sequence", "shift_order", "swin"] = "swin",
         window_size: int = 8,
@@ -105,7 +106,7 @@ class SLatMeshDecoder(SparseTransformerBase):
         use_fp16: bool = False,
         qk_rms_norm: bool = False,
         representation_config: dict = None,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super(SLatMeshDecoder, self).__init__(
             in_channels = latent_channels,
@@ -159,7 +160,7 @@ class SLatMeshDecoder(SparseTransformerBase):
         super().ConvertToFp16()
         self.upsample.apply(ConvertModuleToFp16)
 
-    def SetGpuSystem(self, gpu_system: "GpuSystem") -> None:
+    def SetGpuSystem(self, gpu_system: GpuSystem) -> None:
         for block in self.upsample:
             if isinstance(block, SparseSubdivideBlock3D):
                 block.SetGpuSystem(gpu_system)

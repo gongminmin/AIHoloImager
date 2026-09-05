@@ -2,7 +2,6 @@
 #
 
 from pathlib import Path
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -11,7 +10,7 @@ from RealESrGan import SrVggNetCompact
 from PythonSystem import ComputeDevice, DeviceSync, PurgeTorchCache
 
 class SuperResolution:
-    def __init__(self):
+    def __init__(self) -> None:
         this_py_dir = Path(__file__).parent.resolve()
 
         self.device = ComputeDevice()
@@ -31,7 +30,7 @@ class SuperResolution:
         PurgeTorchCache()
 
     @torch.no_grad()
-    def Process(self, image: torch.Tensor, ignore_alpha: Optional[bool] = False) -> torch.Tensor:
+    def Process(self, image: torch.Tensor, ignore_alpha: bool = False) -> torch.Tensor:
         num_channels = image.shape[-1]
         image = image.permute(0, 3, 1, 2)
         image = image.to(torch.float16).to(self.device).contiguous()

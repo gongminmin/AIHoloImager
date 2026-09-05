@@ -3,7 +3,7 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/attention/modules.py
 
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -15,13 +15,13 @@ from .WindowedAttn import SparseWindowedScaledDotProductSelfAttention
 from ...Attention import RotaryPositionEmbedder
 
 class SparseMultiHeadRMSNorm(nn.Module):
-    def __init__(self, dim: int, heads: int, device: Optional[torch.device] = None) -> None:
+    def __init__(self, dim: int, heads: int, device: torch.device | None = None) -> None:
         super().__init__()
 
         self.scale = dim ** 0.5
         self.gamma = nn.Parameter(torch.ones(heads, dim, device = device))
 
-    def forward(self, x: Union[SparseTensor, torch.Tensor]) -> Union[SparseTensor, torch.Tensor]:
+    def forward(self, x: SparseTensor | torch.Tensor) -> SparseTensor | torch.Tensor:
         x_type = x.dtype
         x = x.float()
         if isinstance(x, SparseTensor):
@@ -35,15 +35,15 @@ class SparseMultiHeadAttention(nn.Module):
         self,
         channels: int,
         num_heads: int,
-        ctx_channels: Optional[int] = None,
+        ctx_channels: int | None = None,
         type: Literal["self", "cross"] = "self",
         attn_mode: Literal["full", "windowed"] = "full",
-        window_size: Optional[int] = None,
-        shift_window: Optional[tuple[int, int, int]] = None,
+        window_size: int | None = None,
+        shift_window: tuple[int, int, int] | None = None,
         qkv_bias: bool = True,
         use_rope: bool = False,
         qk_rms_norm: bool = False,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
 
@@ -80,20 +80,20 @@ class SparseMultiHeadAttention(nn.Module):
             self.rope = RotaryPositionEmbedder(channels)
 
     @staticmethod
-    def Linear(module: nn.Linear, x: Union[SparseTensor, torch.Tensor]) -> Union[SparseTensor, torch.Tensor]:
+    def Linear(module: nn.Linear, x: SparseTensor | torch.Tensor) -> SparseTensor | torch.Tensor:
         if isinstance(x, SparseTensor):
             return x.replace(module(x.feats))
         else:
             return module(x)
 
     @staticmethod
-    def ReshapeChs(x: Union[SparseTensor, torch.Tensor], shape: tuple[int, ...]) -> Union[SparseTensor, torch.Tensor]:
+    def ReshapeChs(x: SparseTensor | torch.Tensor, shape: tuple[int, ...]) -> SparseTensor | torch.Tensor:
         if isinstance(x, SparseTensor):
             return x.reshape(*shape)
         else:
             return x.reshape(*x.shape[: 2], *shape)
 
-    def FusedPre(self, x: Union[SparseTensor, torch.Tensor], num_fused: int) -> Union[SparseTensor, torch.Tensor]:
+    def FusedPre(self, x: SparseTensor | torch.Tensor, num_fused: int) -> SparseTensor | torch.Tensor:
         if isinstance(x, SparseTensor):
             x_feats = x.feats.unsqueeze(0)
         else:
@@ -107,7 +107,7 @@ class SparseMultiHeadAttention(nn.Module):
         qkv = qkv.replace(torch.stack([q, k, v], dim = 1)) 
         return qkv
 
-    def forward(self, x: Union[SparseTensor, torch.Tensor], context: Optional[Union[SparseTensor, torch.Tensor]] = None) -> Union[SparseTensor, torch.Tensor]:
+    def forward(self, x: SparseTensor | torch.Tensor, context: SparseTensor | torch.Tensor | None = None) -> SparseTensor | torch.Tensor:
         if self.type == "self":
             qkv = self.Linear(self.to_qkv, x)
             qkv = self.FusedPre(qkv, num_fused = 3)
