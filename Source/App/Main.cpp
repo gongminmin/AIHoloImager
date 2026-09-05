@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #include <algorithm>
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     }
     if (vm.count("version") > 0)
     {
-        std::cout << "AIHoloImager, Version 0.7.0\n";
+        std::cout << "AIHoloImager, Version 0.8.0\n";
         return 0;
     }
 
