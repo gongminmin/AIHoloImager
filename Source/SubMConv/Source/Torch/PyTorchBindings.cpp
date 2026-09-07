@@ -19,7 +19,7 @@
 
 using namespace AIHoloImager;
 
-PYBIND11_MODULE(AIHoloImagerSubMConv, mod)
+PYBIND11_MODULE(AIHoloImagerSubMConv, mod, py::mod_gil_not_used())
 {
     pybind11::class_<SubMConv3DHelper>(mod, "SubMConv3DHelper")
         .def(pybind11::init<size_t, torch::Device>())

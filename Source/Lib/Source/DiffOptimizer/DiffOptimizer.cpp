@@ -27,7 +27,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "DiffOptimizer init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
                 auto& python_system = aihi_.PythonSystemInstance();
@@ -49,7 +49,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto diff_optimizer_destroy_method = python_system.GetAttr(*diff_optimizer_, "Destroy");
@@ -93,7 +93,7 @@ namespace AIHoloImager
             PyObjectPtr mesh_vb;
             PyObjectPtr mesh_ib;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
@@ -125,7 +125,7 @@ namespace AIHoloImager
             }
 
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
@@ -192,7 +192,7 @@ namespace AIHoloImager
             PyObjectPtr mesh_vb;
             PyObjectPtr mesh_ib;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
@@ -221,7 +221,7 @@ namespace AIHoloImager
             }
 
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 

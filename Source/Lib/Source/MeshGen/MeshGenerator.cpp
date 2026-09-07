@@ -58,7 +58,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Mesh generator init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& gpu_system = aihi_.GpuSystemInstance();
                 auto& python_system = aihi_.PythonSystemInstance();
@@ -139,7 +139,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto mesh_generator_destroy_method = python_system.GetAttr(*mesh_generator_, "Destroy");
@@ -720,7 +720,7 @@ namespace AIHoloImager
             }
 
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
                 auto& tensor_converter = aihi_.TensorConverterInstance();

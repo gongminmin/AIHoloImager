@@ -19,7 +19,7 @@
 
 using namespace AIHoloImager;
 
-PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod)
+PYBIND11_MODULE(AIHoloImagerGpuDiffRender, mod, py::mod_gil_not_used())
 {
     pybind11::class_<GpuDiffRenderTorch>(mod, "GpuDiffRenderTorch")
         .def(pybind11::init<size_t, torch::Device>())

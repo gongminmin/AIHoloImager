@@ -110,13 +110,13 @@ namespace AIHoloImager
             return this->Cast<T>(*this->GetAttr(module, name));
         }
 
-        class GilGuard
+        class ThreadStateGuard
         {
-            DISALLOW_COPY_AND_ASSIGN(GilGuard);
+            DISALLOW_COPY_AND_ASSIGN(ThreadStateGuard);
 
         public:
-            GilGuard() noexcept;
-            ~GilGuard() noexcept;
+            ThreadStateGuard() noexcept;
+            ~ThreadStateGuard() noexcept;
 
         private:
             PyGILState_STATE gil_state_;

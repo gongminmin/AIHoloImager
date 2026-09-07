@@ -177,7 +177,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Focal estimator init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
@@ -229,7 +229,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
 
@@ -497,7 +497,7 @@ namespace AIHoloImager
                     {
                         const auto& image = images[image_id];
                         {
-                            PythonSystem::GilGuard guard;
+                            PythonSystem::ThreadStateGuard guard;
 
                             auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
                             auto py_image = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, image));
@@ -629,7 +629,7 @@ namespace AIHoloImager
             auto& python_system = aihi_.PythonSystemInstance();
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             py_features_ = python_system.MakeTupleOfSize(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
@@ -710,7 +710,7 @@ namespace AIHoloImager
 
             PairWiseMatches putative_matches;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
                 auto& python_system = aihi_.PythonSystemInstance();
 
                 for (uint32_t i = 0; i < static_cast<uint32_t>(sfm_data.views.size() - 1); ++i)
@@ -1211,7 +1211,7 @@ namespace AIHoloImager
             const uint32_t width = projection.full_width;
             const uint32_t height = projection.full_height;
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 

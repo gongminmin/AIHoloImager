@@ -39,7 +39,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Mask generator init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
@@ -98,7 +98,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto mask_generator_destroy_method = python_system.GetAttr(*mask_generator_, "Destroy");
@@ -321,7 +321,7 @@ namespace AIHoloImager
 
             PyObjectPtr normalized_image_tensor;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
                 normalized_image_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, normalized_gpu_tex_));
             }
 
@@ -334,7 +334,7 @@ namespace AIHoloImager
             }
 
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto py_pred = python_system.CallObject(
                     *mask_generator_gen_method_, std::move(normalized_image_tensor), U2NetInputChannels, large_model);

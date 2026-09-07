@@ -74,7 +74,7 @@ namespace AIHoloImager
 
     PythonSystem::PythonSystem(std::string_view device, const std::filesystem::path& exe_dir) : impl_(std::make_unique<Impl>(exe_dir))
     {
-        PythonSystem::GilGuard guard;
+        PythonSystem::ThreadStateGuard guard;
 
         auto py_sys = this->Import("PythonSystem");
         auto init_py_sys_method = this->GetAttr(*py_sys, "InitPySys");
@@ -193,11 +193,11 @@ namespace AIHoloImager
         return std::span<const std::byte>(reinterpret_cast<const std::byte*>(data), size);
     }
 
-    PythonSystem::GilGuard::GilGuard() noexcept : gil_state_(PyGILState_Ensure())
+    PythonSystem::ThreadStateGuard::ThreadStateGuard() noexcept : gil_state_(PyGILState_Ensure())
     {
     }
 
-    PythonSystem::GilGuard::~GilGuard() noexcept
+    PythonSystem::ThreadStateGuard::~ThreadStateGuard() noexcept
     {
         PyGILState_Release(gil_state_);
     }

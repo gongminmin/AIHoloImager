@@ -19,7 +19,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "SuperResolution init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
@@ -50,7 +50,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto image_upsampler_destroy_method = python_system.GetAttr(*super_res_, "Destroy");
@@ -116,7 +116,7 @@ namespace AIHoloImager
             {
                 PerfRegion perf(aihi_.PerfProfilerInstance(), "Nn scale");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 

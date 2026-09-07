@@ -21,7 +21,7 @@ namespace AIHoloImager
             py_init_future_ = std::async(std::launch::async, [this] {
                 PerfRegion init_async_perf(aihi_.PerfProfilerInstance(), "Delighter init (async)");
 
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 
@@ -48,7 +48,7 @@ namespace AIHoloImager
                 py_init_future_.wait();
             }
 
-            PythonSystem::GilGuard guard;
+            PythonSystem::ThreadStateGuard guard;
 
             auto& python_system = aihi_.PythonSystemInstance();
             auto delighter_destroy_method = python_system.GetAttr(*delighter_, "Destroy");
@@ -75,7 +75,7 @@ namespace AIHoloImager
 
             PyObjectPtr roi_tensor;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
                 roi_tensor = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, *projection.image));
             }
 
@@ -89,7 +89,7 @@ namespace AIHoloImager
 
             GpuTexture2D delighted_tex;
             {
-                PythonSystem::GilGuard guard;
+                PythonSystem::ThreadStateGuard guard;
 
                 auto& python_system = aihi_.PythonSystemInstance();
 

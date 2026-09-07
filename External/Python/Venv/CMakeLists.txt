@@ -1851,7 +1851,7 @@ foreach(src_file ${py_files})
     list(APPEND deployed_files ${dst_file})
 endforeach()
 
-set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}-win_amd64.pyd)
+set(py_suffix cp${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}t-win_amd64.pyd)
 
 set(copy_files
     numpy/_core/_multiarray_umath.${py_suffix}
@@ -1869,7 +1869,7 @@ set(copy_files
     numpy.libs/libscipy_openblas64_-ed4f167a5330424524f45258e7ca2c8d.dll
     numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll
     PIL/_imaging.${py_suffix}
-    safetensors/_safetensors_rust.pyd
+    safetensors/_safetensors_rust.${py_suffix}
     torch/_C.${py_suffix}
     torch/functional.py
     torch/_dynamo/config.py
@@ -1940,6 +1940,7 @@ set(py_files
     asyncio/exceptions.py
     asyncio/format_helpers.py
     asyncio/futures.py
+    asyncio/graph.py
     asyncio/locks.py
     asyncio/log.py
     asyncio/mixins.py
@@ -1962,6 +1963,9 @@ set(py_files
     asyncio/windows_utils.py
     asyncio/__init__.py
     collections/__init__.py
+    compression/_common/_streams.py
+    compression/_common/__init__.py
+    compression/__init__.py
     concurrent/futures/thread.py
     concurrent/futures/_base.py
     concurrent/futures/__init__.py
@@ -1969,6 +1973,7 @@ set(py_files
     ctypes/util.py
     ctypes/wintypes.py
     ctypes/_endian.py
+    ctypes/_layout.py
     ctypes/__init__.py
     email/base64mime.py
     email/charset.py
@@ -2027,14 +2032,16 @@ set(py_files
     multiprocessing/synchronize.py
     multiprocessing/util.py
     multiprocessing/__init__.py
-    pathlib/_abc.py
     pathlib/_local.py
+    pathlib/_os.py
     pathlib/__init__.py
     re/_casefix.py
     re/_compiler.py
     re/_constants.py
     re/_parser.py
     re/__init__.py
+    string/templatelib.py
+    string/__init__.py
     sysconfig/__init__.py
     unittest/case.py
     unittest/loader.py
@@ -2058,6 +2065,7 @@ set(py_files
     zipfile/_path/glob.py
     zipfile/_path/__init__.py
     zipfile/__init__.py
+    annotationlib.py
     argparse.py
     ast.py
     base64.py
@@ -2126,7 +2134,6 @@ set(py_files
     socket.py
     ssl.py
     statistics.py
-    string.py
     struct.py
     subprocess.py
     tarfile.py
@@ -2144,12 +2151,18 @@ set(py_files
     weakref.py
     _colorize.py
     _compat_pickle.py
-    _compression.py
     _markupbase.py
     _opcode_metadata.py
+    _py_warnings.py
     _weakrefset.py
     __future__.py
 )
+if(WIN32)
+    set(py_files ${py_files}
+        encodings/_win_cp_codecs.py
+    )
+endif()
+
 foreach(src_file ${py_files})
     cmake_path(GET src_file PARENT_PATH src_file_dir)
     file(COPY "${Python3_STDLIB}/${src_file}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Python/Lib/${src_file_dir}")
@@ -2173,25 +2186,25 @@ foreach(src_file ${py_files})
 endforeach()
 
 set(copy_files
-    _asyncio.pyd
-    _bz2.pyd
-    _ctypes.pyd
-    _decimal.pyd
-    _elementtree.pyd
-    _hashlib.pyd
-    _lzma.pyd
-    _multiprocessing.pyd
-    _overlapped.pyd
-    _queue.pyd
-    _socket.pyd
-    _ssl.pyd
-    _uuid.pyd
+    _asyncio.${py_suffix}
+    _bz2.${py_suffix}
+    _ctypes.${py_suffix}
+    _decimal.${py_suffix}
+    _elementtree.${py_suffix}
+    _hashlib.${py_suffix}
+    _lzma.${py_suffix}
+    _multiprocessing.${py_suffix}
+    _overlapped.${py_suffix}
+    _queue.${py_suffix}
+    _socket.${py_suffix}
+    _ssl.${py_suffix}
+    _uuid.${py_suffix}
     libcrypto-3.dll
     libffi-8.dll
     libssl-3.dll
-    pyexpat.pyd
-    select.pyd
-    unicodedata.pyd
+    pyexpat.${py_suffix}
+    select.${py_suffix}
+    unicodedata.${py_suffix}
 )
 foreach(src_file ${copy_files})
     set(src_file "DLLs/${src_file}")
@@ -2213,8 +2226,8 @@ foreach(src_file ${copy_files})
 endforeach()
 
 set(copy_files
-    python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}.dll
-    python3.dll
+    python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}t.dll
+    python3t.dll
 )
 foreach(src_file ${copy_files})
     cmake_path(GET src_file PARENT_PATH src_file_dir)
