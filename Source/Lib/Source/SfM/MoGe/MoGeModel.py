@@ -3,7 +3,6 @@
 
 # Based on MoGe 2, https://github.com/microsoft/MoGe/blob/main/moge/model/v2.py
 
-from __future__ import annotations
 import importlib
 from numbers import Number
 from pathlib import Path

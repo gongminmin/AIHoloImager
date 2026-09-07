@@ -44,7 +44,6 @@
 
 # Adapted from https://github.com/cvg/LightGlue/blob/main/lightglue/superpoint.py
 
-from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 

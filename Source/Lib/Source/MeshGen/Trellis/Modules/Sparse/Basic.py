@@ -3,7 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/basic.py
 
-from __future__ import annotations
 from collections.abc import Callable
 from typing import overload
 

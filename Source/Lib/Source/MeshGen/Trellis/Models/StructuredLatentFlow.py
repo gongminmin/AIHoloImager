@@ -3,7 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/models/structured_latent_flow.py
 
-from __future__ import annotations
 from typing import Literal
 
 import numpy as np

@@ -3,7 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/pipelines/trellis_image_to_3d.py
 
-from __future__ import annotations
 from contextlib import contextmanager
 import importlib
 import json

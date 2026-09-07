@@ -3,8 +3,6 @@
 
 # Based on https://github.com/microsoft/TRELLIS/blob/main/trellis/modules/sparse/conv/conv_spconv.py
 
-from __future__ import annotations
-
 import torch
 import torch.nn as nn
 

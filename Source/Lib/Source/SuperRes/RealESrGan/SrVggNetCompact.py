@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Minmin Gong
 #
 
-from __future__ import annotations
 from pathlib import Path
 
 import torch
