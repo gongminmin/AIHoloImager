@@ -9,11 +9,11 @@
 
 namespace AIHoloImager
 {
-    MiniCudaRt::MiniCudaRt() : cudart_dll_("cudart64_12.dll")
+    MiniCudaRt::MiniCudaRt() : cudart_dll_("cudart64_13.dll")
     {
         if (cudart_dll_)
         {
-            cuda_get_device_properties_ = cudart_dll_.Func<CudaGetDeviceProperties_v2>("cudaGetDeviceProperties_v2");
+            cuda_get_device_properties_ = cudart_dll_.Func<CudaGetDeviceProperties>("cudaGetDeviceProperties");
             cuda_create_channel_desc_ = cudart_dll_.Func<CudaCreateChannelDesc>("cudaCreateChannelDesc");
             cuda_import_external_memory_ = cudart_dll_.Func<CudaImportExternalMemory>("cudaImportExternalMemory");
             cuda_external_memory_get_mapped_buffer_ =
@@ -23,9 +23,9 @@ namespace AIHoloImager
                 cudart_dll_.Func<CudaExternalMemoryGetMappedMipmappedArray>("cudaExternalMemoryGetMappedMipmappedArray");
             cuda_import_external_semaphore_ = cudart_dll_.Func<CudaImportExternalSemaphore>("cudaImportExternalSemaphore");
             cuda_destroy_external_semaphore_ = cudart_dll_.Func<CudaDestroyExternalSemaphore>("cudaDestroyExternalSemaphore");
-            cuda_wait_external_semaphores_async_ = cudart_dll_.Func<CudaWaitExternalSemaphoresAsync_v2>("cudaWaitExternalSemaphoresAsync");
+            cuda_wait_external_semaphores_async_ = cudart_dll_.Func<CudaWaitExternalSemaphoresAsync>("cudaWaitExternalSemaphoresAsync");
             cuda_signal_external_semaphores_async_ =
-                cudart_dll_.Func<CudaSignalExternalSemaphoresAsync_v2>("cudaSignalExternalSemaphoresAsync");
+                cudart_dll_.Func<CudaSignalExternalSemaphoresAsync>("cudaSignalExternalSemaphoresAsync");
             cuda_stream_create_ = cudart_dll_.Func<CudaStreamCreate>("cudaStreamCreate");
             cuda_stream_destroy_ = cudart_dll_.Func<CudaStreamDestroy>("cudaStreamDestroy");
             cuda_memcpy_async_ = cudart_dll_.Func<CudaMemcpyAsync>("cudaMemcpyAsync");

@@ -87,9 +87,9 @@ namespace AIHoloImager
             char uuid[16];
             char luid[8];
             uint32_t luid_device_node_mask;
-            uint8_t reserved[748];
+            uint8_t reserved[724];
         };
-        static_assert(sizeof(DeviceProp) == 1032);
+        static_assert(sizeof(DeviceProp) == 1008);
 
         struct ChannelFormatDesc
         {
@@ -272,7 +272,7 @@ namespace AIHoloImager
         Error_t Free(void* dev_ptr) const noexcept;
 
     private:
-        using CudaGetDeviceProperties_v2 = Error_t(CUDART_API*)(DeviceProp* prop, int32_t device) noexcept;
+        using CudaGetDeviceProperties = Error_t(CUDART_API*)(DeviceProp* prop, int32_t device) noexcept;
         using CudaCreateChannelDesc = ChannelFormatDesc(CUDART_API*)(
             int32_t x, int32_t y, int32_t z, int32_t w, ChannelFormatKind fmt) noexcept;
         using CudaImportExternalMemory = Error_t(CUDART_API*)(
@@ -285,9 +285,9 @@ namespace AIHoloImager
         using CudaImportExternalSemaphore = Error_t(CUDART_API*)(
             ExternalSemaphore_t* ext_sem_out, const ExternalSemaphoreHandleDesc* sem_handle_desc) noexcept;
         using CudaDestroyExternalSemaphore = Error_t(CUDART_API*)(ExternalSemaphore_t ext_sem) noexcept;
-        using CudaSignalExternalSemaphoresAsync_v2 = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
+        using CudaSignalExternalSemaphoresAsync = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
             const ExternalSemaphoreSignalParams* params_array, uint32_t num_ext_sems, Stream_t stream) noexcept;
-        using CudaWaitExternalSemaphoresAsync_v2 = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
+        using CudaWaitExternalSemaphoresAsync = Error_t(CUDART_API*)(const ExternalSemaphore_t* ext_sem_array,
             const ExternalSemaphoreWaitParams* params_array, uint32_t num_ext_sems, Stream_t stream) noexcept;
         using CudaStreamCreate = Error_t(CUDART_API*)(Stream_t* stream_out) noexcept;
         using CudaStreamDestroy = Error_t(CUDART_API*)(Stream_t stream) noexcept;
@@ -301,7 +301,7 @@ namespace AIHoloImager
     private:
         Dll cudart_dll_;
 
-        CudaGetDeviceProperties_v2 cuda_get_device_properties_{};
+        CudaGetDeviceProperties cuda_get_device_properties_{};
         CudaCreateChannelDesc cuda_create_channel_desc_{};
         CudaImportExternalMemory cuda_import_external_memory_{};
         CudaExternalMemoryGetMappedBuffer cuda_external_memory_get_mapped_buffer_{};
@@ -309,8 +309,8 @@ namespace AIHoloImager
         CudaExternalMemoryGetMappedMipmappedArray cuda_external_memory_get_mapped_mipmapped_array_{};
         CudaImportExternalSemaphore cuda_import_external_semaphore_{};
         CudaDestroyExternalSemaphore cuda_destroy_external_semaphore_{};
-        CudaSignalExternalSemaphoresAsync_v2 cuda_signal_external_semaphores_async_{};
-        CudaWaitExternalSemaphoresAsync_v2 cuda_wait_external_semaphores_async_{};
+        CudaSignalExternalSemaphoresAsync cuda_signal_external_semaphores_async_{};
+        CudaWaitExternalSemaphoresAsync cuda_wait_external_semaphores_async_{};
         CudaStreamCreate cuda_stream_create_{};
         CudaStreamDestroy cuda_stream_destroy_{};
         CudaMemcpyAsync cuda_memcpy_async_{};
