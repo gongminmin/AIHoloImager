@@ -82,7 +82,6 @@ set(py_files
     numpy/f2py/_isocbind.py
     numpy/f2py/__init__.py
     numpy/f2py/__version__.py
-    numpy/fft/helper.py
     numpy/fft/_helper.py
     numpy/fft/_pocketfft.py
     numpy/fft/__init__.py
@@ -115,7 +114,6 @@ set(py_files
     numpy/lib/_utils_impl.py
     numpy/lib/_version.py
     numpy/lib/__init__.py
-    numpy/linalg/linalg.py
     numpy/linalg/_linalg.py
     numpy/linalg/__init__.py
     numpy/ma/core.py
@@ -165,7 +163,6 @@ set(py_files
     numpy/_core/_dtype_ctypes.py
     numpy/_core/_exceptions.py
     numpy/_core/_internal.py
-    numpy/_core/_machar.py
     numpy/_core/_methods.py
     numpy/_core/_string_helpers.py
     numpy/_core/_type_aliases.py
@@ -182,7 +179,7 @@ set(py_files
     numpy/_typing/_shape.py
     numpy/_typing/_ufunc.py
     numpy/_typing/__init__.py
-    numpy/_utils/_convertions.py
+    numpy/_utils/_conversions.py
     numpy/_utils/_inspect.py
     numpy/_utils/__init__.py
     numpy/dtypes.py
@@ -1831,7 +1828,6 @@ set(py_files
     tqdm/std.py
     tqdm/utils.py
     tqdm/version.py
-    tqdm/_dist_ver.py
     tqdm/_monitor.py
     tqdm/_tqdm_pandas.py
     tqdm/__init__.py
@@ -1870,8 +1866,8 @@ set(copy_files
     numpy/random/_sfc64.${py_suffix}
     numpy/random/bit_generator.${py_suffix}
     numpy/random/mtrand.${py_suffix}
-    numpy.libs/libscipy_openblas64_-13e2df515630b4a41f92893938845698.dll
-    numpy.libs/msvcp140-263139962577ecda4cd9469ca360a746.dll
+    numpy.libs/libscipy_openblas64_-ed4f167a5330424524f45258e7ca2c8d.dll
+    numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll
     PIL/_imaging.${py_suffix}
     safetensors/_safetensors_rust.pyd
     torch/_C.${py_suffix}
