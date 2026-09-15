@@ -127,19 +127,19 @@ namespace AIHoloImager
 
             PerfRegion opt_perf(profiler, "Optimize transform");
 
-            Obb obb;
+            Obb mesh_obb;
             {
                 const Mesh cpu_mesh = ToMesh(gpu_system, mg_input.mesh);
                 const auto& vertex_desc = cpu_mesh.MeshVertexDesc();
                 const uint32_t pos_attrib_index = vertex_desc.FindAttrib(VertexAttrib::Semantic::Position, 0);
-                obb = Obb::FromPoints(
+                mesh_obb = Obb::FromPoints(
                     &cpu_mesh.VertexData<glm::vec3>(0, pos_attrib_index), vertex_desc.Stride(), mg_input.mesh.NumVertices());
             }
 
             glm::vec3 local_up_vec;
             {
                 const glm::vec3 local_y =
-                    glm::rotate(glm::inverse(obb.orientation), glm::vec3(0, 0, 1)); // Y and Z are swapped in the output of TRELLIS
+                    glm::rotate(glm::inverse(mesh_obb.orientation), glm::vec3(0, 0, 1)); // Y and Z are swapped in the output of TRELLIS
                 const glm::vec3 abs_local_y = glm::abs(local_y);
                 if (abs_local_y.x > abs_local_y.y)
                 {
@@ -164,10 +164,10 @@ namespace AIHoloImager
                     }
                 }
 
-                local_up_vec = glm::rotate(obb.orientation, local_up_vec);
+                local_up_vec = glm::rotate(mesh_obb.orientation, local_up_vec);
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(obb, mg_input.obj_aabb, local_up_vec, mg_input.up_vec);
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(mesh_obb, mg_input.obj_point_aabb, local_up_vec, mg_input.up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -176,7 +176,7 @@ namespace AIHoloImager
                 SaveMesh(ToMesh(gpu_system, before_opt_mesh), tmp_dir_ / "BeforeOpt.glb");
             }
             {
-                const auto before_opt_obb = Obb::Transform(obb, model_mtx);
+                const auto before_opt_obb = Obb::Transform(mesh_obb, model_mtx);
 
                 glm::vec3 corners[8];
                 Obb::GetCorners(before_opt_obb, corners);
@@ -196,7 +196,7 @@ namespace AIHoloImager
                 SaveMesh(ToMesh(gpu_system, after_opt_mesh), tmp_dir_ / "AfterOpt.glb");
             }
             {
-                const auto after_opt_obb = Obb::Transform(obb, model_mtx);
+                const auto after_opt_obb = Obb::Transform(mesh_obb, model_mtx);
 
                 glm::vec3 corners[8];
                 Obb::GetCorners(after_opt_obb, corners);
@@ -206,15 +206,16 @@ namespace AIHoloImager
             }
 #endif
 
-            return {std::move(obb), std::move(model_mtx), std::move(local_up_vec)};
+            return {std::move(mesh_obb), std::move(model_mtx), std::move(local_up_vec)};
         }
 
-        glm::mat4x4 GuessModelMatrix(const Obb& obb, const Aabb& obj_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
+        glm::mat4x4 GuessModelMatrix(
+            const Obb& mesh_obb, const Aabb& obj_point_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
         {
-            const float diag_len = glm::length(obj_aabb.Size());
-            const float scale = diag_len / (glm::length(obb.extents) * 2);
+            const float diag_len = glm::length(obj_point_aabb.Size());
+            const float scale = diag_len / (glm::length(mesh_obb.extents) * 2);
 
-            return glm::translate(glm::identity<glm::mat4x4>(), obj_aabb.Center()) *
+            return glm::translate(glm::identity<glm::mat4x4>(), obj_point_aabb.Center()) *
                    glm::mat4_cast(glm::normalize(glm::rotation(local_up_vec, up_vec))) *
                    glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale));
         }

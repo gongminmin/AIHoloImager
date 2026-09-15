@@ -175,7 +175,7 @@ namespace AIHoloImager
             const auto output_dir = aihi_.TmpDir() / "MeshGen";
             std::filesystem::create_directories(output_dir);
 
-            Aabb obj_aabb;
+            Aabb obj_point_aabb;
             glm::vec3 up_vec;
             std::vector<GpuTexture2D> rotated_images;
             {
@@ -183,13 +183,13 @@ namespace AIHoloImager
 
                 PerfRegion rotating_perf(profiler, "Rotating images");
 
-                this->StatForegroundObject(obj_aabb, up_vec, sfm_input, output_dir);
+                this->StatForegroundObject(obj_point_aabb, up_vec, sfm_input, output_dir);
                 rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
                     glm::vec3 corners[8];
-                    Aabb::GetCorners(obj_aabb, corners);
+                    Aabb::GetCorners(obj_point_aabb, corners);
 
                     const Mesh bb_mesh = BoxMesh(corners);
                     SaveMesh(bb_mesh, output_dir / "Aabb.glb");
@@ -230,7 +230,7 @@ namespace AIHoloImager
 #endif
             }
 
-            return {std::move(mesh), std::move(gaussians), std::move(obj_aabb), std::move(up_vec)};
+            return {std::move(mesh), std::move(gaussians), std::move(obj_point_aabb), std::move(up_vec)};
         }
 
     private:
