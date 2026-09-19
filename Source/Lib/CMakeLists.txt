@@ -68,7 +68,6 @@ set(aihi_files
     Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl
     Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
     Source/MeshGen/Shader/Dilate3DCs.hlsl
-    Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/ResizeCs.hlsl
     Source/MeshGen/Shader/RotatePs.hlsl
@@ -227,7 +226,6 @@ AddShaderFile(Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl "cs"
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ErosionDilationMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")

@@ -7,6 +7,7 @@
 #include <cassert>
 #include <future>
 #include <iostream>
+#include <map>
 #include <set>
 #include <tuple>
 
@@ -39,7 +40,6 @@
 
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
 #include "CompiledShader/MeshGen/Dilate3DCs.h"
-#include "CompiledShader/MeshGen/ErosionDilationMaskCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/ResizeCs.h"
 #include "CompiledShader/MeshGen/RotatePs.h"
@@ -83,10 +83,6 @@ namespace AIHoloImager
 
             auto& gpu_system = aihi_.GpuSystemInstance();
 
-            {
-                const ShaderInfo shader = {DEFINE_SHADER(ErosionDilationMaskCs)};
-                erosion_dilation_mask_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
-            }
             {
                 const ShaderInfo shaders[] = {
                     {DEFINE_SHADER(RotateVs)},
@@ -269,6 +265,84 @@ namespace AIHoloImager
             return glm::vec4(plane_normal, -glm::dot(centroid, plane_normal));
         }
 
+        std::vector<int32_t> Dbscan(std::span<const glm::vec3> points, float eps, uint32_t min_points)
+        {
+            const uint32_t num_points = static_cast<uint32_t>(points.size());
+            std::vector<int32_t> labels(num_points, -1);
+            uint32_t cluster_id = 0;
+
+            std::vector<float> dist_matrix(num_points * num_points);
+            {
+                for (uint32_t i = 0; i < num_points; ++i)
+                {
+                    dist_matrix[i * num_points + i] = 0;
+                    for (uint32_t j = i + 1; j < num_points; ++j)
+                    {
+                        dist_matrix[i * num_points + j] = glm::distance(points[i], points[j]);
+                        dist_matrix[j * num_points + i] = dist_matrix[i * num_points + j];
+                    }
+                }
+            }
+
+            for (uint32_t i = 0; i < num_points; ++i)
+            {
+                if (labels[i] == -1)
+                {
+                    // Find neighbors within the search radius (eps)
+                    std::vector<uint32_t> neighbors;
+                    for (uint32_t j = 0; j < num_points; ++j)
+                    {
+                        if (dist_matrix[i * num_points + j] <= eps)
+                        {
+                            neighbors.push_back(j);
+                        }
+                    }
+
+                    // If it doesn't meet the min_points threshold, leave it as noise for now
+                    if (neighbors.size() >= min_points)
+                    {
+                        // Core point found, expand the cluster
+                        labels[i] = cluster_id;
+
+                        for (uint32_t j = 0; j < neighbors.size(); ++j)
+                        {
+                            const uint32_t curr_point = neighbors[j];
+                            if ((labels[curr_point] == static_cast<int32_t>(cluster_id)) || (labels[curr_point] == -1))
+                            {
+                                labels[curr_point] = cluster_id;
+
+                                // Check if this new point is also a core point
+                                std::vector<uint32_t> curr_neighbors;
+                                for (uint32_t k = 0; k < num_points; ++k)
+                                {
+                                    if (dist_matrix[curr_point * num_points + k] <= eps)
+                                    {
+                                        curr_neighbors.push_back(k);
+                                    }
+                                }
+
+                                // If the neighbor is also a core point, add its neighbors to the list
+                                if (curr_neighbors.size() >= min_points)
+                                {
+                                    for (const uint32_t neighbor : curr_neighbors)
+                                    {
+                                        if (labels[neighbor] == -1)
+                                        {
+                                            // Only queue unvisited or noise points
+                                            labels[neighbor] = cluster_id;
+                                            neighbors.push_back(neighbor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return labels;
+        }
+
         void StatForegroundObject(Aabb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input,
             [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
@@ -288,124 +362,20 @@ namespace AIHoloImager
                 const uint32_t delighted_width = projection.image->Width(0);
                 const uint32_t delighted_height = projection.image->Height(0);
 
-#ifdef AIHI_KEEP_INTERMEDIATES
                 Texture delighted_image(delighted_width, delighted_height, ElementFormat::RGBA8_UNorm_SRGB);
                 const uint32_t delighted_fmt_size = FormatChannels(delighted_image.Format());
-#endif
-                Texture erosion_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
-                Texture dilation_mask_image(delighted_width, delighted_height, ElementFormat::R8_UNorm);
                 {
                     auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-                    std::future<void> erosion_rb_future;
-                    {
-                        constexpr uint32_t BlockDim = 16;
-
-                        GpuTexture2D erosion_mask_gpu_texs[2];
-                        for (auto& tex : erosion_mask_gpu_texs)
-                        {
-                            tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
-                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "erosion_mask_gpu_tex");
-                        }
-
-                        uint32_t dst;
-                        for (size_t j = 0; j < 4; ++j)
-                        {
-                            const uint32_t src = j & 1;
-                            dst = src ? 0 : 1;
-
-                            GpuConstantBufferOfType<ErosionMaskConstantBuffer> erosion_mask_cb(gpu_system, "erosion_mask_cb");
-                            erosion_mask_cb->texture_size = {delighted_width, delighted_height};
-                            erosion_mask_cb->erosion = true;
-                            erosion_mask_cb->channel = j == 0 ? 3 : 0;
-                            erosion_mask_cb.UploadStaging();
-                            const GpuConstantBufferView erosion_cbv(gpu_system, erosion_mask_cb);
-
-                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? *projection.image : erosion_mask_gpu_texs[src]);
-                            GpuUnorderedAccessView erosion_uav(gpu_system, erosion_mask_gpu_texs[dst]);
-
-                            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
-                                {"param_cb", &erosion_cbv},
-                            };
-                            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
-                                {"input_tex", &input_srv},
-                            };
-                            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                                {"output_tex", &erosion_uav},
-                            };
-                            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_,
-                                {DivUp(delighted_width, BlockDim), DivUp(delighted_height, BlockDim), 1}, shader_binding);
-                        }
-
-                        erosion_rb_future =
-                            cmd_list.ReadBackAsync(erosion_mask_gpu_texs[dst], 0, erosion_mask_image.Data(), erosion_mask_image.DataSize());
-                    }
-
-                    std::future<void> dilation_rb_future;
-                    {
-                        constexpr uint32_t BlockDim = 16;
-
-                        GpuTexture2D dilation_mask_gpu_texs[2];
-                        for (auto& tex : dilation_mask_gpu_texs)
-                        {
-                            tex = GpuTexture2D(gpu_system, delighted_width, delighted_height, 1, GpuFormat::R8_UNorm,
-                                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "dilation_mask_gpu_texs");
-                        }
-
-                        uint32_t dst;
-                        for (size_t j = 0; j < 1; ++j)
-                        {
-                            const uint32_t src = j & 1;
-                            dst = src ? 0 : 1;
-
-                            GpuConstantBufferOfType<ErosionMaskConstantBuffer> dilation_mask_cb(gpu_system, "dilation_mask_cb");
-                            dilation_mask_cb->texture_size = {delighted_width, delighted_height};
-                            dilation_mask_cb->erosion = false;
-                            dilation_mask_cb->channel = j == 0 ? 3 : 0;
-                            dilation_mask_cb.UploadStaging();
-                            const GpuConstantBufferView dilation_cbv(gpu_system, dilation_mask_cb);
-
-                            const GpuShaderResourceView input_srv(gpu_system, j == 0 ? *projection.image : dilation_mask_gpu_texs[src]);
-                            GpuUnorderedAccessView dilation_uav(gpu_system, dilation_mask_gpu_texs[dst]);
-
-                            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
-                                {"param_cb", &dilation_cbv},
-                            };
-                            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
-                                {"input_tex", &input_srv},
-                            };
-                            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                                {"output_tex", &dilation_uav},
-                            };
-                            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                            cmd_list.Compute(erosion_dilation_mask_pipeline_,
-                                {DivUp(delighted_width, BlockDim), DivUp(delighted_height, BlockDim), 1}, shader_binding);
-                        }
-
-                        dilation_rb_future = cmd_list.ReadBackAsync(
-                            dilation_mask_gpu_texs[dst], 0, dilation_mask_image.Data(), dilation_mask_image.DataSize());
-                    }
-
-#ifdef AIHI_KEEP_INTERMEDIATES
                     std::future<void> delighted_rb_future =
                         cmd_list.ReadBackAsync(*projection.image, 0, delighted_image.Data(), delighted_image.DataSize());
-#endif
 
                     gpu_system.Execute(std::move(cmd_list));
 
-                    erosion_rb_future.wait();
-                    dilation_rb_future.wait();
-#ifdef AIHI_KEEP_INTERMEDIATES
                     delighted_rb_future.wait();
-#endif
                 }
 
-                const std::byte* erosion_mask_image_data = erosion_mask_image.Data();
-                const std::byte* dilation_mask_image_data = dilation_mask_image.Data();
-#ifdef AIHI_KEEP_INTERMEDIATES
                 const std::byte* delighted_image_data = delighted_image.Data();
-#endif
 
                 constexpr uint32_t Gap = 32;
                 const uint32_t beg_x =
@@ -450,7 +420,8 @@ namespace AIHoloImager
                             {
                                 if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
-                                    const std::byte mask = erosion_mask_image_data[delighted_y * delighted_width + delighted_x];
+                                    const std::byte mask =
+                                        delighted_image_data[(delighted_y * delighted_width + delighted_x) * delighted_fmt_size + 3];
                                     if (mask > std::byte(0x7F))
                                     {
                                         object_points.push_back(point);
@@ -466,7 +437,8 @@ namespace AIHoloImager
                             {
                                 if ((delighted_x < delighted_width) && (delighted_y < delighted_height))
                                 {
-                                    const std::byte mask = dilation_mask_image_data[delighted_y * delighted_width + delighted_x];
+                                    const std::byte mask =
+                                        delighted_image_data[(delighted_y * delighted_width + delighted_x) * delighted_fmt_size + 3];
                                     if (mask <= std::byte(0x7F))
                                     {
                                         plane_points.push_back(point);
@@ -484,12 +456,62 @@ namespace AIHoloImager
                 }
             }
 
-            glm::vec3 object_center(0, 0, 0);
-            for (size_t i = 0; i < object_points.size(); ++i)
+            std::vector<uint32_t> valid_point_indices;
             {
-                object_center += object_points[i];
+                std::vector<int32_t> labels = this->Dbscan(object_points, 0.05f, 10);
+                std::map<uint32_t, uint32_t> label_counts;
+                for (size_t i = 0; i < labels.size(); ++i)
+                {
+                    if (labels[i] >= 0)
+                    {
+                        auto iter = label_counts.find(labels[i]);
+                        if (iter == label_counts.end())
+                        {
+                            label_counts[labels[i]] = 1;
+                        }
+                        else
+                        {
+                            ++iter->second;
+                        }
+                    }
+                }
+
+                valid_point_indices.reserve(object_points.size());
+                if (label_counts.empty())
+                {
+                    // No valid clusters found. Assume all points are valid.
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(object_points.size()); ++i)
+                    {
+                        valid_point_indices.push_back(i);
+                    }
+                }
+                else
+                {
+                    uint32_t largest_cluster_id = 0;
+                    for (size_t i = 1; i < label_counts.size(); ++i)
+                    {
+                        if (label_counts[i] > label_counts[largest_cluster_id])
+                        {
+                            largest_cluster_id = i;
+                        }
+                    }
+
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(labels.size()); ++i)
+                    {
+                        if (labels[i] == static_cast<int32_t>(largest_cluster_id))
+                        {
+                            valid_point_indices.push_back(i);
+                        }
+                    }
+                }
             }
-            object_center /= static_cast<float>(object_points.size());
+
+            glm::vec3 object_center(0, 0, 0);
+            for (const uint32_t index : valid_point_indices)
+            {
+                object_center += object_points[index];
+            }
+            object_center /= static_cast<float>(valid_point_indices.size());
 
             glm::vec4 plane = this->FitPlane(plane_points);
             if (glm::dot(glm::vec3(plane), object_center) + plane.w < 0)
@@ -499,14 +521,15 @@ namespace AIHoloImager
 
             up_vec = glm::vec3(plane);
 
-            constexpr float GroundThreshold = 0.015f;
+            constexpr float GroundThreshold = 0.005f;
 
             bb = Aabb();
-            for (size_t i = 0; i < object_points.size(); ++i)
+            for (const uint32_t index : valid_point_indices)
             {
-                if (glm::dot(up_vec, object_points[i]) + plane.w > GroundThreshold)
+                const auto& point = object_points[index];
+                if (glm::dot(up_vec, point) + plane.w > GroundThreshold)
                 {
-                    bb.AddPoint(object_points[i]);
+                    bb.AddPoint(point);
                 }
             }
 
@@ -523,15 +546,16 @@ namespace AIHoloImager
                 {
                     Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
 
-                    for (uint32_t i = 0; i < object_points.size(); ++i)
+                    for (const uint32_t index : valid_point_indices)
                     {
-                        if (glm::dot(up_vec, object_points[i]) + plane.w > GroundThreshold)
+                        const auto& point = object_points[index];
+                        if (glm::dot(up_vec, point) + plane.w > GroundThreshold)
                         {
                             const uint32_t vertex_index = pc_mesh.NumVertices();
                             pc_mesh.ResizeVertices(vertex_index + 1);
 
-                            pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = object_points[i];
-                            pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = object_colors[i];
+                            pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = point;
+                            pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = object_colors[index];
                         }
                     }
 
@@ -1243,14 +1267,6 @@ namespace AIHoloImager
 
         InvisibleFacesRemover invisible_faces_remover_;
         MarchingCubes marching_cubes_;
-
-        struct ErosionMaskConstantBuffer
-        {
-            glm::uvec2 texture_size;
-            uint32_t erosion;
-            uint32_t channel;
-        };
-        GpuComputePipeline erosion_dilation_mask_pipeline_;
 
         struct RotateConstantBuffer
         {
