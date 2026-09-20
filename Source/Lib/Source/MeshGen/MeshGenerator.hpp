@@ -23,7 +23,7 @@ namespace AIHoloImager
         {
             GpuMesh mesh;
             Gaussians gaussians;
-            Aabb obj_point_aabb;
+            Obb obj_point_obb;
             glm::vec3 up_vec;
         };
 

@@ -167,7 +167,7 @@ namespace AIHoloImager
                 local_up_vec = glm::rotate(mesh_obb.orientation, local_up_vec);
             }
 
-            glm::mat4x4 model_mtx = this->GuessModelMatrix(mesh_obb, mg_input.obj_point_aabb, local_up_vec, mg_input.up_vec);
+            glm::mat4x4 model_mtx = this->GuessModelMatrix(mesh_obb, mg_input.obj_point_obb, local_up_vec, mg_input.up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -209,13 +209,11 @@ namespace AIHoloImager
             return {std::move(mesh_obb), std::move(model_mtx), std::move(local_up_vec)};
         }
 
-        glm::mat4x4 GuessModelMatrix(
-            const Obb& mesh_obb, const Aabb& obj_point_aabb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
+        glm::mat4x4 GuessModelMatrix(const Obb& mesh_obb, const Obb& obj_point_obb, const glm::vec3& local_up_vec, const glm::vec3& up_vec)
         {
-            const float diag_len = glm::length(obj_point_aabb.Size());
-            const float scale = diag_len / (glm::length(mesh_obb.extents) * 2);
+            const float scale = glm::length(obj_point_obb.extents) / glm::length(mesh_obb.extents);
 
-            return glm::translate(glm::identity<glm::mat4x4>(), obj_point_aabb.Center()) *
+            return glm::translate(glm::identity<glm::mat4x4>(), obj_point_obb.center) *
                    glm::mat4_cast(glm::normalize(glm::rotation(local_up_vec, up_vec))) *
                    glm::scale(glm::identity<glm::mat4x4>(), glm::vec3(scale));
         }

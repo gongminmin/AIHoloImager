@@ -171,7 +171,7 @@ namespace AIHoloImager
             const auto output_dir = aihi_.TmpDir() / "MeshGen";
             std::filesystem::create_directories(output_dir);
 
-            Aabb obj_point_aabb;
+            Obb obj_point_obb;
             glm::vec3 up_vec;
             std::vector<GpuTexture2D> rotated_images;
             {
@@ -179,16 +179,16 @@ namespace AIHoloImager
 
                 PerfRegion rotating_perf(profiler, "Rotating images");
 
-                this->StatForegroundObject(obj_point_aabb, up_vec, sfm_input, output_dir);
+                this->StatForegroundObject(obj_point_obb, up_vec, sfm_input, output_dir);
                 rotated_images = this->RotateImages(sfm_input, up_vec);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
                     glm::vec3 corners[8];
-                    Aabb::GetCorners(obj_point_aabb, corners);
+                    Obb::GetCorners(obj_point_obb, corners);
 
                     const Mesh bb_mesh = BoxMesh(corners);
-                    SaveMesh(bb_mesh, output_dir / "Aabb.glb");
+                    SaveMesh(bb_mesh, output_dir / "Obb.glb");
                 }
 
                 for (size_t i = 0; i < rotated_images.size(); ++i)
@@ -226,7 +226,7 @@ namespace AIHoloImager
 #endif
             }
 
-            return {std::move(mesh), std::move(gaussians), std::move(obj_point_aabb), std::move(up_vec)};
+            return {std::move(mesh), std::move(gaussians), std::move(obj_point_obb), std::move(up_vec)};
         }
 
     private:
@@ -343,8 +343,8 @@ namespace AIHoloImager
             return labels;
         }
 
-        void StatForegroundObject(Aabb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input,
-            [[maybe_unused]] const std::filesystem::path& tmp_dir)
+        void StatForegroundObject(
+            Obb& bb, glm::vec3& up_vec, const StructureFromMotion::Result& sfm_input, [[maybe_unused]] const std::filesystem::path& tmp_dir)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -521,17 +521,34 @@ namespace AIHoloImager
 
             up_vec = glm::vec3(plane);
 
-            constexpr float GroundThreshold = 0.005f;
-
-            bb = Aabb();
-            for (const uint32_t index : valid_point_indices)
             {
-                const auto& point = object_points[index];
-                if (glm::dot(up_vec, point) + plane.w > GroundThreshold)
+                constexpr float GroundThreshold = 0.005f;
+
+                std::vector<glm::vec3> filtered_object_points;
+                filtered_object_points.reserve(valid_point_indices.size());
+#ifdef AIHI_KEEP_INTERMEDIATES
+                std::vector<glm::vec3> filtered_object_colors;
+                filtered_object_colors.reserve(valid_point_indices.size());
+#endif
+                for (const uint32_t index : valid_point_indices)
                 {
-                    bb.AddPoint(point);
+                    const auto& point = object_points[index];
+                    if (glm::dot(up_vec, point) + plane.w > GroundThreshold)
+                    {
+                        filtered_object_points.push_back(point);
+#ifdef AIHI_KEEP_INTERMEDIATES
+                        filtered_object_colors.push_back(object_colors[index]);
+#endif
+                    }
                 }
+
+                object_points = std::move(filtered_object_points);
+#ifdef AIHI_KEEP_INTERMEDIATES
+                object_colors = std::move(filtered_object_colors);
+#endif
             }
+
+            bb = Obb::FromPoints(object_points.data(), sizeof(glm::vec3), static_cast<uint32_t>(object_points.size()));
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {
@@ -544,33 +561,23 @@ namespace AIHoloImager
                 const VertexDesc pos_clr_vertex_desc(pos_clr_vertex_attribs);
 
                 {
-                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, static_cast<uint32_t>(object_points.size()), 0);
 
-                    for (const uint32_t index : valid_point_indices)
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(object_points.size()); ++i)
                     {
-                        const auto& point = object_points[index];
-                        if (glm::dot(up_vec, point) + plane.w > GroundThreshold)
-                        {
-                            const uint32_t vertex_index = pc_mesh.NumVertices();
-                            pc_mesh.ResizeVertices(vertex_index + 1);
-
-                            pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = point;
-                            pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = object_colors[index];
-                        }
+                        pc_mesh.VertexData<glm::vec3>(i, PosAttribIndex) = object_points[i];
+                        pc_mesh.VertexData<glm::vec3>(i, ColorAttribIndex) = object_colors[i];
                     }
 
                     SaveMesh(pc_mesh, tmp_dir / "ObjectPoints.ply");
                 }
                 {
-                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, 0, 0);
+                    Mesh pc_mesh = Mesh(pos_clr_vertex_desc, static_cast<uint32_t>(plane_points.size()), 0);
 
-                    for (uint32_t i = 0; i < plane_points.size(); ++i)
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(plane_points.size()); ++i)
                     {
-                        const uint32_t vertex_index = pc_mesh.NumVertices();
-                        pc_mesh.ResizeVertices(vertex_index + 1);
-
-                        pc_mesh.VertexData<glm::vec3>(vertex_index, PosAttribIndex) = plane_points[i];
-                        pc_mesh.VertexData<glm::vec3>(vertex_index, ColorAttribIndex) = plane_colors[i];
+                        pc_mesh.VertexData<glm::vec3>(i, PosAttribIndex) = plane_points[i];
+                        pc_mesh.VertexData<glm::vec3>(i, ColorAttribIndex) = plane_colors[i];
                     }
 
                     SaveMesh(pc_mesh, tmp_dir / "PlanePoints.ply");
