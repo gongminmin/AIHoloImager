@@ -37,3 +37,5 @@ target_precompile_headers(AIHoloImagerBase
     PRIVATE
         Source/pch.hpp
 )
+
+set_target_properties(AIHoloImagerBase PROPERTIES FOLDER "Base")

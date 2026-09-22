@@ -221,3 +221,5 @@ if(enable_vulkan)
             spirv-reflect-static
     )
 endif()
+
+set_target_properties(AIHoloImagerGpuSystem PROPERTIES FOLDER "Base")

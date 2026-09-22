@@ -118,3 +118,5 @@ set_target_properties(AIHoloImagerGpuDiffRender
 )
 
 add_dependencies(AIHoloImagerGpuDiffRender DeployPython)
+
+set_target_properties(AIHoloImagerGpuDiffRender PROPERTIES FOLDER "Lib")

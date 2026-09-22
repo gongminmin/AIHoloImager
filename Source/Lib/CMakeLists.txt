@@ -397,3 +397,5 @@ if(MSVC)
             "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerTensorConverter>"
     )
 endif()
+
+set_target_properties(AIHoloImagerLib PROPERTIES FOLDER "Lib")

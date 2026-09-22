@@ -55,3 +55,5 @@ target_link_libraries(AIHoloImagerTensorConverter
         torch_python.lib
         Python3::Python
 )
+
+set_target_properties(AIHoloImagerTensorConverter PROPERTIES FOLDER "Lib")

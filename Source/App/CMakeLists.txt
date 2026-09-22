@@ -7,3 +7,5 @@ target_link_libraries(AIHoloImager
         cxxopts
         AIHoloImagerLib
 )
+
+set_target_properties(AIHoloImager PROPERTIES FOLDER "App")

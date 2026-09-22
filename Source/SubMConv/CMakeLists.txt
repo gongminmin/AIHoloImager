@@ -76,3 +76,5 @@ set_target_properties(AIHoloImagerSubMConv
 )
 
 add_dependencies(AIHoloImagerSubMConv DeployPython)
+
+set_target_properties(AIHoloImagerSubMConv PROPERTIES FOLDER "Lib")
