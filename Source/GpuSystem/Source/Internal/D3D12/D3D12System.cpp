@@ -254,7 +254,7 @@ namespace AIHoloImager
                 };
                 D3D12_INFO_QUEUE_FILTER filter{
                     .DenyList{
-                        .NumIDs = std::size(deny_msg_ids),
+                        .NumIDs = static_cast<uint32_t>(std::size(deny_msg_ids)),
                         .pIDList = deny_msg_ids,
                     },
                 };
