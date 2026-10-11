@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Minmin Gong
+// Copyright (c) 2024-2026 Minmin Gong
 //
 
 #pragma once
@@ -8,7 +8,6 @@
 #include <memory>
 #include <span>
 
-#define Py_BUILD_CORE
 #include <Python.h>
 
 #include "Base/Noncopyable.hpp"

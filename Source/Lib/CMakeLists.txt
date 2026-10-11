@@ -266,6 +266,10 @@ target_include_directories(AIHoloImagerLib
         ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
 )
 
+target_compile_definitions(AIHoloImagerLib
+    PRIVATE
+        Py_NO_LINK_LIB
+)
 if(AIHI_KEEP_INTERMEDIATES)
     target_compile_definitions(AIHoloImagerLib
         PUBLIC

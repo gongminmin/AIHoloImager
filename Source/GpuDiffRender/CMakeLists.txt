@@ -86,6 +86,7 @@ endif()
 
 target_compile_definitions(AIHoloImagerGpuDiffRender
     PRIVATE
+        Py_NO_LINK_LIB
         TORCH_API_INCLUDE_EXTENSION_H
 )
 

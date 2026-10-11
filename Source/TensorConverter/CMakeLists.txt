@@ -38,6 +38,11 @@ if(MSVC)
     )
 endif()
 
+target_compile_definitions(AIHoloImagerTensorConverter
+    PRIVATE
+        Py_NO_LINK_LIB
+)
+
 target_link_directories(AIHoloImagerTensorConverter
     PRIVATE
         ${torch_dir}/lib

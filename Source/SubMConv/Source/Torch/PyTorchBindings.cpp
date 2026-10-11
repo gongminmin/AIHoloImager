@@ -2,7 +2,7 @@
 //
 
 #ifdef _DEBUG
-    #undef _DEBUG // Stop linking to python<ver>_d.lib
+    #undef _DEBUG // Skip using debug version of refcounts
 #endif
 #include <Python.h>
 
