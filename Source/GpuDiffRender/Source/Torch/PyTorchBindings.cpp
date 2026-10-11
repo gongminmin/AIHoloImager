@@ -1,7 +1,5 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
-
-#include "GpuDiffRenderTorch.hpp"
 
 #ifdef _DEBUG
     #undef _DEBUG // Stop linking to python<ver>_d.lib
@@ -10,12 +8,20 @@
 
 #ifdef _MSC_VER
     #pragma warning(push)
+    #pragma warning(disable : 4100) // Ignore unreferenced formal parameters
+    #pragma warning(disable : 4127) // Ignore constant conditional expression
+    #pragma warning(disable : 4244) // Ignore type conversion from `int` to `float`
     #pragma warning(disable : 4251) // Ignore non dll-interface as member
+    #pragma warning(disable : 4267) // Ignore type conversion from `size_t` to something else
+    #pragma warning(disable : 4275) // Ignore non dll-interface base class
+    #pragma warning(disable : 4324) // Ignore padded structure
 #endif
 #include <torch/csrc/utils/pybind.h>
 #ifdef _MSC_VER
     #pragma warning(pop)
 #endif
+
+#include "GpuDiffRenderTorch.hpp"
 
 using namespace AIHoloImager;
 

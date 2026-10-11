@@ -16,8 +16,8 @@
     #pragma warning(disable : 4244) // Ignore type conversion from `int` to `float`
     #pragma warning(disable : 4251) // Ignore non dll-interface as member
     #pragma warning(disable : 4267) // Ignore type conversion from `size_t` to something else
-    #pragma warning(disable : 4324) // Ignore padded structure
     #pragma warning(disable : 4275) // Ignore non dll-interface base class
+    #pragma warning(disable : 4324) // Ignore padded structure
 #endif
 #include <torch/types.h>
 #ifdef _MSC_VER
