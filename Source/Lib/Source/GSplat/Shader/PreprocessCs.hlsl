@@ -21,7 +21,7 @@ cbuffer param_cb
     float4 model_rotation;
     float3 model_translation;
 
-    float4x4 view_mtx;
+    float4x4 mv_mtx;
     float4x4 view_proj_mtx;
 
     float2 focal;
@@ -56,9 +56,9 @@ bool RectOverlap(T rect1, T rect2)
     return (rect1.x < rect2.z) && (rect1.z > rect2.x) && (rect1.y < rect2.w) && (rect1.w > rect2.y);
 }
 
-float4 ComputeCov2D(float3 pos_ws, float2 focal, float2 tan_fov, float kernel_size, float cov_3d[6], float4x4 view_mtx)
+float4 ComputeCov2D(float3 pos_os, float2 focal, float2 tan_fov, float kernel_size, float cov_3d[6], float4x4 mv_mtx)
 {
-    float4 t = mul(float4(pos_ws, 1), view_mtx);
+    float4 t = mul(float4(pos_os, 1), mv_mtx);
     t /= t.w;
 
     const float lim_x = 1.3f * tan_fov.x;
@@ -74,7 +74,7 @@ float4 ComputeCov2D(float3 pos_ws, float2 focal, float2 tan_fov, float kernel_si
         0, 0, 0,
     };
 
-    const float3x3 w_mtx = transpose((float3x3)view_mtx);
+    const float3x3 w_mtx = transpose((float3x3)mv_mtx);
 
     const float3x3 t_mtx = mul(j_mtx, w_mtx);
 
@@ -194,7 +194,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     [branch]
     if (index < num_gaussians)
     {
-        const float3 pos_ws = TransformQuat(pos_buff[index] * model_scale, model_rotation) + model_translation;
+        const float3 pos_os = pos_buff[index];
+        const float3 pos_ws = TransformQuat(pos_os * model_scale, model_rotation) + model_translation;
         const float4 pos_ps = mul(float4(pos_ws, 1), view_proj_mtx);
 
         depth = pos_ps.w;
@@ -208,7 +209,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
             float cov_3d[6];
             ComputeCov3D(scale, rotation, cov_3d);
 
-            const float4 cov = ComputeCov2D(pos_ws, focal, tan_fov, kernel_size, cov_3d, view_mtx);
+            const float4 cov = ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, mv_mtx);
 
             const float det = cov.x * cov.z - cov.y * cov.y;
             [branch]

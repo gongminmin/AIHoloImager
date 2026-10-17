@@ -145,7 +145,7 @@ namespace AIHoloImager
                 preprocess_cb->model_scale = scale;
                 preprocess_cb->model_rotation = rotation;
                 preprocess_cb->model_translation = translation;
-                preprocess_cb->view_mtx = glm::transpose(view_mtx);
+                preprocess_cb->mv_mtx = glm::transpose(view_mtx * model_mtx);
                 preprocess_cb->view_proj_mtx = glm::transpose(proj_mtx * view_mtx);
                 preprocess_cb->focal = {focal_x, focal_y};
                 preprocess_cb->tan_fov = {tan_fov_x, tan_fov_y};
@@ -290,7 +290,7 @@ namespace AIHoloImager
             glm::vec3 model_translation;
             float padding1;
 
-            glm::mat4x4 view_mtx;
+            glm::mat4x4 mv_mtx;
             glm::mat4x4 view_proj_mtx;
 
             glm::vec2 focal;
