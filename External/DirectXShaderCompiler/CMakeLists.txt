@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 set(prebuilt_dxc_url "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505.1/dxc_2025_07_14.zip")
@@ -23,3 +23,24 @@ endif()
 set(aihi_dxc_cmd "${prebuilt_dxc_dir}/bin/x64/dxc.exe")
 cmake_path(ABSOLUTE_PATH aihi_dxc_cmd OUTPUT_VARIABLE aihi_dxc_cmd)
 set(AIHI_DXC_CMD ${aihi_dxc_cmd} CACHE INTERNAL "")
+
+set(copy_files
+    dxcompiler.dll
+)
+foreach(src_file ${copy_files})
+    set(output_file ${aihi_output_dir}/${src_file})
+    set(src_file ${prebuilt_dxc_dir}/bin/x64/${src_file})
+    add_custom_command(OUTPUT ${output_file}
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink ${src_file} ${output_file}
+        COMMENT "Deploying ${src_file}..."
+        DEPENDS ${src_file}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM COMMAND_EXPAND_LISTS
+    )
+
+    list(APPEND deployed_files ${output_file})
+endforeach()
+
+add_custom_target(DeployDxc DEPENDS ${output_file})
+
+set_target_properties(DeployDxc PROPERTIES FOLDER "External")

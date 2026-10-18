@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Minmin Gong
+# Copyright (c) 2025-2026 Minmin Gong
 #
 
 if(ai_holo_imager_platform_windows AND AIHI_ENABLE_D3D12)
@@ -219,6 +219,7 @@ if(enable_vulkan)
 
         PRIVATE
             spirv-reflect-static
+            dxcompiler
     )
 endif()
 
