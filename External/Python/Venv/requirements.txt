@@ -21,7 +21,7 @@ torch==2.13.0+cu132
 #mpmath==1.3.0
 #typing-extensions==4.16.0
 #sympy==1.14.0
-pillow==12.3.0
+pillow==13.0.0
 #numpy==2.5.3
 #networkx==3.6.1
 #MarkupSafe==3.0.2
