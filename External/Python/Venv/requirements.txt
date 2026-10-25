@@ -13,9 +13,9 @@ sympy==1.14.0
 networkx==3.6.1
 MarkupSafe==3.0.2
 fsspec==2026.7.0
-filelock==3.32.5
+filelock==4.2.1
 jinja2==3.1.6
-setuptools==84.0.0
+setuptools==84.1.0
 torch==2.13.0+cu132
 
 #mpmath==1.3.0
@@ -26,9 +26,9 @@ pillow==13.0.0
 #networkx==3.6.1
 #MarkupSafe==3.0.2
 #fsspec==2026.7.0
-#filelock==3.32.5
+#filelock==4.2.1
 #jinja2==3.1.6
-#setuptools==84.0.0
+#setuptools==84.1.0
 #torch==2.12.1+cu132
 torchvision==0.28.0+cu132
 
@@ -38,10 +38,10 @@ safetensors==0.8.0
 colorama==0.4.6
 tqdm==4.70.0
 
-certifi==2026.7.22
+certifi==2026.10.19
 charset-normalizer==3.5.1
 #colorama==0.4.6
-#filelock==3.32.5
+#filelock==4.2.1
 idna==3.19
 requests==2.34.2
 #tqdm==4.70.0
