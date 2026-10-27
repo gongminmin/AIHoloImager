@@ -3,6 +3,8 @@
 
 #include "PrefixSumScanner.hpp"
 
+#include <format>
+
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -53,7 +55,8 @@ namespace AIHoloImager
                 buff_size = DivUp(buff_size, BlockDim);
 
                 scan_scanned_buffers.push_back(GpuBuffer(gpu_system_, buff_size * elem_size, GpuHeap::Default,
-                    GpuResourceFlag::UnorderedAccess, std::format("PrefixSumScanner.scan_sum_buffer_{}", i)));
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                    std::format("PrefixSumScanner.scan_sum_buffer_{}", i)));
             }
 
             GpuComputePipeline* prefix_sum_pipeline;
