@@ -3,6 +3,8 @@
 
 #include "Sorter.hpp"
 
+#include <format>
+
 #include "Base/ErrorHandling.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
@@ -81,7 +83,8 @@ namespace AIHoloImager
                 Unreachable("Unsupported key format");
             }
 
-            if (intermediate_cache_.num_items_allocated < num_items)
+            if ((intermediate_cache_.num_items_allocated < num_items) || (intermediate_cache_.key_size < key_size) ||
+                (intermediate_cache_.value_size < value_size))
             {
                 for (size_t i = 0; i < std::size(intermediate_cache_.ping_pong_keys); ++i)
                 {
@@ -101,10 +104,6 @@ namespace AIHoloImager
                 intermediate_cache_.partition_histogram_uav =
                     GpuUnorderedAccessView(gpu_system_, intermediate_cache_.partition_histogram, GpuFormat::R32_Uint);
 
-                intermediate_cache_.num_items_allocated = num_items;
-            }
-            if (intermediate_cache_.key_size < key_size)
-            {
                 intermediate_cache_.global_histogram = GpuBuffer(gpu_system_, key_size * NumDigitBins * sizeof(uint32_t), GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "Sorter.intermediate_cache_.global_histogram");
 
@@ -113,7 +112,9 @@ namespace AIHoloImager
                 intermediate_cache_.global_histogram_uav =
                     GpuUnorderedAccessView(gpu_system_, intermediate_cache_.global_histogram, GpuFormat::R32_Uint);
 
+                intermediate_cache_.num_items_allocated = num_items;
                 intermediate_cache_.key_size = key_size;
+                intermediate_cache_.value_size = value_size;
             }
 
             {
@@ -265,6 +266,7 @@ namespace AIHoloImager
         {
             uint32_t num_items_allocated = 0;
             uint32_t key_size = 0;
+            uint32_t value_size = 0;
 
             GpuBuffer ping_pong_keys[2];
             GpuBuffer ping_pong_values[2];
