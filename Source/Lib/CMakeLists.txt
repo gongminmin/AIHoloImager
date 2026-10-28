@@ -126,15 +126,6 @@ set(aihi_files
     Source/MeshOpt/MeshOptimizer.hpp
     Source/MeshSimp/MeshSimplification.cpp
     Source/MeshSimp/MeshSimplification.hpp
-    Source/PrefixSumScanner/Shader/ApplySumCs.hlslh
-    Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl
-    Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl
-    Source/PrefixSumScanner/Shader/PrefixSumBlock.hlslh
-    Source/PrefixSumScanner/Shader/PrefixSumCs.hlslh
-    Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl
-    Source/PrefixSumScanner/Shader/PrefixSumUintCs.hlsl
-    Source/PrefixSumScanner/PrefixSumScanner.cpp
-    Source/PrefixSumScanner/PrefixSumScanner.hpp
     Source/Python/PythonSystem.cpp
     Source/Python/PythonSystem.hpp
     Source/Python/PythonSystem.py
@@ -153,18 +144,6 @@ set(aihi_files
     Source/SfM/PointCloudEstimator.py
     Source/SfM/StructureFromMotion.cpp
     Source/SfM/StructureFromMotion.hpp
-    Source/Sorter/Shader/DownsweepCs.hlslh
-    Source/Sorter/Shader/DownsweepCs_Uint_Uint.hlsl
-    Source/Sorter/Shader/DownsweepCs_Uint2_Uint.hlsl
-    Source/Sorter/Shader/ScanCs.hlslh
-    Source/Sorter/Shader/ScanCs_Uint_Uint.hlsl
-    Source/Sorter/Shader/ScanCs_Uint2_Uint.hlsl
-    Source/Sorter/Shader/SortCommon.hlslh
-    Source/Sorter/Shader/UpsweepCs.hlslh
-    Source/Sorter/Shader/UpsweepCs_Uint_Uint.hlsl
-    Source/Sorter/Shader/UpsweepCs_Uint2_Uint.hlsl
-    Source/Sorter/Sorter.cpp
-    Source/Sorter/Sorter.hpp
     Source/SuperRes/RealESrGan/SrVggNetCompact.py
     Source/SuperRes/RealESrGan/__init__.py
     Source/SuperRes/Shader/BlendCs.hlsl
@@ -235,18 +214,8 @@ AddShaderFile(Source/MeshOpt/Shader/DilateCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/ExtractMaskCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/MergeTextureCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshOpt/Shader/TransformMeshCs.hlsl "cs" "main")
-AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUint2Cs.hlsl "cs" "main")
-AddShaderFile(Source/PrefixSumScanner/Shader/ApplySumUintCs.hlsl "cs" "main")
-AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUint2Cs.hlsl "cs" "main")
-AddShaderFile(Source/PrefixSumScanner/Shader/PrefixSumUintCs.hlsl "cs" "main")
 AddShaderFile(Source/SfM/Shader/GrayCs.hlsl "cs" "main")
 AddShaderFile(Source/SfM/Shader/UndistortCs.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/DownsweepCs_Uint2_Uint.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/ScanCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/ScanCs_Uint2_Uint.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/UpsweepCs_Uint_Uint.hlsl "cs" "main")
-AddShaderFile(Source/Sorter/Shader/UpsweepCs_Uint2_Uint.hlsl "cs" "main")
 AddShaderFile(Source/SuperRes/Shader/BlendCs.hlsl "cs" "main")
 AddShaderFile(Source/SuperRes/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/TextureRecon/Shader/FlattenVs.hlsl "vs" "main")
@@ -300,6 +269,7 @@ target_link_libraries(AIHoloImagerLib
         xatlas
         AIHoloImagerBase
         AIHoloImagerGpuSystem
+        AIHoloImagerGpuComputationLib
         AIHoloImagerTensorConverter
 )
 

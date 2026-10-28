@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 Minmin Gong
 //
 
-#include "PrefixSumScanner.hpp"
+#include "GpuComputationLib/PrefixSumScanner/PrefixSumScanner.hpp"
 
 #include <format>
 
@@ -20,7 +20,7 @@ namespace AIHoloImager
     class PrefixSumScanner::Impl
     {
     public:
-        explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
+        explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
             {
                 const ShaderInfo shader = {DEFINE_SHADER(PrefixSumUintCs)};
@@ -158,7 +158,7 @@ namespace AIHoloImager
     };
 
     PrefixSumScanner::PrefixSumScanner() noexcept = default;
-    PrefixSumScanner::PrefixSumScanner(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
+    PrefixSumScanner::PrefixSumScanner(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
     {
     }
 

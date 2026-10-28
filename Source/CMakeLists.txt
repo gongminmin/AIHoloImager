@@ -78,6 +78,7 @@ function(AddShaderFile file_name shader_type entry_point)
                 "${CMAKE_CURRENT_LIST_DIR}/${file_name}"
                 -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source"
                 -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader"
+                -I "${PROJECT_SOURCE_DIR}/Source/GpuComputationLib/Source"
                 ${curr_compile_option}
             COMMENT "Compiling ${file_name}..."
             MAIN_DEPENDENCY ${file_name}
@@ -87,6 +88,7 @@ function(AddShaderFile file_name shader_type entry_point)
 endfunction()
 
 add_subdirectory(Base)
+add_subdirectory(GpuComputationLib)
 add_subdirectory(GpuSystem)
 add_subdirectory(GpuDiffRender)
 add_subdirectory(TensorConverter)

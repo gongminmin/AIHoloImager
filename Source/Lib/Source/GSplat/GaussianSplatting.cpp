@@ -16,7 +16,7 @@
 #include "AIHoloImager/Mesh.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuSystem.hpp"
-#include "Sorter/Sorter.hpp"
+#include "GpuComputationLib/Sorter/Sorter.hpp"
 #include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/GSplat/BlendCs.h"
@@ -38,7 +38,7 @@ namespace AIHoloImager
     class GaussianSplatting::Impl
     {
     public:
-        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), sorter_(aihi)
+        explicit Impl(AIHoloImagerInternal& aihi) : aihi_(aihi), sorter_(aihi.GpuSystemInstance())
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 

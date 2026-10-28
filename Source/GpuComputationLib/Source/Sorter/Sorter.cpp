@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
-#include "Sorter.hpp"
+#include "GpuComputationLib/Sorter/Sorter.hpp"
 
 #include <format>
 
@@ -21,7 +21,7 @@ namespace AIHoloImager
     class Sorter::Impl
     {
     public:
-        explicit Impl(AIHoloImagerInternal& aihi) : gpu_system_(aihi.GpuSystemInstance())
+        explicit Impl(GpuSystem& gpu_system) : gpu_system_(gpu_system)
         {
             {
                 const ShaderInfo shader = {DEFINE_SHADER(UpsweepCs_Uint2_Uint)};
@@ -283,7 +283,7 @@ namespace AIHoloImager
     };
 
     Sorter::Sorter() noexcept = default;
-    Sorter::Sorter(AIHoloImagerInternal& aihi) : impl_(std::make_unique<Impl>(aihi))
+    Sorter::Sorter(GpuSystem& gpu_system) : impl_(std::make_unique<Impl>(gpu_system))
     {
     }
 
