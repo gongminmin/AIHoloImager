@@ -19,17 +19,16 @@ cbuffer param_cb
 
     float3 model_scale;
     float4 model_rotation;
-    float3 model_translation;
 
     float4x4 mv_mtx;
-    float4x4 view_proj_mtx;
+    float4x4 mvp_mtx;
 
     float2 focal;
     float2 tan_fov;
 
     uint32_t2 vp_width_height;
 
-    float3 eye_pos;
+    float3 eye_pos_os;
 };
 
 Buffer<float3> pos_buff;
@@ -126,9 +125,9 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
 }
 
 template <uint32_t Degrees>
-float3 ComputeColorFromSh(uint32_t index, float3 pos, float3 eye_pos, Buffer<float3> sh_buff)
+float3 ComputeColorFromSh(uint32_t index, float3 pos_os, float3 eye_pos_os, Buffer<float3> sh_buff)
 {
-    const float3 dir = normalize(pos - eye_pos);
+    const float3 dir = normalize(pos_os - eye_pos_os);
 
     static const uint32_t NumCoeffs = (Degrees + 1) * (Degrees + 1);
     float basis[16];
@@ -195,8 +194,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     if (index < num_gaussians)
     {
         const float3 pos_os = pos_buff[index];
-        const float3 pos_ws = TransformQuat(pos_os * model_scale, model_rotation) + model_translation;
-        const float4 pos_ps = mul(float4(pos_ws, 1), view_proj_mtx);
+        const float4 pos_ps = mul(float4(pos_os, 1), mvp_mtx);
 
         depth = pos_ps.w;
 
@@ -244,16 +242,16 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
                             switch (sh_degrees)
                             {
                             case 0:
-                                color = ComputeColorFromSh<0>(index, pos_ws, eye_pos, sh_buff);
+                                color = ComputeColorFromSh<0>(index, pos_os, eye_pos_os, sh_buff);
                                 break;
                             case 1:
-                                color = ComputeColorFromSh<1>(index, pos_ws, eye_pos, sh_buff);
+                                color = ComputeColorFromSh<1>(index, pos_os, eye_pos_os, sh_buff);
                                 break;
                             case 2:
-                                color = ComputeColorFromSh<2>(index, pos_ws, eye_pos, sh_buff);
+                                color = ComputeColorFromSh<2>(index, pos_os, eye_pos_os, sh_buff);
                                 break;
                             case 3:
-                                color = ComputeColorFromSh<3>(index, pos_ws, eye_pos, sh_buff);
+                                color = ComputeColorFromSh<3>(index, pos_os, eye_pos_os, sh_buff);
                                 break;
                             }
                             conic_opacity = float4(cov.zyx / det, opacity);

@@ -135,7 +135,8 @@ namespace AIHoloImager
                 glm::vec4 perspective;
                 glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
 
-                const glm::vec4 eye_pos = glm::vec4(0, 0, 0, 1) * glm::inverse(view_mtx);
+                const glm::mat4x4 mv_mtx = view_mtx * model_mtx;
+                const glm::vec4 eye_pos_os = glm::vec4(0, 0, 0, 1) * glm::inverse(mv_mtx);
 
                 GpuConstantBufferOfType<PreprocessConstantBuffer> preprocess_cb(gpu_system, "preprocess_cb");
                 preprocess_cb->num_gaussians = gaussians.num_gaussians;
@@ -144,13 +145,12 @@ namespace AIHoloImager
                 preprocess_cb->kernel_size = kernel_size;
                 preprocess_cb->model_scale = scale;
                 preprocess_cb->model_rotation = rotation;
-                preprocess_cb->model_translation = translation;
-                preprocess_cb->mv_mtx = glm::transpose(view_mtx * model_mtx);
-                preprocess_cb->view_proj_mtx = glm::transpose(proj_mtx * view_mtx);
+                preprocess_cb->mv_mtx = glm::transpose(mv_mtx);
+                preprocess_cb->mvp_mtx = glm::transpose(proj_mtx * mv_mtx);
                 preprocess_cb->focal = {focal_x, focal_y};
                 preprocess_cb->tan_fov = {tan_fov_x, tan_fov_y};
                 preprocess_cb->vp_width_height = {viewport.width, viewport.height};
-                preprocess_cb->eye_pos = glm::vec3(eye_pos.x, eye_pos.y, eye_pos.z) / eye_pos.w;
+                preprocess_cb->eye_pos_os = glm::vec3(eye_pos_os.x, eye_pos_os.y, eye_pos_os.z) / eye_pos_os.w;
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system, preprocess_cb);
 
@@ -287,11 +287,9 @@ namespace AIHoloImager
             glm::vec3 model_scale;
             float padding0;
             glm::quat model_rotation;
-            glm::vec3 model_translation;
-            float padding1;
 
             glm::mat4x4 mv_mtx;
-            glm::mat4x4 view_proj_mtx;
+            glm::mat4x4 mvp_mtx;
 
             glm::vec2 focal;
             glm::vec2 tan_fov;
@@ -299,7 +297,7 @@ namespace AIHoloImager
             glm::uvec2 vp_width_height;
             glm::uvec2 padding2;
 
-            glm::vec3 eye_pos;
+            glm::vec3 eye_pos_os;
             float padding3;
         };
         GpuComputePipeline preprocess_pipeline_;
