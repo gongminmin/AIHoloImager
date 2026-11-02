@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 Minmin Gong
 //
 
-#include "Util/Shader/Utils.hlslh"
+#include "ColorSpace.hlslh"
 
 static const uint32_t BlockDim = 16;
 

@@ -57,8 +57,10 @@ set(aihi_gpu_system_files
     Source/Internal/GpuVertexLayoutInternal.cpp
     Source/Internal/GpuVertexLayoutInternal.hpp
     Source/Shader/Atomic.hlslh
+    Source/Shader/ColorSpace.hlslh
     Source/Shader/GenMipmapCs.hlsl
     Source/Shader/Platform.hlslh
+    Source/Shader/Utils.hlslh
     Source/GpuBuffer.cpp
     Source/GpuCommandList.cpp
     Source/GpuCommandPool.cpp

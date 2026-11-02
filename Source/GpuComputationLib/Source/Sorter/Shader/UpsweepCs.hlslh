@@ -4,7 +4,7 @@
 #pragma once
 
 #include "SortCommon.hlslh"
-#include "Util/Shader/Utils.hlslh"
+#include "Utils.hlslh"
 
 static const uint32_t BlockDim = 256;
 

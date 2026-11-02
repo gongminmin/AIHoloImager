@@ -1,7 +1,8 @@
-// Copyright (c) 2025 Minmin Gong
+// Copyright (c) 2025-2026 Minmin Gong
 //
 
 #include "Common.hlslh"
+#include "Utils.hlslh"
 
 static const uint32_t BlockDim = 32;
 

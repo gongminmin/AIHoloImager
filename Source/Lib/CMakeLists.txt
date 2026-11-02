@@ -160,7 +160,6 @@ set(aihi_files
     Source/TextureRecon/TextureReconstruction.hpp
     Source/Util/Shader/Lanczos.hlslh
     Source/Util/Shader/Nn.hlslh
-    Source/Util/Shader/Utils.hlslh
     Source/Util/BoundingBox.cpp
     Source/Util/BoundingBox.hpp
     Source/Util/CameraUtil.cpp
