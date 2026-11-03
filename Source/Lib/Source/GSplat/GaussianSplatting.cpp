@@ -163,10 +163,6 @@ namespace AIHoloImager
                     const uint32_t clear_value[] = {0, 0, 0, 0};
                     cmd_list.Clear(num_visible_gaussians_uav, clear_value);
                 }
-                {
-                    const uint32_t clear_value[] = {0xFFFFFFFFU, 0xFFFFFFFFU, 0xFFFFFFFFU, 0xFFFFFFFFU};
-                    cmd_list.Clear(visible_key_uav, clear_value);
-                }
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &preprocess_cbv},

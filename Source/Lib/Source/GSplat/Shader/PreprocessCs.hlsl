@@ -6,9 +6,6 @@
 static const uint32_t BlockDim = 256;
 static const float AlphaThreshold = 1 / 255.0f;
 
-#define DATA_TYPE uint32_t
-#include "PrefixSumScanner/Shader/PrefixSumBlock.hlslh"
-
 cbuffer param_cb
 {
     uint32_t num_gaussians;
@@ -153,16 +150,41 @@ float3 ComputeColorFromSh(uint32_t index, float3 pos_os, float3 eye_pos_os, Buff
     return max(rgb, 0);
 }
 
-groupshared uint32_t group_offset;
+static const uint32_t MinWaveSize = 16;
+groupshared uint32_t group_sum[BlockDim / MinWaveSize];
+
+uint32_t SumBlock(uint32_t group_index, uint32_t value)
+{
+    const uint32_t lane_index = WaveGetLaneIndex();
+    const uint32_t wave_size = WaveGetLaneCount();
+    const uint32_t wave_index = group_index / wave_size;
+    const uint32_t num_waves = BlockDim / wave_size;
+
+    const uint32_t sum = WaveActiveSum(value);
+    if (lane_index == 0)
+    {
+        group_sum[wave_index] = sum;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    if (group_index < num_waves)
+    {
+        const uint32_t wave_sum = group_sum[group_index];
+        group_sum[0] = WaveActiveSum(wave_sum);
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    return group_sum[0];
+}
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
 {
     uint32_t visible = 0;
     float depth;
-    float4 screen_pos_extents;
-    float3 color;
-    float4 conic_opacity;
+    float4 screen_pos_extents = 0;
+    float3 color = 0;
+    float4 conic_opacity = 0;
 
     const uint32_t index = dtid.x;
 
@@ -243,24 +265,23 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         }
     }
 
-    const uint32_t prefix_sum = ScanBlock(group_index, visible);
-    if (group_index == BlockDim - 1)
+    const uint32_t sum = SumBlock(group_index, visible);
+    if (group_index == 0)
     {
-        InterlockedAdd(num_visible_gaussians_buff[0], prefix_sum + visible, group_offset);
+        InterlockedAdd(num_visible_gaussians_buff[0], sum);
     }
     GroupMemoryBarrierWithGroupSync();
 
-    if (visible)
+    if (index < num_gaussians)
     {
-        const uint32_t offset = group_offset + prefix_sum;
-        visible_key_buff[offset] = asuint(depth);
-        visible_id_buff[offset] = offset;
+        visible_key_buff[index] = visible ? asuint(depth) : 0xFFFFFFFFU;
+        visible_id_buff[index] = index;
 
-        screen_pos_extents_buff[offset] = screen_pos_extents;
-        conic_opacity_buff[offset] = conic_opacity;
+        screen_pos_extents_buff[index] = screen_pos_extents;
+        conic_opacity_buff[index] = conic_opacity;
 
-        color_buff[offset * 3 + 0] = color.x;
-        color_buff[offset * 3 + 1] = color.y;
-        color_buff[offset * 3 + 2] = color.z;
+        color_buff[index * 3 + 0] = color.x;
+        color_buff[index * 3 + 1] = color.y;
+        color_buff[index * 3 + 2] = color.z;
     }
 }
