@@ -128,13 +128,6 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 256;
 
-                glm::vec3 scale;
-                glm::quat rotation;
-                glm::vec3 translation;
-                glm::vec3 skew;
-                glm::vec4 perspective;
-                glm::decompose(model_mtx, scale, rotation, translation, skew, perspective);
-
                 const glm::mat4x4 mv_mtx = view_mtx * model_mtx;
                 const glm::vec4 eye_pos_os = glm::vec4(0, 0, 0, 1) * glm::inverse(mv_mtx);
 
@@ -143,8 +136,6 @@ namespace AIHoloImager
                 preprocess_cb->sh_degrees = gaussians.sh_degrees;
                 preprocess_cb->num_coeffs = NumCoefficientsFromShDegrees(gaussians.sh_degrees);
                 preprocess_cb->kernel_size = kernel_size;
-                preprocess_cb->model_scale = scale;
-                preprocess_cb->model_rotation = rotation;
                 preprocess_cb->mv_mtx = glm::transpose(mv_mtx);
                 preprocess_cb->mvp_mtx = glm::transpose(proj_mtx * mv_mtx);
                 preprocess_cb->focal = {focal_x, focal_y};
@@ -283,10 +274,6 @@ namespace AIHoloImager
             uint32_t sh_degrees;
             uint32_t num_coeffs;
             float kernel_size;
-
-            glm::vec3 model_scale;
-            float padding0;
-            glm::quat model_rotation;
 
             glm::mat4x4 mv_mtx;
             glm::mat4x4 mvp_mtx;

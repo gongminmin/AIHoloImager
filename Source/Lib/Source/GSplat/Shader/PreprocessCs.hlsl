@@ -16,9 +16,6 @@ cbuffer param_cb
     uint32_t num_coeffs;
     float kernel_size;
 
-    float3 model_scale;
-    float4 model_rotation;
-
     float4x4 mv_mtx;
     float4x4 mvp_mtx;
 
@@ -156,21 +153,6 @@ float3 ComputeColorFromSh(uint32_t index, float3 pos_os, float3 eye_pos_os, Buff
     return max(rgb, 0);
 }
 
-float4 MulQuat(float4 lhs, float4 rhs)
-{
-    float4 c, r;
-    c.xyz = cross(rhs.xyz, lhs.xyz);
-    c.w = -dot(rhs.xyz, lhs.xyz);
-    r = lhs * rhs.w + c;
-    r.xyz = rhs.xyz * lhs.w + r.xyz;
-    return r;
-}
-
-float3 TransformQuat(float3 v, float4 quat)
-{
-    return v + cross(quat.xyz, cross(quat.xyz, v) + quat.w * v) * 2;
-}
-
 groupshared uint32_t group_offset;
 
 [numthreads(BlockDim, 1, 1)]
@@ -200,8 +182,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         [branch]
         if ((depth > 0.2f) && all(bool4(abs(pos_ps.xy) < abs(1.3f * pos_ps.w), pos_ps.z >= 0, pos_ps.z <= pos_ps.w)))
         {
-            const float3 scale = scale_buff[index] * model_scale;
-            const float4 rotation = MulQuat(rotation_buff[index].yzwx, model_rotation).wxyz;
+            const float3 scale = scale_buff[index];
+            const float4 rotation = rotation_buff[index];
 
             float cov_3d[6];
             ComputeCov3D(scale, rotation, cov_3d);
