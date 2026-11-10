@@ -3,12 +3,56 @@
 
 #include "PythonSystem.hpp"
 
+#include <format>
+#include <stdexcept>
+#include <string>
+
 namespace AIHoloImager
 {
     PyObjectPtr MakePyObjectPtr(PyObject* p)
     {
         return PyObjectPtr(p);
     }
+
+    namespace
+    {
+        std::string PyErrorToString()
+        {
+            const PyObjectPtr exc = MakePyObjectPtr(PyErr_GetRaisedException());
+            if (exc == nullptr)
+            {
+                return "Unknown Python error";
+            }
+
+            std::string message;
+            if (PyObject* const str = PyObject_Str(exc.get()); str != nullptr)
+            {
+                const PyObjectPtr str_ptr = MakePyObjectPtr(str);
+                if (const char* const utf8 = PyUnicode_AsUTF8(str_ptr.get()); utf8 != nullptr)
+                {
+                    message = utf8;
+                }
+            }
+
+            const char* const type_name = Py_TYPE(exc.get())->tp_name;
+            if (message.empty())
+            {
+                return type_name;
+            }
+
+            return std::format("{}: {}", type_name, message);
+        }
+
+        PyObjectPtr CheckPyResult(PyObject* p)
+        {
+            if (p == nullptr)
+            {
+                throw std::runtime_error(PyErrorToString());
+            }
+
+            return MakePyObjectPtr(p);
+        }
+    } // namespace
 
     class PythonSystem::Impl
     {
@@ -80,30 +124,42 @@ namespace AIHoloImager
         auto init_py_sys_method = this->GetAttr(*py_sys, "InitPySys");
 
         this->CallObject(*init_py_sys_method, std::move(device));
+
+        auto get_device_name_method = this->GetAttr(*py_sys, "ComputeDeviceName");
+        auto py_device_name = this->CallObject(*get_device_name_method);
+        if (const char* const device_name = PyUnicode_AsUTF8(py_device_name.get()); device_name != nullptr)
+        {
+            compute_device_name_ = device_name;
+        }
     }
 
     PythonSystem::~PythonSystem() noexcept = default;
+
+    std::string PythonSystem::ComputeDeviceName() const
+    {
+        return compute_device_name_;
+    }
 
     PythonSystem::PythonSystem(PythonSystem&& other) noexcept = default;
     PythonSystem& PythonSystem::operator=(PythonSystem&& other) noexcept = default;
 
     PyObjectPtr PythonSystem::Import(const char* name)
     {
-        return MakePyObjectPtr(PyImport_ImportModule(name));
+        return CheckPyResult(PyImport_ImportModule(name));
     }
 
     PyObjectPtr PythonSystem::GetAttr(PyObject& module, const char* name)
     {
-        return MakePyObjectPtr(PyObject_GetAttrString(&module, name));
+        return CheckPyResult(PyObject_GetAttrString(&module, name));
     }
 
     PyObjectPtr PythonSystem::CallObject(PyObject& object)
     {
-        return MakePyObjectPtr(PyObject_CallObject(&object, nullptr));
+        return CheckPyResult(PyObject_CallObject(&object, nullptr));
     }
     PyObjectPtr PythonSystem::CallObjectTuple(PyObject& object, PyObject& tuple_args)
     {
-        return MakePyObjectPtr(PyObject_CallObject(&object, &tuple_args));
+        return CheckPyResult(PyObject_CallObject(&object, &tuple_args));
     }
 
     PyObjectPtr PythonSystem::MakeObject(int32_t value)

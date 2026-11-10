@@ -36,7 +36,7 @@ namespace AIHoloImager
     public:
         Impl(DeviceType device, Api api, const std::filesystem::path& tmp_dir, bool gpu_debug)
             : exe_dir_(RetrieveExeDir()), tmp_dir_(tmp_dir), gpu_system_(Convert(api), ConfirmDevice, true, gpu_debug),
-              python_system_(GetDeviceName(device), exe_dir_), tensor_converter_(gpu_system_, GetDeviceName(device))
+              python_system_(GetDeviceName(device), exe_dir_), tensor_converter_(gpu_system_, python_system_.ComputeDeviceName())
         {
         }
 
