@@ -257,6 +257,20 @@ endfunction()
 
 function(PullLfsFile name path)
     set(external_lib_folder "${CMAKE_CURRENT_SOURCE_DIR}/${name}")
+
+    set(lfs_file "${external_lib_folder}/${path}")
+    set(need_pull TRUE)
+    if(EXISTS "${lfs_file}")
+        file(READ "${lfs_file}" lfs_header LIMIT 64)
+        if(NOT lfs_header MATCHES "^version https://git-lfs")
+            set(need_pull FALSE)
+        endif()
+    endif()
+
+    if(NOT need_pull)
+        return()
+    endif()
+
     message(STATUS "Pulling ${path}...")
     execute_process(COMMAND "${GIT_EXECUTABLE}" "lfs" "pull" "--include" "${path}" WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE pull_err)
     if(pull_err)

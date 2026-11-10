@@ -14,17 +14,14 @@ else()
     UpdateExternalLib(NAME "TRELLIS-image-large"
                       URL "https://huggingface.co/microsoft/TRELLIS-image-large"
                       REV "2476b8db9c8484a1bbd16772c24ff88890f2b19a"
-                      NEED_CHECKOUT need_checkout
     )
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
-    if(need_checkout)
-        PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16.safetensors")
-        PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_mesh_swin8_B_64l8m256c_fp16.safetensors")
-        PullLfsFile("TRELLIS-image-large" "ckpts/slat_flow_img_dit_L_64l8p2_fp16.safetensors")
-        PullLfsFile("TRELLIS-image-large" "ckpts/ss_dec_conv3d_16l8_fp16.safetensors")
-        PullLfsFile("TRELLIS-image-large" "ckpts/ss_flow_img_dit_L_16l8_fp16.safetensors")
-    endif()
+    PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16.safetensors")
+    PullLfsFile("TRELLIS-image-large" "ckpts/slat_dec_mesh_swin8_B_64l8m256c_fp16.safetensors")
+    PullLfsFile("TRELLIS-image-large" "ckpts/slat_flow_img_dit_L_64l8p2_fp16.safetensors")
+    PullLfsFile("TRELLIS-image-large" "ckpts/ss_dec_conv3d_16l8_fp16.safetensors")
+    PullLfsFile("TRELLIS-image-large" "ckpts/ss_flow_img_dit_L_16l8_fp16.safetensors")
 
     set(deployed_files )
 
