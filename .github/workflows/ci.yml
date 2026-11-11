@@ -1,0 +1,151 @@
+name: CI
+
+# Mirrors azure-pipelines.yml:
+#   1. CodeFormatting: clang-format the whole tree and fail if anything changed.
+#   2. Build: VS 2026 (vc145) and VS 2022 (vc143), each in Debug and Release, with Ninja.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  code-formatting:
+    name: Code formatting
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      # Ubuntu 24.04 ships clang-format 18, which is what the Azure pipeline formats with.
+      # Keep this pinned so a newer distro default cannot silently reformat the tree.
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          clang-format --version
+
+      - name: Check code formatting
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          stderr_log=$(mktemp)
+
+          find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i 2>>"${stderr_log}"
+
+          if ! git diff --exit-code 2>>"${stderr_log}"; then
+            echo "::error::Code is not clang-format clean. Run clang-format and commit the result."
+            exit 1
+          fi
+
+          # Equivalent of Azure's failOnStderr: true.
+          if [ -s "${stderr_log}" ]; then
+            echo "::error::A command wrote to stderr:"
+            cat "${stderr_log}"
+            exit 1
+          fi
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: code-formatting
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 360
+    strategy:
+      # Report every configuration instead of stopping at the first failure.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows_vc145_Debug
+            os: windows-2025-vs2026
+            configuration: Debug
+            folder: 18
+          - name: Windows_vc145_Release
+            os: windows-2025-vs2026
+            configuration: Release
+            folder: 18
+            # Only this leg gets a Build cache. External is ~3.6 GB and a per-config Build is
+            # ~4.7 GB, against a 10 GB per-repository cache quota, so caching all four legs
+            # would evict itself every run. One Build cache plus the shared External fits.
+            build_cache: true
+          - name: Windows_vc143_Debug
+            os: windows-2022
+            configuration: Debug
+            folder: 2022
+          - name: Windows_vc143_Release
+            os: windows-2022
+            configuration: Release
+            folder: 2022
+
+    env:
+      # The root CMakeLists.txt treats this as the "running in CI" marker. Azure Pipelines
+      # defines it automatically; here it must be set explicitly so that is_ci_env stays TRUE,
+      # which skips multi-gigabyte model downloads and disables LTCG to avoid OOM.
+      BUILD_BUILDID: ${{ github.run_id }}
+      # The runner has a 14 GB disk and the torch wheels are large, so don't keep a pip cache.
+      PIP_NO_CACHE_DIR: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      # Ninja is preinstalled on the Windows images, unlike the Azure agents which install it.
+      - name: Verify Ninja
+        run: ninja --version
+
+      # ApplyPatch runs "git am" for the external libraries' patches.
+      - name: Configure git
+        run: |
+          git config --global user.email "dummy@example.com"
+          git config --global user.name "Dummy Name"
+
+      - name: Report free disk space
+        shell: pwsh
+        run: |
+          Get-PSDrive C | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free / 1GB, 1)}}, @{n='UsedGB';e={[math]::Round($_.Used / 1GB, 1)}}
+
+      # External holds the git clones and the torch venv. None of it depends on the compiler
+      # or the configuration, so all four legs share one cache instead of four ~3.6 GB copies.
+      - name: Cache External
+        uses: actions/cache@v6
+        with:
+          path: External
+          key: External-${{ hashFiles('azure-pipelines.yml', 'External/CMakeLists.txt', 'External/*/CMakeLists.txt', '.github/workflows/ci.yml') }}
+          restore-keys: |
+            External-
+
+      - name: Cache Build
+        if: matrix.build_cache
+        uses: actions/cache@v6
+        with:
+          path: Build
+          key: Build-${{ matrix.name }}-${{ hashFiles('azure-pipelines.yml', 'External/CMakeLists.txt', 'External/*/CMakeLists.txt', '.github/workflows/ci.yml') }}
+          restore-keys: |
+            Build-${{ matrix.name }}-
+
+      - name: Build
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\${{ matrix.folder }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          cmake -B Build -G Ninja . -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_LINKER=link
+          cmake --build Build -j
+
+      # Keep the cached Build directory small; it only needs the external libraries' artifacts.
+      - name: Remove uncached files
+        if: matrix.build_cache
+        shell: bash
+        run: |
+          rm -rf Build/bin
+          rm -rf Build/Source
