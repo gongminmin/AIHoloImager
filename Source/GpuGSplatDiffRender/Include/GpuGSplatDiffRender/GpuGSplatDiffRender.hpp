@@ -40,9 +40,16 @@ namespace AIHoloImager
 
         AIHI_GPU_GSPLAT_DIFF_RENDER_API GpuGSplatDiffRender& operator=(GpuGSplatDiffRender&& other) noexcept;
 
-        AIHI_GPU_GSPLAT_DIFF_RENDER_API void Render(GpuCommandList& cmd_list, const Gaussians& gaussians, const glm::mat4x4& model_mtx,
+        AIHI_GPU_GSPLAT_DIFF_RENDER_API void RenderFwd(GpuCommandList& cmd_list, const Gaussians& gaussians, const glm::mat4x4& model_mtx,
             const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx, const GpuViewport& viewport, float kernel_size,
             GpuTexture2D& rendered_image);
+        AIHI_GPU_GSPLAT_DIFF_RENDER_API void RenderFwd(GpuCommandList& cmd_list, const Gaussians& gaussians, const glm::mat4x4& model_mtx,
+            const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx, const GpuViewport& viewport, float kernel_size,
+            GpuBuffer& rendered_image, uint32_t width, uint32_t height, const glm::vec3& bg_color);
+        AIHI_GPU_GSPLAT_DIFF_RENDER_API void RenderBwd(GpuCommandList& cmd_list, const Gaussians& gaussians, const glm::mat4x4& model_mtx,
+            const glm::mat4x4& view_mtx, const glm::mat4x4& proj_mtx, const GpuViewport& viewport, float kernel_size,
+            const GpuBuffer& grad_image, GpuBuffer& grad_positions, GpuBuffer& grad_scales, GpuBuffer& grad_rotations, GpuBuffer& grad_dshs,
+            GpuBuffer& grad_opacities);
 
     private:
         class Impl;

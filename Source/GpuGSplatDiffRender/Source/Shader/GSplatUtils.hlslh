@@ -1,0 +1,22 @@
+// Copyright (c) 2026 Minmin Gong
+//
+
+#pragma once
+
+float2 Screen2Ndc(float2 screen, float2 size)
+{
+    const float2 ndc = screen / size * 2 - 1;
+    return float2(ndc.x, -ndc.y);
+}
+
+float3 ReadFloat3(RWBuffer<float> buff, uint32_t offset)
+{
+    return float3(buff[offset * 3 + 0], buff[offset * 3 + 1], buff[offset * 3 + 2]);
+}
+
+void WriteFloat3(RWBuffer<float> buff, uint32_t offset, float3 data)
+{
+    buff[offset * 3 + 0] = data.x;
+    buff[offset * 3 + 1] = data.y;
+    buff[offset * 3 + 2] = data.z;
+}

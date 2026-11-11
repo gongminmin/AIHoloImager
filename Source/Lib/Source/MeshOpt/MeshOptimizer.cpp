@@ -580,7 +580,7 @@ namespace AIHoloImager
                     const GpuViewport viewport = {projection.vp_offset.x - projection.image_offset.x,
                         projection.vp_offset.y - projection.image_offset.y, static_cast<float>(projection.full_width),
                         static_cast<float>(projection.full_height)};
-                    gsplat_.Render(cmd_list, gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, viewport,
+                    gsplat_.RenderFwd(cmd_list, gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, viewport,
                         GSplatKernelSize, *projection.image);
 
 #ifdef AIHI_KEEP_INTERMEDIATES

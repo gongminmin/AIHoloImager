@@ -363,6 +363,7 @@ if(MSVC)
     target_link_options(AIHoloImagerLib
         PUBLIC
             "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerTensorConverter>"
+            "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerGpuGSplatDiffRender>"
     )
 endif()
 

@@ -1,18 +1,13 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
+#include "GSplatUtils.hlslh"
 #include "Platform.hlslh"
 
 cbuffer param_cb
 {
     float4 viewport;
 };
-
-float2 Screen2Ndc(float2 screen, float2 size)
-{
-    const float2 ndc = screen / size * 2 - 1;
-    return float2(ndc.x, -ndc.y);
-}
 
 void main(float4 screen_pos_extents : TEXCOORD0,
           float3 color : TEXCOORD1,
