@@ -28,14 +28,15 @@
 #include <glm/vec3.hpp>
 
 #include "Base/Util.hpp"
-#include "GSplat/GaussianSplatting.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "GpuGSplatDiffRender/GpuGSplatDiffRender.hpp"
 #include "InvisibleFacesRemover.hpp"
 #include "MarchingCubes.hpp"
 #include "Util/BoundingBox.hpp"
+#include "Util/GSplatUtil.hpp"
 #include "Util/PerfProfiler.hpp"
 
 #include "CompiledShader/MeshGen/ApplyVertexColorCs.h"

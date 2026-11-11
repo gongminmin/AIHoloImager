@@ -36,14 +36,6 @@ set(aihi_files
     Source/DiffOptimizer/DiffOptimizer.cpp
     Source/DiffOptimizer/DiffOptimizer.hpp
     Source/DiffOptimizer/DiffOptimizer.py
-    Source/GSplat/Shader/BlendCs.hlsl
-    Source/GSplat/Shader/PreprocessCs.hlsl
-    Source/GSplat/Shader/RenderGs.hlsl
-    Source/GSplat/Shader/RenderPs.hlsl
-    Source/GSplat/Shader/RenderVs.hlsl
-    Source/GSplat/Shader/Sh.hlslh
-    Source/GSplat/GaussianSplatting.cpp
-    Source/GSplat/GaussianSplatting.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
@@ -168,6 +160,8 @@ set(aihi_files
     Source/Util/FormatConversion.hpp
     Source/Util/GpuMesh.cpp
     Source/Util/GpuMesh.hpp
+    Source/Util/GSplatUtil.cpp
+    Source/Util/GSplatUtil.hpp
     Source/Util/PerfProfiler.cpp
     Source/Util/PerfProfiler.hpp
 )
@@ -270,6 +264,7 @@ target_link_libraries(AIHoloImagerLib
         AIHoloImagerGpuSystem
         AIHoloImagerGpuComputationLib
         AIHoloImagerTensorConverter
+        AIHoloImagerGpuGSplatDiffRender
 )
 
 set(py_files

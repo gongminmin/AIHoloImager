@@ -19,7 +19,7 @@
 
 #include "Base/Util.hpp"
 #include "DiffOptimizer/DiffOptimizer.hpp"
-#include "GSplat/GaussianSplatting.hpp"
+#include "GpuGSplatDiffRender/GpuGSplatDiffRender.hpp"
 #include "MeshSimp/MeshSimplification.hpp"
 #include "SuperRes/SuperResolution.hpp"
 #include "TextureRecon/TextureReconstruction.hpp"
@@ -63,7 +63,7 @@ namespace AIHoloImager
     {
     public:
         explicit Impl(AIHoloImagerInternal& aihi)
-            : aihi_(aihi), super_res_(aihi), texture_recon_(aihi), gsplat_(aihi), diff_optimizer_(aihi)
+            : aihi_(aihi), super_res_(aihi), texture_recon_(aihi), gsplat_(aihi.GpuSystemInstance()), diff_optimizer_(aihi)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -572,11 +572,24 @@ namespace AIHoloImager
                     gpu_system.Execute(std::move(cmd_list));
                 }
 
-                const GpuViewport viewport = {projection.vp_offset.x - projection.image_offset.x,
-                    projection.vp_offset.y - projection.image_offset.y, static_cast<float>(projection.full_width),
-                    static_cast<float>(projection.full_height)};
-                gsplat_.Render(gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, viewport,
-                    GSplatKernelSize, *projection.image);
+                {
+                    auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Render);
+
+                    PerfRegion gsplat_perf(aihi_.PerfProfilerInstance(), "GaussianSplatting Render", &cmd_list);
+
+                    const GpuViewport viewport = {projection.vp_offset.x - projection.image_offset.x,
+                        projection.vp_offset.y - projection.image_offset.y, static_cast<float>(projection.full_width),
+                        static_cast<float>(projection.full_height)};
+                    gsplat_.Render(cmd_list, gaussians, glm::identity<glm::mat4x4>(), projection.view_mtx, projection.proj_mtx, viewport,
+                        GSplatKernelSize, *projection.image);
+
+#ifdef AIHI_KEEP_INTERMEDIATES
+                    projection.image->Transition(cmd_list, GpuResourceState::Common);
+#endif
+
+                    gsplat_perf.End();
+                    gpu_system.Execute(std::move(cmd_list));
+                }
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 {
@@ -959,7 +972,7 @@ namespace AIHoloImager
 #endif
 
         DiffOptimizer diff_optimizer_;
-        GaussianSplatting gsplat_;
+        GpuGSplatDiffRender gsplat_;
         SuperResolution super_res_;
         TextureReconstruction texture_recon_;
 
