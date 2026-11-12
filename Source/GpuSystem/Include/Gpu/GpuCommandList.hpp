@@ -162,12 +162,12 @@ namespace AIHoloImager
         AIHI_GPU_SYS_API void Upload(GpuTexture& dest, uint32_t sub_resource,
             const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
         AIHI_GPU_SYS_API void Upload(GpuTexture& dest, uint32_t sub_resource, const void* src_data, uint32_t src_size);
-        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(
+        [[nodiscard]] AIHI_GPU_SYS_API std::future<void> ReadBackAsync(
             const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func);
-        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size);
-        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
+        [[nodiscard]] AIHI_GPU_SYS_API std::future<void> ReadBackAsync(const GpuBuffer& src, void* dst_data, uint32_t dst_size);
+        [[nodiscard]] AIHI_GPU_SYS_API std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func);
-        AIHI_GPU_SYS_API [[nodiscard]] std::future<void> ReadBackAsync(
+        [[nodiscard]] AIHI_GPU_SYS_API std::future<void> ReadBackAsync(
             const GpuTexture& src, uint32_t sub_resource, void* dst_data, uint32_t dst_size);
 
         AIHI_GPU_SYS_API void Close();
