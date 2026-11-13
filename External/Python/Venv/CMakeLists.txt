@@ -1896,6 +1896,7 @@ set(copy_files
     torch/lib/cusparse64_12.dll
     torch/lib/libiomp5md.dll
     torch/lib/nvJitLink_130_0.dll
+    torch/lib/nvrtc64_130_0.dll
     torch/lib/nvToolsExt64_1.dll
     torch/lib/shm.dll
     torch/lib/torch_cpu.dll

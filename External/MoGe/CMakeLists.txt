@@ -14,13 +14,10 @@ else()
     UpdateExternalLib(NAME "moge-2-vitl"
                       URL "https://huggingface.co/Ruicheng/moge-2-vitl"
                       REV "39c4d5e957afe587e04eec59dc2bcc3be5ecd968"
-                      NEED_CHECKOUT need_checkout
     )
     set(ENV{GIT_LFS_SKIP_SMUDGE} ${lfs_skip})
 
-    if(need_checkout)
-        PullLfsFile("moge-2-vitl" "model.pt")
-    endif()
+    PullLfsFile("moge-2-vitl" "model.pt")
 
     set(deployed_files )
 

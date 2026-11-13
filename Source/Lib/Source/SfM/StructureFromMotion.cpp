@@ -483,9 +483,8 @@ namespace AIHoloImager
                     if (!py_init_finished_)
                     {
                         PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
-                        py_init_future_.wait();
-
                         py_init_finished_ = true;
+                        py_init_future_.get();
                     }
 
                     auto& gpu_system = aihi_.GpuSystemInstance();
@@ -619,9 +618,8 @@ namespace AIHoloImager
             if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
-                py_init_future_.wait();
-
                 py_init_finished_ = true;
+                py_init_future_.get();
             }
 
             SuperPointImageDescriber image_describer;
@@ -703,9 +701,8 @@ namespace AIHoloImager
             if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
-                py_init_future_.wait();
-
                 py_init_finished_ = true;
+                py_init_future_.get();
             }
 
             PairWiseMatches putative_matches;
@@ -1198,9 +1195,8 @@ namespace AIHoloImager
             if (!py_init_finished_)
             {
                 PerfRegion wait_perf(aihi_.PerfProfilerInstance(), "Wait for init");
-                py_init_future_.wait();
-
                 py_init_finished_ = true;
+                py_init_future_.get();
             }
 
             auto& python_system = aihi_.PythonSystemInstance();
@@ -1423,7 +1419,7 @@ namespace AIHoloImager
         PyObjectPtr matcher_match_method_;
 #endif
 
-        std::future<void> py_init_future_;
+        mutable std::future<void> py_init_future_;
         mutable bool py_init_finished_ = false;
 
         struct GrayConstantBuffer

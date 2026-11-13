@@ -232,17 +232,45 @@ function(ApplyPatch name patch)
     set(external_folder "${CMAKE_CURRENT_SOURCE_DIR}")
     set(external_lib_folder "${external_folder}/${name}")
 
-    execute_process(COMMAND "${GIT_EXECUTABLE}" "apply" "--check" "--ignore-space-change" "${patch}" WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE checkout_err)
-    if(checkout_err)
-        message(FATAL_ERROR "Fail to apply patch ${patch}. It's very likely your git is not correctly configured.")
-    else()
-        message(STATUS "Applying ${patch}...")
-        execute_process(COMMAND "${GIT_EXECUTABLE}" "am" "--ignore-space-change" "${patch}" WORKING_DIRECTORY ${external_lib_folder})
+    execute_process(COMMAND "${GIT_EXECUTABLE}" "apply" "--check" "--reverse" "--ignore-space-change" "${patch}" WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE is_applied)
+    if(NOT is_applied)
+        message(STATUS "${patch} is already applied.")
+        return()
+    endif()
+
+    execute_process(COMMAND "${GIT_EXECUTABLE}" "apply" "--check" "--ignore-space-change" "${patch}"
+                    WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE check_err
+                    OUTPUT_VARIABLE check_stdout ERROR_VARIABLE check_stderr)
+    if(check_err)
+        message(FATAL_ERROR "Fail to apply patch ${patch}. It's very likely your git is not correctly configured. ${check_stdout} ${check_stderr}")
+    endif()
+
+    message(STATUS "Applying ${patch}...")
+    # An explicit committer identity keeps "git am" working on machines without a configured git user.
+    execute_process(COMMAND "${GIT_EXECUTABLE}" "-c" "user.name=AIHoloImager" "-c" "user.email=aiholoimager@users.noreply.github.com"
+                            "am" "--ignore-space-change" "${patch}"
+                    WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE apply_err OUTPUT_VARIABLE apply_stdout ERROR_VARIABLE apply_stderr)
+    if(apply_err)
+        message(FATAL_ERROR "Fail to apply patch ${patch}, error: ${apply_err}. ${apply_stdout} ${apply_stderr}")
     endif()
 endfunction()
 
 function(PullLfsFile name path)
     set(external_lib_folder "${CMAKE_CURRENT_SOURCE_DIR}/${name}")
+
+    set(lfs_file "${external_lib_folder}/${path}")
+    set(need_pull TRUE)
+    if(EXISTS "${lfs_file}")
+        file(READ "${lfs_file}" lfs_header LIMIT 64)
+        if(NOT lfs_header MATCHES "^version https://git-lfs")
+            set(need_pull FALSE)
+        endif()
+    endif()
+
+    if(NOT need_pull)
+        return()
+    endif()
+
     message(STATUS "Pulling ${path}...")
     execute_process(COMMAND "${GIT_EXECUTABLE}" "lfs" "pull" "--include" "${path}" WORKING_DIRECTORY ${external_lib_folder} RESULT_VARIABLE pull_err)
     if(pull_err)
