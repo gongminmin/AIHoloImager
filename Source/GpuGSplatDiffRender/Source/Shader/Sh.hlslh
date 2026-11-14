@@ -8,22 +8,38 @@
 static const uint32_t MaxShDegrees = 3;
 static const uint32_t MaxNumCoeffs = (MaxShDegrees + 1) * (MaxShDegrees + 1);
 
+static const float Sh_C0 = 0.28209479177387814f; // 1/2 * sqrt(1/pi)
+static const float Sh_C1[] = {
+    -0.48860251190291992f, // sqrt(3/(4 * pi))
+    +0.48860251190291992f,
+    -0.48860251190291992f,
+};
+static const float Sh_C2[] = {
+    +1.09254843059207920f, // 1/2 * sqrt(15/pi)
+    -1.09254843059207920f,
+    +0.31539156525252005f, // 1/4 * sqrt(5/pi)
+    -1.09254843059207920f,
+    +0.54627421529603959f, // 1/4 * sqrt(15/pi)
+};
+static const float Sh_C3[] = {
+    -0.59004358992664352f, // 1/4 * sqrt(35/(2*pi))
+    +2.89061144264055420f, // 1/2 * sqrt(105/pi)
+    -0.45704579946446577f, // 1/4 * sqrt(21/(2*pi))
+    +0.37317633259011540f, // 1/4 * sqrt(7/pi)
+    -0.45704579946446577f,
+    +1.44530572132027710f, // 1/4 * sqrt(105/pi)
+    -0.59004358992664352f,
+};
+
 template <uint32_t N>
 void ShEvalBasis0Part(out float b[N])
 {
-    static const float Sh_C0 = 0.28209479177387814f; // 1/2 * sqrt(1/pi)
     b[0] = Sh_C0; // l=0,m=0
 }
 
 template <uint32_t N>
 void ShEvalBasis1Part(float3 dir, out float b[N])
 {
-    static const float Sh_C1[] = {
-        -0.48860251190291992f, // sqrt(3/(4 * pi))
-        +0.48860251190291992f,
-        -0.48860251190291992f,
-    };
-
     b[1] = Sh_C1[0] * dir.y; // l=1,m=-1
     b[2] = Sh_C1[1] * dir.z; // l=1,m=0
     b[3] = Sh_C1[2] * dir.x; // l=1,m=+1
@@ -32,14 +48,6 @@ void ShEvalBasis1Part(float3 dir, out float b[N])
 template <uint32_t N>
 void ShEvalBasis2Part(float3 dir, out float b[N])
 {
-    static const float Sh_C2[] = {
-        +1.09254843059207920f, // 1/2 * sqrt(15/pi)
-        -1.09254843059207920f,
-        +0.31539156525252005f, // 1/4 * sqrt(5/pi)
-        -1.09254843059207920f,
-        +0.54627421529603959f, // 1/4 * sqrt(15/pi)
-    };
-
     const float z2 = dir.z * dir.z;
 
     b[4] = Sh_C2[0] * dir.x * dir.y; // l=2,m=-2
@@ -52,16 +60,6 @@ void ShEvalBasis2Part(float3 dir, out float b[N])
 template <uint32_t N>
 void ShEvalBasis3Part(float3 dir, out float b[N])
 {
-    static const float Sh_C3[] = {
-        -0.59004358992664352f, // 1/4 * sqrt(35/(2*pi))
-        +2.89061144264055420f, // 1/2 * sqrt(105/pi)
-        -0.45704579946446577f, // 1/4 * sqrt(21/(2*pi))
-        +0.37317633259011540f, // 1/4 * sqrt(7/pi)
-        -0.45704579946446577f,
-        +1.44530572132027710f, // 1/4 * sqrt(105/pi)
-        -0.59004358992664352f,
-    };
-
     const float x2 = dir.x * dir.x;
     const float y2 = dir.y * dir.y;
     const float z2 = dir.z * dir.z;

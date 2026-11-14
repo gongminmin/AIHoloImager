@@ -100,7 +100,7 @@ namespace AIHoloImager
         gpu_dr_.RenderFwd(cmd_list, render_intermediate_.gaussians, glm::make_mat4(render_settings.model_mtx.data()),
             glm::make_mat4(render_settings.view_mtx.data()), glm::make_mat4(render_settings.proj_mtx.data()), render_intermediate_.viewport,
             render_settings.kernel_size, render_intermediate_.rendered_buff, render_settings.image_width, render_settings.image_height,
-            glm::make_vec3(render_settings.bg_color.data()));
+            glm::make_vec3(render_settings.bg_color.data()), true);
 
         torch::Tensor rendered_image = tensor_converter_.Convert(cmd_list, render_intermediate_.rendered_buff,
             {{render_settings.image_height, render_settings.image_width, 3}}, TensorConverter::DataType::Float32);

@@ -3,6 +3,8 @@
 
 #pragma once
 
+static const float AlphaThreshold = 1 / 255.0f;
+
 float2 Screen2Ndc(float2 screen, float2 size)
 {
     const float2 ndc = screen / size * 2 - 1;

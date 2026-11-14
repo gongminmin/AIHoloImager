@@ -81,6 +81,12 @@ namespace AIHoloImager
                 {
                     return false;
                 }
+                D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
+                reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+                if (!options.ROVsSupported)
+                {
+                    return false;
+                }
 
                 return true;
             }
