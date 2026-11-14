@@ -5,18 +5,19 @@
 
 // https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Real_spherical_harmonics
 
+static const uint32_t MaxShDegrees = 3;
+static const uint32_t MaxNumCoeffs = (MaxShDegrees + 1) * (MaxShDegrees + 1);
+
 template <uint32_t N>
-void ShEvalBasis0(out float b[N])
+void ShEvalBasis0Part(out float b[N])
 {
     static const float Sh_C0 = 0.28209479177387814f; // 1/2 * sqrt(1/pi)
     b[0] = Sh_C0; // l=0,m=0
 }
 
 template <uint32_t N>
-void ShEvalBasis1(float3 dir, out float b[N])
+void ShEvalBasis1Part(float3 dir, out float b[N])
 {
-    ShEvalBasis0(b);
-
     static const float Sh_C1[] = {
         -0.48860251190291992f, // sqrt(3/(4 * pi))
         +0.48860251190291992f,
@@ -29,10 +30,8 @@ void ShEvalBasis1(float3 dir, out float b[N])
 }
 
 template <uint32_t N>
-void ShEvalBasis2(float3 dir, out float b[N])
+void ShEvalBasis2Part(float3 dir, out float b[N])
 {
-    ShEvalBasis1(dir, b);
-
     static const float Sh_C2[] = {
         +1.09254843059207920f, // 1/2 * sqrt(15/pi)
         -1.09254843059207920f,
@@ -51,10 +50,8 @@ void ShEvalBasis2(float3 dir, out float b[N])
 }
 
 template <uint32_t N>
-void ShEvalBasis3(float3 dir, out float b[N])
+void ShEvalBasis3Part(float3 dir, out float b[N])
 {
-    ShEvalBasis2(dir, b);
-
     static const float Sh_C3[] = {
         -0.59004358992664352f, // 1/4 * sqrt(35/(2*pi))
         +2.89061144264055420f, // 1/2 * sqrt(105/pi)
@@ -76,4 +73,22 @@ void ShEvalBasis3(float3 dir, out float b[N])
     b[13] = Sh_C3[4] * dir.x * (5 * z2 - 1); // l=3,m=+1
     b[14] = Sh_C3[5] * dir.z * (x2 - y2); // l=3,m=+2
     b[15] = Sh_C3[6] * dir.x * (x2 - 3 * y2); // l=3,m=+3
+}
+
+template <uint32_t N>
+void ShEvalBasis(uint32_t degrees, float3 dir, out float basis[N])
+{
+    ShEvalBasis0Part(basis);
+    if (degrees > 0)
+    {
+        ShEvalBasis1Part(dir, basis);
+        if (degrees > 1)
+        {
+            ShEvalBasis2Part(dir, basis);
+            if (degrees > 2)
+            {
+                ShEvalBasis3Part(dir, basis);
+            }
+        }
+    }
 }
