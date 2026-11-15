@@ -150,7 +150,8 @@ namespace AIHoloImager
 
                 intermediate_cache_.num_gaussians_allocated = gaussians.num_gaussians;
             }
-            if ((intermediate_cache_.gsplat_image.Width(0) != width) || (intermediate_cache_.gsplat_image.Height(0) != height))
+            if ((intermediate_cache_.gsplat_image.Width(0) != width) || (intermediate_cache_.gsplat_image.Height(0) != height) ||
+                (intermediate_cache_.gsplat_image.Format() != gsplat_fmt))
             {
                 intermediate_cache_.gsplat_image = GpuTexture2D(gpu_system_, width, height, 1, gsplat_fmt,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::RenderTarget, "gsplat.intermediate_cache_.gsplat_image");

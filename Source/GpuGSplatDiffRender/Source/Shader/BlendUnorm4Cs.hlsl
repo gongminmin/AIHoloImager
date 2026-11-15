@@ -35,9 +35,10 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     const uint32_t2 coord = dtid.xy;
 
-    const float4 gsplat = gsplat_image[coord];
+    float4 gsplat = gsplat_image[coord];
 
 #if FLOAT3_BUFFER_TARGET
+    gsplat.rgb = SRGBToLinear(gsplat.rgb);
     const uint32_t pixel_index = coord.y * width_height.x + coord.x;
     const float3 bg_clr = from_bg_color ? bg_color : ReadFloat3(rendered_image, pixel_index);
 #else
