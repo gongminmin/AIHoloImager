@@ -10,6 +10,7 @@ import torch.optim as optim
 
 from PythonSystem import ComputeDevice, DeviceSync, GeneralDevice, PurgeTorchCache, TensorFromBytes, TensorToBytes
 from AIHoloImagerGpuDiffRender import GpuDiffRenderTorch, Viewport
+from AIHoloImagerGpuGSplatDiffRender import GpuGSplatDiffRenderTorch, Viewport as GSplatViewport, RenderSettings
 
 def ScaleMatrix(scale: torch.Tensor) -> torch.Tensor:
     if scale.shape[-1] == 1:
@@ -52,8 +53,33 @@ def ComposeMatrix(scale: torch.Tensor, rotation: torch.Tensor, translation: torc
     translation_mtx = TranslateMatrix(translation)
     return torch.matmul(torch.matmul(scale_mtx, rotation_mtx), translation_mtx)
 
+def IdentityMatrix():
+    r0 = torch.tensor([1, 0, 0, 0], dtype = torch.float32, device = "cuda")
+    r1 = torch.tensor([0, 1, 0, 0], dtype = torch.float32, device = "cuda")
+    r2 = torch.tensor([0, 0, 1, 0], dtype = torch.float32, device = "cuda")
+    r3 = torch.tensor([0, 0, 0, 1], dtype = torch.float32, device = "cuda")
+    ret = torch.stack([r0, r1, r2, r3])
+    return ret
+
 def NormalizeQuat(q: torch.Tensor):
     return q / torch.sum(q ** 2) ** 0.5
+
+def MultiplyQuat(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
+    """
+    Quaternion multiplication (Hamilton product).
+    q1: (..., 4)   - e.g. [x, 4]
+    q2: (..., 4)   - e.g. [1, 4]  (broadcasts)
+    Returns: (..., 4)
+    """
+    x1, y1, z1, w1 = q1.unbind(-1)
+    x2, y2, z2, w2 = q2.unbind(-1)
+
+    return torch.stack([
+        w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,   # x
+        w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,   # y
+        w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,   # z
+        w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2    # w
+    ], dim = -1)
 
 def LogNextPowerOf2(x: int):
     assert(x > 0)
@@ -84,6 +110,7 @@ class DiffOptimizer:
 
         self.device = ComputeDevice()
         self.gpu_dr = GpuDiffRenderTorch(gpu_system, self.device)
+        self.gpu_gsplat_dr = GpuGSplatDiffRenderTorch(gpu_system, self.device)
 
         self.image_channels = 4
         self.kernel = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype = torch.float16, device = self.device) / 64
@@ -92,24 +119,20 @@ class DiffOptimizer:
     def Destroy(self) -> None:
         del self.kernel
         del self.gpu_dr
+        del self.gpu_gsplat_dr
         PurgeTorchCache()
 
     def OptimizeTransform(self,
-                          mesh_vb: torch.Tensor, pos_offset: int, color_offset: int, mesh_ib: torch.Tensor,
-                          view_images: torch.Tensor, view_proj_mtxs: bytes, vp_offsets: bytes, num_views: int,
+                          gs_positions: torch.Tensor, gs_scales: torch.Tensor, gs_rotations: torch.Tensor, gs_shs: torch.Tensor, gs_opacities: torch.Tensor, gs_sh_degrees: int,
+                          view_images: torch.Tensor, view_mtxs: bytes, proj_mtxs: bytes, vp_offsets: bytes, num_views: int,
                           scale: bytes, rotation: bytes, translation: bytes, uniform_scaling: bool) -> tuple[bytes, bytes, bytes]:
         PurgeTorchCache()
 
-        num_vertices = mesh_vb.shape[0]
-        num_indices = mesh_ib.shape[0]
+        view_mtxs = TensorFromBytes(view_mtxs, torch.float32, num_views * 4 * 4)
+        view_mtxs = view_mtxs.reshape(num_views, 4, 4)
 
-        vtx_positions = mesh_vb[:, pos_offset : pos_offset + 3].contiguous()
-        vtx_colors = mesh_vb[:, color_offset : color_offset + 3].contiguous()
-
-        indices = mesh_ib.reshape(num_indices // 3, 3)
-
-        view_proj_mtxs = TensorFromBytes(view_proj_mtxs, torch.float32, num_views * 4 * 4)
-        view_proj_mtxs = view_proj_mtxs.reshape(num_views, 4, 4)
+        proj_mtxs = TensorFromBytes(proj_mtxs, torch.float32, num_views * 4 * 4)
+        proj_mtxs = proj_mtxs.reshape(num_views, 4, 4)
 
         vp_offsets = TensorFromBytes(vp_offsets, torch.float32, num_views * 2)
         vp_offsets = vp_offsets.reshape(num_views, 2)
@@ -120,6 +143,10 @@ class DiffOptimizer:
             scale = TensorFromBytes(scale, torch.float32, 3)
         rotation = TensorFromBytes(rotation, torch.float32, 4)
         translation = TensorFromBytes(translation, torch.float32, 3)
+
+        scale = scale.to(self.device)
+        rotation = rotation.to(self.device)
+        translation = translation.to(self.device)
 
         rois = torch.empty(num_views, 4, dtype = torch.int32, device = GeneralDevice())
         crop_images = []
@@ -156,6 +183,7 @@ class DiffOptimizer:
             crop_img = image[rois[i][1] : rois[i][3], rois[i][0] : rois[i][2], :]
             crop_img = crop_img.contiguous()
             crop_img = crop_img * torch.clamp(crop_img[..., -1 : ], 0, 1)
+            crop_img = crop_img[..., 0 : 3]
             crop_images.append(SRGBToLinear(crop_img))
             resolutions.append(resolution)
 
@@ -170,7 +198,7 @@ class DiffOptimizer:
 
         viewports = [None] * num_views
         for i in range(0, num_views):
-            viewports[i] = Viewport()
+            viewports[i] = GSplatViewport()
             viewports[i].left = -merged_roi[0] + vp_offsets[i][0]
             viewports[i].top = -merged_roi[1] + vp_offsets[i][1]
             viewports[i].width = resolutions[i][0]
@@ -180,10 +208,9 @@ class DiffOptimizer:
         for i in range(0, num_views):
             cropped_roi[i] = rois[i] - torch.cat([merged_roi[0 : 2], merged_roi[0 : 2]])
 
-        vtx_positions = torch.cat([vtx_positions, torch.ones([vtx_positions.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
-        vtx_colors = torch.cat([vtx_colors, torch.ones([vtx_colors.shape[0], 1], dtype = torch.float32, device = self.device)], axis = 1)
-
-        scale, rotation, translation = self.FitTransform(scale, rotation, translation, vtx_positions, vtx_colors, indices, crop_images, view_proj_mtxs, viewports, cropped_roi, cropped_resolution)
+        scale, rotation, translation = self.FitTransform(scale, rotation, translation,
+            gs_positions, gs_scales, gs_rotations, gs_shs, gs_opacities, gs_sh_degrees, crop_images,
+            view_mtxs, proj_mtxs, viewports, cropped_roi, cropped_resolution)
         DeviceSync(self.device)
         return (TensorToBytes(scale), TensorToBytes(rotation), TensorToBytes(translation))
 
@@ -192,7 +219,7 @@ class DiffOptimizer:
         img = img.permute(0, 2, 3, 1)
         return img
 
-    def Render(self, mvp_mtx: torch.Tensor, viewport: Viewport, vtx_positions: torch.Tensor, indices: torch.Tensor, opposite_vertices, resolution: tuple[int, int], roi: torch.Tensor, **kwargs) -> torch.Tensor:
+    def RenderMesh(self, mvp_mtx: torch.Tensor, viewport: Viewport, vtx_positions: torch.Tensor, indices: torch.Tensor, opposite_vertices, resolution: tuple[int, int], roi: torch.Tensor, **kwargs) -> torch.Tensor:
         pos_clip = torch.matmul(vtx_positions, mvp_mtx)
 
         if "vtx_colors" in kwargs:
@@ -218,11 +245,20 @@ class DiffOptimizer:
         image = image.to(torch.float16)
         return image.contiguous()
 
+    def RenderGSplat(self, gs_positions: torch.Tensor, gs_scales: torch.Tensor, gs_rotations: torch.Tensor, gs_shs: torch.Tensor, gs_opacities: torch.Tensor,
+                           gs_render_settings: RenderSettings, roi: torch.Tensor, **kwargs) -> torch.Tensor:
+        image = self.gpu_gsplat_dr.Render(gs_positions, gs_scales, gs_rotations, gs_shs, gs_opacities, gs_render_settings)
+
+        image = image.squeeze(0)
+        image = image[roi[1] : roi[3], roi[0] : roi[2], :]
+        image = image.to(torch.float16)
+        return image.contiguous()
+
     def FitTransform(self,
                      scale: torch.Tensor, rotation: torch.Tensor, translation: torch.Tensor,
-                     vtx_positions: torch.Tensor, vtx_colors: torch.Tensor, indices: torch.Tensor,
-                     crop_images: list[torch.Tensor], view_proj_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
-                     resolutions: list[tuple[int, int]], num_iter: int = 300) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                     gs_positions: torch.Tensor, gs_scales: torch.Tensor, gs_rotations: torch.Tensor, gs_shs: torch.Tensor, gs_opacities: torch.Tensor, gs_sh_degrees: int,
+                     crop_images: list[torch.Tensor], view_mtxs: torch.Tensor, proj_mtxs: torch.Tensor, viewports: list[torch.Tensor], rois: torch.Tensor,
+                     resolution: tuple[int, int], num_iter: int = 300) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         num_images = len(crop_images)
         criterion = nn.MSELoss()
 
@@ -242,7 +278,10 @@ class DiffOptimizer:
         rotation_best = rotation_opt.detach().clone()
         translation_best = translation_opt.detach().clone()
 
-        opposite_vertices = self.gpu_dr.AntiAliasConstructOppositeVertices(indices)
+        render_settings = RenderSettings()
+
+        rots_bias = torch.tensor([1, 0, 0, 0], device = self.device).unsqueeze(0)
+        identity_mtx = IdentityMatrix()
 
         loss_sum = 0.0
         n = 0
@@ -252,8 +291,26 @@ class DiffOptimizer:
             img_idx = random.randint(0, num_images - 1)
 
             model_mtx_opt = ComposeMatrix(scale_opt, rotation_opt, translation_opt)
-            mvp_mtx = torch.matmul(model_mtx_opt, view_proj_mtxs[img_idx]).to(self.device)
-            color_opt = self.Render(mvp_mtx, viewports[img_idx], vtx_positions, indices, opposite_vertices, resolutions, rois[img_idx], vtx_colors = vtx_colors)
+
+            gs_transformed_positions = torch.matmul(gs_positions, model_mtx_opt[: 3, : 3]) + translation_opt
+            gs_transformed_scales = gs_scales * scale_opt
+
+            gs_transformed_rotations = torch.cat([gs_rotations[..., 1 : 4], gs_rotations[..., 0 : 1]], dim = 1)
+            gs_transformed_rotations = MultiplyQuat(torch.nn.functional.normalize(gs_rotations + rots_bias), rotation_opt) - rots_bias
+            gs_transformed_rotations = torch.cat([gs_transformed_rotations[..., 3 : 4], gs_transformed_rotations[..., 0 : 3]], dim = 1)
+
+            render_settings.image_width = int(resolution[0])
+            render_settings.image_height = int(resolution[1])
+            render_settings.sh_degree = gs_sh_degrees
+            render_settings.model_mtx = [x for row in identity_mtx.tolist() for x in row]
+            render_settings.view_mtx = [x for row in view_mtxs[img_idx].tolist() for x in row]
+            render_settings.proj_mtx = [x for row in proj_mtxs[img_idx].tolist() for x in row]
+            render_settings.kernel_size = 0.1
+            render_settings.bg_color = (0, 0, 0)
+            render_settings.viewport = viewports[img_idx]
+
+            color_opt = self.RenderGSplat(gs_transformed_positions, gs_transformed_scales, gs_transformed_rotations, gs_shs, gs_opacities,
+                                          render_settings, rois[img_idx])
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)
@@ -439,7 +496,7 @@ class DiffOptimizer:
 
             img_idx = random.randint(0, num_images - 1)
 
-            color_opt = self.Render(mvp_mtxs[img_idx], viewports[img_idx], vtx_positions, indices, opposite_vertices, resolutions, rois[img_idx], vtx_uv = vtx_uv, texture = texture_opt)
+            color_opt = self.RenderMesh(mvp_mtxs[img_idx], viewports[img_idx], vtx_positions, indices, opposite_vertices, resolutions, rois[img_idx], vtx_uv = vtx_uv, texture = texture_opt)
             crop_img = crop_images[img_idx]
 
             loss = criterion(crop_img, color_opt)

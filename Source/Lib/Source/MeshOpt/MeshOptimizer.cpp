@@ -187,7 +187,7 @@ namespace AIHoloImager
 #endif
 
             diff_optimizer_.OptimizeTransform(
-                mg_input.mesh, model_mtx, std::span(sfm_input.projections), sfm_input.projections.size() == 1);
+                mg_input.gaussians, model_mtx, std::span(sfm_input.projections), sfm_input.projections.size() == 1);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
             {

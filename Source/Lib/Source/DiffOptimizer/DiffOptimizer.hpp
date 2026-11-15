@@ -7,6 +7,7 @@
 
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
+#include "GpuGSplatDiffRender/GpuGSplatDiffRender.hpp"
 #include "Util/GpuMesh.hpp"
 
 namespace AIHoloImager
@@ -22,7 +23,7 @@ namespace AIHoloImager
 
         DiffOptimizer& operator=(DiffOptimizer&& other) noexcept;
 
-        void OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+        void OptimizeTransform(const Gaussians& gaussians, glm::mat4x4& model_mtx,
             std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling);
         void OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx, std::span<const AIHoloImagerInternal::ProjectionDesc> projections,
             const GpuTexture2D& mask_tex);

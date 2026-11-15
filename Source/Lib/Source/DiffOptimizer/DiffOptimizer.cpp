@@ -63,7 +63,7 @@ namespace AIHoloImager
             diff_optimizer_module_.reset();
         }
 
-        void OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+        void OptimizeTransform(const Gaussians& gaussians, glm::mat4x4& model_mtx,
             std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling)
         {
             glm::vec3 scale;
@@ -76,43 +76,41 @@ namespace AIHoloImager
             auto& gpu_system = aihi_.GpuSystemInstance();
             auto& tensor_converter = aihi_.TensorConverterInstance();
 
-            const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
-            const uint32_t color_attrib_index = vertex_desc.FindAttrib("COLOR", 0);
-
-            const auto vertex_attribs = vertex_desc.Attribs();
-            const uint32_t pos_offset = vertex_attribs[pos_attrib_index].offset / sizeof(float);
-            const uint32_t color_offset = vertex_attribs[color_attrib_index].offset / sizeof(float);
-
-            uint32_t stride = 0;
-            for (const auto& attrib : vertex_desc.Attribs())
-            {
-                stride += FormatChannels(attrib.format);
-            }
-
-            PyObjectPtr mesh_vb;
-            PyObjectPtr mesh_ib;
+            PyObjectPtr gs_positions;
+            PyObjectPtr gs_scales;
+            PyObjectPtr gs_rotations;
+            PyObjectPtr gs_shs;
+            PyObjectPtr gs_opacities;
             {
                 PythonSystem::ThreadStateGuard guard;
 
                 auto cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Copy);
 
-                mesh_vb = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, mesh.VertexBuffer(),
-                    std::span<const int64_t>({mesh.NumVertices(), stride}), TensorConverter::DataType::Float32));
-                mesh_ib = MakePyObjectPtr(tensor_converter.ConvertPy(
-                    cmd_list, mesh.IndexBuffer(), std::span<const int64_t>({mesh.NumIndices()}), TensorConverter::DataType::Int32));
+                gs_positions = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gaussians.positions,
+                    std::span<const int64_t>({gaussians.num_gaussians, 3}), TensorConverter::DataType::Float32));
+                gs_scales = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gaussians.scales,
+                    std::span<const int64_t>({gaussians.num_gaussians, 3}), TensorConverter::DataType::Float32));
+                gs_rotations = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gaussians.rotations,
+                    std::span<const int64_t>({gaussians.num_gaussians, 4}), TensorConverter::DataType::Float32));
+                gs_shs = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gaussians.shs,
+                    std::span<const int64_t>({gaussians.num_gaussians, NumCoefficientsFromShDegrees(gaussians.sh_degrees), 3}),
+                    TensorConverter::DataType::Float32));
+                gs_opacities = MakePyObjectPtr(tensor_converter.ConvertPy(cmd_list, gaussians.opacities,
+                    std::span<const int64_t>({gaussians.num_gaussians, 1}), TensorConverter::DataType::Float32));
 
                 gpu_system.Execute(std::move(cmd_list));
             }
 
             const uint32_t num_images = static_cast<uint32_t>(projections.size());
-            std::vector<glm::mat4x4> view_proj_mtxs(num_images);
+            std::vector<glm::mat4x4> view_mtxs(num_images);
+            std::vector<glm::mat4x4> proj_mtxs(num_images);
             std::vector<glm::vec2> vp_offsets(num_images);
             for (uint32_t i = 0; i < num_images; ++i)
             {
                 const auto& projection = projections[i];
 
-                view_proj_mtxs[i] = projection.proj_mtx * projection.view_mtx;
+                view_mtxs[i] = projection.view_mtx;
+                proj_mtxs[i] = projection.proj_mtx;
                 vp_offsets[i] = projection.vp_offset;
             }
 
@@ -144,13 +142,15 @@ namespace AIHoloImager
                 }
                 gpu_system.Execute(std::move(cmd_list));
 
-                auto py_opt_transforms = python_system.CallObject(*diff_optimizer_opt_transform_method_, std::move(mesh_vb), pos_offset,
-                    color_offset, std::move(mesh_ib), std::move(imgs_args),
-                    std::span(reinterpret_cast<const std::byte*>(view_proj_mtxs.data()), view_proj_mtxs.size() * sizeof(glm::mat4x4)),
-                    std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
-                    std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
-                    std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
-                    std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)), uniform_scaling);
+                auto py_opt_transforms =
+                    python_system.CallObject(*diff_optimizer_opt_transform_method_, std::move(gs_positions), std::move(gs_scales),
+                        std::move(gs_rotations), std::move(gs_shs), std::move(gs_opacities), gaussians.sh_degrees, std::move(imgs_args),
+                        std::span(reinterpret_cast<const std::byte*>(view_mtxs.data()), view_mtxs.size() * sizeof(glm::mat4x4)),
+                        std::span(reinterpret_cast<const std::byte*>(proj_mtxs.data()), proj_mtxs.size() * sizeof(glm::mat4x4)),
+                        std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
+                        std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
+                        std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
+                        std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)), uniform_scaling);
 
                 const auto scale_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 0));
                 const auto rotate_opt = python_system.ToSpan<const float>(*python_system.GetTupleItem(*py_opt_transforms, 1));
@@ -275,10 +275,10 @@ namespace AIHoloImager
     DiffOptimizer::DiffOptimizer(DiffOptimizer&& other) noexcept = default;
     DiffOptimizer& DiffOptimizer::operator=(DiffOptimizer&& other) noexcept = default;
 
-    void DiffOptimizer::OptimizeTransform(const GpuMesh& mesh, glm::mat4x4& model_mtx,
+    void DiffOptimizer::OptimizeTransform(const Gaussians& gaussians, glm::mat4x4& model_mtx,
         std::span<const AIHoloImagerInternal::ProjectionDesc> projections, bool uniform_scaling)
     {
-        impl_->OptimizeTransform(mesh, model_mtx, std::move(projections), uniform_scaling);
+        impl_->OptimizeTransform(gaussians, model_mtx, std::move(projections), uniform_scaling);
     }
 
     void DiffOptimizer::OptimizeTexture(GpuMesh& mesh, const glm::mat4x4& model_mtx,
