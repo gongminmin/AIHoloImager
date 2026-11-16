@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
-static const float AlphaThreshold = 1 / 255.0f;
+#include "GSplatUtils.hlslh"
 
 float4 main(float2 screen_pos : TEXCOORD0,
             float3 color : TEXCOORD1,

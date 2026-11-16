@@ -68,14 +68,6 @@ class MeshGenerator:
 
         start_offset += WeightSize
 
-        indices = []
-        for i in range(8):
-            indices.append(start_offset + i * (3 + 3) + 0)
-            indices.append(start_offset + i * (3 + 3) + 1)
-            indices.append(start_offset + i * (3 + 3) + 2)
-        indices = torch.tensor(indices, device = self.device)
-        self.color_features = torch.index_select(sparse_volume.feats, -1, indices)
-
         gsplat = decoded["gaussian"][0]
         self.gsplat_positions = gsplat.get_xyz
         self.gsplat_scales = gsplat.get_scaling
@@ -96,9 +88,6 @@ class MeshGenerator:
 
     def DeformationFeatures(self) -> torch.Tensor:
         return self.deformation_features
-
-    def ColorFeatures(self) -> torch.Tensor:
-        return self.color_features
 
     def GSplatNumGaussians(self) -> int:
         return self.gsplat_positions.shape[0]

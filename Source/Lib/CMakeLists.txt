@@ -36,14 +36,6 @@ set(aihi_files
     Source/DiffOptimizer/DiffOptimizer.cpp
     Source/DiffOptimizer/DiffOptimizer.hpp
     Source/DiffOptimizer/DiffOptimizer.py
-    Source/GSplat/Shader/BlendCs.hlsl
-    Source/GSplat/Shader/PreprocessCs.hlsl
-    Source/GSplat/Shader/RenderGs.hlsl
-    Source/GSplat/Shader/RenderPs.hlsl
-    Source/GSplat/Shader/RenderVs.hlsl
-    Source/GSplat/Shader/Sh.hlslh
-    Source/GSplat/GaussianSplatting.cpp
-    Source/GSplat/GaussianSplatting.hpp
     Source/MaskGen/Shader/CalcBBoxCs.hlsl
     Source/MaskGen/Shader/DownsampleCs.hlsl
     Source/MaskGen/Shader/ErosionDilationCs.hlsl
@@ -66,8 +58,6 @@ set(aihi_files
     Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl
     Source/MeshGen/Shader/MarchingCubes/MarchingCubesUtil.hlslh
     Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl
-    Source/MeshGen/Shader/ApplyVertexColorCs.hlsl
-    Source/MeshGen/Shader/Dilate3DCs.hlsl
     Source/MeshGen/Shader/GatherVolumeCs.hlsl
     Source/MeshGen/Shader/ResizeCs.hlsl
     Source/MeshGen/Shader/RotatePs.hlsl
@@ -168,6 +158,8 @@ set(aihi_files
     Source/Util/FormatConversion.hpp
     Source/Util/GpuMesh.cpp
     Source/Util/GpuMesh.hpp
+    Source/Util/GSplatUtil.cpp
+    Source/Util/GSplatUtil.hpp
     Source/Util/PerfProfiler.cpp
     Source/Util/PerfProfiler.hpp
 )
@@ -202,8 +194,6 @@ AddShaderFile(Source/MeshGen/Shader/InvisibleFacesRemover/MarkFacesCs.hlsl "cs" 
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/CalcCubeIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/GenVerticesIndicesCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/MarchingCubes/ProcessNonEmptyCubesCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/ApplyVertexColorCs.hlsl "cs" "main")
-AddShaderFile(Source/MeshGen/Shader/Dilate3DCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/GatherVolumeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/ResizeCs.hlsl "cs" "main")
 AddShaderFile(Source/MeshGen/Shader/RotateVs.hlsl "vs" "main")
@@ -270,6 +260,7 @@ target_link_libraries(AIHoloImagerLib
         AIHoloImagerGpuSystem
         AIHoloImagerGpuComputationLib
         AIHoloImagerTensorConverter
+        AIHoloImagerGpuGSplatDiffRender
 )
 
 set(py_files
@@ -368,6 +359,7 @@ if(MSVC)
     target_link_options(AIHoloImagerLib
         PUBLIC
             "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerTensorConverter>"
+            "/DELAYLOAD:$<TARGET_FILE_NAME:AIHoloImagerGpuGSplatDiffRender>"
     )
 endif()
 

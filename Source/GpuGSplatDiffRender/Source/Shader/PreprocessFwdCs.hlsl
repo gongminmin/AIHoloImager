@@ -1,10 +1,10 @@
 // Copyright (c) 2026 Minmin Gong
 //
 
+#include "GSplatUtils.hlslh"
 #include "Sh.hlslh"
 
 static const uint32_t BlockDim = 256;
-static const float AlphaThreshold = 1 / 255.0f;
 
 cbuffer param_cb
 {
@@ -36,6 +36,10 @@ RWBuffer<float4> screen_pos_extents_buff;
 RWBuffer<uint32_t> num_visible_gaussians_buff;
 RWBuffer<uint32_t> visible_key_buff;
 RWBuffer<uint32_t> visible_id_buff;
+#if ENABLE_BACKWARD
+RWBuffer<float> cov_3d_buff;
+RWBuffer<uint32_t> clamped_buff;
+#endif
 
 float2 Ndc2Screen(float4 ndc, uint32_t2 size)
 {
@@ -117,35 +121,25 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
     cov_3d[5] = sigma[2].z;
 }
 
-template <uint32_t Degrees>
-float3 ComputeColorFromSh(uint32_t index, float3 pos_os, float3 eye_pos_os, Buffer<float3> sh_buff)
+float3 ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, uint32_t num_coeffs, float3 pos_os, float3 eye_pos_os, Buffer<float3> sh_buff, out bool3 clamped)
 {
     const float3 dir = normalize(pos_os - eye_pos_os);
 
-    static const uint32_t NumCoeffs = (Degrees + 1) * (Degrees + 1);
     float basis[16];
-    switch (Degrees)
-    {
-    case 0:
-        ShEvalBasis0(basis);
-        break;
-    case 1:
-        ShEvalBasis1(dir, basis);
-        break;
-    case 2:
-        ShEvalBasis2(dir, basis);
-        break;
-    case 3:
-        ShEvalBasis3(dir, basis);
-        break;
-    }
+    ShEvalBasis(sh_degrees, dir, basis);
 
-    const uint32_t offset = index * NumCoeffs;
+    const uint32_t offset = index * num_coeffs;
     float3 rgb = 0;
-    for (uint32_t c = 0; c < NumCoeffs; ++c)
+    for (uint32_t c = 0; c < num_coeffs; ++c)
     {
         rgb += basis[c] * sh_buff[offset + c];
     }
+
+#if ENABLE_BACKWARD
+    clamped = rgb < 0;
+#else
+    clamped = false;
+#endif
 
     return max(rgb, 0);
 }
@@ -185,6 +179,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
     float4 screen_pos_extents = 0;
     float3 color = 0;
     float4 conic_opacity = 0;
+    bool3 clamped = false;
 
     const uint32_t index = dtid.x;
 
@@ -209,6 +204,12 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
 
             float cov_3d[6];
             ComputeCov3D(scale, rotation, cov_3d);
+#if ENABLE_BACKWARD
+            for (uint32_t i = 0; i < 6; ++i)
+            {
+                cov_3d_buff[index * 6 + i] = cov_3d[i];
+            }
+#endif
 
             const float4 cov = ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, mv_mtx);
 
@@ -242,21 +243,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
                             visible = 1;
 
                             screen_pos_extents = float4(screen_pos, adaptive_radius);
-                            switch (sh_degrees)
-                            {
-                            case 0:
-                                color = ComputeColorFromSh<0>(index, pos_os, eye_pos_os, sh_buff);
-                                break;
-                            case 1:
-                                color = ComputeColorFromSh<1>(index, pos_os, eye_pos_os, sh_buff);
-                                break;
-                            case 2:
-                                color = ComputeColorFromSh<2>(index, pos_os, eye_pos_os, sh_buff);
-                                break;
-                            case 3:
-                                color = ComputeColorFromSh<3>(index, pos_os, eye_pos_os, sh_buff);
-                                break;
-                            }
+                            color = ComputeColorFromSh(index, sh_degrees, num_coeffs, pos_os, eye_pos_os, sh_buff, clamped);
                             conic_opacity = float4(cov.zyx / det, opacity);
                         }
                     }
@@ -283,5 +270,11 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         color_buff[index * 3 + 0] = color.x;
         color_buff[index * 3 + 1] = color.y;
         color_buff[index * 3 + 2] = color.z;
+
+#if ENABLE_BACKWARD
+        clamped_buff[index * 3 + 0] = clamped.x;
+        clamped_buff[index * 3 + 1] = clamped.y;
+        clamped_buff[index * 3 + 2] = clamped.z;
+#endif
     }
 }

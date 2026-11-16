@@ -8,6 +8,8 @@
 #include <directx/d3d12.h>
 #include <directx/d3d12video.h>
 
+#include "Gpu/GpuSystem.hpp"
+
 namespace AIHoloImager
 {
     struct D3D12Traits
@@ -27,5 +29,10 @@ namespace AIHoloImager
         using FenceType = ID3D12Fence*;
 
         using SharedHandleType = HANDLE;
+
+        struct DeviceInfo : public GpuSystem::DeviceInfo
+        {
+            ID3D12Device* device;
+        };
     };
 } // namespace AIHoloImager

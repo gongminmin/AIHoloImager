@@ -59,8 +59,13 @@ namespace AIHoloImager
             AIHI_GPU_SYS_API static WaitFences Ignore();
         };
 
+        // Meant to be inherited by subclasses
+        struct DeviceInfo
+        {
+        };
+
     public:
-        AIHI_GPU_SYS_API GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr,
+        AIHI_GPU_SYS_API GpuSystem(Api api, std::function<bool(Api api, const DeviceInfo& device_info)> confirm_device = nullptr,
             bool enable_sharing = false, bool enable_debug = false, bool enable_async_compute = true, bool enable_async_copy = true);
         AIHI_GPU_SYS_API ~GpuSystem();
 
@@ -88,7 +93,7 @@ namespace AIHoloImager
             return reinterpret_cast<typename Traits::SharedHandleType>(this->SharedFenceHandle());
         }
 
-        AIHI_GPU_SYS_API [[nodiscard]] GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
+        [[nodiscard]] AIHI_GPU_SYS_API GpuCommandList CreateCommandList(CmdQueueType type, std::string_view name = "");
         AIHI_GPU_SYS_API uint64_t Execute(GpuCommandList&& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
         AIHI_GPU_SYS_API uint64_t ExecuteAndReset(GpuCommandList& cmd_list, const WaitFences& wait_fences = WaitFences::Ignore());
 

@@ -11,6 +11,7 @@
 #include <set>
 
 #include "Base/ErrorHandling.hpp"
+#include "Gpu/Vulkan/VulkanTraits.hpp"
 
 #include "VulkanBuffer.hpp"
 #include "VulkanCommandList.hpp"
@@ -29,8 +30,9 @@ namespace AIHoloImager
 {
     VULKAN_IMP_IMP(System)
 
-    VulkanSystem::VulkanSystem(
-        GpuSystem& gpu_system, std::function<bool(GpuSystem::Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
+    VulkanSystem::VulkanSystem(GpuSystem& gpu_system,
+        std::function<bool(GpuSystem::Api api, const GpuSystem::DeviceInfo& device_info)> confirm_device, bool enable_sharing,
+        bool enable_debug)
         : GpuSystemInternal(gpu_system, enable_sharing)
     {
         std::fill(std::begin(queue_family_indices_), std::end(queue_family_indices_), std::numeric_limits<uint32_t>::max());
@@ -224,11 +226,17 @@ namespace AIHoloImager
         physical_device_ = VK_NULL_HANDLE;
         for (auto& physical_device : physical_devices)
         {
-            if (support_necessary_features(physical_device) && support_required_extensions(physical_device) &&
-                (!confirm_device || confirm_device(GpuSystem::Api::Vulkan, reinterpret_cast<void*>(physical_device))))
+            if (support_necessary_features(physical_device) && support_required_extensions(physical_device))
             {
-                physical_device_ = physical_device;
-                break;
+                VulkanTraits::DeviceInfo device_info{
+                    .instance = instance_,
+                    .physical_device = physical_device,
+                };
+                if (!confirm_device || confirm_device(GpuSystem::Api::Vulkan, device_info))
+                {
+                    physical_device_ = physical_device;
+                    break;
+                }
             }
         }
         Verify(physical_device_ != VK_NULL_HANDLE);

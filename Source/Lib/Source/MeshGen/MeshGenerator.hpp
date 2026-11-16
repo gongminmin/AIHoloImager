@@ -7,7 +7,7 @@
 
 #include "AIHoloImagerInternal.hpp"
 #include "Base/Noncopyable.hpp"
-#include "GSplat/GaussianSplatting.hpp"
+#include "GpuGSplatDiffRender/GpuGSplatDiffRender.hpp"
 #include "SfM/StructureFromMotion.hpp"
 #include "Util/BoundingBox.hpp"
 #include "Util/GpuMesh.hpp"

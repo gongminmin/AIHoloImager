@@ -13,6 +13,7 @@
 #include "Base/ErrorHandling.hpp"
 #include "Base/Util.hpp"
 #include "Base/Uuid.hpp"
+#include "Gpu/D3D12/D3D12Traits.hpp"
 #include "Gpu/GpuCommandList.hpp"
 
 #include "D3D12Buffer.hpp"
@@ -155,8 +156,9 @@ namespace AIHoloImager
 {
     D3D12_IMP_IMP(System)
 
-    D3D12System::D3D12System(
-        GpuSystem& gpu_system, std::function<bool(GpuSystem::Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug)
+    D3D12System::D3D12System(GpuSystem& gpu_system,
+        std::function<bool(GpuSystem::Api api, const GpuSystem::DeviceInfo& device_info)> confirm_device, bool enable_sharing,
+        bool enable_debug)
         : GpuSystemInternal(gpu_system, enable_sharing), rtv_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, false),
           dsv_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, false),
           cbv_srv_uav_desc_allocator_(gpu_system, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, false),
@@ -218,7 +220,10 @@ namespace AIHoloImager
                 ComPtr<ID3D12Device> device;
                 if (SUCCEEDED(::D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, UuidOf<ID3D12Device>(), device.PutVoid())))
                 {
-                    if (!confirm_device || confirm_device(GpuSystem::Api::D3D12, device.Get()))
+                    D3D12Traits::DeviceInfo device_info{
+                        .device = device.Get(),
+                    };
+                    if (!confirm_device || confirm_device(GpuSystem::Api::D3D12, device_info))
                     {
                         device_ = std::move(device);
                         break;

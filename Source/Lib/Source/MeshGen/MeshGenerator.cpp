@@ -28,18 +28,17 @@
 #include <glm/vec3.hpp>
 
 #include "Base/Util.hpp"
-#include "GSplat/GaussianSplatting.hpp"
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuResourceViews.hpp"
 #include "Gpu/GpuSampler.hpp"
 #include "Gpu/GpuTexture.hpp"
+#include "GpuGSplatDiffRender/GpuGSplatDiffRender.hpp"
 #include "InvisibleFacesRemover.hpp"
 #include "MarchingCubes.hpp"
 #include "Util/BoundingBox.hpp"
+#include "Util/GSplatUtil.hpp"
 #include "Util/PerfProfiler.hpp"
 
-#include "CompiledShader/MeshGen/ApplyVertexColorCs.h"
-#include "CompiledShader/MeshGen/Dilate3DCs.h"
 #include "CompiledShader/MeshGen/GatherVolumeCs.h"
 #include "CompiledShader/MeshGen/ResizeCs.h"
 #include "CompiledShader/MeshGen/RotatePs.h"
@@ -71,7 +70,6 @@ namespace AIHoloImager
                 mesh_generator_coords_method_ = python_system.GetAttr(*mesh_generator_, "Coords");
                 mesh_generator_density_features_method_ = python_system.GetAttr(*mesh_generator_, "DensityFeatures");
                 mesh_generator_deformation_features_method_ = python_system.GetAttr(*mesh_generator_, "DeformationFeatures");
-                mesh_generator_color_features_method_ = python_system.GetAttr(*mesh_generator_, "ColorFeatures");
                 mesh_generator_gsplat_num_gaussians_method_ = python_system.GetAttr(*mesh_generator_, "GSplatNumGaussians");
                 mesh_generator_gsplat_sh_coefficients_method_ = python_system.GetAttr(*mesh_generator_, "GSplatShCoefficients");
                 mesh_generator_gsplat_positions_method_ = python_system.GetAttr(*mesh_generator_, "GSplatPositions");
@@ -113,17 +111,6 @@ namespace AIHoloImager
                 const ShaderInfo shader = {DEFINE_SHADER(GatherVolumeCs)};
                 gather_volume_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
             }
-
-            const GpuStaticSampler trilinear_sampler(
-                gpu_system, {GpuStaticSampler::Filter::Linear, GpuStaticSampler::Filter::Linear}, GpuStaticSampler::AddressMode::Clamp);
-            {
-                const ShaderInfo shader = {DEFINE_SHADER(Dilate3DCs)};
-                dilate_3d_pipeline_ = GpuComputePipeline(gpu_system, shader, {});
-            }
-            {
-                const ShaderInfo shader = {DEFINE_SHADER(ApplyVertexColorCs)};
-                apply_vertex_color_pipeline_ = GpuComputePipeline(gpu_system, shader, std::span{&trilinear_sampler, 1});
-            }
         }
 
         ~Impl()
@@ -149,7 +136,6 @@ namespace AIHoloImager
             mesh_generator_gsplat_rotations_method_.reset();
             mesh_generator_gsplat_shs_method_.reset();
             mesh_generator_gsplat_opacities_method_.reset();
-            mesh_generator_color_features_method_.reset();
             mesh_generator_deformation_features_method_.reset();
             mesh_generator_density_features_method_.reset();
             mesh_generator_coords_method_.reset();
@@ -211,18 +197,11 @@ namespace AIHoloImager
 
                 PerfRegion gen_mesh_perf(profiler, "Generate mesh");
 
-                GpuTexture3D color_vol_tex;
-                mesh = this->GenMesh(rotated_images, color_vol_tex, gaussians);
+                mesh = this->GenMesh(rotated_images, gaussians);
 
 #ifdef AIHI_KEEP_INTERMEDIATES
                 SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshPosOnly.glb");
                 SavePointCloud(gpu_system, gaussians, output_dir / "AiMeshGaussians.ply");
-#endif
-
-                mesh = this->ApplyVertexColor(mesh, color_vol_tex);
-
-#ifdef AIHI_KEEP_INTERMEDIATES
-                SaveMesh(ToMesh(gpu_system, mesh), output_dir / "AiMeshPosColor.glb");
 #endif
             }
 
@@ -731,7 +710,7 @@ namespace AIHoloImager
             return rotated_images;
         }
 
-        GpuMesh GenMesh(std::span<const GpuTexture2D> input_images, GpuTexture3D& color_tex, Gaussians& gaussians)
+        GpuMesh GenMesh(std::span<const GpuTexture2D> input_images, Gaussians& gaussians)
         {
             auto& gpu_system = aihi_.GpuSystemInstance();
 
@@ -740,7 +719,6 @@ namespace AIHoloImager
             GpuTexture3D index_vol_tex;
             GpuBuffer density_features_buff;
             GpuBuffer deformation_features_buff;
-            GpuBuffer color_features_buff;
 
             if (!py_init_finished_)
             {
@@ -816,10 +794,6 @@ namespace AIHoloImager
                 tensor_converter.ConvertPy(cmd_list, *py_deformation_features, deformation_features_buff, GpuHeap::Default,
                     GpuResourceFlag::ShaderResource, "MeshGenerator.deformation_features_buff");
 
-                const auto py_color_features = python_system.CallObject(*mesh_generator_color_features_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_color_features, color_features_buff, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource, "MeshGenerator.color_features_buff");
-
                 const auto py_num_gaussians = python_system.CallObject(*mesh_generator_gsplat_num_gaussians_method_);
                 gaussians.num_gaussians = python_system.Cast<uint32_t>(*py_num_gaussians);
 
@@ -849,13 +823,10 @@ namespace AIHoloImager
 
             const GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);
             const GpuShaderResourceView deformation_features_srv(gpu_system, deformation_features_buff, GpuFormat::R16_Float);
-            const GpuShaderResourceView color_features_srv(gpu_system, color_features_buff, GpuFormat::R16_Float);
 
             const uint32_t size = grid_res + 1;
             GpuTexture3D density_deformation_tex(gpu_system, size, size, size, 1, GpuFormat::RGBA16_Float,
                 GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "MeshGenerator.density_deformation_tex");
-            color_tex = GpuTexture3D(gpu_system, size, size, size, 1, GpuFormat::RGBA8_UNorm_SRGB,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "color_tex");
 
             {
                 GpuConstantBufferOfType<GatherVolumeConstantBuffer> gather_volume_cb(gpu_system, "gather_volume_cb");
@@ -866,10 +837,6 @@ namespace AIHoloImager
                 const GpuConstantBufferView gather_volume_cbv(gpu_system, gather_volume_cb);
                 const GpuShaderResourceView index_vol_srv(gpu_system, index_vol_tex);
                 GpuUnorderedAccessView density_deformation_uav(gpu_system, density_deformation_tex);
-                GpuUnorderedAccessView color_uav(gpu_system, color_tex, ToLinearFormat(color_tex.Format()));
-
-                const float zeros[] = {0, 0, 0, 0};
-                cmd_list.Clear(color_uav, zeros);
 
                 constexpr uint32_t BlockDim = 16;
 
@@ -880,25 +847,13 @@ namespace AIHoloImager
                     {"index_volume", &index_vol_srv},
                     {"density_features", &density_features_srv},
                     {"deformation_features", &deformation_features_srv},
-                    {"color_features", &color_features_srv},
                 };
                 std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
                     {"density_deformation_volume", &density_deformation_uav},
-                    {"color_volume", &color_uav},
                 };
                 const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
 
                 cmd_list.Compute(gather_volume_pipeline_, {DivUp(size, BlockDim), DivUp(size, BlockDim), size}, shader_binding);
-            }
-
-            GpuTexture3D dilated_3d_tmp_gpu_tex(gpu_system, color_tex.Width(0), color_tex.Height(0), color_tex.Depth(0), 1,
-                color_tex.Format(), GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
-                "MeshGenerator.dilated_3d_tmp_gpu_tex");
-
-            GpuTexture3D* dilated_gpu_tex = this->DilateTexture(cmd_list, color_tex, dilated_3d_tmp_gpu_tex);
-            if (dilated_gpu_tex != &color_tex)
-            {
-                color_tex = std::move(*dilated_gpu_tex);
             }
 
             gpu_system.Execute(std::move(cmd_list));
@@ -1137,119 +1092,6 @@ namespace AIHoloImager
             }
         }
 
-        GpuMesh ApplyVertexColor(const GpuMesh& mesh, const GpuTexture3D& color_vol_tex)
-        {
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
-            const auto& vertex_desc = mesh.MeshVertexDesc();
-            const uint32_t pos_attrib_index = vertex_desc.FindAttrib("POSITION", 0);
-
-            const uint32_t num_vertices = mesh.NumVertices();
-
-            GpuConstantBufferOfType<ApplyVertexColorConstantBuffer> apply_vertex_color_cb(gpu_system, "apply_vertex_color_cb");
-            apply_vertex_color_cb->inv_scale = 1 / GridScale;
-            apply_vertex_color_cb->num_vertices = num_vertices;
-            apply_vertex_color_cb->stride = vertex_desc.SlotStrides()[0] / sizeof(float);
-            apply_vertex_color_cb->pos_offset = pos_attrib_index * 3;
-            apply_vertex_color_cb.UploadStaging();
-            const GpuConstantBufferView apply_vertex_color_cbv(gpu_system, apply_vertex_color_cb);
-
-            const GpuShaderResourceView pos_srv(gpu_system, mesh.VertexBuffer(), GpuFormat::R32_Float);
-            const GpuShaderResourceView color_vol_srv(gpu_system, color_vol_tex);
-
-            GpuBuffer pos_color_vb(gpu_system, num_vertices * sizeof(glm::vec3) * 2, GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer |
-                    GpuResourceFlag::Shareable,
-                "pos_color_vb");
-            GpuUnorderedAccessView pos_color_uav(gpu_system, pos_color_vb, GpuFormat::R32_Float);
-
-            constexpr uint32_t BlockDim = 256;
-
-            GpuCommandList cmd_list = gpu_system.CreateCommandList(GpuSystem::CmdQueueType::Compute);
-
-            std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
-                {"param_cb", &apply_vertex_color_cbv},
-            };
-            std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
-                {"color_vol_tex", &color_vol_srv},
-                {"pos_vertex_buff", &pos_srv},
-            };
-            std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                {"pos_color_vertex_buff", &pos_color_uav},
-            };
-            const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-            cmd_list.Compute(apply_vertex_color_pipeline_, {DivUp(num_vertices, BlockDim), 1, 1}, shader_binding);
-
-            GpuBuffer ib(gpu_system, mesh.IndexBuffer().Size(), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer |
-                    GpuResourceFlag::Shareable,
-                "pos_color_ib");
-            cmd_list.Copy(ib, mesh.IndexBuffer());
-
-            gpu_system.Execute(std::move(cmd_list));
-
-            GpuVertexLayout pos_color_layout(gpu_system, std::span<const GpuVertexAttrib>({
-                                                             {"POSITION", 0, GpuFormat::RGB32_Float},
-                                                             {"COLOR", 0, GpuFormat::RGB32_Float},
-                                                         }));
-            GpuMesh pos_color_mesh(std::move(pos_color_layout), mesh.IndexFormat());
-
-            pos_color_mesh.VertexBuffer() = std::move(pos_color_vb);
-            pos_color_mesh.IndexBuffer() = std::move(ib);
-
-            return pos_color_mesh;
-        }
-
-        GpuTexture3D* DilateTexture(GpuCommandList& cmd_list, GpuTexture3D& tex, GpuTexture3D& tmp_tex)
-        {
-            auto& gpu_system = aihi_.GpuSystemInstance();
-
-            constexpr uint32_t BlockDim = 16;
-            const uint32_t max_size = std::max({tex.Width(0), tex.Height(0), tex.Depth(0)});
-            const uint32_t dilate_times = LogNextPowerOf2(max_size);
-
-            GpuConstantBufferOfType<DilateConstantBuffer> dilate_cb(gpu_system, "dilate_cb");
-            dilate_cb->texture_size = tex.Width(0);
-            dilate_cb.UploadStaging();
-
-            const GpuConstantBufferView dilate_cbv(gpu_system, dilate_cb);
-            const GpuShaderResourceView tex_srv(gpu_system, tex);
-            const GpuShaderResourceView tmp_tex_srv(gpu_system, tmp_tex);
-            GpuUnorderedAccessView tex_uav(gpu_system, tex, ToLinearFormat(tex.Format()));
-            GpuUnorderedAccessView tmp_tex_uav(gpu_system, tmp_tex, ToLinearFormat(tex.Format()));
-
-            GpuTexture3D* texs[] = {&tex, &tmp_tex};
-            const GpuShaderResourceView* tex_srvs[] = {&tex_srv, &tmp_tex_srv};
-            GpuUnorderedAccessView* tex_uavs[] = {&tex_uav, &tmp_tex_uav};
-            for (uint32_t i = 0; i < dilate_times; ++i)
-            {
-                const uint32_t src = i & 1;
-                const uint32_t dst = src ? 0 : 1;
-
-                std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
-                    {"param_cb", &dilate_cbv},
-                };
-                std::tuple<std::string_view, const GpuShaderResourceView*> srvs[] = {
-                    {"input_tex", tex_srvs[src]},
-                };
-                std::tuple<std::string_view, GpuUnorderedAccessView*> uavs[] = {
-                    {"dilated_tex", tex_uavs[dst]},
-                };
-                const GpuCommandList::ShaderBinding shader_binding = {cbvs, srvs, uavs};
-                cmd_list.Compute(dilate_3d_pipeline_,
-                    {DivUp(texs[dst]->Width(0), BlockDim), DivUp(texs[dst]->Height(0), BlockDim), texs[dst]->Depth(0)}, shader_binding);
-            }
-
-            if (dilate_times & 1)
-            {
-                return &tmp_tex;
-            }
-            else
-            {
-                return &tex;
-            }
-        }
-
     private:
         AIHoloImagerInternal& aihi_;
 
@@ -1261,7 +1103,6 @@ namespace AIHoloImager
         PyObjectPtr mesh_generator_coords_method_;
         PyObjectPtr mesh_generator_density_features_method_;
         PyObjectPtr mesh_generator_deformation_features_method_;
-        PyObjectPtr mesh_generator_color_features_method_;
         PyObjectPtr mesh_generator_gsplat_num_gaussians_method_;
         PyObjectPtr mesh_generator_gsplat_sh_coefficients_method_;
         PyObjectPtr mesh_generator_gsplat_positions_method_;
@@ -1305,22 +1146,6 @@ namespace AIHoloImager
             uint32_t padding[2];
         };
         GpuComputePipeline gather_volume_pipeline_;
-
-        struct DilateConstantBuffer
-        {
-            uint32_t texture_size;
-            uint32_t padding[3];
-        };
-        GpuComputePipeline dilate_3d_pipeline_;
-
-        struct ApplyVertexColorConstantBuffer
-        {
-            uint32_t num_vertices;
-            float inv_scale;
-            uint32_t stride;
-            uint32_t pos_offset;
-        };
-        GpuComputePipeline apply_vertex_color_pipeline_;
 
         static constexpr float GridScale = 2.0f;
         static constexpr uint32_t ResizedImageSize = 518;

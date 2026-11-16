@@ -67,9 +67,9 @@ namespace AIHoloImager
         virtual void Upload(GpuBuffer& dest, const std::function<void(void* dst_data)>& copy_func) = 0;
         virtual void Upload(GpuTexture& dest, uint32_t sub_resource,
             const std::function<void(void* dst_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) = 0;
-        virtual [[nodiscard]] std::future<void> ReadBackAsync(
+        [[nodiscard]] virtual std::future<void> ReadBackAsync(
             const GpuBuffer& src, const std::function<void(const void* src_data)>& copy_func) = 0;
-        virtual [[nodiscard]] std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
+        [[nodiscard]] virtual std::future<void> ReadBackAsync(const GpuTexture& src, uint32_t sub_resource,
             const std::function<void(const void* src_data, uint32_t row_pitch, uint32_t slice_pitch)>& copy_func) = 0;
 
         virtual void Close() = 0;
