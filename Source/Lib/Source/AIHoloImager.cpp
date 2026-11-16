@@ -11,9 +11,13 @@
     #include "Base/MiniWindows.hpp"
 
     #include <directx/d3d12.h>
+
+    #include "Gpu/D3D12/D3D12Traits.hpp"
 #endif
 #ifdef AIHI_ENABLE_VULKAN
     #include <volk.h>
+
+    #include "Gpu/Vulkan/VulkanTraits.hpp"
 #endif
 
 #include "AIHoloImagerInternal.hpp"
@@ -68,21 +72,23 @@ namespace AIHoloImager
             }
         }
 
-        static bool ConfirmDevice(GpuSystem::Api api, void* device)
+        static bool ConfirmDevice(GpuSystem::Api api, const GpuSystem::DeviceInfo& device_info)
         {
             switch (api)
             {
 #ifdef AIHI_ENABLE_D3D12
             case GpuSystem::Api::D3D12:
             {
+                const auto& d3d12_device_info = static_cast<const D3D12Traits::DeviceInfo&>(device_info);
+
                 D3D12_FEATURE_DATA_D3D12_OPTIONS1 options1{};
-                reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
+                d3d12_device_info.device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1));
                 if (!options1.WaveOps || (options1.WaveLaneCountMin < 16))
                 {
                     return false;
                 }
                 D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
-                reinterpret_cast<ID3D12Device*>(device)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+                d3d12_device_info.device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
                 if (!options.ROVsSupported)
                 {
                     return false;
@@ -94,26 +100,38 @@ namespace AIHoloImager
 #ifdef AIHI_ENABLE_VULKAN
             case GpuSystem::Api::Vulkan:
             {
-                VkPhysicalDeviceSubgroupProperties subgroup_properties{
-                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
-                };
+                const auto& vulkan_device_info = static_cast<const VulkanTraits::DeviceInfo&>(device_info);
 
-                VkPhysicalDeviceProperties2 device_properties{
-                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-                    .pNext = &subgroup_properties,
-                };
-
-                vkGetPhysicalDeviceProperties2(reinterpret_cast<VkPhysicalDevice>(device), &device_properties);
-
-                if (device_properties.properties.limits.maxColorAttachments < 3)
+                if (volkInitialize() != VK_SUCCESS)
                 {
                     return false;
                 }
 
-                if (((subgroup_properties.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0) ||
-                    (subgroup_properties.subgroupSize < 16))
+                VolkInstanceTable table;
+                volkLoadInstanceTable(&table, vulkan_device_info.instance);
+
                 {
-                    return false;
+                    VkPhysicalDeviceSubgroupProperties subgroup_properties{
+                        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+                    };
+
+                    VkPhysicalDeviceProperties2 device_properties{
+                        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                        .pNext = &subgroup_properties,
+                    };
+
+                    table.vkGetPhysicalDeviceProperties2(vulkan_device_info.physical_device, &device_properties);
+
+                    if (device_properties.properties.limits.maxColorAttachments < 3)
+                    {
+                        return false;
+                    }
+
+                    if (((subgroup_properties.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0) ||
+                        (subgroup_properties.subgroupSize < 16))
+                    {
+                        return false;
+                    }
                 }
 
                 return true;

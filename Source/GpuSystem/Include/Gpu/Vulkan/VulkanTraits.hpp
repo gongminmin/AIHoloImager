@@ -5,6 +5,8 @@
 
 #include <volk.h>
 
+#include "Gpu/GpuSystem.hpp"
+
 namespace AIHoloImager
 {
     struct VulkanTraits
@@ -24,5 +26,11 @@ namespace AIHoloImager
         using FenceType = VkSemaphore;
 
         using SharedHandleType = HANDLE;
+
+        struct DeviceInfo : public GpuSystem::DeviceInfo
+        {
+            VkInstance instance;
+            VkPhysicalDevice physical_device;
+        };
     };
 } // namespace AIHoloImager

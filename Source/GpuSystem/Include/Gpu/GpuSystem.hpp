@@ -59,8 +59,13 @@ namespace AIHoloImager
             AIHI_GPU_SYS_API static WaitFences Ignore();
         };
 
+        // Meant to be inherited by subclasses
+        struct DeviceInfo
+        {
+        };
+
     public:
-        AIHI_GPU_SYS_API GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device = nullptr,
+        AIHI_GPU_SYS_API GpuSystem(Api api, std::function<bool(Api api, const DeviceInfo& device_info)> confirm_device = nullptr,
             bool enable_sharing = false, bool enable_debug = false, bool enable_async_compute = true, bool enable_async_copy = true);
         AIHI_GPU_SYS_API ~GpuSystem();
 

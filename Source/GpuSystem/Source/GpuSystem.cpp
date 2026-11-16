@@ -17,8 +17,8 @@ namespace AIHoloImager
     class GpuSystem::Impl
     {
     public:
-        Impl(Api api, GpuSystem& host, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
-            bool enable_async_compute, bool enable_async_copy)
+        Impl(Api api, GpuSystem& host, std::function<bool(Api api, const GpuSystem::DeviceInfo& device_info)> confirm_device,
+            bool enable_sharing, bool enable_debug, bool enable_async_compute, bool enable_async_copy)
             : host_(host), api_(SelectApi(api)), enable_async_compute_(enable_async_compute), enable_async_copy_(enable_async_copy),
               system_internal_(CreateGpuSystemInternal(api_, host, std::move(confirm_device), enable_sharing, enable_debug)),
               upload_mem_allocator_(host, true), read_back_mem_allocator_(host, false)
@@ -175,8 +175,8 @@ namespace AIHoloImager
         std::unique_ptr<GpuMipmapper> mipmapper_;
     };
 
-    GpuSystem::GpuSystem(Api api, std::function<bool(Api api, void* device)> confirm_device, bool enable_sharing, bool enable_debug,
-        bool enable_async_compute, bool enable_async_copy)
+    GpuSystem::GpuSystem(Api api, std::function<bool(Api api, const DeviceInfo& device_info)> confirm_device, bool enable_sharing,
+        bool enable_debug, bool enable_async_compute, bool enable_async_copy)
         : impl_(std::make_unique<Impl>(
               api, *this, std::move(confirm_device), enable_sharing, enable_debug, enable_async_compute, enable_async_copy))
     {
