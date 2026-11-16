@@ -30,6 +30,10 @@ def InitPySys(device: str) -> None:
         from pathlib import Path
         this_py_dir = Path(__file__).parent.resolve()
 
+def ComputeDeviceName() -> str:
+    global compute_device_name
+    return compute_device_name
+
 general_device = None
 def GeneralDevice() -> torch.device:
     global general_device

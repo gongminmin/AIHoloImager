@@ -13,6 +13,8 @@ set(ai_holo_imager_version ${ai_holo_imager_major_version}.${ai_holo_imager_mino
 
 project(AIHoloImager LANGUAGES CXX VERSION ${ai_holo_imager_version})
 
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
 if(DEFINED ENV{BUILD_BUILDID})
     set(is_ci_env TRUE)
 else()
