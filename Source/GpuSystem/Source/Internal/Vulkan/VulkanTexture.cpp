@@ -233,7 +233,9 @@ namespace AIHoloImager
             VkImageMemoryBarrier2 barrier{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                 .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                 .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = texture_.Object(),
@@ -247,20 +249,17 @@ namespace AIHoloImager
             };
 
             bool need_transition = false;
-            auto vulkan_target_layout = ToVulkanImageLayout(target_state, this->Flags());
+            auto vulkan_target_layout = ToVulkanImageLayout(target_state);
             if (curr_layouts_[sub_resource] != vulkan_target_layout)
             {
                 barrier.oldLayout = curr_layouts_[sub_resource];
                 barrier.newLayout = vulkan_target_layout;
-                std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
 
                 curr_layouts_[sub_resource] = vulkan_target_layout;
                 need_transition = true;
             }
             else if ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS))
             {
-                barrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
                 barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
@@ -282,7 +281,7 @@ namespace AIHoloImager
 
         cmd_list.RegisterAccessedObject(this->StalledWaitFences());
 
-        const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state, this->Flags());
+        const VkImageLayout vulkan_target_layout = ToVulkanImageLayout(target_state);
         if ((curr_layouts_[0] == vulkan_target_layout) &&
             ((target_state == GpuResourceState::UnorderedAccess) || (target_state == GpuResourceState::RayTracingAS)))
         {
@@ -328,7 +327,9 @@ namespace AIHoloImager
                     VkImageMemoryBarrier2 barrier{
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                         .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                         .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                         .oldLayout = curr_layouts_[0],
                         .newLayout = vulkan_target_layout,
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -342,7 +343,6 @@ namespace AIHoloImager
                             .layerCount = this->ArraySize(),
                         },
                     };
-                    std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
 
                     cmd_list.Transition(std::span(&barrier, 1));
                     actual_transit = true;
@@ -358,10 +358,12 @@ namespace AIHoloImager
                         uint32_t mip_level, array_index, plane;
                         DecomposeSubResource(static_cast<uint32_t>(i), this->MipLevels(), this->Planes(), mip_level, array_index, plane);
 
-                        auto& barrier = barriers.emplace_back(VkImageMemoryBarrier2{
+                        barriers.emplace_back(VkImageMemoryBarrier2{
                             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                             .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                            .srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                             .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                            .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                             .oldLayout = curr_layouts_[i],
                             .newLayout = vulkan_target_layout,
                             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -375,7 +377,6 @@ namespace AIHoloImager
                                 .layerCount = 1,
                             },
                         });
-                        std::tie(barrier.srcAccessMask, barrier.dstAccessMask) = ToVulkanAccessFlags(barrier.oldLayout, barrier.newLayout);
                     }
                 }
                 cmd_list.Transition(std::span(barriers));

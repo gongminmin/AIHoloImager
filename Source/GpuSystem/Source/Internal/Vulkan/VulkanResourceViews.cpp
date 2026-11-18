@@ -392,7 +392,7 @@ namespace AIHoloImager
     {
         image_info_ = VkDescriptorImageInfo{
             .imageView = image_view_.Object(),
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
         };
         write_desc_set_ = VkWriteDescriptorSet{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -902,7 +902,7 @@ namespace AIHoloImager
     {
         static VkDescriptorImageInfo null_image_info{
             .imageView = VK_NULL_HANDLE,
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
         };
         static VkWriteDescriptorSet null_write_desc_set{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

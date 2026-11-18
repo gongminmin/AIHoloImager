@@ -257,27 +257,18 @@ namespace AIHoloImager
         return gpu_flag;
     }
 
-    VkImageLayout ToVulkanImageLayout(GpuResourceState state, GpuResourceFlag flags)
+    VkImageLayout ToVulkanImageLayout(GpuResourceState state)
     {
         switch (state)
         {
         case GpuResourceState::Common:
-            if (EnumHasAny(flags, GpuResourceFlag::ShaderResource))
-            {
-                return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            }
-            else
-            {
-                return VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-            }
+        case GpuResourceState::UnorderedAccess:
+            return VK_IMAGE_LAYOUT_GENERAL;
 
         case GpuResourceState::ColorWrite:
             return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         case GpuResourceState::DepthWrite:
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        case GpuResourceState::UnorderedAccess:
-            return VK_IMAGE_LAYOUT_GENERAL;
 
         case GpuResourceState::CopySrc:
             return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -301,79 +292,6 @@ namespace AIHoloImager
         default:
             Unreachable("Invalid image type");
         }
-    }
-
-    std::tuple<VkAccessFlags2, VkAccessFlags2> ToVulkanAccessFlags(VkImageLayout old_layout, VkImageLayout new_layout)
-    {
-        VkAccessFlags2 src_access_mask;
-        switch (old_layout)
-        {
-        case VK_IMAGE_LAYOUT_UNDEFINED:
-            src_access_mask = 0;
-            break;
-        case VK_IMAGE_LAYOUT_PREINITIALIZED:
-            src_access_mask = VK_ACCESS_2_HOST_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_TRANSFER_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
-            src_access_mask = VK_ACCESS_2_MEMORY_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_GENERAL:
-            src_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;
-            break;
-
-        default:
-            Unreachable("Unsupported old layout");
-        }
-
-        VkAccessFlags2 dst_access_mask;
-        switch (new_layout)
-        {
-        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-            dst_access_mask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-            dst_access_mask = VK_ACCESS_2_TRANSFER_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-            dst_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            dst_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-            if (src_access_mask == 0)
-            {
-                src_access_mask = VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            }
-            dst_access_mask = VK_ACCESS_2_SHADER_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
-            dst_access_mask = VK_ACCESS_2_MEMORY_READ_BIT;
-            break;
-        case VK_IMAGE_LAYOUT_GENERAL:
-            dst_access_mask = VK_ACCESS_2_SHADER_WRITE_BIT;
-            break;
-
-        default:
-            Unreachable("Unsupported new layout");
-        }
-
-        return {src_access_mask, dst_access_mask};
     }
 
     VkImageAspectFlags ToVulkanAspectMask(GpuFormat fmt) noexcept
