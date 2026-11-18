@@ -143,8 +143,13 @@ namespace AIHoloImager
         TIFVK(vkEnumeratePhysicalDevices(instance_, &gpu_count, physical_devices.data()));
 
         const auto support_necessary_features = [](VkPhysicalDevice physical_device) -> bool {
+            VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT enable_interlock_feature{
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,
+            };
+
             VkPhysicalDeviceRobustness2FeaturesKHR robustness_2_feature{
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
+                .pNext = &enable_interlock_feature,
             };
 
             VkPhysicalDeviceVulkan11Features vulkan11_features = {
@@ -170,6 +175,7 @@ namespace AIHoloImager
             const VkBool32 requires_bits[] = {
                 physical_features.features.independentBlend,
                 physical_features.features.geometryShader,
+                enable_interlock_feature.fragmentShaderPixelInterlock,
                 robustness_2_feature.nullDescriptor,
                 vulkan11_features.storageBuffer16BitAccess,
                 vulkan11_features.uniformAndStorageBuffer16BitAccess,
@@ -187,6 +193,7 @@ namespace AIHoloImager
             VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
             VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
             VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
+            VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
         };
         if (enable_sharing)
         {
@@ -318,10 +325,17 @@ namespace AIHoloImager
         const VkPhysicalDeviceFeatures enable_features{
             .independentBlend = VK_TRUE,
             .geometryShader = VK_TRUE,
+            .fragmentStoresAndAtomics = VK_TRUE,
+        };
+
+        VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT enable_interlock_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,
+            .fragmentShaderPixelInterlock = VK_TRUE,
         };
 
         VkPhysicalDeviceRobustness2FeaturesKHR enable_robustness_2_feature{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR,
+            .pNext = &enable_interlock_features,
             .nullDescriptor = VK_TRUE,
         };
 

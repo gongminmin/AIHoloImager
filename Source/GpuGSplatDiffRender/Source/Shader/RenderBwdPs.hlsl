@@ -4,6 +4,9 @@
 #include "Atomic.hlslh"
 #include "GSplatUtils.hlslh"
 
+#ifdef __spirv__
+[[vk::binding(6)]]
+#endif
 cbuffer param_cb
 {
     float4 viewport;
@@ -11,16 +14,40 @@ cbuffer param_cb
     uint32_t2 rt_width_height;
 };
 
+#ifdef __spirv__
+[[vk::binding(7)]]
+#endif
 Buffer<float3> grad_image_buff;
 
+#ifdef __spirv__
+[[vk::binding(8)]]
+#endif
 Texture2D gsplat_image;
 
+#ifdef __spirv__
+[[vk::binding(9)]]
+#endif
 RWBuffer<uint32_t> grad_color_buff;
+#ifdef __spirv__
+[[vk::binding(10)]]
+#endif
 RWBuffer<uint32_t> grad_screen_pos_buff;
+#ifdef __spirv__
+[[vk::binding(11)]]
+#endif
 RWBuffer<uint32_t> grad_conic_2d_buff;
+#ifdef __spirv__
+[[vk::binding(12)]]
+#endif
 RWBuffer<uint32_t> grad_opacities_buff;
 
+#ifdef __spirv__
+[[vk::binding(13)]]
+#endif
 RWTexture2D<float4> last_rgba_tex;
+#ifdef __spirv__
+[[vk::binding(14)]]
+#endif
 RasterizerOrderedTexture2D<float4> accum_color_alpha_tex;
 
 // References

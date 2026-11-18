@@ -4,15 +4,33 @@
 #include "GSplatUtils.hlslh"
 #include "Platform.hlslh"
 
+#ifdef __spirv__
+[[vk::binding(0)]]
+#endif
 cbuffer param_cb
 {
     float4 viewport;
 };
 
+#ifdef __spirv__
+[[vk::binding(1)]]
+#endif
 Buffer<float4> screen_pos_extents_buff;
+#ifdef __spirv__
+[[vk::binding(2)]]
+#endif
 Buffer<float3> color_buff;
+#ifdef __spirv__
+[[vk::binding(3)]]
+#endif
 Buffer<float4> conic_opacity_buff;
+#ifdef __spirv__
+[[vk::binding(4)]]
+#endif
 Buffer<uint32_t> index_buff;
+#ifdef __spirv__
+[[vk::binding(5)]]
+#endif
 Buffer<uint32_t> num_visible_buff;
 
 void main(uint32_t vertex_id : SV_VertexID,

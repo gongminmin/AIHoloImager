@@ -133,6 +133,37 @@ namespace AIHoloImager
                         return false;
                     }
                 }
+                {
+                    uint32_t device_ext_count = 0;
+                    table.vkEnumerateDeviceExtensionProperties(vulkan_device_info.physical_device, nullptr, &device_ext_count, nullptr);
+                    if (device_ext_count == 0)
+                    {
+                        return false;
+                    }
+
+                    std::vector<VkExtensionProperties> supported_exts(device_ext_count);
+                    if (table.vkEnumerateDeviceExtensionProperties(
+                            vulkan_device_info.physical_device, nullptr, &device_ext_count, supported_exts.data()) != VK_SUCCESS)
+                    {
+                        return false;
+                    }
+
+                    const char* required_exts[] = {
+                        VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
+                    };
+
+                    for (const auto* required_ext : required_exts)
+                    {
+                        auto iter =
+                            std::find_if(supported_exts.begin(), supported_exts.end(), [required_ext](const VkExtensionProperties& ext) {
+                                return std::string_view(required_ext) == ext.extensionName;
+                            });
+                        if (iter == supported_exts.end())
+                        {
+                            return false;
+                        }
+                    }
+                }
 
                 return true;
             }

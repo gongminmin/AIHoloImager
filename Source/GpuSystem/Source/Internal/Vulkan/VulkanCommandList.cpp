@@ -348,24 +348,32 @@ namespace AIHoloImager
         uint32_t render_height = 0;
 
         std::vector<VkRenderingAttachmentInfo> color_attachments(rtvs.size());
-        for (size_t i = 0; i < rtvs.size(); ++i)
+        if (rtvs.empty())
         {
-            auto& vulkan_rtv = VulkanImp(*rtvs[i]);
-            vulkan_rtv.Transition(*this);
+            render_width = static_cast<uint32_t>(viewports[0].width);
+            render_height = static_cast<uint32_t>(viewports[0].height);
+        }
+        else
+        {
+            for (size_t i = 0; i < rtvs.size(); ++i)
+            {
+                auto& vulkan_rtv = VulkanImp(*rtvs[i]);
+                vulkan_rtv.Transition(*this);
 
-            color_attachments[i] = VkRenderingAttachmentInfo{
-                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-                .imageView = vulkan_rtv.ImageView(),
-                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            };
+                color_attachments[i] = VkRenderingAttachmentInfo{
+                    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                    .imageView = vulkan_rtv.ImageView(),
+                    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+                    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                };
 
-            const auto& vulkan_texture = static_cast<VulkanTexture&>(VulkanImp(*vulkan_rtv.Resource()));
-            const uint32_t mip = vulkan_rtv.SubresourceRange().baseMipLevel;
+                const auto& vulkan_texture = static_cast<VulkanTexture&>(VulkanImp(*vulkan_rtv.Resource()));
+                const uint32_t mip = vulkan_rtv.SubresourceRange().baseMipLevel;
 
-            render_width = std::max(render_width, vulkan_texture.Width(mip));
-            render_height = std::max(render_height, vulkan_texture.Height(mip));
+                render_width = std::max(render_width, vulkan_texture.Width(mip));
+                render_height = std::max(render_height, vulkan_texture.Height(mip));
+            }
         }
         VkRenderingAttachmentInfo depth_stencil_attachment;
         bool has_stencil = false;
