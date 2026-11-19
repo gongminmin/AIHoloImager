@@ -6,16 +6,17 @@ set(aihi_gpu_gsplat_diff_render_files
     Include/GpuGSplatDiffRender/Symbol.hpp
     Source/Shader/BlendFloat3Cs.hlsl
     Source/Shader/BlendUnorm4Cs.hlsl
-    Source/Shader/CopyFinalAlphaCs.hlsl
+    Source/Shader/CalcPixelsCs.hlsl
     Source/Shader/GSplatUtils.hlslh
+    Source/Shader/PpllGs.hlsl
+    Source/Shader/PpllPs.hlsl
+    Source/Shader/PpllVs.hlsl
     Source/Shader/PreprocessBwdCs.hlsl
     Source/Shader/PreprocessFwdCs.hlsl
     Source/Shader/PreprocessFwdCs_ForBwd.hlsl
-    Source/Shader/RenderBwdGs.hlsl
+    Source/Shader/RenderBwdCs.hlsl
     Source/Shader/RenderFwdGs.hlsl
-    Source/Shader/RenderBwdPs.hlsl
     Source/Shader/RenderFwdPs.hlsl
-    Source/Shader/RenderBwdVs.hlsl
     Source/Shader/RenderFwdVs.hlsl
     Source/Shader/Sh.hlslh
     Source/GpuGSplatDiffRender.cpp
@@ -32,16 +33,17 @@ add_library(AIHoloImagerGpuGSplatDiffRender SHARED
 
 AddShaderFile(Source/Shader/BlendFloat3Cs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/BlendUnorm4Cs.hlsl "cs" "main")
-AddShaderFile(Source/Shader/CopyFinalAlphaCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/CalcPixelsCs.hlsl "cs" "main")
+AddShaderFile(Source/Shader/PpllVs.hlsl "vs" "main")
+AddShaderFile(Source/Shader/PpllGs.hlsl "gs" "main")
+AddShaderFile(Source/Shader/PpllPs.hlsl "ps" "main")
 AddShaderFile(Source/Shader/PreprocessFwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/PreprocessFwdCs_ForBwd.hlsl "cs" "main")
 AddShaderFile(Source/Shader/PreprocessBwdCs.hlsl "cs" "main")
 AddShaderFile(Source/Shader/RenderFwdVs.hlsl "vs" "main")
 AddShaderFile(Source/Shader/RenderFwdGs.hlsl "gs" "main")
 AddShaderFile(Source/Shader/RenderFwdPs.hlsl "ps" "main")
-AddShaderFile(Source/Shader/RenderBwdVs.hlsl "vs" "main")
-AddShaderFile(Source/Shader/RenderBwdGs.hlsl "gs" "main")
-AddShaderFile(Source/Shader/RenderBwdPs.hlsl "ps" "main")
+AddShaderFile(Source/Shader/RenderBwdCs.hlsl "cs" "main")
 
 set(torch_dir ${PROJECT_SOURCE_DIR}/External/Python/Venv/Venv/Lib/site-packages/torch)
 

@@ -3,17 +3,13 @@
 
 struct GsInput
 {
-    float3 screen_pos_point_id : TEXCOORD0;
-    float3 color : TEXCOORD1;
-    float4 conic_opacity : TEXCOORD2;
-    float4 min_max_coord : TEXCOORD3;
+    uint32_t point_id : TEXCOORD0;
+    float4 min_max_coord : TEXCOORD1;
 };
 
 struct PsInput
 {
-    nointerpolation float3 screen_pos_point_id : TEXCOORD0;
-    nointerpolation float3 color : TEXCOORD1;
-    nointerpolation float4 conic_opacity : TEXCOORD2;
+    nointerpolation uint32_t point_id : TEXCOORD0;
     float4 pos : SV_Position;
 };
 
@@ -21,15 +17,11 @@ struct PsInput
 void main(point GsInput input[1],
           inout TriangleStream<PsInput> out_stream)
 {
-    const float3 color = input[0].color;
-    const float4 conic_opacity = input[0].conic_opacity;
+    PsInput output;
+    output.point_id = input[0].point_id;
+
     const float2 min_coord = input[0].min_max_coord.xy;
     const float2 max_coord = input[0].min_max_coord.zw;
-
-    PsInput output;
-    output.screen_pos_point_id = input[0].screen_pos_point_id;
-    output.color = color;
-    output.conic_opacity = conic_opacity;
 
     output.pos = float4(min_coord.x, min_coord.y, 0.5f, 1);
     out_stream.Append(output);
