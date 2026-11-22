@@ -54,14 +54,14 @@ stages:
 
       - task: Cache@2
         inputs:
-          key: 'Build | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
+          key: '$(CacheVersion) | Build | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
           restoreKeys: 'Build | $(Agent.JobName)'
           path: Build
         displayName: Cache Build
 
       - task: Cache@2
         inputs:
-          key: 'External | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
+          key: '$(CacheVersion) | External | azure-pipelines.yml | External/**/CMakeLists.txt, !External/*/*/** | $(Agent.JobName)'
           restoreKeys: 'External | $(Agent.JobName)'
           path: External
         displayName: Cache External
