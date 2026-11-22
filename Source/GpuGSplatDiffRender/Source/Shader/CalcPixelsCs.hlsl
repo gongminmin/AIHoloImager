@@ -54,9 +54,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         const float2 screen_pos = screen_pos_extents.xy + 0.5f;
         const float2 adaptive_radius = screen_pos_extents.zw;
 
-        const uint32_t2 beg_pos = clamp(screen_pos - adaptive_radius, 0, round(viewport.zw));
-        const uint32_t2 end_pos = clamp(screen_pos + adaptive_radius, 0, round(viewport.zw));
-        pixels_touched = (end_pos.x - beg_pos.x) * (end_pos.y - beg_pos.y);
+        const float2 beg_pos = clamp(screen_pos - adaptive_radius, 0, viewport.zw);
+        const float2 end_pos = clamp(screen_pos + adaptive_radius, 0, viewport.zw);
+        pixels_touched = ceil((end_pos.x - beg_pos.x) * (end_pos.y - beg_pos.y));
     }
 
     const uint32_t sum = SumBlock(group_index, pixels_touched);

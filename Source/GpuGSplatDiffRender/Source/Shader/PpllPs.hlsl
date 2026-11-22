@@ -4,7 +4,7 @@
 #ifdef __spirv__
 [[vk::binding(1)]]
 #endif
-RasterizerOrderedTexture2D<uint32_t> ppll_head;
+globallycoherent RasterizerOrderedTexture2D<uint32_t> ppll_head;
 #ifdef __spirv__
 [[vk::binding(2)]]
 #endif
