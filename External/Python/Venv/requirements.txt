@@ -47,7 +47,7 @@ requests==2.34.2
 #tqdm==4.70.0
 #typing-extensions==4.16.0
 urllib3==2.8.0
-soupsieve==2.9.2
+soupsieve==4.0.0
 PySocks==1.7.1
 beautifulsoup4==4.15.0
 gdown==6.2.0
