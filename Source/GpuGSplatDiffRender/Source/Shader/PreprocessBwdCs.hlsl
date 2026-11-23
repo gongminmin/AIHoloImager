@@ -28,7 +28,7 @@ Buffer<float4> rotation_buff;
 Buffer<float3> sh_buff;
 Buffer<float4> screen_pos_extents_buff;
 Buffer<float> cov_3d_buff;
-Buffer<uint32_t3> clamped_buff;
+Buffer<uint32_t> clamped_buff;
 Buffer<float4> conic_opacity_buff;
 Buffer<float3> grad_screen_pos_buff;
 Buffer<float> grad_cov_3d_buff;
@@ -319,7 +319,9 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     };
     grad_position += dl_dpos;
 
-    ComputeColorFromSh(index, sh_degrees, pos_os, eye_pos_os, clamped_buff[index], grad_position, grad_shs_buff);
+    const uint32_t clamped = clamped_buff[index];
+    const uint32_t3 clamped3 = (clamped >> uint32_t3(0, 1, 2)) & 1U;
+    ComputeColorFromSh(index, sh_degrees, pos_os, eye_pos_os, clamped3, grad_position, grad_shs_buff);
     WriteFloat3(grad_positions_buff, index, grad_position);
 
     float3 grad_scale;

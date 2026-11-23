@@ -170,7 +170,7 @@ namespace AIHoloImager
             {
                 intermediate_cache_.cov_3d = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(float) * 6, GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.cov_3d");
-                intermediate_cache_.clamped = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::uvec3), GpuHeap::Default,
+                intermediate_cache_.clamped = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.clamped");
             }
             else
@@ -381,7 +381,7 @@ namespace AIHoloImager
             if (intermediate_cache_.pixels_counter.Size() < sizeof(uint32_t))
             {
                 intermediate_cache_.pixels_counter = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.pixels_counter");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.pixels_counter");
             }
             {
                 constexpr uint32_t BlockDim = 256;
@@ -563,7 +563,7 @@ namespace AIHoloImager
                 const GpuShaderResourceView scale_srv(gpu_system_, gaussians.scales, GpuFormat::RGB32_Float);
                 const GpuShaderResourceView rotation_srv(gpu_system_, gaussians.rotations, GpuFormat::RGBA32_Float);
                 const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView clamped_srv(gpu_system_, intermediate_cache_.clamped, GpuFormat::RGB32_Uint);
+                const GpuShaderResourceView clamped_srv(gpu_system_, intermediate_cache_.clamped, GpuFormat::R32_Uint);
                 const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, GpuFormat::RGBA32_Float);
                 const GpuShaderResourceView grad_screen_pos_srv(gpu_system_, intermediate_cache_.grad_screen_pos, GpuFormat::RGB32_Float);
                 const GpuShaderResourceView grad_cov_3d_srv(gpu_system_, intermediate_cache_.grad_cov_3d, GpuFormat::R32_Float);

@@ -272,9 +272,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupI
         color_buff[index * 3 + 2] = color.z;
 
 #if ENABLE_BACKWARD
-        clamped_buff[index * 3 + 0] = clamped.x;
-        clamped_buff[index * 3 + 1] = clamped.y;
-        clamped_buff[index * 3 + 2] = clamped.z;
+        clamped_buff[index] = (clamped.x << 0) | (clamped.y << 1) | (clamped.z << 2);
 #endif
     }
 }
