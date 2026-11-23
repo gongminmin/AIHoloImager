@@ -238,7 +238,6 @@ namespace AIHoloImager
                 };
                 GpuUnorderedAccessView cov_3d_uav;
                 GpuUnorderedAccessView clamped_uav;
-                GpuUnorderedAccessView depth_uav;
                 if (need_backward)
                 {
                     cov_3d_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.cov_3d, GpuFormat::R32_Float);
@@ -713,9 +712,6 @@ namespace AIHoloImager
             GpuBuffer grad_conic_2d;
 
             GpuBuffer grad_cov_3d;
-
-            GpuTexture2D accum_color_alpha_tex;
-            GpuTexture2D last_rgba_tex;
 
             GpuBuffer pixels_counter;
             GpuTexture2D ppll_head;
