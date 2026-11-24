@@ -5,7 +5,6 @@
 #include "GSplatUtils.hlslh"
 
 static const uint32_t BlockDim = 16;
-static const uint32_t BlockSize = BlockDim * BlockDim;
 
 cbuffer param_cb
 {
@@ -28,7 +27,7 @@ RWBuffer<uint32_t> grad_conic_2d_buff;
 RWBuffer<uint32_t> grad_opacities_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
-void main(uint32_t3 group_id : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)
+void main(uint32_t3 dtid : SV_DispatchThreadID)
 {
     const uint32_t2 coord = dtid.xy;
     [branch]
@@ -49,13 +48,15 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID,
     const float dpx_dx = +0.5f * viewport.z;
     const float dpy_dy = -0.5f * viewport.w;
 
+    const float2 coord_vp = coord - viewport.xy;
+
     uint32_t ppll_next = ppll_head[coord];
     while (ppll_next != 0xFFFFFFFFU)
     {
         const uint32_t point_id = ppll[ppll_next].x;
 
         // Eq 4
-        const float2 d = screen_pos_extents_buff[point_id].xy + viewport.xy - coord;
+        const float2 d = screen_pos_extents_buff[point_id].xy - coord_vp;
         const float4 conic_opacity = conic_opacity_buff[point_id];
         const float power = -0.5f * (conic_opacity.x * d.x * d.x + conic_opacity.z * d.y * d.y) - conic_opacity.y * d.x * d.y;
         [branch]
@@ -97,9 +98,9 @@ void main(uint32_t3 group_id : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID,
                 // https://arxiv.org/pdf/2404.10772.pdf, Gaussian Opacity Fields: Efficient Adaptive Surface Reconstruction in Unbounded Scenes, Eq 15
                 AtomicAdd(grad_screen_pos_buff, point_id * 3 + 2, abs(dl_dx) + abs(dl_dy));
 
-                AtomicAdd(grad_conic_2d_buff, point_id * 4 + 0, -0.5f * dl_dg * gd.x * d.x);
-                AtomicAdd(grad_conic_2d_buff, point_id * 4 + 1, +0.5f * dl_dg * gd.x * d.y);
-                AtomicAdd(grad_conic_2d_buff, point_id * 4 + 3, -0.5f * dl_dg * gd.y * d.y);
+                AtomicAdd(grad_conic_2d_buff, point_id * 3 + 0, -0.5f * dl_dg * gd.x * d.x);
+                AtomicAdd(grad_conic_2d_buff, point_id * 3 + 1, +0.5f * dl_dg * gd.x * d.y);
+                AtomicAdd(grad_conic_2d_buff, point_id * 3 + 2, -0.5f * dl_dg * gd.y * d.y);
 
                 AtomicAdd(grad_opacities_buff, point_id, dl_dalpha * g);
             }

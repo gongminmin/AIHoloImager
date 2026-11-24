@@ -31,9 +31,8 @@ Buffer<float> cov_3d_buff;
 Buffer<uint32_t> clamped_buff;
 Buffer<float4> conic_opacity_buff;
 Buffer<float3> grad_screen_pos_buff;
-Buffer<float> grad_cov_3d_buff;
 Buffer<float3> grad_color_buff;
-Buffer<float4> grad_conics_buff;
+Buffer<float3> grad_conic_2d_buff;
 
 RWBuffer<float> grad_positions_buff;
 RWBuffer<float> grad_scales_buff;
@@ -241,7 +240,7 @@ void ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, float3 pos_os, floa
     grad_position += DNormVDV(dir_orig, dl_ddir);
 }
 
-void ComputeCov3D(int index, float3 scale, float4 rot, float dl_dcov_3d[6], out float3 grad_scale, out float4 grad_rotation)
+void ComputeCov3D(float3 scale, float4 rot, float dl_dcov_3d[6], out float3 grad_scale, out float4 grad_rotation)
 {
     const float3x3 scaling_mtx = {
         scale.x, 0, 0,
@@ -302,7 +301,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     float grad_opacity = grad_opacities_buff[index];
     float grad_cov_3d[6];
     float3 grad_position;
-    ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, mv_mtx, grad_conics_buff[index].xyw, conic_opacity_buff[index].w, grad_opacity, grad_cov_3d, grad_position);
+    ComputeCov2D(pos_os, focal, tan_fov, kernel_size, cov_3d, mv_mtx, grad_conic_2d_buff[index], conic_opacity_buff[index].w, grad_opacity, grad_cov_3d, grad_position);
 
     grad_opacities_buff[index] = grad_opacity;
 
@@ -319,14 +318,13 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
     };
     grad_position += dl_dpos;
 
-    const uint32_t clamped = clamped_buff[index];
-    const uint32_t3 clamped3 = (clamped >> uint32_t3(0, 1, 2)) & 1U;
-    ComputeColorFromSh(index, sh_degrees, pos_os, eye_pos_os, clamped3, grad_position, grad_shs_buff);
+    const uint32_t3 clamped = (clamped_buff[index] >> uint32_t3(0, 1, 2)) & 1U;
+    ComputeColorFromSh(index, sh_degrees, pos_os, eye_pos_os, clamped, grad_position, grad_shs_buff);
     WriteFloat3(grad_positions_buff, index, grad_position);
 
     float3 grad_scale;
     float4 grad_rotation;
-    ComputeCov3D(index, scale_buff[index], rotation_buff[index], grad_cov_3d, grad_scale, grad_rotation);
+    ComputeCov3D(scale_buff[index], rotation_buff[index], grad_cov_3d, grad_scale, grad_rotation);
     WriteFloat3(grad_scales_buff, index, grad_scale);
     grad_rotations_buff[index] = grad_rotation;
 }
