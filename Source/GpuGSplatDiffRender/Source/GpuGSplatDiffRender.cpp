@@ -369,7 +369,7 @@ namespace AIHoloImager
 
                 intermediate_cache_.grad_color = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_color");
-                intermediate_cache_.grad_screen_pos = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
+                intermediate_cache_.grad_screen_pos = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec2), GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_screen_pos");
                 intermediate_cache_.grad_conic_2d = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_conic_2d");
@@ -562,7 +562,7 @@ namespace AIHoloImager
                 const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, GpuFormat::RGB32_Float);
                 const GpuShaderResourceView clamped_srv(gpu_system_, intermediate_cache_.clamped, GpuFormat::R32_Uint);
                 const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView grad_screen_pos_srv(gpu_system_, intermediate_cache_.grad_screen_pos, GpuFormat::RGB32_Float);
+                const GpuShaderResourceView grad_screen_pos_srv(gpu_system_, intermediate_cache_.grad_screen_pos, GpuFormat::RG32_Float);
                 const GpuShaderResourceView grad_color_srv(gpu_system_, intermediate_cache_.grad_color, GpuFormat::RGB32_Float);
                 const GpuShaderResourceView grad_conic_2d_srv(gpu_system_, intermediate_cache_.grad_conic_2d, GpuFormat::RGB32_Float);
 

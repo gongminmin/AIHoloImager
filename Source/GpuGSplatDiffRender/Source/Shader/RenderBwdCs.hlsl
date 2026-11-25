@@ -92,11 +92,8 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
                 const float dl_dx = dl_dg * dg_dpx * dpx_dx;
                 const float dl_dy = dl_dg * dg_dpy * dpy_dy;
-                AtomicAdd(grad_screen_pos_buff, point_id * 3 + 0, dl_dx);
-                AtomicAdd(grad_screen_pos_buff, point_id * 3 + 1, dl_dy);
-
-                // https://arxiv.org/pdf/2404.10772.pdf, Gaussian Opacity Fields: Efficient Adaptive Surface Reconstruction in Unbounded Scenes, Eq 15
-                AtomicAdd(grad_screen_pos_buff, point_id * 3 + 2, abs(dl_dx) + abs(dl_dy));
+                AtomicAdd(grad_screen_pos_buff, point_id * 2 + 0, dl_dx);
+                AtomicAdd(grad_screen_pos_buff, point_id * 2 + 1, dl_dy);
 
                 AtomicAdd(grad_conic_2d_buff, point_id * 3 + 0, -0.5f * dl_dg * gd.x * d.x);
                 AtomicAdd(grad_conic_2d_buff, point_id * 3 + 1, +0.5f * dl_dg * gd.x * d.y);

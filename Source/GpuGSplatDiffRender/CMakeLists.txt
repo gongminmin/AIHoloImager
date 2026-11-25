@@ -19,6 +19,7 @@ set(aihi_gpu_gsplat_diff_render_files
     Source/Shader/RenderFwdPs.hlsl
     Source/Shader/RenderFwdVs.hlsl
     Source/Shader/Sh.hlslh
+    Source/Shader/SumBlock.hlslh
     Source/GpuGSplatDiffRender.cpp
     Source/pch.hpp
     Source/Torch/GpuGSplatDiffRenderTorch.cpp

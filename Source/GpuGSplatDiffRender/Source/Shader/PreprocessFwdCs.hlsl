@@ -6,6 +6,8 @@
 
 static const uint32_t BlockDim = 256;
 
+#include "SumBlock.hlslh"
+
 cbuffer param_cb
 {
     uint32_t num_gaussians;
@@ -142,33 +144,6 @@ float3 ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, uint32_t num_coef
 #endif
 
     return max(rgb, 0);
-}
-
-static const uint32_t MinWaveSize = 16;
-groupshared uint32_t group_sum[BlockDim / MinWaveSize];
-
-uint32_t SumBlock(uint32_t group_index, uint32_t value)
-{
-    const uint32_t lane_index = WaveGetLaneIndex();
-    const uint32_t wave_size = WaveGetLaneCount();
-    const uint32_t wave_index = group_index / wave_size;
-    const uint32_t num_waves = BlockDim / wave_size;
-
-    const uint32_t sum = WaveActiveSum(value);
-    if (lane_index == 0)
-    {
-        group_sum[wave_index] = sum;
-    }
-    GroupMemoryBarrierWithGroupSync();
-
-    if (group_index < num_waves)
-    {
-        const uint32_t wave_sum = group_sum[group_index];
-        group_sum[0] = WaveActiveSum(wave_sum);
-    }
-    GroupMemoryBarrierWithGroupSync();
-
-    return group_sum[0];
 }
 
 [numthreads(BlockDim, 1, 1)]

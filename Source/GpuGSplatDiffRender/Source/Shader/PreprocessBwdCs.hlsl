@@ -30,7 +30,7 @@ Buffer<float4> screen_pos_extents_buff;
 Buffer<float> cov_3d_buff;
 Buffer<uint32_t> clamped_buff;
 Buffer<float4> conic_opacity_buff;
-Buffer<float3> grad_screen_pos_buff;
+Buffer<float2> grad_screen_pos_buff;
 Buffer<float3> grad_color_buff;
 Buffer<float3> grad_conic_2d_buff;
 
@@ -310,7 +310,7 @@ void main(uint32_t3 dtid : SV_DispatchThreadID)
 
     const float mul1 = (dot(pos_os, float3(mvp_mtx[0].x, mvp_mtx[1].x, mvp_mtx[2].x)) + mvp_mtx[3].x) * inv_w * inv_w;
     const float mul2 = (dot(pos_os, float3(mvp_mtx[0].y, mvp_mtx[1].y, mvp_mtx[2].y)) + mvp_mtx[3].y) * inv_w * inv_w;
-    const float2 grad_screen_pos = grad_screen_pos_buff[index].xy;
+    const float2 grad_screen_pos = grad_screen_pos_buff[index];
     const float3 dl_dpos = {
         grad_screen_pos.x * (mvp_mtx[0].x * inv_w - mvp_mtx[0].w * mul1) + grad_screen_pos.y * (mvp_mtx[0].y * inv_w - mvp_mtx[0].w * mul2),
         grad_screen_pos.x * (mvp_mtx[1].x * inv_w - mvp_mtx[1].w * mul1) + grad_screen_pos.y * (mvp_mtx[1].y * inv_w - mvp_mtx[1].w * mul2),
