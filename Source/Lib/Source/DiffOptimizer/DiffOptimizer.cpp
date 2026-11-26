@@ -147,7 +147,7 @@ namespace AIHoloImager
                         std::move(gs_rotations), std::move(gs_shs), std::move(gs_opacities), gaussians.sh_degrees, std::move(imgs_args),
                         std::span(reinterpret_cast<const std::byte*>(view_mtxs.data()), view_mtxs.size() * sizeof(glm::mat4x4)),
                         std::span(reinterpret_cast<const std::byte*>(proj_mtxs.data()), proj_mtxs.size() * sizeof(glm::mat4x4)),
-                        std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
+                        std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)),
                         std::span(reinterpret_cast<const std::byte*>(&scale), sizeof(scale)),
                         std::span(reinterpret_cast<const std::byte*>(&rotation), sizeof(rotation)),
                         std::span(reinterpret_cast<const std::byte*>(&translation), sizeof(translation)), uniform_scaling);
@@ -245,7 +245,7 @@ namespace AIHoloImager
                 auto py_opt_texture = python_system.CallObject(*diff_optimizer_opt_texture_method_, std::move(mesh_vb), pos_offset,
                     tex_coord_offset, std::move(mesh_ib), std::move(imgs_args),
                     std::span(reinterpret_cast<const std::byte*>(mvp_mtxs.data()), mvp_mtxs.size() * sizeof(glm::mat4x4)),
-                    std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)), num_images,
+                    std::span(reinterpret_cast<const std::byte*>(vp_offsets.data()), vp_offsets.size() * sizeof(glm::vec2)),
                     std::move(py_albedo_img), std::move(py_mask_img));
 
                 tensor_converter.ConvertPy(

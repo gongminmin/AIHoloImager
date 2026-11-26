@@ -124,9 +124,11 @@ class DiffOptimizer:
 
     def OptimizeTransform(self,
                           gs_positions: torch.Tensor, gs_scales: torch.Tensor, gs_rotations: torch.Tensor, gs_shs: torch.Tensor, gs_opacities: torch.Tensor, gs_sh_degrees: int,
-                          view_images: torch.Tensor, view_mtxs: bytes, proj_mtxs: bytes, vp_offsets: bytes, num_views: int,
+                          view_images: tuple[torch.Tensor, int, int, int, int], view_mtxs: bytes, proj_mtxs: bytes, vp_offsets: bytes,
                           scale: bytes, rotation: bytes, translation: bytes, uniform_scaling: bool) -> tuple[bytes, bytes, bytes]:
         PurgeTorchCache()
+
+        num_views = len(view_images)
 
         view_mtxs = TensorFromBytes(view_mtxs, torch.float32, num_views * 4 * 4)
         view_mtxs = view_mtxs.reshape(num_views, 4, 4)
@@ -341,12 +343,13 @@ class DiffOptimizer:
 
     def OptimizeTexture(self,
                         mesh_vb: torch.Tensor, pos_offset: int, uv_offset: int, mesh_ib: torch.Tensor,
-                        view_images: torch.Tensor, mvp_mtxs: bytes, vp_offsets: bytes, num_views: int,
+                        view_images: tuple[torch.Tensor, int, int, int, int], mvp_mtxs: bytes, vp_offsets: bytes,
                         texture: torch.Tensor, mask_tex: torch.Tensor) -> torch.Tensor:
         PurgeTorchCache()
 
         num_vertices = mesh_vb.shape[0]
         num_indices = mesh_ib.shape[0]
+        num_views = len(view_images)
 
         vtx_positions = mesh_vb[:, pos_offset : pos_offset + 3].contiguous()
         vtx_uv = mesh_vb[:, uv_offset : uv_offset + 2].contiguous()
