@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <span>
+#include <string>
 
 #include <Python.h>
 
@@ -43,6 +44,8 @@ namespace AIHoloImager
 
         PyObjectPtr Import(const char* name);
         PyObjectPtr GetAttr(PyObject& module, const char* name);
+
+        std::string ComputeDeviceName() const;
 
         PyObjectPtr CallObject(PyObject& object);
         PyObjectPtr CallObjectTuple(PyObject& object, PyObject& tuple_args);
@@ -124,5 +127,7 @@ namespace AIHoloImager
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
+
+        std::string compute_device_name_;
     };
 } // namespace AIHoloImager
