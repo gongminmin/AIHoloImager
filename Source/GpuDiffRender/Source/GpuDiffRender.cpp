@@ -787,9 +787,9 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView accum_grad_mips_cbv(gpu_system_, accum_grad_mips_cb);
 
-                const GpuShaderResourceView grad_texture_mips_srv(gpu_system_, grad_texture_mips, GpuFormat::R32_Float);
+                const GpuShaderResourceView grad_texture_mips_srv(gpu_system_, grad_texture_mips, sizeof(float));
 
-                GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, GpuFormat::R32_Float);
+                GpuUnorderedAccessView grad_texture_uav(gpu_system_, grad_texture, sizeof(float));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &accum_grad_mips_cbv},

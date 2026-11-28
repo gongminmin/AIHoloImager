@@ -6,6 +6,76 @@
 
 #include "Platform.hlslh"
 
+#if __spirv__
+[[vk::ext_extension("SPV_EXT_shader_atomic_float_add")]]
+[[vk::ext_capability(6033)]] // AtomicFloat32AddEXT
+[[vk::ext_instruction(6035)]] // OpAtomicFAddEXT
+float SpirvAtomicFAdd(
+    [[vk::ext_reference]] inout float dest,
+    uint32_t scope,
+    uint32_t semantics,
+    float value
+);
+
+void AtomicAdd(RWStructuredBuffer<float> buff, uint32_t addr, float value)
+{
+    SpirvAtomicFAdd(buff[addr], 1, 0, value);
+}
+#else
+#if (__SHADER_TARGET_MAJOR > 6) || ((__SHADER_TARGET_MAJOR == 6) && (__SHADER_TARGET_MINOR >= 6))
+void AtomicAdd(RWStructuredBuffer<float> buff, uint32_t addr, float value)
+{
+    float cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        float new_val = cmp_val + value;
+        float ori_val;
+        InterlockedCompareExchangeFloatBitwise(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+
+void AtomicMax(RWStructuredBuffer<float> buff, uint32_t addr, float value)
+{
+    float cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        float new_val = max(cmp_val, value);
+        float ori_val;
+        InterlockedCompareExchangeFloatBitwise(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+
+void AtomicMin(RWStructuredBuffer<float> buff, uint32_t addr, float value)
+{
+    float cmp_val = buff[addr];
+    ALLOW_UAV_CONDITION
+    for (;;)
+    {
+        float new_val = min(cmp_val, value);
+        float ori_val;
+        InterlockedCompareExchangeFloatBitwise(buff[addr], cmp_val, new_val, ori_val);
+        if (cmp_val == ori_val)
+        {
+            break;
+        }
+        cmp_val = ori_val;
+    }
+}
+#endif
+#endif
+
 void AtomicAdd(RWStructuredBuffer<uint32_t> buff, uint32_t addr, float value)
 {
     uint32_t cmp_val = buff[addr];

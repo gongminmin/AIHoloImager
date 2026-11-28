@@ -74,7 +74,7 @@ function(AddShaderFile file_name shader_type entry_point)
             COMMAND "${AIHI_DXC_CMD}"
                 "$<IF:$<CONFIG:Debug>,${debug_option},${release_option}>"
                 -HV 2021 -enable-16bit-types -fvk-use-dx-layout
-                -T ${shader_type}_6_3 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo
+                -T ${shader_type}_6_6 -Vn ${variable_name} -E "${entry_point}" -Fh "${output_name}" /nologo
                 "${CMAKE_CURRENT_LIST_DIR}/${file_name}"
                 -I "${PROJECT_SOURCE_DIR}/Source/Lib/Source"
                 -I "${PROJECT_SOURCE_DIR}/Source/GpuSystem/Source/Shader"

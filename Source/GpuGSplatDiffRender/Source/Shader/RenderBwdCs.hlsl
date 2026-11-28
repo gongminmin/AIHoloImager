@@ -21,10 +21,10 @@ Texture2D<float4> gsplat_image;
 Texture2D<uint32_t> ppll_head;
 StructuredBuffer<uint32_t2> ppll;
 
-RWStructuredBuffer<uint32_t> grad_color_buff; // Float as uint due to atomic operations
-RWStructuredBuffer<uint32_t> grad_screen_pos_buff; // Float as uint due to atomic operations
-RWStructuredBuffer<uint32_t> grad_conic_2d_buff; // Float as uint due to atomic operations
-RWStructuredBuffer<uint32_t> grad_opacities_buff; // Float as uint due to atomic operations
+RWStructuredBuffer<float> grad_color_buff;
+RWStructuredBuffer<float> grad_screen_pos_buff;
+RWStructuredBuffer<float> grad_conic_2d_buff;
+RWStructuredBuffer<float> grad_opacities_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

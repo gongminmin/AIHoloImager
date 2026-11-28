@@ -21,7 +21,7 @@ StructuredBuffer<uint32_t> indices_buff;
 Texture2D<float4> grad_derivative_barycentric_tex;
 #endif
 
-RWStructuredBuffer<uint32_t> grad_positions_buff; // Float as uint due to atomic operations
+RWStructuredBuffer<float> grad_positions_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

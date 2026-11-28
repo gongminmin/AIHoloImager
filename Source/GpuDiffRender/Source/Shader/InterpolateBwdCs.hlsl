@@ -22,7 +22,7 @@ Texture2D<float4> derivative_barycentric_tex;
 StructuredBuffer<float2> grad_derivative_shading_buff;
 #endif
 
-RWStructuredBuffer<uint32_t> grad_vtx_attribs;
+RWStructuredBuffer<float> grad_vtx_attribs;
 RWTexture2D<float2> grad_barycentric;
 #if ENABLE_DERIVATIVE_BC
 RWTexture2D<float4> grad_derivative_barycentric;

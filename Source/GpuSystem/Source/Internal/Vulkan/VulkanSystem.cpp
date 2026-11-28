@@ -194,6 +194,7 @@ namespace AIHoloImager
             VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
             VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
             VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
+            VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
         };
         if (enable_sharing)
         {
@@ -328,8 +329,16 @@ namespace AIHoloImager
             .fragmentStoresAndAtomics = VK_TRUE,
         };
 
+        VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomic_float_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT,
+            .shaderBufferFloat32AtomicAdd = VK_TRUE,
+            .shaderSharedFloat32AtomicAdd = VK_TRUE,
+            .shaderImageFloat32AtomicAdd = VK_TRUE,
+        };
+
         VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT enable_interlock_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,
+            .pNext = &atomic_float_features,
             .fragmentShaderPixelInterlock = VK_TRUE,
         };
 

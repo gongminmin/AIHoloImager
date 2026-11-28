@@ -20,7 +20,7 @@ StructuredBuffer<float4> positions_buff;
 StructuredBuffer<uint32_t> indices_buff;
 StructuredBuffer<uint32_t> opposite_vertices_buff;
 
-RWStructuredBuffer<uint32_t> anti_aliased; // Float as uint due to atomic operations
+RWStructuredBuffer<float> anti_aliased; // Float as uint due to atomic operations
 RWStructuredBuffer<uint32_t> silhouette_counter;
 RWStructuredBuffer<uint32_t> silhouette_info;
 

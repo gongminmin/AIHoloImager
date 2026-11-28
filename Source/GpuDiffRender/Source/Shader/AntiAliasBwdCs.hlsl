@@ -21,8 +21,8 @@ StructuredBuffer<uint32_t> silhouette_counter;
 StructuredBuffer<uint32_t> silhouette_info;
 StructuredBuffer<float> grad_anti_aliased;
 
-RWStructuredBuffer<uint32_t> grad_shading; // Float as uint due to atomic operations
-RWStructuredBuffer<uint32_t> grad_positions; // Float as uint due to atomic operations
+RWStructuredBuffer<float> grad_shading;
+RWStructuredBuffer<float> grad_positions;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

@@ -25,7 +25,7 @@ Texture2D grad_image;
 StructuredBuffer<float4> derivative_uv_buff;
 #endif
 
-RWStructuredBuffer<uint32_t> grad_texture; // Float as uint due to atomic operations
+RWStructuredBuffer<float> grad_texture;
 RWStructuredBuffer<float2> grad_uv;
 #if ENABLE_MIP
 RWStructuredBuffer<float4> grad_derivative_uv;
