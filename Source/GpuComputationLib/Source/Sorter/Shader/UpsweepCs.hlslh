@@ -16,10 +16,10 @@ cbuffer param_cb
     uint32_t bits;
 };
 
-Buffer<KeyType> keys;
+StructuredBuffer<KeyType> keys;
 
-RWBuffer<uint32_t> global_hist;
-RWBuffer<uint32_t> partition_hist;
+RWStructuredBuffer<uint32_t> global_hist;
+RWStructuredBuffer<uint32_t> partition_hist;
 
 groupshared uint32_t group_local_hist[NumDigitBins];
 

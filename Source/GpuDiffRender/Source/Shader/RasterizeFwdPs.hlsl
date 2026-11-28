@@ -9,8 +9,8 @@ cbuffer param_cb
     float4 viewport;
 };
 
-Buffer<float4> positions_buff;
-Buffer<uint32_t> indices_buff;
+StructuredBuffer<float4> positions_buff;
+StructuredBuffer<uint32_t> indices_buff;
 #endif
 
 void main(float2 bc : TEXCOORD0, uint32_t prim_id : PRIMITIVE_ID,

@@ -14,12 +14,12 @@ cbuffer param_cb
     uint32_t hash_size;
 };
 
-Buffer<uint32_t4> coords_buff;
-Buffer<uint32_t> hash_table;
-Buffer<int32_t3> offsets_buff;
+StructuredBuffer<uint32_t4> coords_buff;
+StructuredBuffer<uint32_t> hash_table;
+StructuredBuffer<int32_t3> offsets_buff;
 
-RWBuffer<uint32_t2> nei_indices;
-RWBuffer<uint32_t> nei_indices_count;
+RWStructuredBuffer<uint32_t2> nei_indices;
+RWStructuredBuffer<uint32_t> nei_indices_count;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

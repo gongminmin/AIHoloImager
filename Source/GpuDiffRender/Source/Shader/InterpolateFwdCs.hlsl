@@ -11,15 +11,15 @@ cbuffer param_cb
 
 Texture2D<float2> barycentric_tex;
 Texture2D<uint32_t> prim_id_tex;
-Buffer<float> vtx_attribs_buff;
-Buffer<uint32_t> indices_buff;
+StructuredBuffer<float> vtx_attribs_buff;
+StructuredBuffer<uint32_t> indices_buff;
 #if ENABLE_DERIVATIVE_BC
 Texture2D<float4> derivative_barycentric_tex;
 #endif
 
-RWBuffer<float> shading;
+RWStructuredBuffer<float> shading;
 #if ENABLE_DERIVATIVE_BC
-RWBuffer<float2> derivative_shading;
+RWStructuredBuffer<float2> derivative_shading;
 #endif
 
 [numthreads(BlockDim, BlockDim, 1)]

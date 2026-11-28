@@ -55,7 +55,7 @@ namespace AIHoloImager
                 buff_size = DivUp(buff_size, BlockDim);
 
                 scan_scanned_buffers.push_back(GpuBuffer(gpu_system_, buff_size * elem_size, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
                     std::format("PrefixSumScanner.scan_sum_buffer_{}", i)));
             }
 
@@ -86,9 +86,9 @@ namespace AIHoloImager
                 buff_size = DivUp(buff_size, BlockDim);
 
                 const GpuConstantBufferView prefix_sum_cbv(gpu_system_, prefix_sum_cb);
-                const GpuShaderResourceView input_srv(gpu_system_, input, format);
-                GpuUnorderedAccessView input_output_uav(gpu_system_, i == 0 ? output : scan_scanned_buffers[i - 1], format);
-                GpuUnorderedAccessView sum_output_uav(gpu_system_, scan_scanned_buffers[i], format);
+                const GpuShaderResourceView input_srv(gpu_system_, input, elem_size);
+                GpuUnorderedAccessView input_output_uav(gpu_system_, i == 0 ? output : scan_scanned_buffers[i - 1], elem_size);
+                GpuUnorderedAccessView sum_output_uav(gpu_system_, scan_scanned_buffers[i], elem_size);
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &prefix_sum_cbv},
@@ -111,8 +111,8 @@ namespace AIHoloImager
                 apply_sum_cb.UploadStaging();
 
                 const GpuConstantBufferView apply_sum_cbv(gpu_system_, apply_sum_cb);
-                const GpuShaderResourceView sum_srv(gpu_system_, scan_scanned_buffers[i], format);
-                GpuUnorderedAccessView output_uav(gpu_system_, i == 0 ? output : scan_scanned_buffers[i - 1], format);
+                const GpuShaderResourceView sum_srv(gpu_system_, scan_scanned_buffers[i], elem_size);
+                GpuUnorderedAccessView output_uav(gpu_system_, i == 0 ? output : scan_scanned_buffers[i - 1], elem_size);
 
                 const uint32_t sum_offset = num_elems * elem_size;
                 if (exclusive && (i == 0) && (output.Size() > sum_offset))

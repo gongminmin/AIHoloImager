@@ -13,16 +13,16 @@ cbuffer param_cb
     uint32_t num_attribs;
 };
 
-Buffer<float> shading_buff;
+StructuredBuffer<float> shading_buff;
 Texture2D<uint32_t> prim_id_tex;
 Texture2D<float> depth_tex;
-Buffer<float4> positions_buff;
-Buffer<uint32_t> indices_buff;
-Buffer<uint32_t> opposite_vertices_buff;
+StructuredBuffer<float4> positions_buff;
+StructuredBuffer<uint32_t> indices_buff;
+StructuredBuffer<uint32_t> opposite_vertices_buff;
 
-RWBuffer<uint32_t> anti_aliased;
-RWBuffer<uint32_t> silhouette_counter;
-RWBuffer<uint32_t> silhouette_info;
+RWStructuredBuffer<uint32_t> anti_aliased; // Float as uint due to atomic operations
+RWStructuredBuffer<uint32_t> silhouette_counter;
+RWStructuredBuffer<uint32_t> silhouette_info;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

@@ -349,6 +349,7 @@ namespace AIHoloImager
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext = &enable_vulkan11_features,
             .shaderFloat16 = VK_TRUE,
+            .scalarBlockLayout = VK_TRUE,
             .timelineSemaphore = VK_TRUE,
         };
         VkPhysicalDeviceVulkan13Features enable_vulkan13_features{

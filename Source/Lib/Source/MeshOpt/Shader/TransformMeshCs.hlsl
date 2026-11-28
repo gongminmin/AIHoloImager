@@ -13,7 +13,7 @@ cbuffer param_cb
     float4x4 transform_it_mtx;
 };
 
-RWBuffer<float> vertex_buff;
+RWStructuredBuffer<float> vertex_buff;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

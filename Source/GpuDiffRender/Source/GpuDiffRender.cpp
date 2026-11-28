@@ -164,13 +164,15 @@ namespace AIHoloImager
             }
 
             silhouette_counter_ = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "GpuDiffRender.AntiAliasFwd.silhouette_counter");
-            silhouette_counter_srv_ = GpuShaderResourceView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
-            silhouette_counter_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_counter_, GpuFormat::R32_Uint);
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                "GpuDiffRender.AntiAliasFwd.silhouette_counter");
+            silhouette_counter_srv_ = GpuShaderResourceView(gpu_system_, silhouette_counter_, sizeof(uint32_t));
+            silhouette_counter_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_counter_, sizeof(uint32_t));
 
             indirect_args_ = GpuBuffer(gpu_system_, sizeof(GpuComputeArguments), GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs, "GpuDiffRender.AntiAliasBwd.indirect_args");
-            indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, GpuFormat::R32_Uint);
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs | GpuResourceFlag::Structured,
+                "GpuDiffRender.AntiAliasBwd.indirect_args");
+            indirect_args_uav_ = GpuUnorderedAccessView(gpu_system_, indirect_args_, sizeof(uint32_t));
         }
         ~Impl() = default;
 
@@ -243,8 +245,8 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView rasterize_fwd_ps_derivative_bc_cbv(gpu_system_, rasterize_fwd_ps_derivative_bc_cb);
 
-                const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+                const GpuShaderResourceView positions_srv(gpu_system_, positions, sizeof(glm::vec4));
+                const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &rasterize_fwd_ps_derivative_bc_cbv},
@@ -289,8 +291,8 @@ namespace AIHoloImager
 
             if (grad_positions.Size() != positions.Size())
             {
-                grad_positions = GpuBuffer(
-                    gpu_system_, positions.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                grad_positions = GpuBuffer(gpu_system_, positions.Size(), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             grad_positions.Name("GpuDiffRender.RasterizeBwd.grad_positions");
 
@@ -306,16 +308,15 @@ namespace AIHoloImager
             const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
             const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
             const GpuShaderResourceView grad_barycentric_srv(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
-            const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView positions_srv(gpu_system_, positions, sizeof(glm::vec4));
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
             GpuShaderResourceView grad_derivative_barycentric_srv;
             if (needs_derivative_barycentric)
             {
                 grad_derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, grad_derivative_barycentric, GpuFormat::RGBA32_Float);
             }
 
-            GpuUnorderedAccessView grad_positions_uav(
-                gpu_system_, grad_positions, GpuFormat::R32_Uint); // Float as uint due to atomic operations
+            GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, sizeof(float));
 
             const uint32_t clear_clr[] = {0, 0, 0, 0};
             cmd_list.Clear(grad_positions_uav, clear_clr);
@@ -350,8 +351,8 @@ namespace AIHoloImager
             const uint32_t shading_size = width * height * num_attribs_per_vtx * sizeof(float);
             if (shading.Size() != shading_size)
             {
-                shading =
-                    GpuBuffer(gpu_system_, shading_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                shading = GpuBuffer(gpu_system_, shading_size, GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             shading.Name("GpuDiffRender.InterpolateFwd.shading");
 
@@ -361,7 +362,7 @@ namespace AIHoloImager
                 if (derivative_shading.Size() != derivative_shading_size)
                 {
                     derivative_shading = GpuBuffer(gpu_system_, derivative_shading_size, GpuHeap::Default,
-                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
                 }
                 derivative_shading.Name("GpuDiffRender.InterpolateFwd.derivative_shading");
             }
@@ -381,19 +382,19 @@ namespace AIHoloImager
 
             const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
             const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-            const GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
-            const GpuShaderResourceView index_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView attrib_srv(gpu_system_, vtx_attribs, sizeof(float));
+            const GpuShaderResourceView index_srv(gpu_system_, indices, sizeof(uint32_t));
             GpuShaderResourceView derivative_barycentric_srv;
             if (needs_dbc)
             {
                 derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, derivative_barycentric, GpuFormat::RGBA32_Float);
             }
 
-            GpuUnorderedAccessView shading_uav(gpu_system_, shading, GpuFormat::R32_Float);
+            GpuUnorderedAccessView shading_uav(gpu_system_, shading, sizeof(float));
             GpuUnorderedAccessView derivative_shading_uav;
             if (needs_dbc)
             {
-                derivative_shading_uav = GpuUnorderedAccessView(gpu_system_, derivative_shading, GpuFormat::RG32_Float);
+                derivative_shading_uav = GpuUnorderedAccessView(gpu_system_, derivative_shading, sizeof(glm::vec2));
             }
 
             const float clear_clr[] = {0, 0, 0, 0};
@@ -472,18 +473,18 @@ namespace AIHoloImager
 
             const GpuShaderResourceView barycentric_srv(gpu_system_, barycentric, GpuFormat::RG32_Float);
             const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-            const GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, GpuFormat::R32_Float);
-            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-            const GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, GpuFormat::R32_Float);
+            const GpuShaderResourceView vtx_attribs_srv(gpu_system_, vtx_attribs, sizeof(float));
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
+            const GpuShaderResourceView grad_shading_srv(gpu_system_, grad_shading, sizeof(float));
             GpuShaderResourceView derivative_barycentric_srv;
             GpuShaderResourceView grad_derivative_shading_srv;
             if (needs_dbc)
             {
                 derivative_barycentric_srv = GpuShaderResourceView(gpu_system_, derivative_barycentric, GpuFormat::RGBA32_Float);
-                grad_derivative_shading_srv = GpuShaderResourceView(gpu_system_, grad_derivative_shading, GpuFormat::RG32_Float);
+                grad_derivative_shading_srv = GpuShaderResourceView(gpu_system_, grad_derivative_shading, sizeof(glm::vec2));
             }
 
-            GpuUnorderedAccessView grad_vtx_attribs_uav(gpu_system_, grad_vtx_attribs, GpuFormat::R32_Uint);
+            GpuUnorderedAccessView grad_vtx_attribs_uav(gpu_system_, grad_vtx_attribs, sizeof(float));
             GpuUnorderedAccessView grad_barycentric_uav(gpu_system_, grad_barycentric, GpuFormat::RG32_Float);
             GpuUnorderedAccessView grad_derivative_barycentric_uav;
             if (needs_dbc)
@@ -616,11 +617,11 @@ namespace AIHoloImager
 
             const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
             const GpuShaderResourceView texture_srv(gpu_system_, texture);
-            const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
+            const GpuShaderResourceView uv_srv(gpu_system_, uv, sizeof(glm::vec2));
             GpuShaderResourceView derivative_uv_srv;
             if (mip_mode)
             {
-                derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, GpuFormat::RGBA32_Float);
+                derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, sizeof(glm::vec4));
             }
 
             GpuUnorderedAccessView image_uav(gpu_system_, image);
@@ -672,22 +673,22 @@ namespace AIHoloImager
             if (mip_mode)
             {
                 grad_texture_mips = GpuBuffer(gpu_system_, mip_level_offsets[mip_levels] * sizeof(float), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured);
             }
 
             const uint32_t grad_texture_size = mip_level_offsets[1] * sizeof(float);
             if (grad_texture.Size() != grad_texture_size)
             {
-                grad_texture = GpuBuffer(
-                    gpu_system_, grad_texture_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                grad_texture = GpuBuffer(gpu_system_, grad_texture_size, GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             grad_texture.Name("GpuDiffRender.TextureBwd.grad_texture");
 
             const uint32_t grad_uv_size = gbuffer_width * gbuffer_height * sizeof(glm::vec2);
             if (grad_uv.Size() != grad_uv_size)
             {
-                grad_uv =
-                    GpuBuffer(gpu_system_, grad_uv_size, GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                grad_uv = GpuBuffer(gpu_system_, grad_uv_size, GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             grad_uv.Name("GpuDiffRender.TextureBwd.grad_uv");
 
@@ -697,7 +698,7 @@ namespace AIHoloImager
                 if (grad_derivative_uv.Size() != grad_derivative_uv_size)
                 {
                     grad_derivative_uv = GpuBuffer(gpu_system_, grad_derivative_uv_size, GpuHeap::Default,
-                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
                 }
                 grad_derivative_uv.Name("GpuDiffRender.TextureBwd.grad_derivative_uv");
             }
@@ -724,21 +725,20 @@ namespace AIHoloImager
                 const GpuConstantBufferView texture_bwd_cbv(gpu_system_, texture_bwd_cb);
 
                 const GpuShaderResourceView texture_srv(gpu_system_, texture);
-                const GpuShaderResourceView uv_srv(gpu_system_, uv, GpuFormat::RG32_Float);
+                const GpuShaderResourceView uv_srv(gpu_system_, uv, sizeof(glm::vec2));
                 const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image);
                 GpuShaderResourceView derivative_uv_srv;
                 if (mip_mode)
                 {
-                    derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, GpuFormat::RGBA32_Float);
+                    derivative_uv_srv = GpuShaderResourceView(gpu_system_, derivative_uv, sizeof(glm::vec4));
                 }
 
-                GpuUnorderedAccessView grad_texture_mips_uav(gpu_system_, mip_mode ? grad_texture_mips : grad_texture,
-                    GpuFormat::R32_Uint); // Float as uint due to atomic operations
-                GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_uv, GpuFormat::RG32_Float);
+                GpuUnorderedAccessView grad_texture_mips_uav(gpu_system_, mip_mode ? grad_texture_mips : grad_texture, sizeof(float));
+                GpuUnorderedAccessView grad_uv_uav(gpu_system_, grad_uv, sizeof(glm::vec2));
                 GpuUnorderedAccessView grad_derivative_uv_uav;
                 if (mip_mode)
                 {
-                    grad_derivative_uv_uav = GpuUnorderedAccessView(gpu_system_, grad_derivative_uv, GpuFormat::RGBA32_Float);
+                    grad_derivative_uv_uav = GpuUnorderedAccessView(gpu_system_, grad_derivative_uv, sizeof(glm::vec4));
                 }
 
                 {
@@ -809,15 +809,15 @@ namespace AIHoloImager
         {
             const uint32_t num_indices = indices.Size() / sizeof(uint32_t);
 
-            const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
+            const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
 
             const uint32_t expected_hash_buff_size = num_indices * 2 * sizeof(glm::uvec3);
             if (opposite_vertices_hash_.Size() != expected_hash_buff_size)
             {
                 opposite_vertices_hash_ = GpuBuffer(gpu_system_, expected_hash_buff_size, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
-                opposite_vertices_hash_srv_ = GpuShaderResourceView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
-                opposite_vertices_hash_uav_ = GpuUnorderedAccessView(gpu_system_, opposite_vertices_hash_, GpuFormat::R32_Uint);
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured);
+                opposite_vertices_hash_srv_ = GpuShaderResourceView(gpu_system_, opposite_vertices_hash_, sizeof(uint32_t));
+                opposite_vertices_hash_uav_ = GpuUnorderedAccessView(gpu_system_, opposite_vertices_hash_, sizeof(uint32_t));
             }
             opposite_vertices_hash_.Name("GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices_hash");
 
@@ -852,8 +852,8 @@ namespace AIHoloImager
 
             if (opposite_vertices.Size() != indices.Size())
             {
-                opposite_vertices = GpuBuffer(
-                    gpu_system_, indices.Size(), GpuHeap::Default, GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess);
+                opposite_vertices = GpuBuffer(gpu_system_, indices.Size(), GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured);
             }
             opposite_vertices.Name("GpuDiffRender.AntiAliasConstructOppositeVertices.opposite_vertices");
 
@@ -868,7 +868,7 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView anti_alias_construct_oppo_vert_cbv(gpu_system_, anti_alias_construct_oppo_vert_cb);
 
-                GpuUnorderedAccessView oppo_vert_uav(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView oppo_vert_uav(gpu_system_, opposite_vertices, sizeof(uint32_t));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &anti_alias_construct_oppo_vert_cbv},
@@ -895,7 +895,8 @@ namespace AIHoloImager
             if (anti_aliased.Size() != shading.Size())
             {
                 anti_aliased = GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured);
             }
             anti_aliased.Name("GpuDiffRender.AntiAliasFwd.anti_aliased");
 
@@ -903,9 +904,10 @@ namespace AIHoloImager
             if (silhouette_info_.Size() != silhouette_info_size)
             {
                 silhouette_info_ = GpuBuffer(gpu_system_, silhouette_info_size, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "GpuDiffRender.AntiAliasFwd.silhouette_info");
-                silhouette_info_srv_ = GpuShaderResourceView(gpu_system_, silhouette_info_, GpuFormat::R32_Uint);
-                silhouette_info_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_info_, GpuFormat::R32_Uint);
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "GpuDiffRender.AntiAliasFwd.silhouette_info");
+                silhouette_info_srv_ = GpuShaderResourceView(gpu_system_, silhouette_info_, sizeof(uint32_t));
+                silhouette_info_uav_ = GpuUnorderedAccessView(gpu_system_, silhouette_info_, sizeof(uint32_t));
             }
 
             cmd_list.Copy(anti_aliased, shading);
@@ -921,13 +923,13 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView anti_alias_fwd_cbv(gpu_system_, anti_alias_fwd_cb);
 
-                const GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
+                const GpuShaderResourceView shading_srv(gpu_system_, shading, sizeof(float));
                 const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-                const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-                const GpuShaderResourceView opposite_vertices_srv(gpu_system_, opposite_vertices, GpuFormat::R32_Uint);
+                const GpuShaderResourceView positions_srv(gpu_system_, positions, sizeof(glm::vec4));
+                const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
+                const GpuShaderResourceView opposite_vertices_srv(gpu_system_, opposite_vertices, sizeof(uint32_t));
 
-                GpuUnorderedAccessView anti_aliased_uav(gpu_system_, anti_aliased, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView anti_aliased_uav(gpu_system_, anti_aliased, sizeof(uint32_t));
 
                 {
                     const uint32_t clear_clr[] = {0, 0, 0, 0};
@@ -981,15 +983,15 @@ namespace AIHoloImager
 
             if (grad_shading.Size() != shading.Size())
             {
-                grad_shading =
-                    GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                grad_shading = GpuBuffer(gpu_system_, shading.Size(), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             grad_shading.Name("GpuDiffRender.AntiAliasBwd.grad_shading");
 
             if (grad_positions.Size() != positions.Size())
             {
-                grad_positions = GpuBuffer(
-                    gpu_system_, positions.Size(), GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable);
+                grad_positions = GpuBuffer(gpu_system_, positions.Size(), GpuHeap::Default,
+                    GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured);
             }
             grad_positions.Name("GpuDiffRender.AntiAliasBwd.grad_positions");
 
@@ -1006,14 +1008,14 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView anti_alias_bwd_cbv(gpu_system_, anti_alias_bwd_cb);
 
-                const GpuShaderResourceView shading_srv(gpu_system_, shading, GpuFormat::R32_Float);
+                const GpuShaderResourceView shading_srv(gpu_system_, shading, sizeof(float));
                 const GpuShaderResourceView prim_id_srv(gpu_system_, prim_id, GpuFormat::R32_Uint);
-                const GpuShaderResourceView positions_srv(gpu_system_, positions, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView indices_srv(gpu_system_, indices, GpuFormat::R32_Uint);
-                const GpuShaderResourceView grad_anti_aliased_srv(gpu_system_, grad_anti_aliased, GpuFormat::R32_Float);
+                const GpuShaderResourceView positions_srv(gpu_system_, positions, sizeof(glm::vec4));
+                const GpuShaderResourceView indices_srv(gpu_system_, indices, sizeof(uint32_t));
+                const GpuShaderResourceView grad_anti_aliased_srv(gpu_system_, grad_anti_aliased, sizeof(float));
 
-                GpuUnorderedAccessView grad_shading_uav(gpu_system_, grad_shading, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView grad_shading_uav(gpu_system_, grad_shading, sizeof(float));
+                GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, sizeof(float));
 
                 {
                     const uint32_t clear_clr[] = {0, 0, 0, 0};

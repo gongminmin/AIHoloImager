@@ -22,23 +22,23 @@ cbuffer param_cb
     float3 eye_pos_os;
 };
 
-Buffer<float3> pos_buff;
-Buffer<float3> scale_buff;
-Buffer<float4> rotation_buff;
-Buffer<float3> sh_buff;
-Buffer<float4> screen_pos_extents_buff;
-Buffer<float> cov_3d_buff;
-Buffer<uint32_t> clamped_buff;
-Buffer<float4> conic_opacity_buff;
-Buffer<float2> grad_screen_pos_buff;
-Buffer<float3> grad_color_buff;
-Buffer<float3> grad_conic_2d_buff;
+StructuredBuffer<float3> pos_buff;
+StructuredBuffer<float3> scale_buff;
+StructuredBuffer<float4> rotation_buff;
+StructuredBuffer<float3> sh_buff;
+StructuredBuffer<float4> screen_pos_extents_buff;
+StructuredBuffer<float> cov_3d_buff;
+StructuredBuffer<uint32_t> clamped_buff;
+StructuredBuffer<float4> conic_opacity_buff;
+StructuredBuffer<float2> grad_screen_pos_buff;
+StructuredBuffer<float3> grad_color_buff;
+StructuredBuffer<float3> grad_conic_2d_buff;
 
-RWBuffer<float> grad_positions_buff;
-RWBuffer<float> grad_scales_buff;
-RWBuffer<float4> grad_rotations_buff;
-RWBuffer<float> grad_shs_buff;
-RWBuffer<float> grad_opacities_buff;
+RWStructuredBuffer<float> grad_positions_buff;
+RWStructuredBuffer<float> grad_scales_buff;
+RWStructuredBuffer<float4> grad_rotations_buff;
+RWStructuredBuffer<float> grad_shs_buff;
+RWStructuredBuffer<float> grad_opacities_buff;
 
 float3 DNormVDV(float3 v, float3 dv)
 {
@@ -170,7 +170,7 @@ void ComputeCov2D(float3 pos_os, float2 focal, float2 tan_fov, float kernel_size
     grad_position = mul(float3(dl_dtx, dl_dty, dl_dtz), w_mtx);
 }
 
-void ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, float3 pos_os, float3 eye_pos_os, uint32_t3 clamped, inout float3 grad_position, RWBuffer<float> grad_shs_buff)
+void ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, float3 pos_os, float3 eye_pos_os, uint32_t3 clamped, inout float3 grad_position, RWStructuredBuffer<float> grad_shs_buff)
 {
     const float3 dir_orig = pos_os - eye_pos_os;
     const float3 dir = normalize(dir_orig);

@@ -245,10 +245,12 @@ namespace AIHoloImager
         GpuMesh ret(GpuVertexLayout(gpu_system, std::span(gpu_vertex_attribs.get(), vertex_attribs.size())), GpuFormat::R32_Uint);
 
         GpuBuffer vb(gpu_system, static_cast<uint32_t>(cpu_vb.size() * sizeof(float)), GpuHeap::Default,
-            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer | GpuResourceFlag::Shareable,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer |
+                GpuResourceFlag::Shareable | GpuResourceFlag::Structured,
             "vb");
         GpuBuffer ib(gpu_system, static_cast<uint32_t>(cpu_ib.size() * sizeof(uint32_t)), GpuHeap::Default,
-            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer | GpuResourceFlag::Shareable,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer | GpuResourceFlag::Shareable |
+                GpuResourceFlag::Structured,
             "ib");
 
         GpuTexture2D albedo_tex;
@@ -285,10 +287,12 @@ namespace AIHoloImager
         const auto& src_albedo = mesh.AlbedoTexture();
 
         GpuBuffer dst_vb(gpu_system, mesh.VertexBuffer().Size(), GpuHeap::Default,
-            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer | GpuResourceFlag::Shareable,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer |
+                GpuResourceFlag::Shareable | GpuResourceFlag::Structured,
             "vb");
         GpuBuffer dst_ib(gpu_system, mesh.IndexBuffer().Size(), GpuHeap::Default,
-            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer | GpuResourceFlag::Shareable,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer | GpuResourceFlag::Shareable |
+                GpuResourceFlag::Structured,
             "ib");
 
         GpuTexture2D dst_albedo;

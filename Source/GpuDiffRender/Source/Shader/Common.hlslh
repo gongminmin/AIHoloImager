@@ -25,7 +25,7 @@ struct SilhouetteInfo
     float alpha;
 };
 
-void EncodeSilhouetteInfo(RWBuffer<uint32_t> silhouette_info, uint32_t index, SilhouetteInfo sil_info)
+void EncodeSilhouetteInfo(RWStructuredBuffer<uint32_t> silhouette_info, uint32_t index, SilhouetteInfo sil_info)
 {
     const uint32_t offset = index * 2;
 
@@ -33,7 +33,7 @@ void EncodeSilhouetteInfo(RWBuffer<uint32_t> silhouette_info, uint32_t index, Si
     silhouette_info[offset + 1] = asuint(sil_info.alpha);
 }
 
-SilhouetteInfo DecodeSilhouetteInfo(Buffer<uint32_t> silhouette_info, uint32_t index)
+SilhouetteInfo DecodeSilhouetteInfo(StructuredBuffer<uint32_t> silhouette_info, uint32_t index)
 {
     SilhouetteInfo sil_info;
 

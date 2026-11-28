@@ -8,7 +8,7 @@ cbuffer param_cb
     uint32_t num_features;
 };
 
-Buffer<uint32_t3> coords;
+StructuredBuffer<uint32_t3> coords;
 
 RWTexture3D<uint32_t> index_volume;
 

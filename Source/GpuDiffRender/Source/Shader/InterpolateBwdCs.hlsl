@@ -14,15 +14,15 @@ cbuffer param_cb
 
 Texture2D<float2> barycentric_tex;
 Texture2D<uint32_t> prim_id_tex;
-Buffer<float> vtx_attribs_buff;
-Buffer<uint32_t> indices_buff;
-Buffer<float> grad_shading_buff;
+StructuredBuffer<float> vtx_attribs_buff;
+StructuredBuffer<uint32_t> indices_buff;
+StructuredBuffer<float> grad_shading_buff;
 #if ENABLE_DERIVATIVE_BC
 Texture2D<float4> derivative_barycentric_tex;
-Buffer<float2> grad_derivative_shading_buff;
+StructuredBuffer<float2> grad_derivative_shading_buff;
 #endif
 
-RWBuffer<uint32_t> grad_vtx_attribs;
+RWStructuredBuffer<uint32_t> grad_vtx_attribs;
 RWTexture2D<float2> grad_barycentric;
 #if ENABLE_DERIVATIVE_BC
 RWTexture2D<float4> grad_derivative_barycentric;

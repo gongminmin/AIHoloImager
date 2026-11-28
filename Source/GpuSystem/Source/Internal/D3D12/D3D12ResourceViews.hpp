@@ -168,7 +168,11 @@ namespace AIHoloImager
         void Transition(D3D12CommandList& cmd_list) const;
 
         void CopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void UintCopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
+        void FloatCopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept;
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle() const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE UintCpuHandle() const noexcept;
+        D3D12_CPU_DESCRIPTOR_HANDLE FloatCpuHandle() const noexcept;
 
         GpuResource* Resource() noexcept override;
 
@@ -178,6 +182,8 @@ namespace AIHoloImager
         uint32_t sub_resource_;
         D3D12DescriptorBlock desc_block_;
         D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE uint_cpu_handle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE float_cpu_handle_{};
     };
 
     D3D12_DEFINE_IMP(UnorderedAccessView)

@@ -11,9 +11,9 @@ cbuffer param_cb
     uint32_t bwd_block_dim;
 };
 
-Buffer<uint32_t> silhouette_counter;
+StructuredBuffer<uint32_t> silhouette_counter;
 
-RWBuffer<uint32_t> indirect_args;
+RWStructuredBuffer<uint32_t> indirect_args;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

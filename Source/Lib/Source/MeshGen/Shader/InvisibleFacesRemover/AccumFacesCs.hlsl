@@ -8,9 +8,9 @@ cbuffer param_cb
     uint32_t num_faces;
 };
 
-Buffer<uint32_t> face_mark_buff;
+StructuredBuffer<uint32_t> face_mark_buff;
 
-RWBuffer<uint32_t> view_counter_buff;
+RWStructuredBuffer<uint32_t> view_counter_buff;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

@@ -69,9 +69,11 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(positions), rast_intermediate_.positions, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.RasterizeFwd.positions");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuDiffRenderTorch.RasterizeFwd.positions");
         tensor_converter_.Convert(cmd_list, std::move(indices), rast_intermediate_.indices, GpuHeap::Default,
-            GpuResourceFlag::IndexBuffer | GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.RasterizeFwd.indices");
+            GpuResourceFlag::IndexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuDiffRenderTorch.RasterizeFwd.indices");
 
         if (viewport != nullptr)
         {
@@ -212,17 +214,18 @@ namespace AIHoloImager
 
         interpolate_intermediate_.num_attribs = num_attribs;
         tensor_converter_.Convert(cmd_list, std::move(vtx_attribs), interpolate_intermediate_.vtx_attribs, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateFwd.vtx_attribs");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.InterpolateFwd.vtx_attribs");
         tensor_converter_.Convert(cmd_list, std::move(barycentric), interpolate_intermediate_.barycentric, GpuFormat::RG32_Float,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateFwd.barycentric");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.InterpolateFwd.barycentric");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), interpolate_intermediate_.prim_id, GpuFormat::R32_Uint,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateFwd.prim_id");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.InterpolateFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(indices), interpolate_intermediate_.indices, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateFwd.indices");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.InterpolateFwd.indices");
         if (needs_dbc)
         {
             tensor_converter_.Convert(cmd_list, *derivative_barycentric, interpolate_intermediate_.derivative_barycentric,
-                GpuFormat::RGBA32_Float, GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateFwd.derivative_barycentric");
+                GpuFormat::RGBA32_Float, GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+                "GpuDiffRenderTorch.InterpolateFwd.derivative_barycentric");
         }
         else
         {
@@ -257,11 +260,12 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_shading), interpolate_intermediate_.grad_shading, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateBwd.grad_shading");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.InterpolateBwd.grad_shading");
         if (needs_dbc)
         {
             tensor_converter_.Convert(cmd_list, *grad_derivative_shading, interpolate_intermediate_.grad_derivative_shading,
-                GpuHeap::Default, GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.InterpolateBwd.grad_derivative_shading");
+                GpuHeap::Default, GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+                "GpuDiffRenderTorch.InterpolateBwd.grad_derivative_shading");
         }
         else
         {
@@ -424,12 +428,12 @@ namespace AIHoloImager
             "GpuDiffRenderTorch.TextureFwd.texture");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), texture_intermediate_.prim_id, GpuFormat::R32_Uint,
             GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.TextureFwd.prim_id");
-        tensor_converter_.Convert(cmd_list, std::move(uv), texture_intermediate_.uv, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-            "GpuDiffRenderTorch.TextureFwd.uv");
+        tensor_converter_.Convert(cmd_list, std::move(uv), texture_intermediate_.uv, GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.TextureFwd.uv");
         if (derivative_uv != nullptr)
         {
             tensor_converter_.Convert(cmd_list, *derivative_uv, texture_intermediate_.derivative_uv, GpuHeap::Default,
-                GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.TextureFwd.derivative_uv");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.TextureFwd.derivative_uv");
         }
         else
         {
@@ -566,8 +570,8 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         GpuBuffer indices_buff;
-        tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-            "GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
+        tensor_converter_.Convert(cmd_list, std::move(indices), indices_buff, GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.AntiAliasConstructOppositeVertices.indices");
 
         AntiAliasOppositeVertices ret;
         gpu_dr_.AntiAliasConstructOppositeVertices(cmd_list, indices_buff, ret.opposite_vertices);
@@ -623,14 +627,14 @@ namespace AIHoloImager
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-        tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-            "GpuDiffRenderTorch.AntiAliasFwd.shading");
+        tensor_converter_.Convert(cmd_list, std::move(shading), aa_intermediate_.shading, GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.AntiAliasFwd.shading");
         tensor_converter_.Convert(cmd_list, std::move(prim_id), aa_intermediate_.prim_id, GpuFormat::R32_Uint,
             GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.AntiAliasFwd.prim_id");
         tensor_converter_.Convert(cmd_list, std::move(positions), aa_intermediate_.positions, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.AntiAliasFwd.positions");
-        tensor_converter_.Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-            "GpuDiffRenderTorch.AntiAliasFwd.indices");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.AntiAliasFwd.positions");
+        tensor_converter_.Convert(cmd_list, std::move(indices), aa_intermediate_.indices, GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.AntiAliasFwd.indices");
 
         if (viewport != nullptr)
         {
@@ -675,7 +679,7 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_anti_aliased), aa_intermediate_.grad_anti_aliased, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuDiffRenderTorch.AntiAliasBwd.grad_anti_aliased");
 
         gpu_dr_.AntiAliasBwd(cmd_list, aa_intermediate_.shading, aa_intermediate_.prim_id, aa_intermediate_.positions,
             aa_intermediate_.indices, aa_intermediate_.viewport, aa_intermediate_.grad_anti_aliased, aa_intermediate_.grad_shading,

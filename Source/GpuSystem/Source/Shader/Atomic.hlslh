@@ -6,7 +6,7 @@
 
 #include "Platform.hlslh"
 
-void AtomicAdd(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+void AtomicAdd(RWStructuredBuffer<uint32_t> buff, uint32_t addr, float value)
 {
     uint32_t cmp_val = buff[addr];
     ALLOW_UAV_CONDITION
@@ -23,7 +23,7 @@ void AtomicAdd(RWBuffer<uint32_t> buff, uint32_t addr, float value)
     }
 }
 
-void AtomicMax(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+void AtomicMax(RWStructuredBuffer<uint32_t> buff, uint32_t addr, float value)
 {
     uint32_t cmp_val = buff[addr];
     ALLOW_UAV_CONDITION
@@ -40,7 +40,7 @@ void AtomicMax(RWBuffer<uint32_t> buff, uint32_t addr, float value)
     }
 }
 
-void AtomicMin(RWBuffer<uint32_t> buff, uint32_t addr, float value)
+void AtomicMin(RWStructuredBuffer<uint32_t> buff, uint32_t addr, float value)
 {
     uint32_t cmp_val = buff[addr];
     ALLOW_UAV_CONDITION

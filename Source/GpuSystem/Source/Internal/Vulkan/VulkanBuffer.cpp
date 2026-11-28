@@ -35,6 +35,10 @@ namespace AIHoloImager
             {
                 usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
             }
+            if (EnumHasAny(flags, GpuResourceFlag::Structured))
+            {
+                usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+            }
             if (EnumHasAny(flags, GpuResourceFlag::UnorderedAccess))
             {
                 usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;

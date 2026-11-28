@@ -22,8 +22,8 @@ cbuffer param_cb
 Buffer<uint32_t> edge_table;
 Texture3D<float4> scalar_deformation;
 
-RWBuffer<uint32_t> cube_offsets;
-RWBuffer<uint32_t> counter;
+RWStructuredBuffer<uint32_t> cube_offsets;
+RWStructuredBuffer<uint32_t> counter;
 
 groupshared uint32_t group_cube_offset;
 

@@ -14,9 +14,9 @@ cbuffer param_cb
     uint32_t hash_size;
 };
 
-Buffer<uint32_t4> coords_buff;
+StructuredBuffer<uint32_t4> coords_buff;
 
-RWBuffer<uint32_t> hash_table;
+RWStructuredBuffer<uint32_t> hash_table;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

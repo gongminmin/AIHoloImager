@@ -9,7 +9,7 @@ cbuffer param_cb
 };
 
 Texture2D<float4> input_tex;
-Buffer<float> max_buff;
+StructuredBuffer<float> max_buff;
 
 RWTexture2D<float> output_tex;
 

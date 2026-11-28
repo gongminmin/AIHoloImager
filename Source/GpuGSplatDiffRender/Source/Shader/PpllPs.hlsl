@@ -8,11 +8,11 @@ globallycoherent RasterizerOrderedTexture2D<uint32_t> ppll_head;
 #ifdef __spirv__
 [[vk::binding(2)]]
 #endif
-RWBuffer<uint32_t> ppll;
+RWStructuredBuffer<uint32_t> ppll;
 #ifdef __spirv__
 [[vk::binding(3)]]
 #endif
-RWBuffer<uint32_t> ppll_counter;
+RWStructuredBuffer<uint32_t> ppll_counter;
 
 void main(uint32_t point_id : TEXCOORD0,
           float4 pos : SV_Position)

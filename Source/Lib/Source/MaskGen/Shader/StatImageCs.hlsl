@@ -14,7 +14,7 @@ cbuffer param_cb
 
 Texture2D<float4> input_tex;
 
-RWBuffer<uint32_t> max_buff;
+RWStructuredBuffer<uint32_t> max_buff; // Float as uint due to atomic operations
 
 groupshared float group_wave_max[BlockDim * BlockDim / MinWaveSize];
 

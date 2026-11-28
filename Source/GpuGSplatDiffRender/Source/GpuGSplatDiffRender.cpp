@@ -140,21 +140,26 @@ namespace AIHoloImager
             {
                 const GpuResourceFlag extra_flags = need_backward ? GpuResourceFlag::ShaderResource : GpuResourceFlag::None;
 
-                intermediate_cache_.screen_pos_extents = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec4),
-                    GpuHeap::Default, GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | extra_flags,
-                    "gsplat.intermediate_cache_.screen_pos");
+                intermediate_cache_.screen_pos_extents =
+                    GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
+                        GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured | extra_flags,
+                        "gsplat.intermediate_cache_.screen_pos");
                 intermediate_cache_.conic_opacity = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
-                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | extra_flags,
+                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured | extra_flags,
                     "gsplat.intermediate_cache_.conic_opacity");
                 intermediate_cache_.color = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | extra_flags, "gsplat.intermediate_cache_.color");
-                intermediate_cache_.num_visible_gaussians_indirect_args = GpuBuffer(gpu_system_, sizeof(GpuRenderIndexedArguments),
-                    GpuHeap::Default, GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs | extra_flags,
-                    "gsplat.intermediate_cache_.num_visible_gaussians_indirect_args");
+                    GpuResourceFlag::VertexBuffer | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured | extra_flags,
+                    "gsplat.intermediate_cache_.color");
+                intermediate_cache_.num_visible_gaussians_indirect_args =
+                    GpuBuffer(gpu_system_, sizeof(GpuRenderIndexedArguments), GpuHeap::Default,
+                        GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndirectArgs | GpuResourceFlag::Structured | extra_flags,
+                        "gsplat.intermediate_cache_.num_visible_gaussians_indirect_args");
                 intermediate_cache_.visible_key = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.visible_key");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.visible_key");
                 intermediate_cache_.visible_id = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::IndexBuffer | GpuResourceFlag::UnorderedAccess,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::IndexBuffer | GpuResourceFlag::UnorderedAccess |
+                        GpuResourceFlag::Structured,
                     "gsplat.intermediate_cache_.visible_id");
 
                 intermediate_cache_.num_gaussians_allocated = gaussians.num_gaussians;
@@ -169,9 +174,11 @@ namespace AIHoloImager
             if (need_backward)
             {
                 intermediate_cache_.cov_3d = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(float) * 6, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.cov_3d");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.cov_3d");
                 intermediate_cache_.clamped = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.clamped");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.clamped");
             }
             else
             {
@@ -199,19 +206,19 @@ namespace AIHoloImager
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system_, preprocess_cb);
 
-                const GpuShaderResourceView pos_srv(gpu_system_, gaussians.positions, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView scale_srv(gpu_system_, gaussians.scales, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView rotation_srv(gpu_system_, gaussians.rotations, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView opacity_srv(gpu_system_, gaussians.opacities, GpuFormat::R32_Float);
+                const GpuShaderResourceView pos_srv(gpu_system_, gaussians.positions, sizeof(glm::vec3));
+                const GpuShaderResourceView scale_srv(gpu_system_, gaussians.scales, sizeof(glm::vec3));
+                const GpuShaderResourceView rotation_srv(gpu_system_, gaussians.rotations, sizeof(glm::vec4));
+                const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, sizeof(glm::vec3));
+                const GpuShaderResourceView opacity_srv(gpu_system_, gaussians.opacities, sizeof(float));
 
-                GpuUnorderedAccessView screen_pos_extents_uav(gpu_system_, intermediate_cache_.screen_pos_extents, GpuFormat::RGBA32_Float);
-                GpuUnorderedAccessView color_uav(gpu_system_, intermediate_cache_.color, GpuFormat::R32_Float);
-                GpuUnorderedAccessView conic_opacity_uav(gpu_system_, intermediate_cache_.conic_opacity, GpuFormat::RGBA32_Float);
+                GpuUnorderedAccessView screen_pos_extents_uav(gpu_system_, intermediate_cache_.screen_pos_extents, sizeof(glm::vec4));
+                GpuUnorderedAccessView color_uav(gpu_system_, intermediate_cache_.color, sizeof(float));
+                GpuUnorderedAccessView conic_opacity_uav(gpu_system_, intermediate_cache_.conic_opacity, sizeof(glm::vec4));
                 GpuUnorderedAccessView num_visible_gaussians_uav(
-                    gpu_system_, intermediate_cache_.num_visible_gaussians_indirect_args, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView visible_key_uav(gpu_system_, intermediate_cache_.visible_key, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView visible_id_uav(gpu_system_, intermediate_cache_.visible_id, GpuFormat::R32_Uint);
+                    gpu_system_, intermediate_cache_.num_visible_gaussians_indirect_args, sizeof(uint32_t));
+                GpuUnorderedAccessView visible_key_uav(gpu_system_, intermediate_cache_.visible_key, sizeof(uint32_t));
+                GpuUnorderedAccessView visible_id_uav(gpu_system_, intermediate_cache_.visible_id, sizeof(uint32_t));
 
                 {
                     const uint32_t clear_value[] = {0, 0, 0, 0};
@@ -240,8 +247,8 @@ namespace AIHoloImager
                 GpuUnorderedAccessView clamped_uav;
                 if (need_backward)
                 {
-                    cov_3d_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.cov_3d, GpuFormat::R32_Float);
-                    clamped_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.clamped, GpuFormat::R32_Uint);
+                    cov_3d_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.cov_3d, sizeof(float));
+                    clamped_uav = GpuUnorderedAccessView(gpu_system_, intermediate_cache_.clamped, sizeof(uint32_t));
 
                     {
                         const float clear_value[] = {0, 0, 0, 0};
@@ -324,7 +331,7 @@ namespace AIHoloImager
                 else
                 {
                     assert(rendered_buff != nullptr);
-                    rendered_image_uav = GpuUnorderedAccessView(gpu_system_, *rendered_buff, GpuFormat::R32_Float);
+                    rendered_image_uav = GpuUnorderedAccessView(gpu_system_, *rendered_buff, sizeof(float));
                 }
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
@@ -353,32 +360,43 @@ namespace AIHoloImager
             if (grad_positions.Size() < gaussians.num_gaussians * sizeof(glm::vec3))
             {
                 grad_positions = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured,
                     "gsplat.grad_positions");
                 grad_scales = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "gsplat.grad_scales");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured,
+                    "gsplat.grad_scales");
                 grad_rotations = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec4), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured,
                     "gsplat.grad_rotations");
                 grad_shs = GpuBuffer(gpu_system_,
                     gaussians.num_gaussians * NumCoefficientsFromShDegrees(gaussians.sh_degrees) * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "gsplat.grad_shs");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured,
+                    "gsplat.grad_shs");
                 grad_opacities = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(float), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable |
+                        GpuResourceFlag::Structured,
                     "gsplat.grad_opacities");
 
                 intermediate_cache_.grad_color = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_color");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.grad_color");
                 intermediate_cache_.grad_screen_pos = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec2), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_screen_pos");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.grad_screen_pos");
                 intermediate_cache_.grad_conic_2d = GpuBuffer(gpu_system_, gaussians.num_gaussians * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.grad_conic_2d");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.grad_conic_2d");
             }
 
             if (intermediate_cache_.pixels_counter.Size() < sizeof(uint32_t))
             {
                 intermediate_cache_.pixels_counter = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.intermediate_cache_.pixels_counter");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                    "gsplat.intermediate_cache_.pixels_counter");
             }
             {
                 constexpr uint32_t BlockDim = 256;
@@ -389,10 +407,9 @@ namespace AIHoloImager
                 calc_pixel_cb.UploadStaging();
                 const GpuConstantBufferView calc_pixel_cbv(gpu_system_, calc_pixel_cb);
 
-                const GpuShaderResourceView screen_pos_extents_srv(
-                    gpu_system_, intermediate_cache_.screen_pos_extents, GpuFormat::RGBA32_Float);
+                const GpuShaderResourceView screen_pos_extents_srv(gpu_system_, intermediate_cache_.screen_pos_extents, sizeof(glm::vec4));
 
-                GpuUnorderedAccessView pixels_counter_uav(gpu_system_, intermediate_cache_.pixels_counter, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView pixels_counter_uav(gpu_system_, intermediate_cache_.pixels_counter, sizeof(uint32_t));
 
                 {
                     const uint32_t init_value[] = {0, 0, 0, 0};
@@ -428,7 +445,7 @@ namespace AIHoloImager
             if (intermediate_cache_.ppll.Size() < num_pixels * sizeof(glm::uvec2))
             {
                 intermediate_cache_.ppll = GpuBuffer(gpu_system_, num_pixels * sizeof(glm::uvec2), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "gsplat.ppll");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "gsplat.ppll");
             }
             {
                 GpuConstantBufferOfType<PpllVsConstantBuffer> ppll_vs_cb(gpu_system_, "ppll_vs_cb");
@@ -437,8 +454,8 @@ namespace AIHoloImager
                 const GpuConstantBufferView ppll_vs_cbv(gpu_system_, ppll_vs_cb);
 
                 GpuUnorderedAccessView ppll_head_uav(gpu_system_, intermediate_cache_.ppll_head);
-                GpuUnorderedAccessView ppll_uav(gpu_system_, intermediate_cache_.ppll, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView ppll_counter_uav(gpu_system_, intermediate_cache_.pixels_counter, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView ppll_uav(gpu_system_, intermediate_cache_.ppll, sizeof(uint32_t));
+                GpuUnorderedAccessView ppll_counter_uav(gpu_system_, intermediate_cache_.pixels_counter, sizeof(uint32_t));
 
                 {
                     const uint32_t init_value[] = {0, 0, 0, 0};
@@ -482,21 +499,20 @@ namespace AIHoloImager
                 render_bwd_cb.UploadStaging();
                 const GpuConstantBufferView render_bwd_cbv(gpu_system_, render_bwd_cb);
 
-                const GpuShaderResourceView screen_pos_extents_srv(
-                    gpu_system_, intermediate_cache_.screen_pos_extents, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView color_srv(gpu_system_, intermediate_cache_.color, GpuFormat::RGB32_Float);
+                const GpuShaderResourceView screen_pos_extents_srv(gpu_system_, intermediate_cache_.screen_pos_extents, sizeof(glm::vec4));
+                const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, sizeof(glm::vec4));
+                const GpuShaderResourceView color_srv(gpu_system_, intermediate_cache_.color, sizeof(glm::vec3));
 
-                const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image, GpuFormat::RGB32_Float);
+                const GpuShaderResourceView grad_image_srv(gpu_system_, grad_image, sizeof(glm::vec3));
                 const GpuShaderResourceView gsplat_image_srv(gpu_system_, intermediate_cache_.gsplat_image);
 
                 const GpuShaderResourceView ppll_head_srv(gpu_system_, intermediate_cache_.ppll_head);
-                const GpuShaderResourceView ppll_srv(gpu_system_, intermediate_cache_.ppll, GpuFormat::RG32_Uint);
+                const GpuShaderResourceView ppll_srv(gpu_system_, intermediate_cache_.ppll, sizeof(glm::uvec2));
 
-                GpuUnorderedAccessView grad_color_uav(gpu_system_, intermediate_cache_.grad_color, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView grad_screen_pos_uav(gpu_system_, intermediate_cache_.grad_screen_pos, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView grad_conic_2d_uav(gpu_system_, intermediate_cache_.grad_conic_2d, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView grad_opacities_uav(gpu_system_, grad_opacities, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView grad_color_uav(gpu_system_, intermediate_cache_.grad_color, sizeof(float));
+                GpuUnorderedAccessView grad_screen_pos_uav(gpu_system_, intermediate_cache_.grad_screen_pos, sizeof(float));
+                GpuUnorderedAccessView grad_conic_2d_uav(gpu_system_, intermediate_cache_.grad_conic_2d, sizeof(float));
+                GpuUnorderedAccessView grad_opacities_uav(gpu_system_, grad_opacities, sizeof(float));
 
                 {
                     const uint32_t init_value[] = {0, 0, 0, 0};
@@ -553,24 +569,23 @@ namespace AIHoloImager
                 preprocess_cb.UploadStaging();
                 const GpuConstantBufferView preprocess_cbv(gpu_system_, preprocess_cb);
 
-                const GpuShaderResourceView pos_srv(gpu_system_, gaussians.positions, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView screen_pos_extents_srv(
-                    gpu_system_, intermediate_cache_.screen_pos_extents, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView cov_3d_srv(gpu_system_, intermediate_cache_.cov_3d, GpuFormat::R32_Float);
-                const GpuShaderResourceView scale_srv(gpu_system_, gaussians.scales, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView rotation_srv(gpu_system_, gaussians.rotations, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView clamped_srv(gpu_system_, intermediate_cache_.clamped, GpuFormat::R32_Uint);
-                const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, GpuFormat::RGBA32_Float);
-                const GpuShaderResourceView grad_screen_pos_srv(gpu_system_, intermediate_cache_.grad_screen_pos, GpuFormat::RG32_Float);
-                const GpuShaderResourceView grad_color_srv(gpu_system_, intermediate_cache_.grad_color, GpuFormat::RGB32_Float);
-                const GpuShaderResourceView grad_conic_2d_srv(gpu_system_, intermediate_cache_.grad_conic_2d, GpuFormat::RGB32_Float);
+                const GpuShaderResourceView pos_srv(gpu_system_, gaussians.positions, sizeof(glm::vec3));
+                const GpuShaderResourceView screen_pos_extents_srv(gpu_system_, intermediate_cache_.screen_pos_extents, sizeof(glm::vec4));
+                const GpuShaderResourceView cov_3d_srv(gpu_system_, intermediate_cache_.cov_3d, sizeof(float));
+                const GpuShaderResourceView scale_srv(gpu_system_, gaussians.scales, sizeof(glm::vec3));
+                const GpuShaderResourceView rotation_srv(gpu_system_, gaussians.rotations, sizeof(glm::vec4));
+                const GpuShaderResourceView sh_srv(gpu_system_, gaussians.shs, sizeof(glm::vec3));
+                const GpuShaderResourceView clamped_srv(gpu_system_, intermediate_cache_.clamped, sizeof(uint32_t));
+                const GpuShaderResourceView conic_opacity_srv(gpu_system_, intermediate_cache_.conic_opacity, sizeof(glm::vec4));
+                const GpuShaderResourceView grad_screen_pos_srv(gpu_system_, intermediate_cache_.grad_screen_pos, sizeof(glm::vec2));
+                const GpuShaderResourceView grad_color_srv(gpu_system_, intermediate_cache_.grad_color, sizeof(glm::vec3));
+                const GpuShaderResourceView grad_conic_2d_srv(gpu_system_, intermediate_cache_.grad_conic_2d, sizeof(glm::vec3));
 
-                GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, GpuFormat::R32_Float);
-                GpuUnorderedAccessView grad_scales_uav(gpu_system_, grad_scales, GpuFormat::R32_Float);
-                GpuUnorderedAccessView grad_rotations_uav(gpu_system_, grad_rotations, GpuFormat::RGBA32_Float);
-                GpuUnorderedAccessView grad_shs_uav(gpu_system_, grad_shs, GpuFormat::R32_Float);
-                GpuUnorderedAccessView grad_opacities_uav(gpu_system_, grad_opacities, GpuFormat::R32_Float);
+                GpuUnorderedAccessView grad_positions_uav(gpu_system_, grad_positions, sizeof(float));
+                GpuUnorderedAccessView grad_scales_uav(gpu_system_, grad_scales, sizeof(float));
+                GpuUnorderedAccessView grad_rotations_uav(gpu_system_, grad_rotations, sizeof(glm::vec4));
+                GpuUnorderedAccessView grad_shs_uav(gpu_system_, grad_shs, sizeof(float));
+                GpuUnorderedAccessView grad_opacities_uav(gpu_system_, grad_opacities, sizeof(float));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &preprocess_cbv},

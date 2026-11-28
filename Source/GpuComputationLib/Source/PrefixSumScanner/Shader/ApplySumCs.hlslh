@@ -8,9 +8,9 @@ cbuffer param_cb
     uint32_t size;
 };
 
-Buffer<DATA_TYPE> sum;
+StructuredBuffer<DATA_TYPE> sum;
 
-RWBuffer<DATA_TYPE> output;
+RWStructuredBuffer<DATA_TYPE> output;
 
 groupshared DATA_TYPE group_sum;
 

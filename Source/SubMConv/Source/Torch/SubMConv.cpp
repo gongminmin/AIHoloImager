@@ -5,6 +5,7 @@
 
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include "Gpu/GpuCommandList.hpp"
 #include "Gpu/GpuConstantBuffer.hpp"
@@ -38,16 +39,17 @@ namespace AIHoloImager
         if (coord_hash_.Size() < expected_hash_buff_size)
         {
             coord_hash_ = GpuBuffer(gpu_system_, expected_hash_buff_size, GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "SubMConv3DHelper.coord_hash_");
-            coord_hash_srv_ = GpuShaderResourceView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
-            coord_hash_uav_ = GpuUnorderedAccessView(gpu_system_, coord_hash_, GpuFormat::R32_Uint);
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                "SubMConv3DHelper.coord_hash_");
+            coord_hash_srv_ = GpuShaderResourceView(gpu_system_, coord_hash_, sizeof(uint32_t));
+            coord_hash_uav_ = GpuUnorderedAccessView(gpu_system_, coord_hash_, sizeof(uint32_t));
         }
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);
 
-        tensor_converter_.Convert(cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-            "SubMConv3DHelper.coords_buff_");
-        coords_srv_ = GpuShaderResourceView(gpu_system_, coords_buff_, GpuFormat::RGBA32_Uint);
+        tensor_converter_.Convert(cmd_list, coords.to(torch::kInt32), coords_buff_, GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "SubMConv3DHelper.coords_buff_");
+        coords_srv_ = GpuShaderResourceView(gpu_system_, coords_buff_, sizeof(glm::vec4));
 
         {
             constexpr uint32_t BlockDim = 256;
@@ -88,24 +90,26 @@ namespace AIHoloImager
         if (nei_indices_.Size() < expected_indices_size)
         {
             nei_indices_ = GpuBuffer(gpu_system_, expected_indices_size, GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "SubMConv3DHelper.nei_indices_");
-            nei_indices_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_, GpuFormat::RG32_Uint);
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured,
+                "SubMConv3DHelper.nei_indices_");
+            nei_indices_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_, sizeof(glm::uvec2));
         }
 
         const uint32_t expected_index_count_size = num_offsets * sizeof(uint32_t);
         if (nei_indices_count_.Size() < expected_index_count_size)
         {
             nei_indices_count_ = GpuBuffer(gpu_system_, expected_index_count_size, GpuHeap::Default,
-                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable, "SubMConv3DHelper.nei_indices_count_");
-            nei_indices_count_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_count_, GpuFormat::R32_Uint);
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured,
+                "SubMConv3DHelper.nei_indices_count_");
+            nei_indices_count_uav_ = GpuUnorderedAccessView(gpu_system_, nei_indices_count_, sizeof(uint32_t));
         }
 
         const uint32_t expected_offsets_size = num_offsets * sizeof(glm::ivec3);
         if (offsets_buff_.Size() < expected_offsets_size)
         {
-            offsets_buff_ = GpuBuffer(
-                gpu_system_, expected_offsets_size, GpuHeap::Default, GpuResourceFlag::ShaderResource, "SubMConv3DHelper.offsets_buff_");
-            offsets_srv_ = GpuShaderResourceView(gpu_system_, offsets_buff_, GpuFormat::RGB32_Sint);
+            offsets_buff_ = GpuBuffer(gpu_system_, expected_offsets_size, GpuHeap::Default,
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "SubMConv3DHelper.offsets_buff_");
+            offsets_srv_ = GpuShaderResourceView(gpu_system_, offsets_buff_, sizeof(glm::ivec3));
         }
 
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Compute);

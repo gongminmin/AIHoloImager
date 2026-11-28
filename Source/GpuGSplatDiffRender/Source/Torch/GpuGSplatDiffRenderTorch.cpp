@@ -61,15 +61,20 @@ namespace AIHoloImager
         render_intermediate_.gaussians.sh_degrees = render_settings.sh_degree;
 
         tensor_converter_.Convert(cmd_list, std::move(positions), render_intermediate_.gaussians.positions, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderFwd.positions");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuGSplatDiffRenderTorch.RenderFwd.positions");
         tensor_converter_.Convert(cmd_list, std::move(scales), render_intermediate_.gaussians.scales, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderFwd.scales");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuGSplatDiffRenderTorch.RenderFwd.scales");
         tensor_converter_.Convert(cmd_list, std::move(rotations), render_intermediate_.gaussians.rotations, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderFwd.rotations");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuGSplatDiffRenderTorch.RenderFwd.rotations");
         tensor_converter_.Convert(cmd_list, std::move(shs), render_intermediate_.gaussians.shs, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderFwd.shs");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuGSplatDiffRenderTorch.RenderFwd.shs");
         tensor_converter_.Convert(cmd_list, std::move(opacities), render_intermediate_.gaussians.opacities, GpuHeap::Default,
-            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderFwd.opacities");
+            GpuResourceFlag::VertexBuffer | GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured,
+            "GpuGSplatDiffRenderTorch.RenderFwd.opacities");
 
         if (render_settings.viewport != nullptr)
         {
@@ -92,10 +97,10 @@ namespace AIHoloImager
         render_intermediate_.viewport.min_depth = 0;
         render_intermediate_.viewport.max_depth = 1;
 
-        render_intermediate_.rendered_buff =
-            GpuBuffer(gpu_system_, render_settings.image_width * render_settings.image_height * sizeof(glm::vec3), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable,
-                "gsplat.render_intermediate_.rendered_buff");
+        render_intermediate_.rendered_buff = GpuBuffer(gpu_system_,
+            render_settings.image_width * render_settings.image_height * sizeof(glm::vec3), GpuHeap::Default,
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Shareable | GpuResourceFlag::Structured,
+            "gsplat.render_intermediate_.rendered_buff");
 
         gpu_dr_.RenderFwd(cmd_list, render_intermediate_.gaussians, glm::make_mat4(render_settings.model_mtx.data()),
             glm::make_mat4(render_settings.view_mtx.data()), glm::make_mat4(render_settings.proj_mtx.data()), render_intermediate_.viewport,
@@ -116,7 +121,7 @@ namespace AIHoloImager
         auto cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
         tensor_converter_.Convert(cmd_list, std::move(grad_image), render_intermediate_.grad_image, GpuHeap::Default,
-            GpuResourceFlag::ShaderResource, "GpuGSplatDiffRenderTorch.RenderBwd.grad_image");
+            GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "GpuGSplatDiffRenderTorch.RenderBwd.grad_image");
 
         gpu_dr_.RenderBwd(cmd_list, render_intermediate_.gaussians, glm::make_mat4(render_settings.model_mtx.data()),
             glm::make_mat4(render_settings.view_mtx.data()), glm::make_mat4(render_settings.proj_mtx.data()), render_intermediate_.viewport,

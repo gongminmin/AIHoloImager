@@ -42,9 +42,9 @@ namespace AIHoloImager
             ds_tex_ = GpuTexture2D(gpu_system_, RtSize, RtSize, 1, GpuFormat::D32_Float, GpuResourceFlag::DepthStencil, "ds_tex_");
             dsv_ = GpuDepthStencilView(gpu_system_, ds_tex_);
 
-            filtered_counter_buff_ =
-                GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "filtered_counter_buff_");
-            filtered_counter_uav_ = GpuUnorderedAccessView(gpu_system_, filtered_counter_buff_, GpuFormat::R32_Uint);
+            filtered_counter_buff_ = GpuBuffer(gpu_system_, sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "filtered_counter_buff_");
+            filtered_counter_uav_ = GpuUnorderedAccessView(gpu_system_, filtered_counter_buff_, sizeof(uint32_t));
 
             {
                 const ShaderInfo shaders[] = {
@@ -92,14 +92,14 @@ namespace AIHoloImager
             const uint32_t num_faces = num_indices / 3;
 
             face_mark_buff_ = GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "face_mark_buff_");
-            face_mark_srv_ = GpuShaderResourceView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
-            face_mark_uav_ = GpuUnorderedAccessView(gpu_system_, face_mark_buff_, GpuFormat::R32_Uint);
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "face_mark_buff_");
+            face_mark_srv_ = GpuShaderResourceView(gpu_system_, face_mark_buff_, sizeof(uint32_t));
+            face_mark_uav_ = GpuUnorderedAccessView(gpu_system_, face_mark_buff_, sizeof(uint32_t));
 
             view_counter_buff_ = GpuBuffer(gpu_system_, num_faces * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "view_counter_buff");
-            view_counter_srv_ = GpuShaderResourceView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
-            view_counter_uav_ = GpuUnorderedAccessView(gpu_system_, view_counter_buff_, GpuFormat::R32_Uint);
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "view_counter_buff");
+            view_counter_srv_ = GpuShaderResourceView(gpu_system_, view_counter_buff_, sizeof(uint32_t));
+            view_counter_uav_ = GpuUnorderedAccessView(gpu_system_, view_counter_buff_, sizeof(uint32_t));
 
             GpuCommandList cmd_list = gpu_system_.CreateCommandList(GpuSystem::CmdQueueType::Render);
 
@@ -119,8 +119,8 @@ namespace AIHoloImager
                 gpu_system_.ExecuteAndReset(cmd_list);
             }
 
-            GpuBuffer filtered_index_buff(
-                gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "filtered_index_buff");
+            GpuBuffer filtered_index_buff(gpu_system_, num_indices * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "filtered_index_buff");
             this->FilterFaces(cmd_list, ib, num_faces, filtered_index_buff);
 
             auto filtered_indices = std::make_unique<uint32_t[]>(num_indices);
@@ -245,8 +245,8 @@ namespace AIHoloImager
             filter_faces_cb.UploadStaging();
 
             const GpuConstantBufferView filter_faces_cbv(gpu_system_, filter_faces_cb);
-            const GpuShaderResourceView index_srv(gpu_system_, index_buff, GpuFormat::R32_Uint);
-            GpuUnorderedAccessView filtered_index_uav(gpu_system_, filtered_index_buff, GpuFormat::R32_Uint);
+            const GpuShaderResourceView index_srv(gpu_system_, index_buff, sizeof(uint32_t));
+            GpuUnorderedAccessView filtered_index_uav(gpu_system_, filtered_index_buff, sizeof(uint32_t));
 
             std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                 {"param_cb", &filter_faces_cbv},

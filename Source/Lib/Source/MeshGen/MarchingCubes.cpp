@@ -367,14 +367,15 @@ namespace AIHoloImager
             auto& profiler = aihi_.PerfProfilerInstance();
 
             // [num_non_empty_cubes, num_vertices, num_indices]
-            GpuBuffer counter_buff(gpu_system, 3 * sizeof(uint32_t), GpuHeap::Default, GpuResourceFlag::UnorderedAccess, "counter_buff");
-            GpuUnorderedAccessView counter_uav(gpu_system, counter_buff, GpuFormat::R32_Uint);
+            GpuBuffer counter_buff(gpu_system, 3 * sizeof(uint32_t), GpuHeap::Default,
+                GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "counter_buff");
+            GpuUnorderedAccessView counter_uav(gpu_system, counter_buff, sizeof(uint32_t));
             const uint32_t zeros[] = {0, 0, 0, 0};
             cmd_list.Clear(counter_uav, zeros);
 
             GpuBuffer cube_offsets_buff(gpu_system, total_cubes * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "cube_offsets_buff");
-            const GpuShaderResourceView cube_offsets_srv(gpu_system, cube_offsets_buff, GpuFormat::R32_Uint);
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured, "cube_offsets_buff");
+            const GpuShaderResourceView cube_offsets_srv(gpu_system, cube_offsets_buff, sizeof(uint32_t));
             {
                 PerfRegion calc_cube_indices_perf(profiler, "Marching cubes: Calc cube indices", &cmd_list);
 
@@ -386,7 +387,7 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView calc_cube_indices_cbv(gpu_system, calc_cube_indices_cb);
 
-                GpuUnorderedAccessView cube_offsets_uav(gpu_system, cube_offsets_buff, GpuFormat::R32_Uint);
+                GpuUnorderedAccessView cube_offsets_uav(gpu_system, cube_offsets_buff, sizeof(uint32_t));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &calc_cube_indices_cbv},
@@ -416,11 +417,14 @@ namespace AIHoloImager
             }
 
             GpuBuffer non_empty_cube_ids_buff(gpu_system, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "non_empty_cube_ids_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                "non_empty_cube_ids_buff");
             GpuBuffer non_empty_cube_indices_buff(gpu_system, num_non_empty_cubes * sizeof(uint32_t), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "non_empty_cube_indices_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                "non_empty_cube_indices_buff");
             GpuBuffer vertex_index_offsets_buff(gpu_system, num_non_empty_cubes * sizeof(glm::uvec2), GpuHeap::Default,
-                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "vertex_index_offsets_buff");
+                GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::Structured,
+                "vertex_index_offsets_buff");
             {
                 PerfRegion process_non_empty_cubes_perf(profiler, "Marching cubes: Process non-empty cubes", &cmd_list);
 
@@ -433,9 +437,9 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView process_non_empty_cubes_cbv(gpu_system, process_non_empty_cubes_cb);
 
-                GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
-                GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
+                GpuUnorderedAccessView non_empty_cube_ids_uav(gpu_system, non_empty_cube_ids_buff, sizeof(uint32_t));
+                GpuUnorderedAccessView non_empty_cube_indices_uav(gpu_system, non_empty_cube_indices_buff, sizeof(uint32_t));
+                GpuUnorderedAccessView vertex_index_offsets_uav(gpu_system, vertex_index_offsets_buff, sizeof(uint32_t));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &process_non_empty_cubes_cbv},
@@ -481,17 +485,20 @@ namespace AIHoloImager
 
                 const GpuConstantBufferView gen_vertices_indices_cbv(gpu_system, gen_vertices_indices_cb);
 
-                const GpuShaderResourceView non_empty_cube_ids_srv(gpu_system, non_empty_cube_ids_buff, GpuFormat::R32_Uint);
-                const GpuShaderResourceView non_empty_cube_indices_srv(gpu_system, non_empty_cube_indices_buff, GpuFormat::R32_Uint);
-                const GpuShaderResourceView vertex_index_offsets_srv(gpu_system, vertex_index_offsets_buff, GpuFormat::RG32_Uint);
+                const GpuShaderResourceView non_empty_cube_ids_srv(gpu_system, non_empty_cube_ids_buff, sizeof(uint32_t));
+                const GpuShaderResourceView non_empty_cube_indices_srv(gpu_system, non_empty_cube_indices_buff, sizeof(uint32_t));
+                const GpuShaderResourceView vertex_index_offsets_srv(gpu_system, vertex_index_offsets_buff, sizeof(uint32_t));
 
                 GpuBuffer mesh_vertices_buff(gpu_system, num_vertices * sizeof(glm::vec3), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::VertexBuffer |
+                        GpuResourceFlag::Structured,
                     "mesh_vertices_buff");
                 GpuBuffer mesh_indices_buff(gpu_system, num_indices * sizeof(uint32_t), GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer, "mesh_indices_buff");
-                GpuUnorderedAccessView mesh_vertices_uav(gpu_system, mesh_vertices_buff, GpuFormat::R32_Float);
-                GpuUnorderedAccessView mesh_indices_uav(gpu_system, mesh_indices_buff, GpuFormat::R32_Uint);
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess | GpuResourceFlag::IndexBuffer |
+                        GpuResourceFlag::Structured,
+                    "mesh_indices_buff");
+                GpuUnorderedAccessView mesh_vertices_uav(gpu_system, mesh_vertices_buff, sizeof(float));
+                GpuUnorderedAccessView mesh_indices_uav(gpu_system, mesh_indices_buff, sizeof(uint32_t));
 
                 std::tuple<std::string_view, const GpuConstantBufferView*> cbvs[] = {
                     {"param_cb", &gen_vertices_indices_cbv},

@@ -12,10 +12,10 @@ cbuffer param_cb
     bool exclusive;
 };
 
-Buffer<DATA_TYPE> input;
+StructuredBuffer<DATA_TYPE> input;
 
-RWBuffer<DATA_TYPE> input_output;
-RWBuffer<DATA_TYPE> sum_output;
+RWStructuredBuffer<DATA_TYPE> input_output;
+RWStructuredBuffer<DATA_TYPE> sum_output;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 gid : SV_GroupID, uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

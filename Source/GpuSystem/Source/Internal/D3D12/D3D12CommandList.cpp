@@ -201,14 +201,14 @@ namespace AIHoloImager
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
         D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
-        d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
+        d3d12_uav.FloatCopyTo(uav_desc_block.CpuHandle());
 
         this->RegisterAccessedObject(uav_desc_block.StalledWaitFences());
 
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewFloat(uav_desc_block.GpuHandle(), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewFloat(uav_desc_block.GpuHandle(), d3d12_uav.FloatCpuHandle(), resource, color, 0, nullptr);
 
         d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }
@@ -235,14 +235,14 @@ namespace AIHoloImager
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
         D3D12DescriptorBlock uav_desc_block = d3d12_system.AllocShaderVisibleCbvSrvUavDescBlock(1);
-        d3d12_uav.CopyTo(uav_desc_block.CpuHandle());
+        d3d12_uav.UintCopyTo(uav_desc_block.CpuHandle());
 
         this->RegisterAccessedObject(uav_desc_block.StalledWaitFences());
 
         ID3D12DescriptorHeap* heaps[] = {uav_desc_block.Heap()->DescriptorHeap()};
         d3d12_cmd_list->SetDescriptorHeaps(static_cast<uint32_t>(std::size(heaps)), heaps);
 
-        d3d12_cmd_list->ClearUnorderedAccessViewUint(uav_desc_block.GpuHandle(), d3d12_uav.CpuHandle(), resource, color, 0, nullptr);
+        d3d12_cmd_list->ClearUnorderedAccessViewUint(uav_desc_block.GpuHandle(), d3d12_uav.UintCpuHandle(), resource, color, 0, nullptr);
 
         d3d12_system.DeallocShaderVisibleCbvSrvUavDescBlock(std::move(uav_desc_block));
     }

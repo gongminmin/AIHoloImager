@@ -11,9 +11,9 @@ cbuffer param_cb
     uint32_t num_gaussians;
 };
 
-Buffer<float4> screen_pos_extents_buff;
+StructuredBuffer<float4> screen_pos_extents_buff;
 
-RWBuffer<uint32_t> pixels_counter_buff;
+RWStructuredBuffer<uint32_t> pixels_counter_buff;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID, uint32_t group_index : SV_GroupIndex)

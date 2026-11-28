@@ -24,13 +24,13 @@ Buffer<uint32_t> edge_table;
 [[vk::image_format("r16ui")]]
 #endif
 Buffer<uint32_t> triangle_table;
-Buffer<uint32_t> cube_offsets;
+StructuredBuffer<uint32_t> cube_offsets;
 Texture3D<float4> scalar_deformation;
 
-RWBuffer<uint32_t> non_empty_cube_ids;
-RWBuffer<uint32_t> non_empty_cube_indices;
-RWBuffer<uint32_t2> vertex_index_offsets;
-RWBuffer<uint32_t> counter;
+RWStructuredBuffer<uint32_t> non_empty_cube_ids;
+RWStructuredBuffer<uint32_t> non_empty_cube_indices;
+RWStructuredBuffer<uint32_t2> vertex_index_offsets;
+RWStructuredBuffer<uint32_t> counter;
 
 groupshared uint32_t group_vertex_offset;
 groupshared uint32_t group_index_offset;

@@ -321,7 +321,7 @@ namespace AIHoloImager
 
     VkWriteDescriptorSet NullStorageImageUnorderedAccessViewWriteDescSet();
     VkWriteDescriptorSet NullStorageTexelBufferUnorderedAccessViewWriteDescSet();
-    VkWriteDescriptorSet NullStorageBufferUnorderedAccessViewWriteDescSet();
+    VkWriteDescriptorSet NullStorageBufferViewWriteDescSet();
 
     VkWriteDescriptorSet NullUniformBufferConstantBufferViewWriteDescSet();
 } // namespace AIHoloImager

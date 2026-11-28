@@ -16,9 +16,9 @@ cbuffer param_cb
 
 Texture2D<uint32_t> prim_id_tex;
 Texture2D texture;
-Buffer<float2> uv_buff;
+StructuredBuffer<float2> uv_buff;
 #if ENABLE_MIP
-Buffer<float4> derivative_uv_buff;
+StructuredBuffer<float4> derivative_uv_buff;
 #endif
 
 RWTexture2D<float4> image;

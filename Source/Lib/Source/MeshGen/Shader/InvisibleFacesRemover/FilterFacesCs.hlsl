@@ -9,11 +9,11 @@ cbuffer param_cb
     uint32_t threshold;
 };
 
-Buffer<uint32_t> index_buff;
-Buffer<uint32_t> view_count_buff;
+StructuredBuffer<uint32_t> index_buff;
+StructuredBuffer<uint32_t> view_count_buff;
 
-RWBuffer<uint32_t> filtered_index_buff;
-RWBuffer<uint32_t> counter;
+RWStructuredBuffer<uint32_t> filtered_index_buff;
+RWStructuredBuffer<uint32_t> counter;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

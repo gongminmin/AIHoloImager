@@ -13,7 +13,7 @@ cbuffer param_cb
 
 Texture2D input_tex;
 
-RWBuffer<uint32_t> bounding_box_buff;
+RWStructuredBuffer<uint32_t> bounding_box_buff;
 
 groupshared uint32_t2 group_wave_mins[BlockDim * BlockDim / MinWaveSize];
 groupshared uint32_t2 group_wave_maxs[BlockDim * BlockDim / MinWaveSize];

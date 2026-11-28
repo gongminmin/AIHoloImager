@@ -13,9 +13,9 @@ cbuffer param_cb
     uint32_t4 mip_level_offsets[4];
 };
 
-Buffer<float> grad_texture_mips;
+StructuredBuffer<float> grad_texture_mips;
 
-RWBuffer<float> grad_texture;
+RWStructuredBuffer<float> grad_texture;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

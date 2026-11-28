@@ -12,10 +12,10 @@ cbuffer param_cb
     uint32_t hash_size;
 };
 
-Buffer<uint32_t> indices_buff;
-Buffer<uint32_t> hash_table;
+StructuredBuffer<uint32_t> indices_buff;
+StructuredBuffer<uint32_t> hash_table;
 
-RWBuffer<uint32_t> oppo_vert;
+RWStructuredBuffer<uint32_t> oppo_vert;
 
 [numthreads(BlockDim, 1, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

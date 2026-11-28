@@ -26,21 +26,21 @@ cbuffer param_cb
     float3 eye_pos_os;
 };
 
-Buffer<float3> pos_buff;
-Buffer<float3> scale_buff;
-Buffer<float4> rotation_buff;
-Buffer<float3> sh_buff;
-Buffer<float> opacity_buff;
+StructuredBuffer<float3> pos_buff;
+StructuredBuffer<float3> scale_buff;
+StructuredBuffer<float4> rotation_buff;
+StructuredBuffer<float3> sh_buff;
+StructuredBuffer<float> opacity_buff;
 
-RWBuffer<float> color_buff;
-RWBuffer<float4> conic_opacity_buff;
-RWBuffer<float4> screen_pos_extents_buff;
-RWBuffer<uint32_t> num_visible_gaussians_buff;
-RWBuffer<uint32_t> visible_key_buff;
-RWBuffer<uint32_t> visible_id_buff;
+RWStructuredBuffer<float> color_buff;
+RWStructuredBuffer<float4> conic_opacity_buff;
+RWStructuredBuffer<float4> screen_pos_extents_buff;
+RWStructuredBuffer<uint32_t> num_visible_gaussians_buff;
+RWStructuredBuffer<uint32_t> visible_key_buff;
+RWStructuredBuffer<uint32_t> visible_id_buff;
 #if ENABLE_BACKWARD
-RWBuffer<float> cov_3d_buff;
-RWBuffer<uint32_t> clamped_buff;
+RWStructuredBuffer<float> cov_3d_buff;
+RWStructuredBuffer<uint32_t> clamped_buff;
 #endif
 
 float2 Ndc2Screen(float4 ndc, uint32_t2 size)
@@ -123,7 +123,7 @@ void ComputeCov3D(float3 scale, float4 rot, out float cov_3d[6])
     cov_3d[5] = sigma[2].z;
 }
 
-float3 ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, uint32_t num_coeffs, float3 pos_os, float3 eye_pos_os, Buffer<float3> sh_buff, out bool3 clamped)
+float3 ComputeColorFromSh(uint32_t index, uint32_t sh_degrees, uint32_t num_coeffs, float3 pos_os, float3 eye_pos_os, StructuredBuffer<float3> sh_buff, out bool3 clamped)
 {
     const float3 dir = normalize(pos_os - eye_pos_os);
 

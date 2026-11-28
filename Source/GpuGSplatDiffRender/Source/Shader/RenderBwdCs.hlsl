@@ -13,18 +13,18 @@ cbuffer param_cb
     uint32_t2 rt_width_height;
 };
 
-Buffer<float4> screen_pos_extents_buff;
-Buffer<float4> conic_opacity_buff;
-Buffer<float3> color_buff;
-Buffer<float3> grad_image_buff;
+StructuredBuffer<float4> screen_pos_extents_buff;
+StructuredBuffer<float4> conic_opacity_buff;
+StructuredBuffer<float3> color_buff;
+StructuredBuffer<float3> grad_image_buff;
 Texture2D<float4> gsplat_image;
 Texture2D<uint32_t> ppll_head;
-Buffer<uint32_t2> ppll;
+StructuredBuffer<uint32_t2> ppll;
 
-RWBuffer<uint32_t> grad_color_buff;
-RWBuffer<uint32_t> grad_screen_pos_buff;
-RWBuffer<uint32_t> grad_conic_2d_buff;
-RWBuffer<uint32_t> grad_opacities_buff;
+RWStructuredBuffer<uint32_t> grad_color_buff; // Float as uint due to atomic operations
+RWStructuredBuffer<uint32_t> grad_screen_pos_buff; // Float as uint due to atomic operations
+RWStructuredBuffer<uint32_t> grad_conic_2d_buff; // Float as uint due to atomic operations
+RWStructuredBuffer<uint32_t> grad_opacities_buff; // Float as uint due to atomic operations
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

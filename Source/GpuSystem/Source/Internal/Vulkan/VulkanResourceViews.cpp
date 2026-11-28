@@ -142,25 +142,10 @@ namespace AIHoloImager
         GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t first_element, uint32_t num_elements, uint32_t element_size)
         : VulkanShaderResourceView(buffer), buff_view_(VulkanImp(gpu_system), VK_NULL_HANDLE)
     {
-        const VkDevice vulkan_device = buff_view_.VulkanSys()->Device();
         const VkBuffer vulkan_buff = VulkanImp(buffer).Buffer();
 
         const uint32_t offset = first_element * element_size;
         const uint32_t range = num_elements * element_size;
-
-        const VkBufferUsageFlags2CreateInfoKHR usage_create_info{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-            .usage = VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR,
-        };
-        const VkBufferViewCreateInfo view_create_info{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-            .pNext = &usage_create_info,
-            .buffer = vulkan_buff,
-            .format = VK_FORMAT_UNDEFINED,
-            .offset = offset,
-            .range = range,
-        };
-        TIFVK(vkCreateBufferView(vulkan_device, &view_create_info, nullptr, &buff_view_.Object()));
 
         this->FillWriteDescSetForStructuredBuffer(vulkan_buff, offset, range);
     }
@@ -949,10 +934,12 @@ namespace AIHoloImager
         };
         return null_write_desc_set;
     }
-    VkWriteDescriptorSet NullStorageBufferUnorderedAccessViewWriteDescSet()
+    VkWriteDescriptorSet NullStorageBufferViewWriteDescSet()
     {
         static VkDescriptorBufferInfo null_buff_info{
             .buffer = VK_NULL_HANDLE,
+            .offset = 0,
+            .range = VK_WHOLE_SIZE,
         };
         static VkWriteDescriptorSet null_write_desc_set{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -967,6 +954,8 @@ namespace AIHoloImager
     {
         static VkDescriptorBufferInfo null_buff_info{
             .buffer = VK_NULL_HANDLE,
+            .offset = 0,
+            .range = VK_WHOLE_SIZE,
         };
         static VkWriteDescriptorSet null_write_desc_set{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

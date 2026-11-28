@@ -15,13 +15,13 @@ cbuffer param_cb
     uint32_t bits;
 };
 
-Buffer<KeyType> keys;
-Buffer<ValueType> values;
-Buffer<uint32_t> global_hist;
-Buffer<uint32_t> partition_hist;
+StructuredBuffer<KeyType> keys;
+StructuredBuffer<ValueType> values;
+StructuredBuffer<uint32_t> global_hist;
+StructuredBuffer<uint32_t> partition_hist;
 
-RWBuffer<KeyType> output_keys;
-RWBuffer<ValueType> output_values;
+RWStructuredBuffer<KeyType> output_keys;
+RWStructuredBuffer<ValueType> output_values;
 
 groupshared uint32_t group_local_hist[PartitionSize];  // (R, S=16)=4096, (P) for alias. take maximum.
 groupshared uint32_t group_local_hist_sum[NumDigitBins];

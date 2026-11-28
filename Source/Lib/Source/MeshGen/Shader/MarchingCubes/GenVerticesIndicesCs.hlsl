@@ -22,13 +22,13 @@ Buffer<uint32_t> edge_table;
 #endif
 Buffer<uint32_t> triangle_table;
 Texture3D<float4> scalar_deformation;
-Buffer<uint32_t> non_empty_cube_ids;
-Buffer<uint32_t> non_empty_cube_indices;
-Buffer<uint32_t> cube_offsets;
-Buffer<uint32_t2> vertex_index_offsets;
+StructuredBuffer<uint32_t> non_empty_cube_ids;
+StructuredBuffer<uint32_t> non_empty_cube_indices;
+StructuredBuffer<uint32_t> cube_offsets;
+StructuredBuffer<uint32_t2> vertex_index_offsets;
 
-RWBuffer<float> mesh_vertices;
-RWBuffer<uint32_t> mesh_indices;
+RWStructuredBuffer<float> mesh_vertices;
+RWStructuredBuffer<uint32_t> mesh_indices;
 
 float3 InterpolateVertex(float3 p0, float3 p1, float v0, float v1, float isovalue)
 {

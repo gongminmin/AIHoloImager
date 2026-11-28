@@ -939,7 +939,7 @@ namespace AIHoloImager
             {
                 constexpr uint32_t BlockDim = 256;
 
-                GpuUnorderedAccessView vertex_buff_uav(gpu_system, mesh.VertexBuffer(), GpuFormat::R32_Float);
+                GpuUnorderedAccessView vertex_buff_uav(gpu_system, mesh.VertexBuffer(), sizeof(float));
 
                 GpuConstantBufferOfType<TransformMeshConstantBuffer> transform_mesh_cb(gpu_system, "transform_mesh_cb");
                 transform_mesh_cb->num_vertices = num_vertices;

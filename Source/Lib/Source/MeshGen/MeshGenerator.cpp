@@ -752,9 +752,9 @@ namespace AIHoloImager
 
                 const auto py_coords = python_system.CallObject(*mesh_generator_coords_method_);
                 GpuBuffer coords_buff;
-                tensor_converter.ConvertPy(
-                    cmd_list, *py_coords, coords_buff, GpuHeap::Default, GpuResourceFlag::ShaderResource, "MeshGenerator.coords_buff");
-                const GpuShaderResourceView coords_srv(gpu_system, coords_buff, GpuFormat::RGB32_Uint);
+                tensor_converter.ConvertPy(cmd_list, *py_coords, coords_buff, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.coords_buff");
+                const GpuShaderResourceView coords_srv(gpu_system, coords_buff, sizeof(glm::uvec3));
 
                 index_vol_tex = GpuTexture3D(gpu_system, grid_res, grid_res, grid_res, 1, GpuFormat::R32_Uint,
                     GpuResourceFlag::ShaderResource | GpuResourceFlag::UnorderedAccess, "MeshGenerator.index_vol_tex");
@@ -802,23 +802,23 @@ namespace AIHoloImager
 
                 const auto py_gsplat_positions = python_system.CallObject(*mesh_generator_gsplat_positions_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_gsplat_positions, gaussians.positions, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_positions_buff");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.gsplat_positions_buff");
 
                 const auto py_gsplat_scales = python_system.CallObject(*mesh_generator_gsplat_scales_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_scales, gaussians.scales, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-                    "MeshGenerator.gsplat_scales_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_scales, gaussians.scales, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.gsplat_scales_buff");
 
                 const auto py_gsplat_rotations = python_system.CallObject(*mesh_generator_gsplat_rotations_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_gsplat_rotations, gaussians.rotations, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_rotations_buff");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.gsplat_rotations_buff");
 
                 const auto py_gsplat_shs = python_system.CallObject(*mesh_generator_gsplat_shs_method_);
-                tensor_converter.ConvertPy(cmd_list, *py_gsplat_shs, gaussians.shs, GpuHeap::Default, GpuResourceFlag::ShaderResource,
-                    "MeshGenerator.gsplat_shs_buff");
+                tensor_converter.ConvertPy(cmd_list, *py_gsplat_shs, gaussians.shs, GpuHeap::Default,
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.gsplat_shs_buff");
 
                 const auto py_gsplat_opacities = python_system.CallObject(*mesh_generator_gsplat_opacities_method_);
                 tensor_converter.ConvertPy(cmd_list, *py_gsplat_opacities, gaussians.opacities, GpuHeap::Default,
-                    GpuResourceFlag::ShaderResource, "MeshGenerator.gsplat_opacities_buff");
+                    GpuResourceFlag::ShaderResource | GpuResourceFlag::Structured, "MeshGenerator.gsplat_opacities_buff");
             }
 
             const GpuShaderResourceView density_features_srv(gpu_system, density_features_buff, GpuFormat::R16_Float);

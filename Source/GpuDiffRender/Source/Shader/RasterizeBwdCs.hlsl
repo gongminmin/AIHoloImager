@@ -15,13 +15,13 @@ cbuffer param_cb
 Texture2D<float2> barycentric_tex;
 Texture2D<uint32_t> prim_id_tex;
 Texture2D<float2> grad_barycentric_tex;
-Buffer<float4> positions_buff;
-Buffer<uint32_t> indices_buff;
+StructuredBuffer<float4> positions_buff;
+StructuredBuffer<uint32_t> indices_buff;
 #if ENABLE_DERIVATIVE_BC
 Texture2D<float4> grad_derivative_barycentric_tex;
 #endif
 
-RWBuffer<uint32_t> grad_positions_buff;
+RWStructuredBuffer<uint32_t> grad_positions_buff; // Float as uint due to atomic operations
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

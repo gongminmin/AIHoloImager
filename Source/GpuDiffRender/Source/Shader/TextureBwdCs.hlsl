@@ -19,16 +19,16 @@ cbuffer param_cb
 };
 
 Texture2D texture;
-Buffer<float2> uv_buff;
+StructuredBuffer<float2> uv_buff;
 Texture2D grad_image;
 #if ENABLE_MIP
-Buffer<float4> derivative_uv_buff;
+StructuredBuffer<float4> derivative_uv_buff;
 #endif
 
-RWBuffer<uint32_t> grad_texture;
-RWBuffer<float2> grad_uv;
+RWStructuredBuffer<uint32_t> grad_texture; // Float as uint due to atomic operations
+RWStructuredBuffer<float2> grad_uv;
 #if ENABLE_MIP
-RWBuffer<float4> grad_derivative_uv;
+RWStructuredBuffer<float4> grad_derivative_uv;
 #endif
 
 float Wrap(float f, uint32_t size)

@@ -5,7 +5,7 @@
 
 struct TensorView
 {
-    static TensorView Create(Buffer<float> buff, uint32_t offset, uint32_t2 shape)
+    static TensorView Create(StructuredBuffer<float> buff, uint32_t offset, uint32_t2 shape)
     {
         TensorView view;
         view.data = buff;
@@ -31,7 +31,7 @@ struct TensorView
         }
     }
 
-    Buffer<float> data;
+    StructuredBuffer<float> data;
     uint32_t offset;
     uint32_t2 shape;
 };

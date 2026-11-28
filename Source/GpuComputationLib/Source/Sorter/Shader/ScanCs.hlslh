@@ -16,8 +16,8 @@ cbuffer param_cb
     uint32_t pass;
 };
 
-RWBuffer<uint32_t> global_hist;
-RWBuffer<uint32_t> partition_hist;
+RWStructuredBuffer<uint32_t> global_hist;
+RWStructuredBuffer<uint32_t> partition_hist;
 
 groupshared uint32_t group_reduction;
 groupshared uint32_t group_intermediate[WorksetSize / MinWaveSize];

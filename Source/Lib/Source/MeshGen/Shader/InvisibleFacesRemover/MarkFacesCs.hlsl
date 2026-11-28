@@ -10,7 +10,7 @@ cbuffer param_cb
 
 Texture2D<uint32_t> face_id_tex;
 
-RWBuffer<uint32_t> face_mark_buff;
+RWStructuredBuffer<uint32_t> face_mark_buff;
 
 [numthreads(BlockDim, BlockDim, 1)]
 void main(uint32_t3 dtid : SV_DispatchThreadID)

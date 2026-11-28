@@ -16,7 +16,7 @@ cbuffer param_cb
 Texture2D gsplat_image;
 
 #if FLOAT3_BUFFER_TARGET
-RWBuffer<float> rendered_image;
+RWStructuredBuffer<float> rendered_image;
 #else
 #ifdef __spirv__
 [[vk::image_format("rgba8")]]

@@ -126,7 +126,6 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateShaderResourceView(buffer, first_element, num_elements, format).release()))
     {
         Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::ShaderResource));
-        Verify(!EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuShaderResourceView::GpuShaderResourceView(GpuSystem& gpu_system, const GpuBuffer& buffer, uint32_t element_size)
@@ -319,7 +318,6 @@ namespace AIHoloImager
         : impl_(static_cast<Impl*>(gpu_system.Internal().CreateUnorderedAccessView(buffer, first_element, num_elements, format).release()))
     {
         Verify(EnumHasAny(buffer.Flags(), GpuResourceFlag::UnorderedAccess));
-        Verify(!EnumHasAny(buffer.Flags(), GpuResourceFlag::Structured));
     }
 
     GpuUnorderedAccessView::GpuUnorderedAccessView(GpuSystem& gpu_system, GpuBuffer& buffer, uint32_t element_size)

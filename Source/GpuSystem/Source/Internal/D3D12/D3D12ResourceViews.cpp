@@ -452,6 +452,8 @@ namespace AIHoloImager
         uint32_t array_slice;
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture2D.MipSlice, array_slice, uav_desc.Texture2D.PlaneSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, cpu_handle_);
+
+        uint_cpu_handle_ = float_cpu_handle_ = cpu_handle_;
     }
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
@@ -476,6 +478,8 @@ namespace AIHoloImager
         DecomposeSubResource(sub_resource, texture_array.MipLevels(), texture_array.ArraySize(), uav_desc.Texture2DArray.MipSlice,
             uav_desc.Texture2DArray.FirstArraySlice, uav_desc.Texture2DArray.PlaneSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, cpu_handle_);
+
+        uint_cpu_handle_ = float_cpu_handle_ = cpu_handle_;
     }
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
@@ -502,6 +506,8 @@ namespace AIHoloImager
         DecomposeSubResource(sub_resource, texture.MipLevels(), 1, uav_desc.Texture3D.MipSlice, array_slice, plane_slice);
         uav_desc.Texture3D.WSize = texture.Depth(uav_desc.Texture3D.MipSlice);
         d3d12_device->CreateUnorderedAccessView(d3d12_texture, nullptr, &uav_desc, cpu_handle_);
+
+        uint_cpu_handle_ = float_cpu_handle_ = cpu_handle_;
     }
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
@@ -526,6 +532,8 @@ namespace AIHoloImager
             },
         };
         d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &uav_desc, cpu_handle_);
+
+        uint_cpu_handle_ = float_cpu_handle_ = cpu_handle_;
     }
 
     D3D12UnorderedAccessView::D3D12UnorderedAccessView(
@@ -534,7 +542,7 @@ namespace AIHoloImager
     {
         auto& d3d12_system = D3D12Imp(*gpu_system_);
 
-        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(1);
+        desc_block_ = d3d12_system.AllocCbvSrvUavDescBlock(3);
         cpu_handle_ = desc_block_.CpuHandle();
 
         auto* d3d12_device = d3d12_system.Device();
@@ -550,6 +558,35 @@ namespace AIHoloImager
             },
         };
         d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &uav_desc, cpu_handle_);
+
+        // RWStructuredBuffer can't be cleared by ClearUnorderedAccessView*. Creates some aliasing typed UAVs as a workaround.
+
+        const uint32_t srv_uav_desc_size = d3d12_system.CbvSrvUavDescSize();
+        uint_cpu_handle_ = OffsetHandle(cpu_handle_, 1, srv_uav_desc_size);
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uint_uav_desc{
+            .Format = DXGI_FORMAT_R32_UINT,
+            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = 0,
+            },
+        };
+        d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &uint_uav_desc, uint_cpu_handle_);
+
+        float_cpu_handle_ = OffsetHandle(uint_cpu_handle_, 1, srv_uav_desc_size);
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC float_uav_desc{
+            .Format = DXGI_FORMAT_R32_FLOAT,
+            .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+            .Buffer{
+                .FirstElement = first_element,
+                .NumElements = num_elements,
+                .StructureByteStride = 0,
+            },
+        };
+        d3d12_device->CreateUnorderedAccessView(d3d12_buff, nullptr, &float_uav_desc, float_cpu_handle_);
     }
 
     D3D12UnorderedAccessView::~D3D12UnorderedAccessView()
@@ -593,10 +630,28 @@ namespace AIHoloImager
         auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
         d3d12_device->CopyDescriptorsSimple(1, dst_handle, cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
+    void D3D12UnorderedAccessView::UintCopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
+    {
+        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        d3d12_device->CopyDescriptorsSimple(1, dst_handle, uint_cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
+    void D3D12UnorderedAccessView::FloatCopyTo(D3D12_CPU_DESCRIPTOR_HANDLE dst_handle) const noexcept
+    {
+        auto* d3d12_device = D3D12Imp(*gpu_system_).Device();
+        d3d12_device->CopyDescriptorsSimple(1, dst_handle, float_cpu_handle_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
 
     D3D12_CPU_DESCRIPTOR_HANDLE D3D12UnorderedAccessView::CpuHandle() const noexcept
     {
         return cpu_handle_;
+    }
+    D3D12_CPU_DESCRIPTOR_HANDLE D3D12UnorderedAccessView::UintCpuHandle() const noexcept
+    {
+        return uint_cpu_handle_;
+    }
+    D3D12_CPU_DESCRIPTOR_HANDLE D3D12UnorderedAccessView::FloatCpuHandle() const noexcept
+    {
+        return float_cpu_handle_;
     }
 
     GpuResource* D3D12UnorderedAccessView::Resource() noexcept

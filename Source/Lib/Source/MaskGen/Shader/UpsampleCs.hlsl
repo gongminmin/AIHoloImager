@@ -15,7 +15,7 @@ cbuffer param_cb
 };
 
 Texture2D<float> input_tex;
-Buffer<float> min_max_buff;
+StructuredBuffer<float> min_max_buff;
 
 #ifdef __spirv__
 [[vk::image_format("r8")]]

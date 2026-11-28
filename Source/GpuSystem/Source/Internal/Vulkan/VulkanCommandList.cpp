@@ -1107,8 +1107,6 @@ namespace AIHoloImager
                         break;
 
                     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
                         for (const auto& [binding_name, uav] : shader_binding.uavs)
                         {
                             if (binding_name == name)
@@ -1121,22 +1119,59 @@ namespace AIHoloImager
                                 }
                                 else
                                 {
-                                    switch (type)
-                                    {
-                                    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                                        write_desc_sets.emplace_back(NullStorageTexelBufferUnorderedAccessViewWriteDescSet());
-                                        break;
-                                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                                        write_desc_sets.emplace_back(NullStorageBufferUnorderedAccessViewWriteDescSet());
-                                        break;
-                                    }
+                                    write_desc_sets.emplace_back(NullStorageTexelBufferUnorderedAccessViewWriteDescSet());
                                 }
                                 found = true;
                                 break;
                             }
                         }
                         view_type_name = "UAV";
+                        break;
+
+                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                        // STORAGE_BUFFER could be StructuredBuffer or RWStructuredBuffer
+                        for (const auto& [binding_name, srv] : shader_binding.srvs)
+                        {
+                            if (binding_name == name)
+                            {
+                                if (srv != nullptr)
+                                {
+                                    const auto& vulkan_srv = VulkanImp<VulkanBufferShaderResourceView>(*srv);
+                                    vulkan_srv.Transition(*this);
+                                    write_desc_sets.emplace_back(vulkan_srv.WriteDescSet());
+                                }
+                                else
+                                {
+                                    write_desc_sets.emplace_back(NullStorageBufferViewWriteDescSet());
+                                }
+                                found = true;
+                                view_type_name = "SRV";
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            for (const auto& [binding_name, uav] : shader_binding.uavs)
+                            {
+                                if (binding_name == name)
+                                {
+                                    if (uav != nullptr)
+                                    {
+                                        auto& vulkan_uav = VulkanImp<VulkanBufferUnorderedAccessView>(*uav);
+                                        vulkan_uav.Transition(*this);
+                                        write_desc_sets.emplace_back(vulkan_uav.WriteDescSet());
+                                    }
+                                    else
+                                    {
+                                        write_desc_sets.emplace_back(NullStorageBufferViewWriteDescSet());
+                                    }
+                                    found = true;
+                                    view_type_name = "UAV";
+                                    break;
+                                }
+                            }
+                        }
                         break;
 
                     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
